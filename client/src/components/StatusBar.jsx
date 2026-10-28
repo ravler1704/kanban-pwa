@@ -27,7 +27,7 @@ export default function StatusBar({ pending, conflicts }) {
 
   return (
     <header className="statusbar">
-      <h1>Канбан</h1>
+      <h1 className="statusbar-title" title={user?.email || undefined}>{user?.name || user?.email || 'Канбан'}</h1>
       <div className="status">
         <span className={`dot dot-${state}`} />
         <span>{label}</span>
