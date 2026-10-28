@@ -51,6 +51,8 @@ body {
 .dot-offline { background: var(--danger); }
 .dot-syncing { background: var(--accent); animation: pulse 1s infinite alternate; }
 @keyframes pulse { from { opacity: 0.3; } to { opacity: 1; } }
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
 .badge {
   font-size: 0.75rem;
