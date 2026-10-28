@@ -1,0 +1,13 @@
+# __DOMAIN__ and __SERVER_IP__ are substituted by deploy.sh.
+
+__DOMAIN__ {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3001 {
+		# Server-Sent Events (/api/events) must not be buffered.
+		flush_interval -1
+	}
+}
+
+http://__SERVER_IP__ {
+	redir https://__DOMAIN__{uri} permanent
+}

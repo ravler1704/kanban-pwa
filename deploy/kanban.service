@@ -1,0 +1,27 @@
+[Unit]
+Description=Offline Kanban
+After=network.target
+
+[Service]
+Type=simple
+User=kanban
+Group=kanban
+WorkingDirectory=/opt/kanban/server
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=3001
+Environment=DB_PATH=/var/lib/kanban/kanban.db
+# GOOGLE_CLIENT_ID and ALLOWED_EMAILS; uploaded by deploy.sh from deploy/kanban.env.
+EnvironmentFile=-/etc/kanban/env
+ExecStart=/usr/bin/node --disable-warning=ExperimentalWarning src/index.js
+Restart=always
+RestartSec=3
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/kanban
+
+[Install]
+WantedBy=multi-user.target

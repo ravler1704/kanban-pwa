@@ -1,0 +1,82 @@
+import { useState } from 'react';
+import { createCard } from '../actions.js';
+import Modal from './Modal.jsx';
+
+const LAST_KEY = 'lastTargetForNewCard';
+
+const encode = (projectId, sectionId) => `${projectId}|${sectionId ?? ''}`;
+const decode = (value) => {
+  const [projectId, sectionId] = value.split('|');
+  return { projectId, sectionId: sectionId || null };
+};
+
+const encodeAll = (groups) =>
+  groups.flatMap((g) => [encode(g.project.id, null), ...g.sections.map((s) => encode(g.project.id, s.id))]);
+
+/** Where a new card goes when no project is selected: the last used destination, or the first project. */
+export function defaultTarget(groups) {
+  const values = encodeAll(groups);
+  const last = localStorage.getItem(LAST_KEY);
+  const value = values.includes(last) ? last : values[0];
+  return value ? decode(value) : null;
+}
+
+/**
+ * `target` ({ projectId, sectionId }) is the current selection; when null (all projects
+ * are shown) the last used destination is preselected.
+ */
+export default function NewCardDialog({ groups, columns, target, onClose }) {
+  const [where, setWhere] = useState(() => {
+    const preferred = target ?? defaultTarget(groups);
+    return preferred ? encode(preferred.projectId, preferred.sectionId) : '';
+  });
+  // The first column is usually the backlog; new work goes to the second one when there is one.
+  const [columnId, setColumnId] = useState((columns[1] ?? columns[0]).id);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+
+  async function submit(e) {
+    e.preventDefault();
+    if (!title.trim() || !where) return;
+    localStorage.setItem(LAST_KEY, where);
+    await createCard(decode(where), columnId, title.trim(), description);
+    onClose();
+  }
+
+  return (
+    <Modal title="Новая карточка" onClose={onClose}>
+      <form className="editor" onSubmit={submit}>
+        <label>
+          Название
+          <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={500} autoFocus />
+        </label>
+        <label>
+          Описание
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} maxLength={10000} />
+        </label>
+        <label>
+          Проект / раздел
+          <select className="select" value={where} onChange={(e) => setWhere(e.target.value)}>
+            {groups.flatMap((g) => [
+              <option key={g.project.id} value={encode(g.project.id, null)}>{g.project.name}</option>,
+              ...g.sections.map((s) => (
+                <option key={s.id} value={encode(g.project.id, s.id)}>{g.project.name} / {s.name}</option>
+              )),
+            ])}
+          </select>
+        </label>
+        <label>
+          Колонка
+          <select className="select" value={columnId} onChange={(e) => setColumnId(e.target.value)}>
+            {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </label>
+        <div className="actions">
+          <span className="spacer" />
+          <button type="button" className="btn" onClick={onClose}>Отмена</button>
+          <button type="submit" className="btn btn-primary" disabled={!title.trim()}>Добавить</button>
+        </div>
+      </form>
+    </Modal>
+  );
+}

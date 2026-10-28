@@ -1,0 +1,16 @@
+{
+  "name": "kanban-server",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "dev": "node --watch --env-file-if-exists=.env --disable-warning=ExperimentalWarning src/index.js",
+    "start": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning src/index.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "jose": "^6.2.13"
+  }
+}

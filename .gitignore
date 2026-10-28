@@ -1,0 +1,7 @@
+node_modules
+dist
+dev-dist
+server/data
+server/.env
+deploy/kanban.env
+.DS_Store

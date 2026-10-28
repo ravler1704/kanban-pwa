@@ -1,0 +1,47 @@
+import { useSyncExternalStore } from 'react';
+import { authState, signOut } from '../auth.js';
+import { sync, syncStatus } from '../sync.js';
+
+function formatTime(ts) {
+  return ts ? new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '—';
+}
+
+export default function StatusBar({ pending, conflicts }) {
+  const s = useSyncExternalStore(syncStatus.subscribe, syncStatus.get);
+  const { user } = useSyncExternalStore(authState.subscribe, authState.get);
+
+  let state = 'online';
+  let label = 'Онлайн';
+  if (!s.online) {
+    state = 'offline';
+    label = 'Офлайн — изменения сохраняются на устройстве';
+  } else if (s.syncing) {
+    state = 'syncing';
+    label = 'Синхронизация…';
+  } else if (!s.serverReachable) {
+    state = 'offline';
+    label = 'Сервер недоступен';
+  }
+
+  return (
+    <header className="statusbar">
+      <h1>Канбан</h1>
+      <div className="status">
+        <span className={`dot dot-${state}`} />
+        <span>{label}</span>
+        {pending > 0 && <span className="badge badge-pending">Не синхронизировано: {pending}</span>}
+        {conflicts > 0 && <span className="badge badge-conflict">Конфликты: {conflicts}</span>}
+        <span className="muted">Синхр.: {formatTime(s.lastSyncAt)}</span>
+        <button className="btn btn-small" onClick={sync} disabled={!s.online || s.syncing}>
+          Синхронизировать
+        </button>
+        {user && (
+          // Signing out needs the server to drop the session, so it is unavailable offline.
+          <button className="btn btn-small" onClick={signOut} disabled={!s.online} title={user.email}>
+            Выйти
+          </button>
+        )}
+      </div>
+    </header>
+  );
+}
