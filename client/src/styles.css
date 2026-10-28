@@ -215,8 +215,11 @@ body {
 .login-card h1 { margin: 0; font-size: 1.5rem; }
 .login-card p { margin: 0; }
 .login-button { min-height: 44px; }
+/* Google's personalized button is an iframe with a light document; under the page's dark
+   color-scheme the browser would paint an opaque white box behind it. */
+.login-button iframe { color-scheme: light; }
 .login-error { color: var(--danger); }
-.login-dev { border-style: dashed; }
+.btn.login-dev { width: 280px; border-style: dashed; border-radius: 999px; }
 
 .empty {
   flex: 1;

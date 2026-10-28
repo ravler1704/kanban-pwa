@@ -54,6 +54,7 @@ export default function LoginScreen({ clientId, devLogin }) {
           shape: 'pill',
           text: 'signin_with',
           locale: 'ru',
+          width: 280,
         });
       })
       .catch((err) => !cancelled && setError(err.message));
