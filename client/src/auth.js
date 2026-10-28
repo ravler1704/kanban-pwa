@@ -19,8 +19,13 @@ const readJson = (key) => {
 function initialState() {
   const config = readJson(CONFIG_KEY);
   const user = readJson(USER_KEY);
-  if (config && !config.enabled) return { status: 'disabled', user: null, clientId: null };
-  return { status: user ? 'signedIn' : 'unknown', user, clientId: config?.clientId ?? null };
+  if (config && !config.enabled) return { status: 'disabled', user: null, clientId: null, devLogin: false };
+  return {
+    status: user ? 'signedIn' : 'unknown',
+    user,
+    clientId: config?.clientId ?? null,
+    devLogin: Boolean(config?.devLogin),
+  };
 }
 
 let state = initialState();
@@ -63,10 +68,10 @@ export async function checkAuth() {
     if (config.status !== 200) return;
     localStorage.setItem(CONFIG_KEY, JSON.stringify(config.body));
     if (!config.body.enabled) {
-      setState({ status: 'disabled', user: null, clientId: null });
+      setState({ status: 'disabled', user: null, clientId: null, devLogin: false });
       return;
     }
-    setState({ clientId: config.body.clientId });
+    setState({ clientId: config.body.clientId, devLogin: Boolean(config.body.devLogin) });
 
     const me = await getJson('/api/auth/me');
     if (me.status === 200) {
@@ -82,11 +87,20 @@ export async function checkAuth() {
 }
 
 /** `credential` is the ID token from Google Identity Services. Throws with a user-facing message. */
-export async function signInWithGoogle(credential) {
-  const res = await fetch('/api/auth/google', {
+export function signInWithGoogle(credential) {
+  return signIn('/api/auth/google', { credential });
+}
+
+/** Local development: the server's test account, no Google involved. */
+export function signInAsTestUser() {
+  return signIn('/api/auth/dev', {});
+}
+
+async function signIn(url, payload) {
+  const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ credential }),
+    body: JSON.stringify(payload),
   });
   const body = await res.json().catch(() => ({}));
   if (res.status === 403 && body.error === 'not allowed') {

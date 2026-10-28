@@ -10,6 +10,12 @@ const ALLOWED_EMAILS = new Set(
   (process.env.ALLOWED_EMAILS || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean),
 );
 export const authEnabled = Boolean(CLIENT_ID);
+// Local development only: a "test account" button that signs in without Google. Even when
+// enabled, it is accepted only from this machine (behind Caddy req.ip is the real client).
+const DEV_LOGIN = authEnabled && process.env.DEV_LOGIN === '1';
+const DEV_USER = { userId: 'dev:test', email: 'test@localhost', name: 'Тестовый аккаунт', picture: null };
+const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
+const devLoginAllowed = (req) => DEV_LOGIN && LOOPBACK.has(req.ip);
 
 const COOKIE = 'kanban_session';
 // Browsers cap cookie lifetime at 400 days.
@@ -37,7 +43,18 @@ function currentSession(req) {
   if (!token) return null;
   const session = getSession(hash(token));
   // Removing an address from ALLOWED_EMAILS revokes its sessions immediately.
-  return session && isAllowed(session.email) ? session : null;
+  if (!session) return null;
+  if (session.user_id === DEV_USER.userId) return devLoginAllowed(req) ? session : null;
+  return isAllowed(session.email) ? session : null;
+}
+
+function startSession(req, res, user) {
+  const token = crypto.randomBytes(32).toString('base64url');
+  const now = Date.now();
+  const session = { ...user, tokenHash: hash(token), createdAt: now, expiresAt: now + SESSION_TTL_MS };
+  createSession(session);
+  res.cookie(COOKIE, token, { ...cookieOptions(req), maxAge: SESSION_TTL_MS });
+  res.json({ user: publicUser(session) });
 }
 
 const publicUser = (s) => ({ email: s.email, name: s.name, picture: s.picture });
@@ -55,8 +72,13 @@ export function requireAuth(req, res, next) {
 }
 
 export function registerAuthRoutes(app) {
-  app.get('/api/auth/config', (_req, res) => {
-    res.json({ enabled: authEnabled, clientId: CLIENT_ID || null });
+  app.get('/api/auth/config', (req, res) => {
+    res.json({ enabled: authEnabled, clientId: CLIENT_ID || null, devLogin: devLoginAllowed(req) });
+  });
+
+  app.post('/api/auth/dev', (req, res) => {
+    if (!devLoginAllowed(req)) return res.status(404).json({ error: 'not found' });
+    startSession(req, res, DEV_USER);
   });
 
   app.get('/api/auth/me', (req, res) => {
@@ -90,21 +112,13 @@ export function registerAuthRoutes(app) {
       return res.status(403).json({ error: 'not allowed', email: claims.email });
     }
 
-    const token = crypto.randomBytes(32).toString('base64url');
-    const now = Date.now();
-    const session = {
-      tokenHash: hash(token),
+    startSession(req, res, {
       // Google's stable account id; the e-mail of an account can change.
       userId: `google:${claims.sub}`,
       email: claims.email.toLowerCase(),
       name: typeof claims.name === 'string' ? claims.name : null,
       picture: typeof claims.picture === 'string' ? claims.picture : null,
-      createdAt: now,
-      expiresAt: now + SESSION_TTL_MS,
-    };
-    createSession(session);
-    res.cookie(COOKIE, token, { ...cookieOptions(req), maxAge: SESSION_TTL_MS });
-    res.json({ user: publicUser(session) });
+    });
   });
 
   app.post('/api/auth/logout', (req, res) => {

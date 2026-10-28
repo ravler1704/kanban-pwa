@@ -216,6 +216,7 @@ body {
 .login-card p { margin: 0; }
 .login-button { min-height: 44px; }
 .login-error { color: var(--danger); }
+.login-dev { border-style: dashed; }
 
 .empty {
   flex: 1;

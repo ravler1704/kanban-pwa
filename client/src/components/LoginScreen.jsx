@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { signInWithGoogle } from '../auth.js';
+import { signInAsTestUser, signInWithGoogle } from '../auth.js';
 import { syncStatus } from '../sync.js';
 
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
@@ -20,11 +20,23 @@ function loadGoogleIdentity() {
   return gisPromise;
 }
 
-export default function LoginScreen({ clientId }) {
+export default function LoginScreen({ clientId, devLogin }) {
   const { online } = useSyncExternalStore(syncStatus.subscribe, syncStatus.get);
   const button = useRef(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+
+  async function run(signIn) {
+    setBusy(true);
+    setError(null);
+    try {
+      await signIn();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (!online || !clientId) return;
@@ -34,17 +46,7 @@ export default function LoginScreen({ clientId }) {
         if (cancelled || !button.current) return;
         google.accounts.id.initialize({
           client_id: clientId,
-          callback: async ({ credential }) => {
-            setBusy(true);
-            setError(null);
-            try {
-              await signInWithGoogle(credential);
-            } catch (err) {
-              setError(err.message);
-            } finally {
-              setBusy(false);
-            }
-          },
+          callback: ({ credential }) => run(() => signInWithGoogle(credential)),
         });
         google.accounts.id.renderButton(button.current, {
           theme: 'filled_black',
@@ -68,6 +70,11 @@ export default function LoginScreen({ clientId }) {
           <>
             <p className="muted">Войдите, чтобы открыть доску.</p>
             <div ref={button} className="login-button" aria-busy={busy} />
+            {devLogin && (
+              <button type="button" className="btn login-dev" disabled={busy} onClick={() => run(signInAsTestUser)}>
+                Войти в тестовый аккаунт
+              </button>
+            )}
             {busy && <p className="muted">Вход…</p>}
           </>
         ) : (
