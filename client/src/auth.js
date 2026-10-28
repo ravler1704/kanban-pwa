@@ -16,16 +16,18 @@ const readJson = (key) => {
   }
 };
 
+const configFields = (config) => ({
+  clientId: config?.clientId ?? null,
+  yandexClientId: config?.yandexClientId ?? null,
+  devLogin: Boolean(config?.devLogin),
+});
+
 function initialState() {
   const config = readJson(CONFIG_KEY);
   const user = readJson(USER_KEY);
-  if (config && !config.enabled) return { status: 'disabled', user: null, clientId: null, devLogin: false };
-  return {
-    status: user ? 'signedIn' : 'unknown',
-    user,
-    clientId: config?.clientId ?? null,
-    devLogin: Boolean(config?.devLogin),
-  };
+  // `notice`: a sign-in error to show on the login screen (e.g. after a provider redirect).
+  if (config && !config.enabled) return { status: 'disabled', user: null, notice: null, ...configFields(null) };
+  return { status: user ? 'signedIn' : 'unknown', user, notice: null, ...configFields(config) };
 }
 
 let state = initialState();
@@ -68,10 +70,10 @@ export async function checkAuth() {
     if (config.status !== 200) return;
     localStorage.setItem(CONFIG_KEY, JSON.stringify(config.body));
     if (!config.body.enabled) {
-      setState({ status: 'disabled', user: null, clientId: null, devLogin: false });
+      setState({ status: 'disabled', user: null, ...configFields(null) });
       return;
     }
-    setState({ clientId: config.body.clientId, devLogin: Boolean(config.body.devLogin) });
+    setState(configFields(config.body));
 
     const me = await getJson('/api/auth/me');
     if (me.status === 200) {
@@ -88,27 +90,122 @@ export async function checkAuth() {
 
 /** `credential` is the ID token from Google Identity Services. Throws with a user-facing message. */
 export function signInWithGoogle(credential) {
-  return signIn('/api/auth/google', { credential });
+  return signIn('google', { credential });
 }
 
-/** Local development: the server's test account, no Google involved. */
+/** Local development: the server's test account, no provider involved. */
 export function signInAsTestUser() {
-  return signIn('/api/auth/dev', {});
+  return signIn('dev', {});
 }
 
-async function signIn(url, payload) {
-  const res = await fetch(url, {
+async function postAuth(provider, payload) {
+  const res = await fetch(`/api/auth/${provider}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  const body = await res.json().catch(() => ({}));
-  if (res.status === 403 && body.error === 'not allowed') {
-    throw new Error(`У аккаунта ${body.email} нет доступа к этой доске.`);
+  return { status: res.status, body: await res.json().catch(() => ({})) };
+}
+
+function authError({ status, body }, action) {
+  if (status === 403 && body.error === 'not allowed') {
+    return new Error(`У аккаунта ${body.email ?? ''} нет доступа к этой доске.`);
   }
-  if (!res.ok) throw new Error('Не удалось войти. Попробуйте ещё раз.');
-  setState({ status: 'signedIn', user: body.user });
+  if (status === 502) return new Error('Сервис входа не отвечает. Попробуйте позже.');
+  return new Error(`Не удалось ${action}. Попробуйте ещё раз.`);
+}
+
+async function signIn(provider, payload) {
+  const res = await postAuth(provider, payload);
+  if (res.status !== 200) throw authError(res, 'войти');
+  setState({ status: 'signedIn', user: res.body.user, notice: null });
   resume();
+}
+
+const plural = (n, one, few, many) =>
+  `${n} ${n % 10 === 1 && n % 100 !== 11 ? one : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? few : many}`;
+
+/**
+ * Links another account to the signed-in user. If that account already has its own board,
+ * asks whether to merge it into the current one. Returns false if the user declined.
+ */
+export async function linkAccount(provider, payload) {
+  let res = await postAuth(provider, { ...payload, link: true });
+  if (res.status === 409 && res.body.error === 'has board') {
+    const { projects, cards } = res.body.board;
+    const who = res.body.email ? `Аккаунт ${res.body.email}` : 'Этот аккаунт';
+    const ok = confirm(
+      `${who} уже входит в другую доску (${plural(projects, 'проект', 'проекта', 'проектов')}, `
+      + `${plural(cards, 'карточка', 'карточки', 'карточек')}). Объединить её с текущей? `
+      + 'Её проекты и карточки перейдут сюда, а вход через любой из аккаунтов будет открывать эту доску.',
+    );
+    if (!ok) return false;
+    res = await postAuth(provider, { ...payload, link: true, merge: true });
+  }
+  if (res.status === 401 && res.body.error === 'unauthorized') {
+    markSignedOut();
+    throw new Error('Сессия истекла, войдите снова.');
+  }
+  if (res.status !== 200) throw authError(res, 'привязать аккаунт');
+  setState({ user: res.body.user });
+  resume();
+  return true;
+}
+
+export async function unlinkAccount({ provider, subject }) {
+  const res = await fetch('/api/auth/unlink', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider, subject }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error('Не удалось отвязать аккаунт.');
+  setState({ user: body.user });
+}
+
+// Yandex OAuth (implicit flow): the page goes to Yandex and comes back with the access token
+// in the URL fragment, which never reaches our server logs.
+const YANDEX_PENDING_KEY = 'yandexAuth';
+
+export function startYandexAuth({ link = false } = {}) {
+  const state = crypto.randomUUID();
+  localStorage.setItem(YANDEX_PENDING_KEY, JSON.stringify({ state, link, at: Date.now() }));
+  const params = new URLSearchParams({
+    response_type: 'token',
+    client_id: authState.get().yandexClientId,
+    redirect_uri: `${location.origin}/`,
+    state,
+  });
+  // Linking usually means another Yandex account: let the user pick it.
+  if (link) params.set('force_confirm', 'yes');
+  location.assign(`https://oauth.yandex.ru/authorize?${params}`);
+}
+
+/** Finishes a Yandex redirect if the page was opened with one. */
+export async function completeYandexAuth() {
+  const fragment = new URLSearchParams(location.hash.slice(1));
+  if (!fragment.has('access_token') && !fragment.has('error')) return;
+  history.replaceState(null, '', location.pathname + location.search);
+
+  const pending = readJson(YANDEX_PENDING_KEY);
+  localStorage.removeItem(YANDEX_PENDING_KEY);
+  let error = null;
+  if (fragment.has('error')) {
+    if (fragment.get('error') !== 'access_denied') error = 'Яндекс отказал во входе.';
+  } else if (!pending || pending.state !== fragment.get('state') || Date.now() - pending.at > 10 * 60 * 1000) {
+    error = 'Вход через Яндекс устарел, попробуйте ещё раз.';
+  } else {
+    const payload = { token: fragment.get('access_token') };
+    try {
+      if (pending.link) await linkAccount('yandex', payload);
+      else await signIn('yandex', payload);
+    } catch (err) {
+      error = err.message;
+    }
+  }
+  if (!error) return;
+  if (pending?.link && state.status === 'signedIn') alert(error);
+  else setState({ notice: error });
 }
 
 /** Signs out and removes the board from this device. Returns false if the user cancelled. */

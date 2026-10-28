@@ -1,6 +1,7 @@
-import { useSyncExternalStore } from 'react';
-import { authState, signOut } from '../auth.js';
+import { useState, useSyncExternalStore } from 'react';
+import { authState } from '../auth.js';
 import { sync, syncStatus } from '../sync.js';
+import AccountDialog from './AccountDialog.jsx';
 
 function formatTime(ts) {
   return ts ? new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '—';
@@ -9,6 +10,7 @@ function formatTime(ts) {
 export default function StatusBar({ pending, conflicts }) {
   const s = useSyncExternalStore(syncStatus.subscribe, syncStatus.get);
   const { user } = useSyncExternalStore(authState.subscribe, authState.get);
+  const [accountOpen, setAccountOpen] = useState(false);
 
   let state = 'online';
   let label = 'Онлайн';
@@ -36,12 +38,12 @@ export default function StatusBar({ pending, conflicts }) {
           Синхронизировать
         </button>
         {user && (
-          // Signing out needs the server to drop the session, so it is unavailable offline.
-          <button className="btn btn-small" onClick={signOut} disabled={!s.online} title={user.email}>
-            Выйти
+          <button className="btn btn-small" onClick={() => setAccountOpen(true)} title={user.email}>
+            Аккаунт
           </button>
         )}
       </div>
+      {accountOpen && <AccountDialog onClose={() => setAccountOpen(false)} />}
     </header>
   );
 }

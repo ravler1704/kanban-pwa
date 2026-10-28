@@ -66,6 +66,35 @@ db.exec(`
     expires_at  INTEGER NOT NULL
   );
 `);
+// The account used to sign in ('dev' sessions are accepted from this machine only).
+if (!hasColumn('sessions', 'provider')) {
+  db.exec(`
+    ALTER TABLE sessions ADD COLUMN provider TEXT;
+    UPDATE sessions SET provider = substr(user_id, 1, instr(user_id, ':') - 1) WHERE instr(user_id, ':') > 0;
+  `);
+}
+
+// Sign-in accounts (Google, Yandex, …) linked to a user; the user id is the board owner.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS identities (
+    provider    TEXT    NOT NULL,
+    subject     TEXT    NOT NULL,
+    user_id     TEXT    NOT NULL,
+    email       TEXT,
+    name        TEXT,
+    picture     TEXT,
+    linked_at   INTEGER NOT NULL,
+    PRIMARY KEY (provider, subject)
+  );
+  CREATE INDEX IF NOT EXISTS idx_identities_user ON identities(user_id);
+`);
+// Before identities existed, the user id was "<provider>:<subject>" of the only account.
+db.exec(`
+  INSERT OR IGNORE INTO identities (provider, subject, user_id, email, name, picture, linked_at)
+    SELECT substr(user_id, 1, instr(user_id, ':') - 1), substr(user_id, instr(user_id, ':') + 1),
+           user_id, email, name, picture, MIN(created_at)
+    FROM sessions WHERE instr(user_id, ':') > 0 GROUP BY user_id;
+`);
 
 // Identifies this database instance. Clients holding data from another epoch
 // (e.g. after the database was wiped or restored) discard it and resync.
@@ -139,8 +168,8 @@ export function saveRecord(owner, type, id, data, { version, deviceId }) {
 }
 
 const insertSession = db.prepare(`
-  INSERT INTO sessions (token_hash, user_id, email, name, picture, created_at, expires_at)
-  VALUES (:tokenHash, :userId, :email, :name, :picture, :createdAt, :expiresAt)
+  INSERT INTO sessions (token_hash, user_id, provider, email, name, picture, created_at, expires_at)
+  VALUES (:tokenHash, :userId, :provider, :email, :name, :picture, :createdAt, :expiresAt)
 `);
 const selectSession = db.prepare('SELECT * FROM sessions WHERE token_hash = ? AND expires_at > ?');
 const removeSession = db.prepare('DELETE FROM sessions WHERE token_hash = ?');
@@ -157,6 +186,77 @@ export function getSession(tokenHash) {
 
 export function deleteSession(tokenHash) {
   removeSession.run(tokenHash);
+}
+
+const selectIdentityUser = db.prepare('SELECT user_id FROM identities WHERE provider = ? AND subject = ?');
+const upsertIdentityStmt = db.prepare(`
+  INSERT INTO identities (provider, subject, user_id, email, name, picture, linked_at)
+  VALUES (:provider, :subject, :userId, :email, :name, :picture, :linkedAt)
+  ON CONFLICT(provider, subject) DO UPDATE SET
+    user_id = excluded.user_id, email = excluded.email, name = excluded.name, picture = excluded.picture
+`);
+const selectIdentities = db.prepare(
+  'SELECT provider, subject, email, name, picture FROM identities WHERE user_id = ? ORDER BY linked_at',
+);
+const removeIdentity = db.prepare('DELETE FROM identities WHERE user_id = ? AND provider = ? AND subject = ?');
+
+const selectAnyRecord = db.prepare('SELECT 1 FROM records WHERE owner = ? LIMIT 1');
+
+export function getIdentityUser(provider, subject) {
+  const row = selectIdentityUser.get(provider, subject);
+  if (row) return row.user_id;
+  // Boards created before identities existed are owned by "<provider>:<subject>".
+  const legacy = `${provider}:${subject}`;
+  return selectAnyRecord.get(legacy) ? legacy : null;
+}
+
+/** Creates the identity or refreshes its profile; `userId` (re)assigns its owner. */
+export function saveIdentity({ provider, subject, userId, email, name, picture }) {
+  upsertIdentityStmt.run({
+    provider, subject, userId, email: email ?? null, name: name ?? null, picture: picture ?? null, linkedAt: Date.now(),
+  });
+}
+
+export function listIdentities(userId) {
+  return selectIdentities.all(userId);
+}
+
+export function deleteIdentity(userId, provider, subject) {
+  return removeIdentity.run(userId, provider, subject).changes > 0;
+}
+
+const selectLiveRecords = db.prepare('SELECT type, data FROM records WHERE owner = ?');
+
+/** What the user would bring into a merge: live projects and cards. */
+export function boardSummary(owner) {
+  const summary = { projects: 0, cards: 0 };
+  for (const row of selectLiveRecords.all(owner)) {
+    if (JSON.parse(row.data).deleted) continue;
+    if (row.type === 'project') summary.projects += 1;
+    if (row.type === 'card') summary.cards += 1;
+  }
+  return summary;
+}
+
+/**
+ * Moves everything of user `from` to user `to`: records, linked accounts and sessions.
+ * Records get fresh seq values so `to`'s devices pull them. Where both boards have a record
+ * with the same id (the default columns), `to` keeps its own.
+ */
+export function mergeUsers(from, to) {
+  return transaction(() => {
+    const rows = db.prepare('SELECT id FROM records WHERE owner = ? ORDER BY seq').all(from);
+    const exists = db.prepare('SELECT 1 FROM records WHERE owner = ? AND id = ?');
+    const move = db.prepare('UPDATE records SET owner = ?, seq = ? WHERE owner = ? AND id = ?');
+    let seq = selectMaxSeq.get().seq;
+    for (const { id } of rows) {
+      if (!exists.get(to, id)) move.run(to, ++seq, from, id);
+    }
+    db.prepare('DELETE FROM records WHERE owner = ?').run(from);
+    db.prepare('UPDATE identities SET user_id = ? WHERE user_id = ?').run(to, from);
+    db.prepare('UPDATE sessions SET user_id = ? WHERE user_id = ?').run(to, from);
+    return seq;
+  });
 }
 
 export function transaction(fn) {

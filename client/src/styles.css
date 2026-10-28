@@ -220,6 +220,35 @@ body {
 .login-button iframe { color-scheme: light; }
 .login-error { color: var(--danger); }
 .btn.login-dev { width: 280px; border-style: dashed; border-radius: 999px; }
+.btn.btn-provider {
+  width: 280px;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  font-size: 0.875rem;
+  border-radius: 999px;
+  background: #202124;
+  border-color: #202124;
+  color: #fff;
+}
+.ya-logo {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fc3f1d;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.8rem;
+  line-height: 20px;
+  text-align: center;
+}
+.account-hint { margin: 0; font-size: 0.85rem; }
+.account-row { align-items: center; }
+.account-provider { min-width: 5.5rem; color: var(--muted); font-size: 0.85rem; }
+.account-email { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.account-link { display: flex; flex-direction: column; align-items: center; gap: 0.6rem; }
 
 .empty {
   flex: 1;

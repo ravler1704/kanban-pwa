@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import App from './App.jsx';
-import { checkAuth } from './auth.js';
+import { checkAuth, completeYandexAuth } from './auth.js';
 import AuthGate from './components/AuthGate.jsx';
 import { startSync } from './sync.js';
 import { startUpdateChecks } from './update.js';
@@ -28,8 +28,11 @@ if (navigator.storage?.persist) {
   navigator.storage.persist().catch(() => {});
 }
 
-checkAuth();
-startSync();
+// Returning from Yandex sign-in: finish it before the first sync so that sync runs signed in.
+completeYandexAuth().finally(() => {
+  checkAuth();
+  startSync();
+});
 startUpdateChecks();
 
 createRoot(document.getElementById('root')).render(

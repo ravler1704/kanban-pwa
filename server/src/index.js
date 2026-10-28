@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { authEnabled, registerAuthRoutes, requireAuth } from './auth.js';
 import { EPOCH } from './db.js';
+import { broadcast, registerEvents } from './events.js';
 import { push, pull, ValidationError } from './sync.js';
 
 const PORT = Number(process.env.PORT) || 3001;
@@ -49,32 +50,7 @@ app.post('/api/sync', (req, res) => {
   }
 });
 
-// Server-Sent Events: tells the owner's other devices there is something new to pull.
-const clients = new Map();
-
-function broadcast(owner, payload) {
-  const message = `data: ${JSON.stringify(payload)}\n\n`;
-  for (const [client, clientOwner] of clients) {
-    if (clientOwner === owner) client.write(message);
-  }
-}
-
-app.get('/api/events', (req, res) => {
-  res.set({
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache, no-transform',
-    Connection: 'keep-alive',
-    'X-Accel-Buffering': 'no',
-  });
-  res.flushHeaders();
-  res.write('retry: 3000\n\n');
-  clients.set(res, req.owner);
-  req.on('close', () => clients.delete(res));
-});
-
-setInterval(() => {
-  for (const client of clients.keys()) client.write(': ping\n\n');
-}, 25_000).unref();
+registerEvents(app);
 
 if (fs.existsSync(CLIENT_DIST)) {
   app.use(express.static(CLIENT_DIST, {
@@ -96,5 +72,5 @@ app.use((err, _req, res, _next) => {
 
 app.listen(PORT, HOST, () => {
   console.log(`Kanban server listening on http://${HOST ?? 'localhost'}:${PORT}`);
-  console.log(authEnabled ? 'Google sign-in is required' : 'Auth is disabled (GOOGLE_CLIENT_ID is not set)');
+  console.log(authEnabled ? 'Sign-in is required' : 'Auth is disabled (no GOOGLE_CLIENT_ID / YANDEX_CLIENT_ID)');
 });

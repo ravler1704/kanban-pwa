@@ -18,7 +18,7 @@ npm run dev
 ```
 
 Переменные окружения сервера: `PORT` (по умолчанию 3001), `DB_PATH` (по умолчанию `server/data/kanban.db`),
-`GOOGLE_CLIENT_ID` и `ALLOWED_EMAILS` (см. «Вход через Google»).
+`GOOGLE_CLIENT_ID`, `YANDEX_CLIENT_ID`, `ALLOWED_EMAILS`, `DEV_LOGIN` (см. «Вход»).
 
 ## Деплой
 
@@ -34,19 +34,29 @@ npm run dev
 - приложение — systemd-сервис `kanban` (`journalctl -u kanban -f` — логи), слушает только `127.0.0.1:3001`;
 - Caddy (`/etc/caddy/Caddyfile`) — HTTPS-сертификат Let's Encrypt для домена sslip.io, указывающего на IP.
 
-## Вход через Google
+## Вход
 
-У каждого Google-аккаунта своя доска (проекты, колонки, карточки). `ALLOWED_EMAILS` по желанию
-ограничивает, кто может войти; пусто — любой аккаунт (пока OAuth-приложение в режиме Testing,
-Google и так пускает только «Test users»). Без настроек вход выключен и доска одна общая.
+Вход через Google и/или Яндекс ID. У каждого пользователя своя доска (проекты, колонки, карточки).
+В окне «Аккаунт» к пользователю можно привязать другие аккаунты (Google, Яндекс): вход через любой
+из них открывает ту же доску. Если у привязываемого аккаунта уже была своя доска, после подтверждения
+она объединяется с текущей (проекты и карточки переносятся, колонки по умолчанию остаются текущие).
 
-1. В [Google Cloud Console](https://console.cloud.google.com/apis/credentials) создать OAuth client ID типа «Web application»;
-   в «Authorized JavaScript origins» добавить `https://178-83-123-195.sslip.io` (и `http://localhost:3001` для локальной проверки).
-2. Скопировать `deploy/kanban.env.example` в `deploy/kanban.env`, заполнить `GOOGLE_CLIENT_ID` и при желании `ALLOWED_EMAILS` (через запятую).
-3. `./deploy.sh` — файл попадёт на сервер в `/etc/kanban/env`. Удаление адреса из списка сразу закрывает доступ его сессиям.
+`ALLOWED_EMAILS` по желанию ограничивает, кто может войти; пусто — кто угодно (пока Google-приложение
+в режиме Testing, Google и так пускает только «Test users»). Без настроек вход выключен и доска одна общая.
+
+1. Google: в [Google Cloud Console](https://console.cloud.google.com/apis/credentials) создать OAuth client ID
+   типа «Web application»; в «Authorized JavaScript origins» добавить `https://178-83-123-195.sslip.io`
+   (и `http://localhost:3001` для локальной проверки).
+2. Яндекс: на [oauth.yandex.ru](https://oauth.yandex.ru/client/new) создать приложение, платформа «Веб-сервисы»,
+   Redirect URI — `https://178-83-123-195.sslip.io/` (и `http://localhost:3001/`), доступы — адрес почты,
+   логин/имя и портрет. Нужен только ClientID, секрет не используется (вход по implicit flow, сервер
+   проверяет токен через `login.yandex.ru/info` и сверяет `client_id`).
+3. Скопировать `deploy/kanban.env.example` в `deploy/kanban.env`, заполнить `GOOGLE_CLIENT_ID`, `YANDEX_CLIENT_ID`
+   и при желании `ALLOWED_EMAILS` (через запятую).
+4. `./deploy.sh` — файл попадёт на сервер в `/etc/kanban/env`. Удаление адреса из списка сразу закрывает доступ его сессиям.
 
 Локально те же переменные можно положить в `server/.env`. `DEV_LOGIN=1` там добавляет на экран входа
-кнопку «Войти в тестовый аккаунт» (отдельная доска без Google); сервер принимает её только с этого
+кнопку «Войти в тестовый аккаунт» (отдельная доска без Google и Яндекса); сервер принимает её только с этого
 компьютера, на продакшен эту переменную не ставить.
 
 ## Как это устроено

@@ -8,6 +8,11 @@ import LoginScreen from './LoginScreen.jsx';
  */
 export default function AuthGate({ children }) {
   const auth = useSyncExternalStore(authState.subscribe, authState.get);
-  if (auth.status === 'signedOut') return <LoginScreen clientId={auth.clientId} devLogin={auth.devLogin} />;
+  if (auth.status === 'signedOut') {
+    return (
+      <LoginScreen clientId={auth.clientId} yandexClientId={auth.yandexClientId}
+        devLogin={auth.devLogin} notice={auth.notice} />
+    );
+  }
   return children;
 }
