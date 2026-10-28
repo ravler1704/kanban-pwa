@@ -48,7 +48,8 @@ export const TYPES = {
   card: {
     table: 'cards',
     // sectionId is null for cards that belong to the project directly.
-    fields: ['projectId', 'sectionId', 'columnId', 'title', 'description', 'position', 'deleted'],
+    // remindAt: Unix time in ms of the push reminder, or null.
+    fields: ['projectId', 'sectionId', 'columnId', 'title', 'description', 'position', 'deleted', 'remindAt'],
   },
 };
 
@@ -70,15 +71,18 @@ export function tableOf(type) {
   return db.table(TYPES[type].table);
 }
 
+// Records saved before a field existed lack it; treat a missing value as null.
+export const sameValue = (a, b) => (a ?? null) === (b ?? null);
+
 export function pickFields(type, source) {
   const out = {};
-  for (const f of TYPES[type].fields) out[f] = source[f];
+  for (const f of TYPES[type].fields) out[f] = source[f] ?? null;
   return out;
 }
 
 export function isDirty(type, record) {
   if (!record.server) return 1;
-  return TYPES[type].fields.some((f) => record[f] !== record.server[f]) ? 1 : 0;
+  return TYPES[type].fields.some((f) => !sameValue(record[f], record.server[f])) ? 1 : 0;
 }
 
 export function newId() {

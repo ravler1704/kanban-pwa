@@ -5,6 +5,7 @@ const ref = (v) => typeof v === 'string' && v.length > 0 && v.length <= 64;
 const optionalRef = (v) => v === null || ref(v);
 const number = (v) => typeof v === 'number' && Number.isFinite(v);
 const boolean = (v) => typeof v === 'boolean';
+const optionalTime = (v) => v === null || (Number.isInteger(v) && v > 0);
 
 /**
  * textFields — merged field-by-field; concurrent edits of the same field become a
@@ -41,8 +42,12 @@ export const SCHEMAS = {
       description: string(10_000),
       position: number,
       deleted: boolean,
+      // Unix time in ms when a push reminder is sent to the owner's devices.
+      remindAt: optionalTime,
     },
-    defaults: { sectionId: null, columnId: 'todo', title: '', description: '', position: 0, deleted: false },
+    defaults: {
+      sectionId: null, columnId: 'todo', title: '', description: '', position: 0, deleted: false, remindAt: null,
+    },
     textFields: ['title', 'description'],
     deleteConflicts: true,
   },
@@ -60,6 +65,11 @@ function validateFields(schema, fields, { partial }) {
   for (const key of names) {
     if (!(key in fields)) {
       if (partial) continue;
+      // Clients that synced before a field existed send bases without it.
+      if (key in schema.defaults) {
+        out[key] = schema.defaults[key];
+        continue;
+      }
       throw new ValidationError(`missing field "${key}"`);
     }
     if (!schema.fields[key](fields[key])) throw new ValidationError(`invalid ${key}`);
@@ -90,9 +100,12 @@ function pickData(schema, record) {
   return out;
 }
 
+/** Records stored before a field existed get its default. */
+const withDefaults = (record) => (record && SCHEMAS[record.type] ? { ...SCHEMAS[record.type].defaults, ...record } : record);
+
 function applyChange(owner, deviceId, { type, id, baseVersion, fields, base }) {
   const schema = SCHEMAS[type];
-  const current = getRecord(owner, id);
+  const current = withDefaults(getRecord(owner, id));
   const result = (status, record, conflicts) => ({ type, id, status, record, ...(conflicts && { conflicts }) });
   const save = (data, version) => saveRecord(owner, type, id, pickData(schema, data), { version, deviceId });
 
@@ -192,7 +205,7 @@ export function seedColumns(owner) {
 
 export function pull(owner, since, limit = 500) {
   seedColumns(owner);
-  const records = getRecordsSince(owner, since, limit + 1);
+  const records = getRecordsSince(owner, since, limit + 1).map(withDefaults);
   const hasMore = records.length > limit;
   if (hasMore) records.pop();
   const seq = records.length ? records[records.length - 1].seq : Math.max(since, 0);

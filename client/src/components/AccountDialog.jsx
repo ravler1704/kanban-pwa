@@ -1,5 +1,6 @@
 import { useState, useSyncExternalStore } from 'react';
 import { authState, linkAccount, signOut, unlinkAccount } from '../auth.js';
+import { disablePush, enablePush, PUSH_HINTS, pushState } from '../push.js';
 import { syncStatus } from '../sync.js';
 import Modal from './Modal.jsx';
 import { GoogleButton, YandexButton } from './ProviderButtons.jsx';
@@ -12,6 +13,7 @@ export default function AccountDialog({ onClose }) {
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const identities = auth.user?.identities ?? [];
+  const [push, setPush] = useState(pushState);
 
   async function run(action) {
     setBusy(true);
@@ -68,6 +70,32 @@ export default function AccountDialog({ onClose }) {
         ) : (
           <p className="muted">Для привязки нужен интернет.</p>
         )}
+        <h4 className="manage-heading">Напоминания на этом устройстве</h4>
+        {push === 'enabled' && (
+          <div className="manage-row account-row">
+            <span className="account-email">Уведомления включены</span>
+            <button className="btn btn-small" disabled={busy}
+              onClick={() => run(async () => { await disablePush(); setPush(pushState()); })}>
+              Выключить
+            </button>
+          </div>
+        )}
+        {push === 'available' && (
+          <div className="manage-row account-row">
+            <span className="account-email muted">Уведомления выключены</span>
+            <button className="btn btn-small" disabled={busy || !online}
+              onClick={() => run(async () => {
+                try {
+                  await enablePush();
+                } finally {
+                  setPush(pushState());
+                }
+              })}>
+              Включить
+            </button>
+          </div>
+        )}
+        {push !== 'enabled' && push !== 'available' && <p className="muted account-hint">{PUSH_HINTS[push]}</p>}
         {busy && <p className="muted">Подождите…</p>}
         {error && <p className="login-error">{error}</p>}
       </div>

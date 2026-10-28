@@ -329,7 +329,13 @@ body {
   overflow: hidden;
 }
 .card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 0.4rem; min-height: 1.6rem; }
-.card-badges { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+.card-badges { display: flex; gap: 0.3rem; flex-wrap: wrap; align-items: center; }
+.card-reminder { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; color: var(--accent); }
+.card-reminder-past { color: var(--muted); }
+.reminder-input { display: flex; gap: 0.5rem; align-items: center; }
+.reminder-input input { flex: 1; min-width: 0; }
+.reminder-hint { margin: -0.4rem 0 0; font-size: 0.8rem; }
+.reminder-hint .login-error { margin: 0.4rem 0 0; }
 .card-moves { display: flex; gap: 0.25rem; }
 
 .add-card input, .editor input, .editor textarea, .conflict-field input, .conflict-field textarea {

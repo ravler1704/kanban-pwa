@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import App from './App.jsx';
 import { checkAuth, completeYandexAuth } from './auth.js';
+import { refreshPush } from './push.js';
 import AuthGate from './components/AuthGate.jsx';
 import { startSync } from './sync.js';
 import { startUpdateChecks } from './update.js';
@@ -38,7 +39,7 @@ if (navigator.storage?.persist) {
 
 // Returning from Yandex sign-in: finish it before the first sync so that sync runs signed in.
 completeYandexAuth().finally(() => {
-  checkAuth();
+  checkAuth().then(refreshPush);
   startSync();
 });
 startUpdateChecks();

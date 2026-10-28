@@ -96,6 +96,25 @@ db.exec(`
     FROM sessions WHERE instr(user_id, ':') > 0 GROUP BY user_id;
 `);
 
+// Web Push: browsers (devices) subscribed to a user's reminders, and reminders already sent.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS push_subscriptions (
+    endpoint    TEXT PRIMARY KEY,
+    owner       TEXT    NOT NULL,
+    p256dh      TEXT    NOT NULL,
+    auth        TEXT    NOT NULL,
+    created_at  INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_push_owner ON push_subscriptions(owner);
+  CREATE TABLE IF NOT EXISTS reminders_sent (
+    owner       TEXT    NOT NULL,
+    card_id     TEXT    NOT NULL,
+    remind_at   INTEGER NOT NULL,
+    sent_at     INTEGER NOT NULL,
+    PRIMARY KEY (owner, card_id, remind_at)
+  );
+`);
+
 // Identifies this database instance. Clients holding data from another epoch
 // (e.g. after the database was wiped or restored) discard it and resync.
 db.prepare('INSERT OR IGNORE INTO meta (key, value) VALUES (?, ?)').run('epoch', crypto.randomUUID());
@@ -255,8 +274,66 @@ export function mergeUsers(from, to) {
     db.prepare('DELETE FROM records WHERE owner = ?').run(from);
     db.prepare('UPDATE identities SET user_id = ? WHERE user_id = ?').run(to, from);
     db.prepare('UPDATE sessions SET user_id = ? WHERE user_id = ?').run(to, from);
+    db.prepare('UPDATE push_subscriptions SET owner = ? WHERE owner = ?').run(to, from);
+    db.prepare('UPDATE OR IGNORE reminders_sent SET owner = ? WHERE owner = ?').run(to, from);
     return seq;
   });
+}
+
+const upsertSubscription = db.prepare(`
+  INSERT INTO push_subscriptions (endpoint, owner, p256dh, auth, created_at)
+  VALUES (:endpoint, :owner, :p256dh, :auth, :createdAt)
+  ON CONFLICT(endpoint) DO UPDATE SET owner = excluded.owner, p256dh = excluded.p256dh, auth = excluded.auth
+`);
+const selectSubscriptions = db.prepare('SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE owner = ?');
+const removeSubscription = db.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?');
+const removeOwnSubscription = db.prepare('DELETE FROM push_subscriptions WHERE endpoint = ? AND owner = ?');
+
+/** A device's subscription follows whoever signed in on it last. */
+export function savePushSubscription(owner, { endpoint, p256dh, auth }) {
+  upsertSubscription.run({ endpoint, owner, p256dh, auth, createdAt: Date.now() });
+}
+
+export function getPushSubscriptions(owner) {
+  return selectSubscriptions.all(owner);
+}
+
+export function deletePushSubscription(endpoint, owner) {
+  if (owner === undefined) removeSubscription.run(endpoint);
+  else removeOwnSubscription.run(endpoint, owner);
+}
+
+// Cards whose reminder time has come, skipping ones far in the past (e.g. set before the
+// server was down for a long time) and ones already sent for this exact time.
+const selectDueReminders = db.prepare(`
+  SELECT r.owner, r.id, r.data, json_extract(r.data, '$.remindAt') AS remind_at
+  FROM records r
+  WHERE r.type = 'card'
+    AND json_extract(r.data, '$.remindAt') BETWEEN ? AND ?
+    AND json_extract(r.data, '$.deleted') = 0
+    AND NOT EXISTS (
+      SELECT 1 FROM reminders_sent s
+      WHERE s.owner = r.owner AND s.card_id = r.id AND s.remind_at = json_extract(r.data, '$.remindAt')
+    )
+`);
+const insertReminderSent = db.prepare(
+  'INSERT OR IGNORE INTO reminders_sent (owner, card_id, remind_at, sent_at) VALUES (?, ?, ?, ?)',
+);
+const removeOldRemindersSent = db.prepare('DELETE FROM reminders_sent WHERE remind_at < ?');
+
+export function getDueReminders(now, maxAgeMs) {
+  return selectDueReminders.all(now - maxAgeMs, now).map((row) => ({
+    owner: row.owner, id: row.id, remindAt: row.remind_at, card: JSON.parse(row.data),
+  }));
+}
+
+/** Returns false if another check already claimed this reminder. */
+export function markReminderSent(owner, cardId, remindAt) {
+  return insertReminderSent.run(owner, cardId, remindAt, Date.now()).changes > 0;
+}
+
+export function pruneRemindersSent(before) {
+  removeOldRemindersSent.run(before);
 }
 
 export function transaction(fn) {

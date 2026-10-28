@@ -1,4 +1,5 @@
 import { clearLocalData, db } from './db.js';
+import { disablePush, refreshPush } from './push.js';
 import { resume, stopEvents } from './sync.js';
 
 // Sign-in state. The last known user is cached so the app opens offline with local data;
@@ -120,6 +121,7 @@ async function signIn(provider, payload) {
   if (res.status !== 200) throw authError(res, 'войти');
   setState({ status: 'signedIn', user: res.body.user, notice: null });
   resume();
+  refreshPush();
 }
 
 const plural = (n, one, few, many) =>
@@ -216,6 +218,8 @@ export async function signOut() {
   if (pending > 0 && !confirm(`Есть несинхронизированные изменения (${pending}). При выходе они пропадут. Выйти?`)) {
     return false;
   }
+  // This device should not keep receiving the reminders of the account that signed out.
+  await disablePush();
   await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
   stopEvents();
   await clearLocalData();

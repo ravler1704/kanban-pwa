@@ -59,6 +59,28 @@ export default function App() {
   const [managing, setManaging] = useState(false);
   const [addingCard, setAddingCard] = useState(false);
 
+  // A tapped reminder opens its card: `?card=` when the app starts from the notification,
+  // a message from the service worker when the app is already open.
+  useEffect(() => {
+    async function openFromReminder(id) {
+      const card = await db.cards.get(id);
+      if (!card) return;
+      select({ project: card.projectId, section: null });
+      setOpenCardId(id);
+    }
+    const params = new URLSearchParams(location.search);
+    if (params.has('card')) {
+      openFromReminder(params.get('card'));
+      params.delete('card');
+      history.replaceState(history.state, '', `${location.pathname}${params.size ? `?${params}` : ''}`);
+    }
+    const onMessage = (e) => {
+      if (e.data?.type === 'open-card') openFromReminder(e.data.id);
+    };
+    navigator.serviceWorker?.addEventListener('message', onMessage);
+    return () => navigator.serviceWorker?.removeEventListener('message', onMessage);
+  }, [select]);
+
   const data = useLiveQuery(async () => {
     const [columns, projects, sections, pending] = await Promise.all([
       db.columns.toArray(),

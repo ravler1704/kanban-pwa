@@ -4,6 +4,7 @@ import path from 'node:path';
 import { authEnabled, registerAuthRoutes, requireAuth } from './auth.js';
 import { EPOCH } from './db.js';
 import { broadcast, registerEvents } from './events.js';
+import { registerPushRoutes, startReminders } from './push.js';
 import { push, pull, ValidationError } from './sync.js';
 
 const PORT = Number(process.env.PORT) || 3001;
@@ -20,7 +21,9 @@ app.get('/api/health', (_req, res) => {
 });
 
 registerAuthRoutes(app);
-app.use(['/api/sync', '/api/events'], requireAuth);
+app.use(['/api/sync', '/api/events', '/api/push'], requireAuth);
+registerPushRoutes(app);
+startReminders();
 
 // The epoch identifies the board, not just the database: a device that holds another
 // user's board (e.g. signed in with a different account) discards it and resyncs.
@@ -56,6 +59,7 @@ if (fs.existsSync(CLIENT_DIST)) {
   app.use(express.static(CLIENT_DIST, {
     setHeaders(res, filePath) {
       if (['sw.js', 'index.html', 'version.json'].some((name) => filePath.endsWith(name))) {
+        // Also covers push-sw.js, which the service worker imports.
         res.set('Cache-Control', 'no-cache');
       }
     },

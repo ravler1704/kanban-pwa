@@ -1,6 +1,46 @@
 import { useState } from 'react';
 import { deleteCard, moveCardToSection, updateCard } from '../actions.js';
+import { enablePush, PUSH_HINTS, pushState } from '../push.js';
 import Modal from './Modal.jsx';
+
+// <input type="datetime-local"> works with local time as "YYYY-MM-DDTHH:mm".
+function toInputValue(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+const fromInputValue = (value) => (value ? new Date(value).getTime() : null);
+
+/** Where the reminder will arrive; offers to enable notifications on this device. */
+function ReminderPushStatus() {
+  const [state, setState] = useState(pushState);
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  if (state === 'enabled') return null;
+  if (state !== 'available') return <p className="muted reminder-hint">{PUSH_HINTS[state]}</p>;
+  return (
+    <div className="reminder-hint">
+      <button type="button" className="btn btn-small" disabled={busy} onClick={async () => {
+        setBusy(true);
+        setError(null);
+        try {
+          await enablePush();
+        } catch (err) {
+          setError(err.message);
+        } finally {
+          setBusy(false);
+          setState(pushState());
+        }
+      }}>
+        Включить уведомления на этом устройстве
+      </button>
+      {error && <p className="login-error">{error}</p>}
+    </div>
+  );
+}
 
 /** `sections` are the live sections of the card's project. */
 export default function CardEditor({ card, sections, onClose }) {
@@ -9,6 +49,7 @@ export default function CardEditor({ card, sections, onClose }) {
   const [title, setTitle] = useState(card.title);
   const [description, setDescription] = useState(card.description);
   const [sectionId, setSectionId] = useState(card.sectionId ?? '');
+  const [remindAt, setRemindAt] = useState(() => toInputValue(card.remindAt));
 
   const changedRemotely = card.title !== base.title || card.description !== base.description;
 
@@ -17,6 +58,7 @@ export default function CardEditor({ card, sections, onClose }) {
     const patch = {};
     if (title !== base.title) patch.title = title;
     if (description !== base.description) patch.description = description;
+    if (remindAt !== toInputValue(card.remindAt)) patch.remindAt = fromInputValue(remindAt);
     if (Object.keys(patch).length) await updateCard(card.id, patch, base);
     if ((sectionId || null) !== card.sectionId) await moveCardToSection(card.id, sectionId || null);
     onClose();
@@ -45,6 +87,16 @@ export default function CardEditor({ card, sections, onClose }) {
           Описание
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={6} maxLength={10000} />
         </label>
+        <label>
+          Напоминание
+          <span className="reminder-input">
+            <input type="datetime-local" value={remindAt} onChange={(e) => setRemindAt(e.target.value)} />
+            {remindAt && (
+              <button type="button" className="btn btn-small" onClick={() => setRemindAt('')}>Убрать</button>
+            )}
+          </span>
+        </label>
+        {remindAt && <ReminderPushStatus />}
         {sections.length > 0 && (
           <label>
             Раздел

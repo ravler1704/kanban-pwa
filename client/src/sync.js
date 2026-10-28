@@ -1,5 +1,5 @@
 import { isSignedOut, markSignedOut } from './auth.js';
-import { clearLocalData, db, getDeviceId, isDirty, pickFields, tableOf, TYPES } from './db.js';
+import { clearLocalData, db, getDeviceId, isDirty, pickFields, sameValue, tableOf, TYPES } from './db.js';
 
 const deviceId = getDeviceId();
 
@@ -70,7 +70,7 @@ async function push() {
       sent.set(rec.id, rec);
       const fields = {};
       for (const f of TYPES[type].fields) {
-        if (!rec.server || rec[f] !== rec.server[f]) fields[f] = rec[f];
+        if (!rec.server || !sameValue(rec[f], rec.server[f])) fields[f] = rec[f] ?? null;
       }
       changes.push({
         type,
