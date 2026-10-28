@@ -24,6 +24,14 @@ registerSW({
   },
 });
 
+// Trackpad pinch: Safari fires gesture events, Chromium and Firefox fire wheel events with ctrlKey.
+for (const type of ['gesturestart', 'gesturechange', 'gestureend']) {
+  document.addEventListener(type, (e) => e.preventDefault());
+}
+document.addEventListener('wheel', (e) => {
+  if (e.ctrlKey) e.preventDefault();
+}, { passive: false });
+
 if (navigator.storage?.persist) {
   navigator.storage.persist().catch(() => {});
 }
