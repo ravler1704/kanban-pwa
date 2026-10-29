@@ -507,6 +507,16 @@ body {
   text-align: center;
 }
 .account-hint { margin: 0; font-size: 0.85rem; }
+.account-delete {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border);
+}
+.account-delete > .btn { align-self: flex-start; }
+.account-delete .manage-input { width: 100%; box-sizing: border-box; }
 .account-row { align-items: center; }
 .account-provider { min-width: 5.5rem; color: var(--muted); font-size: 0.85rem; }
 .account-email { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }

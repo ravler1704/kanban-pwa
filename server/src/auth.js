@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import {
   addMember, boardSummary, countEmailCodeAttempt, createSession, deleteIdentity, deleteMember, deletePublicLink,
-  deleteSession, findUserByEmail, getEmailCode, getIdentityUser, getPublicLink, getRecord, getSession, isInvited,
+  deleteSession, deleteUser, findUserByEmail, getEmailCode, getIdentityUser, getPublicLink, getRecord, getSession, isInvited,
   leaveBoard, listIdentities, listMembers, listPublicLinks, memberProjects, mergeUsers, pruneEmailCodes,
   saveEmailCode, saveIdentity, savePublicLink, sharedBoards, useEmailCode,
 } from './db.js';
@@ -525,6 +525,17 @@ export function registerAuthRoutes(app) {
     if (mailFromEnv) return res.status(409).json({ error: 'set in env' });
     clearMailSettings();
     res.json(mailSettings());
+  });
+
+  app.post('/api/auth/delete-account', (req, res) => {
+    const session = authEnabled && currentSession(req);
+    if (!session) return res.status(401).json({ error: 'unauthorized' });
+    deleteUser(session.user_id);
+    // Members' and visitors' streams of the board, then the user's own on any board.
+    disconnect(session.user_id);
+    disconnectUser(session.user_id);
+    res.clearCookie(COOKIE, cookieOptions(req));
+    res.json({ ok: true });
   });
 
   app.post('/api/auth/logout', (req, res) => {

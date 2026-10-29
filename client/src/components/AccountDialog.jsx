@@ -1,5 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { authState, linkAccount, signOut, unlinkAccount } from '../auth.js';
+import { authState, deleteAccount, linkAccount, signOut, unlinkAccount } from '../auth.js';
 import { disablePush, enablePush, PUSH_HINTS, pushState } from '../push.js';
 import { syncStatus } from '../sync.js';
 import { getTheme, setTheme } from '../theme.js';
@@ -80,7 +80,54 @@ function SignInTab() {
       )}
       {busy && <p className="muted">Подождите…</p>}
       {error && <p className="login-error">{error}</p>}
+
+      <DeleteAccount online={online} />
     </div>
+  );
+}
+
+const DELETE_WORD = 'удалить';
+
+function DeleteAccount({ online }) {
+  const [open, setOpen] = useState(false);
+  const [word, setWord] = useState('');
+  const { busy, error, run } = useAction();
+
+  if (!open) {
+    return (
+      <div className="account-delete">
+        <button type="button" className="btn btn-small btn-danger" onClick={() => setOpen(true)}>
+          Удалить аккаунт…
+        </button>
+      </div>
+    );
+  }
+  return (
+    <form className="account-delete" onSubmit={(e) => {
+      e.preventDefault();
+      if (word.trim().toLowerCase() === DELETE_WORD) run(deleteAccount);
+    }}>
+      <h4 className="manage-heading">Удаление аккаунта</h4>
+      <p className="account-hint">
+        Будут удалены ваша доска со всеми проектами и карточками, привязанные входы, приглашения
+        в ваши проекты и публичные ссылки, а также ваш доступ к чужим проектам. Восстановить их будет нельзя.
+      </p>
+      <label className="field">
+        <span className="field-label">Чтобы подтвердить, введите «{DELETE_WORD}»</span>
+        <input className="manage-input" value={word} autoFocus autoComplete="off" onChange={(e) => setWord(e.target.value)} />
+      </label>
+      <div className="manage-row">
+        <button type="submit" className="btn btn-danger"
+          disabled={busy || !online || word.trim().toLowerCase() !== DELETE_WORD}
+          title={online ? undefined : 'Для удаления нужен интернет'}>
+          Удалить навсегда
+        </button>
+        <button type="button" className="btn" disabled={busy} onClick={() => { setOpen(false); setWord(''); }}>
+          Отмена
+        </button>
+      </div>
+      {error && <p className="login-error">{error}</p>}
+    </form>
   );
 }
 

@@ -378,6 +378,31 @@ export function mergeUsers(from, to) {
   });
 }
 
+/**
+ * Deletes the user and everything of theirs: the board, linked accounts, sessions, reminders,
+ * invitations to their projects and their public links. Invitations of their addresses to other
+ * boards go too, unless another user's account has the same address.
+ */
+export function deleteUser(userId) {
+  transaction(() => {
+    const emails = db.prepare('SELECT DISTINCT lower(email) AS email FROM identities WHERE user_id = ? AND email IS NOT NULL')
+      .all(userId).map((r) => r.email);
+    db.prepare('DELETE FROM records WHERE owner = ?').run(userId);
+    db.prepare('DELETE FROM identities WHERE user_id = ?').run(userId);
+    db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
+    db.prepare('DELETE FROM push_subscriptions WHERE owner = ?').run(userId);
+    db.prepare('DELETE FROM reminders_sent WHERE owner = ?').run(userId);
+    db.prepare('DELETE FROM project_members WHERE board = ?').run(userId);
+    db.prepare('DELETE FROM public_links WHERE board = ?').run(userId);
+    db.prepare('DELETE FROM meta WHERE key IN (?, ?)').run(`columnsSeeded:${userId}`, `simpleSetSeeded:${userId}`);
+    const usedElsewhere = db.prepare('SELECT 1 FROM identities WHERE lower(email) = ?');
+    for (const email of emails) {
+      db.prepare('DELETE FROM email_codes WHERE email = ?').run(email);
+      if (!usedElsewhere.get(email)) db.prepare('DELETE FROM project_members WHERE email = ?').run(email);
+    }
+  });
+}
+
 // Invitations to deleted projects stay in the table but give no access.
 const LIVE_PROJECT = `JOIN records r ON r.owner = m.board AND r.id = m.project AND json_extract(r.data, '$.deleted') = 0`;
 const selectMembers = db.prepare(`

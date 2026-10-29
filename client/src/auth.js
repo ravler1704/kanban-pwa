@@ -263,6 +263,18 @@ export async function signOut() {
   return true;
 }
 
+/** Deletes the account with its board on the server, then everything of it on this device. */
+export async function deleteAccount() {
+  await disablePush();
+  const res = await fetch('/api/auth/delete-account', { method: 'POST' });
+  if (!res.ok) throw new Error('Не удалось удалить аккаунт.');
+  stopEvents();
+  await clearLocalData();
+  await deleteSharedBoards();
+  setState({ status: 'signedOut', user: null });
+  if (currentBoard) switchBoard(null);
+}
+
 // ---- sharing the own board ----
 
 async function postJson(url, body) {
