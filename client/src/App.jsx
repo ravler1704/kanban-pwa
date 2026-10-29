@@ -8,7 +8,9 @@ import CardEditor from './components/CardEditor.jsx';
 import ConflictDialog from './components/ConflictDialog.jsx';
 import ManageDialog from './components/ManageDialog.jsx';
 import NewCardDialog, { defaultTarget } from './components/NewCardDialog.jsx';
+import CalendarView from './components/CalendarView.jsx';
 
+const VIEW_KEY = 'view';
 const byPosition = (a, b) => a.position - b.position || a.id.localeCompare(b.id);
 const groupKey = (card) => `${card.projectId}|${card.sectionId ?? ''}`;
 
@@ -58,6 +60,12 @@ export default function App() {
   const [openCardId, setOpenCardId] = useState(null);
   const [managing, setManaging] = useState(false);
   const [addingCard, setAddingCard] = useState(false);
+  const [view, setView] = useState(() => (localStorage.getItem(VIEW_KEY) === 'calendar' ? 'calendar' : 'board'));
+
+  const changeView = (next) => {
+    setView(next);
+    localStorage.setItem(VIEW_KEY, next);
+  };
 
   // A tapped reminder opens its card: `?card=` when the app starts from the notification,
   // a message from the service worker when the app is already open.
@@ -175,24 +183,30 @@ export default function App() {
             conflictsBySection={conflictsBySection}
             onSelectProject={selectProject}
             onSelectSection={selectSection}
+            view={view}
+            onView={changeView}
             onManage={() => setManaging(true)}
             onAddCard={() => setAddingCard(true)}
           />
-          <main className="board" style={{ '--columns': columns.length }}>
-            {columns.map((col, index) => (
-              <Column
-                key={col.id}
-                target={target ?? defaultTarget(pickerGroups)}
-                column={col}
-                prevColumn={columns[index - 1]}
-                nextColumn={columns[index + 1]}
-                cards={visible.filter((c) => c.columnId === col.id)}
-                cardLabel={cardLabel}
-                onOpen={setOpenCardId}
-                onOpenGroup={openGroup}
-              />
-            ))}
-          </main>
+          {view === 'calendar' ? (
+            <CalendarView cards={visible} columns={columns} cardLabel={cardLabel} onOpen={setOpenCardId} />
+          ) : (
+            <main className="board" style={{ '--columns': columns.length }}>
+              {columns.map((col, index) => (
+                <Column
+                  key={col.id}
+                  target={target ?? defaultTarget(pickerGroups)}
+                  column={col}
+                  prevColumn={columns[index - 1]}
+                  nextColumn={columns[index + 1]}
+                  cards={visible.filter((c) => c.columnId === col.id)}
+                  cardLabel={cardLabel}
+                  onOpen={setOpenCardId}
+                  onOpenGroup={openGroup}
+                />
+              ))}
+            </main>
+          )}
         </>
       )}
 

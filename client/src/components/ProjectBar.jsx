@@ -21,6 +21,31 @@ function PlusIcon() {
   );
 }
 
+function BoardIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M9 4v16M15 4v16" />
+    </svg>
+  );
+}
+
+function CalendarIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M3 10h18M8 3v4M16 3v4" />
+    </svg>
+  );
+}
+
+const VIEWS = [
+  { id: 'board', label: 'Доска', Icon: BoardIcon },
+  { id: 'calendar', label: 'Календарь', Icon: CalendarIcon },
+];
+
 function ClearIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25"
@@ -36,7 +61,8 @@ function ClearIcon() {
  * `conflictsBySection` is keyed by `${projectId}|${sectionId ?? ''}`.
  */
 export default function ProjectBar({
-  projects, sections, project, section, conflictsBySection, onSelectProject, onSelectSection, onManage, onAddCard,
+  projects, sections, project, section, conflictsBySection, onSelectProject, onSelectSection,
+  view, onView, onManage, onAddCard,
 }) {
   const sumConflicts = (keys) => keys.reduce((sum, key) => sum + (conflictsBySection[key] ?? 0), 0);
   const allKeys = Object.keys(conflictsBySection);
@@ -86,6 +112,14 @@ export default function ProjectBar({
         </div>
       )}
 
+      <div className="view-switch" role="group" aria-label="Вид">
+        {VIEWS.map(({ id, label, Icon }) => (
+          <button key={id} type="button" className={`view-switch-btn ${view === id ? 'active' : ''}`}
+            title={label} aria-label={label} aria-pressed={view === id} onClick={() => onView(id)}>
+            <Icon />
+          </button>
+        ))}
+      </div>
       <button className="btn btn-small btn-icon-only" title="Настройки доски" aria-label="Настройки доски"
         onClick={onManage}>
         <SettingsIcon />
