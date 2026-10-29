@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { enablePush, PUSH_HINTS, pushState } from '../push.js';
 
 // <input type="datetime-local"> works with local time as "YYYY-MM-DDTHH:mm".
@@ -40,15 +40,43 @@ function ReminderPushStatus() {
   );
 }
 
-/** `value` is in the datetime-local format (see toInputValue), '' for no reminder. */
+/**
+ * `value` is in the datetime-local format (see toInputValue), '' for no reminder.
+ * Without a reminder only an "add" button is shown.
+ */
 export default function ReminderField({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const input = useRef(null);
+
+  useEffect(() => {
+    if (!open || value) return;
+    input.current?.focus();
+    try {
+      input.current?.showPicker?.();
+    } catch {
+      // Not allowed without a user gesture in some browsers; the focused field is enough.
+    }
+  }, [open, value]);
+
+  if (!open && !value) {
+    return (
+      <button type="button" className="btn reminder-add" onClick={() => setOpen(true)}>
+        + Добавить напоминание
+      </button>
+    );
+  }
   return (
     <>
       <label>
         Напоминание
         <span className="reminder-input">
-          <input type="datetime-local" value={value} onChange={(e) => onChange(e.target.value)} />
-          {value && <button type="button" className="btn btn-small" onClick={() => onChange('')}>Убрать</button>}
+          <input ref={input} type="datetime-local" value={value} onChange={(e) => onChange(e.target.value)} />
+          <button type="button" className="btn btn-small" onClick={() => {
+            onChange('');
+            setOpen(false);
+          }}>
+            Убрать
+          </button>
         </span>
       </label>
       {value && <ReminderPushStatus />}

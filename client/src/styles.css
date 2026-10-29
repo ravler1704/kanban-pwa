@@ -334,6 +334,7 @@ body {
 .card-reminder { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; color: var(--accent); }
 .card-reminder-past { color: var(--muted); }
 .reminder-input { display: flex; gap: 0.5rem; align-items: center; }
+.btn.reminder-add { align-self: flex-start; border-style: dashed; background: none; color: var(--muted); font-size: 0.85rem; }
 .reminder-input input { flex: 1; min-width: 0; }
 .reminder-hint { margin: -0.4rem 0 0; font-size: 0.8rem; }
 .reminder-hint .login-error { margin: 0.4rem 0 0; }
