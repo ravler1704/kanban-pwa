@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import {
   changeProjectColumnSet, countCards, countColumnCards, createColumn, createColumnSet, createProject, createSection,
   deleteColumn, deleteColumnSet, deleteProject, deleteSection, moveColumn, moveProject, renameColumn, renameColumnSet,
-  renameProject, renameSection, setProjectHidden,
+  renameProject, renameSection,
 } from '../actions.js';
 import { isOwnBoard } from '../board.js';
 import { matchColumn } from '../columnSets.js';
@@ -270,13 +270,12 @@ function ProjectItem({ model, project, sections, columnsSynced, expanded, onTogg
   onChangeSet, onRemove }) {
   const setName = model.sets.find((s) => s.id === model.setIdOf(project))?.name;
   const meta = [
-    project.hidden && 'скрыт',
     sections.length ? `${sections.length} ${plural(sections.length, 'раздел', 'раздела', 'разделов')}` : 'без разделов',
     columnsSynced && setName && `набор «${setName}»`,
   ].filter(Boolean).join(' · ');
 
   return (
-    <section className={`manage-project ${expanded ? 'manage-project-open' : ''} ${project.hidden ? 'manage-project-hidden' : ''}`}>
+    <section className={`manage-project ${expanded ? 'manage-project-open' : ''}`}>
       <div className="manage-project-head">
         <button type="button" className="manage-project-toggle" aria-expanded={expanded} onClick={onToggle}>
           <Chevron />
@@ -284,11 +283,6 @@ function ProjectItem({ model, project, sections, columnsSynced, expanded, onTogg
             <span className="manage-project-label">{project.name}</span>
             <span className="manage-project-meta">{meta}</span>
           </span>
-        </button>
-        <button className="btn btn-small" aria-pressed={!!project.hidden}
-          title={project.hidden ? 'Показывать карточки в «Все проекты»' : 'Не показывать карточки в «Все проекты»'}
-          onClick={() => setProjectHidden(project.id, !project.hidden)}>
-          {project.hidden ? 'Показать' : 'Скрыть'}
         </button>
         {canMoveUp !== null && (
           <>

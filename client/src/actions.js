@@ -164,11 +164,6 @@ export async function renameProject(id, name) {
   requestSync();
 }
 
-export async function setProjectHidden(id, hidden) {
-  await update('project', id, { hidden });
-  requestSync();
-}
-
 /** Swaps the project with its neighbour; `direction` is -1 (up) or 1 (down). */
 export async function moveProject(id, direction) {
   await db.transaction('rw', db.projects, async () => {

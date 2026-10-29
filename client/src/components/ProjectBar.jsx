@@ -1,4 +1,4 @@
-import { isOwnBoard, publicToken } from '../board.js';
+import { publicToken } from '../board.js';
 import CheckPicker from './CheckPicker.jsx';
 import TagFilter from './TagFilter.jsx';
 
@@ -62,12 +62,7 @@ export default function ProjectBar({
   const projectConflicts = (p) => allKeys
     .filter((key) => key.startsWith(`${p.id}|`))
     .reduce((sum, key) => sum + conflictsBySection[key], 0);
-  const hidden = isOwnBoard ? projects.filter((p) => p.hidden) : [];
-  const projectItems = [...projects.filter((p) => !hidden.includes(p)), ...hidden].map((p) => ({
-    key: p.id,
-    name: withConflicts(p.name, projectConflicts(p)),
-    group: hidden.includes(p) ? 'Скрытые' : undefined,
-  }));
+  const projectItems = projects.map((p) => ({ key: p.id, name: withConflicts(p.name, projectConflicts(p)) }));
   const sectionItems = sectionGroups.flatMap(({ project, sections }) => sections.map((s) => ({
     key: s.id,
     name: withConflicts(s.name, conflictsBySection[`${project.id}|${s.id}`]),

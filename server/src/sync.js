@@ -31,7 +31,7 @@ export const SCHEMAS = {
     deleteConflicts: false,
   },
   project: {
-    // hidden: its cards are left out of the «all projects» view.
+    // hidden: no longer used by the app; kept so older clients keep syncing.
     fields: { columnSetId: ref, name: string(200), position: number, deleted: boolean, hidden: boolean },
     defaults: { columnSetId: DEFAULT_SET_ID, name: '', position: 0, deleted: false, hidden: false },
     textFields: [],

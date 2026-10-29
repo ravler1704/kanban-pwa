@@ -83,7 +83,7 @@ db.version(6)
 export const TYPES = {
   columnSet: { table: 'columnSets', fields: ['name', 'position', 'deleted'] },
   column: { table: 'columns', fields: ['setId', 'name', 'position', 'deleted'] },
-  // hidden: its cards are left out of the «all projects» view.
+  // hidden: no longer used (projects are picked with checkboxes); kept so the synced records stay valid.
   project: { table: 'projects', fields: ['columnSetId', 'name', 'position', 'deleted', 'hidden'] },
   section: { table: 'sections', fields: ['projectId', 'name', 'position', 'deleted'] },
   card: {

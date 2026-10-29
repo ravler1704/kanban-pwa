@@ -20,8 +20,9 @@ const TAG_FILTER_KEY = 'tagFilter';
 const byPosition = (a, b) => a.position - b.position || a.id.localeCompare(b.id);
 const groupKey = (card) => `${card.projectId}|${card.sectionId ?? ''}`;
 
-// Selection keys in the URL and in localStorage.
-const SELECTION_KEYS = ['toggled', 'sectionsOff'];
+// Selection keys in the URL and in localStorage; `toggled` is the previous name of `projectsOff`.
+const SELECTION_KEYS = ['projectsOff', 'sectionsOff'];
+const OLD_PROJECTS_OFF = 'toggled';
 // Earlier builds kept explicit lists of checked ids (an empty one meaning all), as
 // ?projects=&sections= or a single ?project=&section=, and in localStorage.
 const LEGACY_PARAMS = [['projects', 'sections'], ['project', 'section']];
@@ -38,26 +39,27 @@ function storedList(key) {
   return value === null ? null : idList(value);
 }
 
-// Projects are checked by default (on the owner's board hidden ones are not), sections always.
-const checkedByDefault = (project) => !(isOwnBoard && project.hidden);
-
-// Selection: `toggled` projects whose checkbox differs from the default and unchecked sections
-// (`sectionsOff`), so new projects and sections show up checked. It lives in the URL so the back
-// button works; localStorage keeps it between launches of the installed app. `legacy` is a selection
-// of an older build ({ projects, sections }), replaced by the first change.
+// Selection: unchecked projects (`projectsOff`) and sections (`sectionsOff`), so new ones show up
+// checked. It lives in the URL so the back button works; localStorage keeps it between launches of
+// the installed app. `legacy` is a selection of an older build ({ projects, sections }), replaced by
+// the first change.
 function readSelection() {
   const params = new URLSearchParams(location.search);
-  const none = { toggled: [], sectionsOff: [], legacy: null };
-  if (SELECTION_KEYS.some((key) => params.has(key))) {
-    return { ...none, toggled: idList(params.get('toggled')), sectionsOff: idList(params.get('sectionsOff')) };
+  const none = { projectsOff: [], sectionsOff: [], legacy: null };
+  if ([...SELECTION_KEYS, OLD_PROJECTS_OFF].some((key) => params.has(key))) {
+    return {
+      ...none,
+      projectsOff: idList(params.get('projectsOff') ?? params.get(OLD_PROJECTS_OFF)),
+      sectionsOff: idList(params.get('sectionsOff')),
+    };
   }
   for (const [projects, sections] of LEGACY_PARAMS) {
     if (params.has(projects)) {
       return { ...none, legacy: { projects: idList(params.get(projects)), sections: idList(params.get(sections)) } };
     }
   }
-  const toggled = storedList('toggled');
-  if (toggled) return { ...none, toggled, sectionsOff: storedList('sectionsOff') ?? [] };
+  const projectsOff = storedList('projectsOff') ?? storedList(OLD_PROJECTS_OFF);
+  if (projectsOff) return { ...none, projectsOff, sectionsOff: storedList('sectionsOff') ?? [] };
   for (const [projects, sections] of LEGACY_STORAGE) {
     const list = storedList(projects);
     if (list?.length) return { ...none, legacy: { projects: list, sections: storedList(sections) ?? [] } };
@@ -69,7 +71,7 @@ function readSelection() {
 function focusOn(projects, sections, sectionsOff, projectId, sectionId) {
   const own = sections.filter((s) => s.projectId === projectId);
   return {
-    toggled: projects.filter((p) => checkedByDefault(p) !== (p.id === projectId)).map((p) => p.id),
+    projectsOff: projects.filter((p) => p.id !== projectId).map((p) => p.id),
     sectionsOff: [
       ...sectionsOff.filter((id) => !own.some((s) => s.id === id)),
       ...(sectionId ? own.filter((s) => s.id !== sectionId).map((s) => s.id) : []),
@@ -98,8 +100,8 @@ function useSelection() {
   const select = useCallback((next) => {
     setSelection({ ...next, legacy: null });
     const url = new URL(location.href);
-    for (const key of [...LEGACY_PARAMS.flat()]) url.searchParams.delete(key);
-    for (const key of [...LEGACY_STORAGE.flat()]) localStorage.removeItem(key);
+    for (const key of [...LEGACY_PARAMS.flat(), OLD_PROJECTS_OFF]) url.searchParams.delete(key);
+    for (const key of [...LEGACY_STORAGE.flat(), OLD_PROJECTS_OFF]) localStorage.removeItem(key);
     for (const key of SELECTION_KEYS) {
       localStorage.setItem(key, JSON.stringify(next[key]));
       if (next[key].length) url.searchParams.set(key, next[key].join(','));
@@ -197,7 +199,7 @@ export default function App() {
   const { legacy } = selection;
   const isChecked = (p) => (legacy?.projects.length
     ? legacy.projects.includes(p.id)
-    : checkedByDefault(p) !== selection.toggled.includes(p.id));
+    : !selection.projectsOff.includes(p.id));
   const isSectionChecked = (s) => (legacy?.sections.some((id) => sectionById.get(id)?.projectId === s.projectId)
     ? legacy.sections.includes(s.id)
     : !selection.sectionsOff.includes(s.id));
@@ -288,23 +290,21 @@ export default function App() {
   const boardGroups = shownGroups.filter((g) => model.setIdOf(g.project) === boardSetId);
   const boardCards = visible.filter((c) => model.setIdOf(projectById.get(c.projectId)) === boardSetId);
 
-  // Changes are saved as differences from the defaults (see readSelection).
+  // Changes are saved as the unchecked ids (see readSelection).
   const checkedProjects = shownProjects.map((p) => p.id);
+  const projectsOff = projects.filter((p) => !isChecked(p)).map((p) => p.id);
   const sectionsOff = allSections.filter((s) => !checkedSectionIds.has(s.id)).map((s) => s.id);
-  const toggledFor = (ids) => projects.filter((p) => checkedByDefault(p) !== ids.includes(p.id)).map((p) => p.id);
-  const saveProjects = (ids) => select({ toggled: toggledFor(ids), sectionsOff });
-  const saveSectionsOff = (ids) => select({ toggled: toggledFor(checkedProjects), sectionsOff: ids });
+  const saveProjectsOff = (ids) => select({ projectsOff: ids, sectionsOff });
+  const saveSectionsOff = (ids) => select({ projectsOff, sectionsOff: ids });
   const toggle = (list, id) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
   const pickableIds = pickableSections.map((s) => s.id);
-  const projectsByDefault = projects.every((p) => isChecked(p) === checkedByDefault(p));
   const allSectionsOn = pickableSections.every((s) => checkedSectionIds.has(s.id));
   const projectFilter = {
     selected: checkedProjects,
-    onToggle: (id) => saveProjects(toggle(checkedProjects, id)),
-    onSetAll: (on) => saveProjects(on ? projects.map((p) => p.id) : []),
-    onClear: projectsByDefault ? null : () => saveProjects(projects.filter(checkedByDefault).map((p) => p.id)),
-    summary: checkedProjects.length === 0 ? null
-      : projectsByDefault || checkedProjects.length === projects.length ? 'Все проекты' : null,
+    onToggle: (id) => saveProjectsOff(toggle(projectsOff, id)),
+    onSetAll: (on) => saveProjectsOff(on ? [] : projects.map((p) => p.id)),
+    onClear: projectsOff.length ? () => saveProjectsOff([]) : null,
+    summary: projectsOff.length ? null : 'Все проекты',
   };
   const sectionFilter = {
     selected: pickableIds.filter((id) => checkedSectionIds.has(id)),
