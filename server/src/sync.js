@@ -30,8 +30,9 @@ export const SCHEMAS = {
     deleteConflicts: false,
   },
   project: {
-    fields: { columnSetId: ref, name: string(200), position: number, deleted: boolean },
-    defaults: { columnSetId: DEFAULT_SET_ID, name: '', position: 0, deleted: false },
+    // hidden: its cards are left out of the «all projects» view.
+    fields: { columnSetId: ref, name: string(200), position: number, deleted: boolean, hidden: boolean },
+    defaults: { columnSetId: DEFAULT_SET_ID, name: '', position: 0, deleted: false, hidden: false },
     textFields: [],
     deleteConflicts: false,
   },

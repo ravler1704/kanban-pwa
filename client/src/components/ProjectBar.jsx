@@ -67,6 +67,8 @@ export default function ProjectBar({
   const sumConflicts = (keys) => keys.reduce((sum, key) => sum + (conflictsBySection[key] ?? 0), 0);
   const allKeys = Object.keys(conflictsBySection);
   const projectConflicts = (p) => sumConflicts(allKeys.filter((key) => key.startsWith(`${p.id}|`)));
+  const projectOption = (p) => <option key={p.id} value={p.id}>{withConflicts(p.name, projectConflicts(p))}</option>;
+  const hidden = projects.filter((p) => p.hidden);
 
   return (
     <nav className="projectbar">
@@ -79,9 +81,8 @@ export default function ProjectBar({
           onChange={(e) => onSelectProject(e.target.value)}
         >
           <option value={ALL}>{withConflicts('Все проекты', sumConflicts(allKeys))}</option>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>{withConflicts(p.name, projectConflicts(p))}</option>
-          ))}
+          {projects.filter((p) => !p.hidden).map(projectOption)}
+          {hidden.length > 0 && <optgroup label="Скрытые">{hidden.map(projectOption)}</optgroup>}
         </select>
         {project && (
           <button className="btn-clear" title="Показать все проекты" aria-label="Очистить проект"

@@ -127,15 +127,18 @@ export default function App() {
     ? sectionById.get(selection.section)
     : null;
 
+  // Without a selected project the board shows every project except hidden ones.
+  const shownProjects = project ? [project] : projects.filter((p) => !p.hidden);
+
   // A board shows one column set: the project's, or with all projects shown, the chosen one
   // (only projects using it are on the board).
-  const usedSets = model.sets.filter((s) => model.projectsOf(s.id).length > 0);
+  const usedSets = model.sets.filter((s) => shownProjects.some((p) => model.setIdOf(p) === s.id));
   const boardSetId = project
     ? model.setIdOf(project)
     : (usedSets.find((s) => s.id === allProjectsSet) ?? usedSets[0] ?? model.sets[0]).id;
   const columns = model.columnsOf(boardSetId);
 
-  const scopeProjectIds = (project ? [project] : projects).map((p) => p.id).join(',');
+  const scopeProjectIds = shownProjects.map((p) => p.id).join(',');
   const projectCards = useLiveQuery(
     () => db.cards.where('projectId').anyOf(scopeProjectIds ? scopeProjectIds.split(',') : []).toArray(),
     [scopeProjectIds],
@@ -176,7 +179,8 @@ export default function App() {
 
   const target = project ? { projectId: project.id, sectionId: section?.id ?? null } : null;
   const pickerGroups = projects.map((p) => ({ project: p, sections: sectionsOf(p.id) }));
-  const boardGroups = pickerGroups.filter((g) => model.setIdOf(g.project) === boardSetId);
+  const shownGroups = pickerGroups.filter((g) => shownProjects.includes(g.project));
+  const boardGroups = shownGroups.filter((g) => model.setIdOf(g.project) === boardSetId);
   const boardCards = visible.filter((c) => model.setIdOf(projectById.get(c.projectId)) === boardSetId);
 
   const selectProject = (id) => select({ project: id, section: null });
@@ -238,8 +242,8 @@ export default function App() {
           onClose={() => setOpenCardId(null)} />)}
 
       {addingCard && (
-        <NewCardDialog groups={pickerGroups}
-          columnsOfProject={model.columnsOfProject} target={target} onClose={() => setAddingCard(false)} />
+        <NewCardDialog groups={pickerGroups} columnsOfProject={model.columnsOfProject}
+          target={target ?? defaultTarget(shownGroups)} onClose={() => setAddingCard(false)} />
       )}
 
       {managing && (

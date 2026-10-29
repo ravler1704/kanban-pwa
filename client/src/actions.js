@@ -153,7 +153,7 @@ export async function deleteColumn(id, targetId) {
 
 export async function createProject(name, columnSetId = DEFAULT_SET_ID) {
   const project = await insert('project', {
-    name, columnSetId, position: maxPosition(await db.projects.toArray()) + 1,
+    name, columnSetId, hidden: false, position: maxPosition(await db.projects.toArray()) + 1,
   });
   requestSync();
   return project.id;
@@ -161,6 +161,11 @@ export async function createProject(name, columnSetId = DEFAULT_SET_ID) {
 
 export async function renameProject(id, name) {
   await update('project', id, { name });
+  requestSync();
+}
+
+export async function setProjectHidden(id, hidden) {
+  await update('project', id, { hidden });
   requestSync();
 }
 

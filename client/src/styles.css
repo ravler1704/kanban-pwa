@@ -237,6 +237,7 @@ body {
 .manage-project-title { display: flex; flex-direction: column; min-width: 0; }
 .manage-project-label, .manage-project-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .manage-project-label { font-weight: 600; }
+.manage-project-hidden .manage-project-label { color: var(--muted); }
 .manage-project-meta { color: var(--muted); font-size: 0.78rem; }
 .manage-project-body {
   display: flex;
