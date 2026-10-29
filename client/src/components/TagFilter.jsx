@@ -15,6 +15,7 @@ function ClearIcon() {
  */
 export default function TagFilter({ tags, selected, onToggle, onClear }) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
   const root = useRef(null);
 
   useEffect(() => {
@@ -35,12 +36,19 @@ export default function TagFilter({ tags, selected, onToggle, onClear }) {
 
   const nameOf = (key) => tags.find((t) => t.key === key)?.name ?? key;
   const active = selected.length > 0;
+  const query = search.trim().replace(/^#+/, '').toLowerCase();
+  const found = query ? tags.filter((t) => t.key.includes(query)) : tags;
+
+  function toggleOpen() {
+    setSearch('');
+    setOpen(!open);
+  }
 
   return (
     <div className="picker tag-filter" ref={root}>
       <span className="picker-label">Теги</span>
       <button type="button" className={`select ${active ? '' : 'select-empty'}`} aria-expanded={open}
-        onClick={() => setOpen(!open)}>
+        onClick={toggleOpen}>
         {active ? selected.map((key) => `#${nameOf(key)}`).join(', ') : 'Все'}
       </button>
       {active && (
@@ -48,8 +56,17 @@ export default function TagFilter({ tags, selected, onToggle, onClear }) {
           onClick={onClear}><ClearIcon /></button>
       )}
       {open && (
-        <div className="tag-menu" role="listbox" aria-multiselectable="true">
-          {tags.map((t) => (
+        <div className="tag-menu">
+          <input className="tag-search" type="search" placeholder="Поиск тега" autoFocus
+            value={search} onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter' || !found.length) return;
+              e.preventDefault();
+              onToggle(found[0].key);
+              setSearch('');
+            }} />
+          {found.length === 0 && <p className="tag-menu-empty">Тегов не найдено</p>}
+          {found.map((t) => (
             <label key={t.key} className="tag-menu-item">
               <input type="checkbox" checked={selected.includes(t.key)} onChange={() => onToggle(t.key)} />
               <span className="tag-menu-name">#{t.name}</span>

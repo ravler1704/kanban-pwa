@@ -159,7 +159,7 @@ body {
   top: calc(100% + 4px);
   left: 0;
   z-index: 20;
-  min-width: 100%;
+  min-width: max(100%, 220px);
   max-width: min(90vw, 320px);
   max-height: 60vh;
   overflow-y: auto;
@@ -169,6 +169,18 @@ body {
   border-radius: 8px;
   box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
 }
+.tag-search {
+  width: 100%;
+  margin-bottom: 0.3rem;
+  padding: 0.45rem 0.6rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font: inherit;
+}
+.tag-search:focus { outline: none; border-color: var(--accent); }
+.tag-menu-empty { margin: 0; padding: 0.4rem 0.5rem; color: var(--muted); font-size: 0.85rem; }
 .tag-menu-item {
   display: flex;
   align-items: center;
