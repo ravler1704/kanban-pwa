@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { deleteCard, moveCardToSection, updateCard } from '../actions.js';
+import { deleteCard, moveCardToEnd, moveCardToSection, updateCard } from '../actions.js';
 import { enablePush, PUSH_HINTS, pushState } from '../push.js';
 import Modal from './Modal.jsx';
 
@@ -43,12 +43,13 @@ function ReminderPushStatus() {
 }
 
 /** `sections` are the live sections of the card's project. */
-export default function CardEditor({ card, sections, onClose }) {
+export default function CardEditor({ card, columns, sections, onClose }) {
   // Snapshot of the card when the editor opened, used to detect concurrent remote edits.
   const [base] = useState(() => ({ title: card.title, description: card.description }));
   const [title, setTitle] = useState(card.title);
   const [description, setDescription] = useState(card.description);
   const [sectionId, setSectionId] = useState(card.sectionId ?? '');
+  const [columnId, setColumnId] = useState(card.columnId);
   const [remindAt, setRemindAt] = useState(() => toInputValue(card.remindAt));
 
   const changedRemotely = card.title !== base.title || card.description !== base.description;
@@ -61,6 +62,7 @@ export default function CardEditor({ card, sections, onClose }) {
     if (remindAt !== toInputValue(card.remindAt)) patch.remindAt = fromInputValue(remindAt);
     if (Object.keys(patch).length) await updateCard(card.id, patch, base);
     if ((sectionId || null) !== card.sectionId) await moveCardToSection(card.id, sectionId || null);
+    if (columnId !== card.columnId) await moveCardToEnd(card.id, columnId);
     onClose();
   }
 
@@ -86,6 +88,12 @@ export default function CardEditor({ card, sections, onClose }) {
         <label>
           Описание
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={6} maxLength={10000} />
+        </label>
+        <label>
+          Статус
+          <select className="select" value={columnId} onChange={(e) => setColumnId(e.target.value)}>
+            {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
         </label>
         <label>
           Напоминание

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { createCard, moveCard, moveCardToEnd } from '../actions.js';
+import { createCard, moveCard } from '../actions.js';
 import Card from './Card.jsx';
 
 function positionBefore(cards, targetId) {
@@ -17,7 +17,7 @@ function positionAtEnd(cards) {
  * `target` ({ projectId, sectionId }) is where new cards go.
  * `cardLabel(card)` returns the project/section shown on the card, or null for none.
  */
-export default function Column({ target, column, prevColumn, nextColumn, cards, cardLabel, onOpen, onOpenGroup }) {
+export default function Column({ target, column, cards, cardLabel, onOpen, onOpenGroup }) {
   const [title, setTitle] = useState('');
   const [dragOver, setDragOver] = useState(false);
 
@@ -65,8 +65,6 @@ export default function Column({ target, column, prevColumn, nextColumn, cards, 
             onOpen={() => onOpen(card.id)}
             onOpenLabel={() => onOpenGroup(card)}
             onDrop={(e) => handleDrop(e, card.id)}
-            onMoveLeft={prevColumn && (() => moveCardToEnd(card.id, prevColumn.id))}
-            onMoveRight={nextColumn && (() => moveCardToEnd(card.id, nextColumn.id))}
           />
         ))}
       </div>

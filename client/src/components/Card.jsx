@@ -21,7 +21,7 @@ function BellIcon() {
   );
 }
 
-export default function Card({ card, label, onOpen, onOpenLabel, onDrop, onMoveLeft, onMoveRight }) {
+export default function Card({ card, label, onOpen, onOpenLabel, onDrop }) {
   const classes = ['card'];
   if (card.conflict) classes.push('card-conflict');
   if (card.deleted) classes.push('card-deleted');
@@ -48,7 +48,7 @@ export default function Card({ card, label, onOpen, onOpenLabel, onDrop, onMoveL
       )}
       <div className="card-title">{card.title || <em className="muted">Без названия</em>}</div>
       {card.description && <div className="card-desc">{card.description}</div>}
-      <div className="card-footer">
+      {(card.remindAt || card.conflict || card.dirty === 1) && (
         <div className="card-badges">
           {card.remindAt && (
             <span className={`card-reminder${card.remindAt <= Date.now() ? ' card-reminder-past' : ''}`}
@@ -60,13 +60,7 @@ export default function Card({ card, label, onOpen, onOpenLabel, onDrop, onMoveL
           {card.conflict && <span className="badge badge-conflict">Конфликт — нажмите, чтобы решить</span>}
           {!card.conflict && card.dirty === 1 && <span className="badge badge-pending">Не синхр.</span>}
         </div>
-        {!card.conflict && (
-          <div className="card-moves" onClick={(e) => e.stopPropagation()}>
-            {onMoveLeft && <button className="btn btn-icon" title="Влево" onClick={onMoveLeft}>←</button>}
-            {onMoveRight && <button className="btn btn-icon" title="Вправо" onClick={onMoveRight}>→</button>}
-          </div>
-        )}
-      </div>
+      )}
     </article>
   );
 }

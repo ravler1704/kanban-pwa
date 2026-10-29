@@ -179,13 +179,11 @@ export default function App() {
             onAddCard={() => setAddingCard(true)}
           />
           <main className="board" style={{ '--columns': columns.length }}>
-            {columns.map((col, index) => (
+            {columns.map((col) => (
               <Column
                 key={col.id}
                 target={target ?? defaultTarget(pickerGroups)}
                 column={col}
-                prevColumn={columns[index - 1]}
-                nextColumn={columns[index + 1]}
                 cards={visible.filter((c) => c.columnId === col.id)}
                 cardLabel={cardLabel}
                 onOpen={setOpenCardId}
@@ -198,7 +196,8 @@ export default function App() {
 
       {openCard && (openCard.conflict
         ? <ConflictDialog card={openCard} onClose={() => setOpenCardId(null)} />
-        : <CardEditor card={openCard} sections={sectionsOf(openCard.projectId)} onClose={() => setOpenCardId(null)} />)}
+        : <CardEditor card={openCard} columns={columns} sections={sectionsOf(openCard.projectId)}
+          onClose={() => setOpenCardId(null)} />)}
 
       {addingCard && (
         <NewCardDialog groups={pickerGroups} columns={columns} target={target} onClose={() => setAddingCard(false)} />
