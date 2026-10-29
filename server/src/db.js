@@ -90,11 +90,13 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_identities_user ON identities(user_id);
 `);
 // Before identities existed, the user id was "<provider>:<subject>" of the only account.
+// Users created since have ids "u:<uuid>", which are not accounts.
 db.exec(`
+  DELETE FROM identities WHERE provider = 'u' AND user_id = 'u:' || subject;
   INSERT OR IGNORE INTO identities (provider, subject, user_id, email, name, picture, linked_at)
     SELECT substr(user_id, 1, instr(user_id, ':') - 1), substr(user_id, instr(user_id, ':') + 1),
            user_id, email, name, picture, MIN(created_at)
-    FROM sessions WHERE instr(user_id, ':') > 0 GROUP BY user_id;
+    FROM sessions WHERE instr(user_id, ':') > 0 AND user_id NOT LIKE 'u:%' GROUP BY user_id;
 `);
 
 // Web Push: browsers (devices) subscribed to a user's reminders, and reminders already sent.
