@@ -64,7 +64,7 @@ db.version(5)
     }),
   ]));
 
-// v6: hidden projects. The server rejects null for the flag, so older records get false.
+// v6: the `hidden` flag of projects. The server rejects null for it, so older records get false.
 db.version(6)
   .stores({
     columnSets: 'id, dirty',
@@ -79,13 +79,28 @@ db.version(6)
     if (p.server) p.server.hidden ??= false;
   }));
 
+// v7: the same flag for sections.
+db.version(7)
+  .stores({
+    columnSets: 'id, dirty',
+    columns: 'id, dirty',
+    projects: 'id, dirty',
+    sections: 'id, projectId, dirty',
+    cards: 'id, projectId, sectionId, dirty',
+    meta: 'key',
+  })
+  .upgrade((tx) => tx.table('sections').toCollection().modify((s) => {
+    s.hidden ??= false;
+    if (s.server) s.server.hidden ??= false;
+  }));
+
 // Push order matters: parents are created on the server before their children.
 export const TYPES = {
   columnSet: { table: 'columnSets', fields: ['name', 'position', 'deleted'] },
   column: { table: 'columns', fields: ['setId', 'name', 'position', 'deleted'] },
-  // hidden: no longer used (projects are picked with checkboxes); kept so the synced records stay valid.
+  // hidden (projects, sections): unchecked by default in the board's project / section filter.
   project: { table: 'projects', fields: ['columnSetId', 'name', 'position', 'deleted', 'hidden'] },
-  section: { table: 'sections', fields: ['projectId', 'name', 'position', 'deleted'] },
+  section: { table: 'sections', fields: ['projectId', 'name', 'position', 'deleted', 'hidden'] },
   card: {
     table: 'cards',
     // sectionId is null for cards that belong to the project directly.

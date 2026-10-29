@@ -30,16 +30,16 @@ export const SCHEMAS = {
     textFields: [],
     deleteConflicts: false,
   },
+  // hidden (projects, sections): unchecked by default in the board's project / section filter.
   project: {
-    // hidden: no longer used by the app; kept so older clients keep syncing.
     fields: { columnSetId: ref, name: string(200), position: number, deleted: boolean, hidden: boolean },
     defaults: { columnSetId: DEFAULT_SET_ID, name: '', position: 0, deleted: false, hidden: false },
     textFields: [],
     deleteConflicts: false,
   },
   section: {
-    fields: { projectId: ref, name: string(200), position: number, deleted: boolean },
-    defaults: { name: '', position: 0, deleted: false },
+    fields: { projectId: ref, name: string(200), position: number, deleted: boolean, hidden: boolean },
+    defaults: { name: '', position: 0, deleted: false, hidden: false },
     textFields: [],
     deleteConflicts: false,
   },

@@ -164,6 +164,12 @@ export async function renameProject(id, name) {
   requestSync();
 }
 
+/** Whether the project / section is checked by default in the board's filter. */
+export async function setCheckedByDefault(type, id, checked) {
+  await update(type, id, { hidden: !checked });
+  requestSync();
+}
+
 /** Swaps the project with its neighbour; `direction` is -1 (up) or 1 (down). */
 export async function moveProject(id, direction) {
   await db.transaction('rw', db.projects, async () => {
@@ -200,7 +206,7 @@ export function countCards(projectId, sectionId) {
 
 export async function createSection(projectId, name) {
   const siblings = await db.sections.where('projectId').equals(projectId).toArray();
-  const section = await insert('section', { projectId, name, position: maxPosition(siblings) + 1 });
+  const section = await insert('section', { projectId, name, hidden: false, position: maxPosition(siblings) + 1 });
   requestSync();
   return section.id;
 }
