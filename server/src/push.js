@@ -1,7 +1,7 @@
 import webpush from 'web-push';
 import {
-  boardUsers, deletePushSubscription, getDueReminders, getMeta, getPushSubscriptions, getRecord, markReminderSent,
-  pruneRemindersSent, savePushSubscription, setMeta,
+  deletePushSubscription, getDueReminders, getMeta, getPushSubscriptions, getRecord, markReminderSent,
+  projectUsers, pruneRemindersSent, savePushSubscription, setMeta,
 } from './db.js';
 
 // Card reminders delivered with Web Push. The VAPID key pair identifies this server to the
@@ -51,9 +51,9 @@ export function registerPushRoutes(app) {
   });
 }
 
-/** Sends to every device of everyone who sees the board. */
-async function send(board, payload) {
-  const subscriptions = boardUsers(board).flatMap((user) => getPushSubscriptions(user));
+/** Sends to every device of everyone who sees the project. */
+async function send(board, project, payload) {
+  const subscriptions = projectUsers(board, project).flatMap((user) => getPushSubscriptions(user));
   await Promise.all(subscriptions.map(async (s) => {
     try {
       await webpush.sendNotification(
@@ -93,7 +93,7 @@ async function checkReminders() {
     const now = Date.now();
     for (const reminder of getDueReminders(now, MAX_LATE_MS)) {
       if (!markReminderSent(reminder.owner, reminder.id, reminder.remindAt)) continue;
-      await send(reminder.owner, reminderPayload(reminder.owner, reminder));
+      await send(reminder.owner, reminder.card.projectId, reminderPayload(reminder.owner, reminder));
     }
     pruneRemindersSent(now - 30 * 24 * 60 * 60 * 1000);
   } catch (err) {

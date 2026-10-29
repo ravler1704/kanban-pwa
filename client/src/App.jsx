@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { isCurrentBoard, switchBoard } from './board.js';
+import { currentBoard, isCurrentBoard, switchBoard } from './board.js';
 import { db } from './db.js';
 import { columnModel } from './columnSets.js';
 import StatusBar from './components/StatusBar.jsx';
@@ -198,10 +198,16 @@ export default function App() {
       <StatusBar pending={data.pending} conflicts={data.conflicted.length} />
 
       {projects.length === 0 ? (
-        <div className="empty">
-          <p>Пока нет ни одного проекта.</p>
-          <button className="btn btn-primary" onClick={() => setManaging(true)}>Создать проект</button>
-        </div>
+        currentBoard ? (
+          <div className="empty">
+            <p>Открытые вам проекты появятся здесь после синхронизации.</p>
+          </div>
+        ) : (
+          <div className="empty">
+            <p>Пока нет ни одного проекта.</p>
+            <button className="btn btn-primary" onClick={() => setManaging(true)}>Создать проект</button>
+          </div>
+        )
       ) : (
         <>
           <ProjectBar

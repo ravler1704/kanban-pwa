@@ -251,24 +251,44 @@ async function postJson(url, body) {
 }
 
 /** People invited to the own board: [{ email, name, joined }]. */
-export async function getMembers() {
+// People invited to projects of the own board: [{ email, name, joined, projects: [projectId] }],
+// null until loaded. Shared by the «Доступ» tab and the project settings.
+let members = null;
+const memberListeners = new Set();
+
+function setMembers(list) {
+  members = list;
+  for (const l of memberListeners) l();
+}
+
+export const membersState = {
+  subscribe(listener) {
+    memberListeners.add(listener);
+    return () => memberListeners.delete(listener);
+  },
+  get: () => members,
+};
+
+export async function loadMembers() {
   const res = await fetch('/api/members', { cache: 'no-store' });
   if (!res.ok) throw new Error('Не удалось загрузить список участников.');
-  return (await res.json()).members;
+  setMembers((await res.json()).members);
 }
 
-export async function inviteMember(email) {
-  const res = await postJson('/api/members', { email });
+export async function inviteMember(email, project) {
+  const res = await postJson('/api/members', { email, project });
   if (res.status === 400 && res.body.error === 'own email') throw new Error('Это адрес вашего аккаунта.');
   if (res.status === 400) throw new Error('Проверьте адрес почты.');
+  if (res.status === 404) throw new Error('Проект ещё не сохранён на сервере — подождите синхронизации.');
   if (res.status !== 200) throw new Error('Не удалось пригласить. Попробуйте ещё раз.');
-  return res.body.members;
+  setMembers(res.body.members);
 }
 
-export async function removeMember(email) {
-  const res = await postJson('/api/members/remove', { email });
+/** Without `project`, from every project. */
+export async function removeMember(email, project) {
+  const res = await postJson('/api/members/remove', { email, project });
   if (res.status !== 200) throw new Error('Не удалось убрать участника. Попробуйте ещё раз.');
-  return res.body.members;
+  setMembers(res.body.members);
 }
 
 /** Leaves the shared board that is open now; the own board opens. */

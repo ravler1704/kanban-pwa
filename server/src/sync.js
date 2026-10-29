@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { getMaxSeq, getMeta, getRecord, getRecordsSince, saveRecord, setMeta, transaction } from './db.js';
 
 const string = (max) => (v) => typeof v === 'string' && v.length <= max;
@@ -113,11 +114,64 @@ function pickData(schema, record) {
 /** Records stored before a field existed get its default. */
 const withDefaults = (record) => (record && SCHEMAS[record.type] ? { ...SCHEMAS[record.type].defaults, ...record } : record);
 
-function applyChange(owner, deviceId, { type, id, baseVersion, fields, base }) {
+// ---- members: access to some projects of someone else's board ----
+
+/**
+ * What a member of the board may see: `projects` (ids the member was invited to) and `sets`,
+ * the column sets these projects use. `key` changes whenever either changes; it is part of the
+ * member's epoch, so their devices then download the board again (records of newly opened
+ * projects are older than what the device already has).
+ */
+export function memberAccess(owner, projectIds) {
+  const projects = new Set(projectIds);
+  const sets = new Set();
+  for (const id of projectIds) sets.add(withDefaults(getRecord(owner, id))?.columnSetId ?? DEFAULT_SET_ID);
+  const key = crypto.createHash('sha256').update(JSON.stringify([projectIds, [...sets].sort()])).digest('hex').slice(0, 16);
+  return { projects, sets, key };
+}
+
+function visibleTo(access, record) {
+  switch (record.type) {
+    case 'project': return access.projects.has(record.id);
+    case 'section':
+    case 'card': return access.projects.has(record.projectId);
+    case 'columnSet': return access.sets.has(record.id);
+    case 'column': return access.sets.has(record.setId);
+    default: return false;
+  }
+}
+
+/** A deleted stand-in: hides a record that left the member's projects (e.g. a card moved out). */
+function tombstone(type, id, record) {
+  return {
+    ...SCHEMAS[type].defaults,
+    id,
+    type,
+    deleted: true,
+    version: record?.version ?? 0,
+    seq: record?.seq ?? 0,
+    updatedAt: record?.updatedAt ?? 0,
+    updatedBy: record?.updatedBy ?? null,
+  };
+}
+
+/** Members edit cards and sections of their projects; projects and columns are the owner's. */
+function memberMayChange(access, type, current, fields) {
+  if (type !== 'card' && type !== 'section') return false;
+  if (current && !access.projects.has(current.projectId)) return false;
+  return access.projects.has(fields.projectId ?? current?.projectId);
+}
+
+function applyChange(owner, deviceId, { type, id, baseVersion, fields, base }, access) {
   const schema = SCHEMAS[type];
   const current = withDefaults(getRecord(owner, id));
   const result = (status, record, conflicts) => ({ type, id, status, record, ...(conflicts && { conflicts }) });
   const save = (data, version) => saveRecord(owner, type, id, pickData(schema, data), { version, deviceId });
+
+  if (access && !memberMayChange(access, type, current, fields)) {
+    // Not applied; the device takes back what the member may see.
+    return result('merged', current && visibleTo(access, current) ? current : tombstone(type, id, current));
+  }
 
   if (!current) {
     const data = { ...schema.defaults, ...fields };
@@ -172,14 +226,15 @@ function applyChange(owner, deviceId, { type, id, baseVersion, fields, base }) {
     : result('merged', record);
 }
 
-export function push(owner, deviceId, rawChanges) {
+/** `access` (see memberAccess) limits a member's changes; null for the board's owner. */
+export function push(owner, deviceId, rawChanges, access = null) {
   if (!Array.isArray(rawChanges) || rawChanges.length > 1000) {
     throw new ValidationError('changes must be an array of at most 1000 items');
   }
   const changes = rawChanges.map(validateChange);
   return transaction(() => {
     const before = getMaxSeq(owner);
-    const results = changes.map((c) => applyChange(owner, deviceId, c));
+    const results = changes.map((c) => applyChange(owner, deviceId, c, access));
     const seq = getMaxSeq(owner);
     return { results, seq, modified: seq !== before };
   });
@@ -220,11 +275,19 @@ export function seedColumns(owner) {
   seeded.add(owner);
 }
 
-export function pull(owner, since, limit = 500) {
+/** `access` (see memberAccess) limits what a member gets; null for the board's owner. */
+export function pull(owner, since, limit = 500, access = null) {
   seedColumns(owner);
-  const records = getRecordsSince(owner, since, limit + 1).map(withDefaults);
+  let records = getRecordsSince(owner, since, limit + 1).map(withDefaults);
   const hasMore = records.length > limit;
   if (hasMore) records.pop();
   const seq = records.length ? records[records.length - 1].seq : Math.max(since, 0);
+  if (access) {
+    // A device downloading from scratch has nothing to hide yet.
+    records = records.flatMap((r) => {
+      if (visibleTo(access, r)) return [r];
+      return since > 0 && (r.type === 'card' || r.type === 'section') ? [tombstone(r.type, r.id, r)] : [];
+    });
+  }
   return { records, seq, hasMore };
 }

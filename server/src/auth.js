@@ -1,10 +1,12 @@
 import crypto from 'node:crypto';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import {
-  addMember, boardSummary, createSession, deleteIdentity, deleteMember, deleteSession, getIdentityUser, getSession,
-  isInvited, isMember, leaveBoard, listIdentities, listMembers, mergeUsers, saveIdentity, sharedBoards,
+  addMember, boardSummary, createSession, deleteIdentity, deleteMember, deleteSession, getIdentityUser, getRecord,
+  getSession, isInvited, leaveBoard, listIdentities, listMembers, memberProjects, mergeUsers, saveIdentity,
+  sharedBoards,
 } from './db.js';
 import { broadcast, disconnect, disconnectUser } from './events.js';
+import { memberAccess } from './sync.js';
 
 // Sign-in with Google and/or Yandex. A user may link several accounts and gets one board;
 // the owner may invite others to it by e-mail.
@@ -81,10 +83,12 @@ function publicUser(session) {
 
 /**
  * Sets `req.user` (the signed-in user) and `req.owner`: the board the request works with,
- * the user's own unless another board the user is a member of is asked for
+ * the user's own unless another board with projects shared with the user is asked for
  * (`X-Board` header, or `?board=` where headers can't be set, e.g. EventSource).
+ * On another's board `req.access` lists what the user may see (see memberAccess), else null.
  */
 export function requireAuth(req, res, next) {
+  req.access = null;
   if (!authEnabled) {
     req.user = '';
     req.owner = '';
@@ -94,7 +98,11 @@ export function requireAuth(req, res, next) {
   if (!session) return res.status(401).json({ error: 'unauthorized' });
   req.user = session.user_id;
   const board = req.get('x-board') || req.query.board;
-  if (board && board !== req.user && !isMember(board, req.user)) return res.status(403).json({ error: 'no access' });
+  if (board && board !== req.user) {
+    const projects = memberProjects(board, req.user);
+    if (projects.length === 0) return res.status(403).json({ error: 'no access' });
+    req.access = memberAccess(board, projects);
+  }
   req.owner = board || req.user;
   next();
 }
@@ -266,7 +274,7 @@ export function registerAuthRoutes(app) {
     res.json({ user: publicUser(session) });
   });
 
-  // Members of the signed-in user's own board.
+  // People invited to projects of the signed-in user's own board.
   app.get('/api/members', requireAuth, (req, res) => {
     if (!authEnabled) return res.status(404).json({ error: 'auth disabled' });
     res.json({ members: listMembers(req.user) });
@@ -275,15 +283,23 @@ export function registerAuthRoutes(app) {
   app.post('/api/members', requireAuth, (req, res) => {
     if (!authEnabled) return res.status(404).json({ error: 'auth disabled' });
     const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const { project } = req.body ?? {};
     if (email.length > 254 || !EMAIL.test(email)) return res.status(400).json({ error: 'invalid email' });
     if (listIdentities(req.user).some((i) => i.email === email)) return res.status(400).json({ error: 'own email' });
-    addMember(req.user, email);
+    const record = typeof project === 'string' ? getRecord(req.user, project) : null;
+    if (record?.type !== 'project' || record.deleted) return res.status(404).json({ error: 'no project' });
+    addMember(req.user, project, email);
+    // Open streams of members belong to the old access; reconnecting picks up the new one.
+    disconnect(req.user, { except: req.user });
     res.json({ members: listMembers(req.user) });
   });
 
+  /** `project` omitted: from every project. */
   app.post('/api/members/remove', requireAuth, (req, res) => {
     if (!authEnabled) return res.status(404).json({ error: 'auth disabled' });
-    if (typeof req.body?.email !== 'string' || !deleteMember(req.user, req.body.email)) {
+    const { email, project } = req.body ?? {};
+    if (typeof email !== 'string' || (project != null && typeof project !== 'string')
+      || !deleteMember(req.user, email, project)) {
       return res.status(404).json({ error: 'not found' });
     }
     disconnect(req.user, { except: req.user });

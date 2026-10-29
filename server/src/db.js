@@ -115,18 +115,31 @@ db.exec(`
   );
 `);
 
-// People invited to a board. Membership follows the e-mail: whoever signs in with an account
-// that has this address (or links one) gets the board.
+// People invited to projects of a board. Access follows the e-mail: whoever signs in with an
+// account that has this address (or links one) gets these projects.
 db.exec(`
-  CREATE TABLE IF NOT EXISTS board_members (
+  CREATE TABLE IF NOT EXISTS project_members (
     board       TEXT    NOT NULL,
+    project     TEXT    NOT NULL,
     email       TEXT    NOT NULL,
     added_at    INTEGER NOT NULL,
-    PRIMARY KEY (board, email)
+    PRIMARY KEY (board, project, email)
   );
-  CREATE INDEX IF NOT EXISTS idx_board_members_email ON board_members(email);
+  CREATE INDEX IF NOT EXISTS idx_project_members_email ON project_members(email);
   CREATE INDEX IF NOT EXISTS idx_identities_email ON identities(email);
 `);
+// Members of whole boards (before access per project) keep every project the board had.
+if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'board_members'").get()) {
+  db.exec(`
+    BEGIN;
+    INSERT OR IGNORE INTO project_members (board, project, email, added_at)
+      SELECT m.board, r.id, m.email, m.added_at
+      FROM board_members m JOIN records r ON r.owner = m.board AND r.type = 'project'
+      WHERE json_extract(r.data, '$.deleted') = 0;
+    DROP TABLE board_members;
+    COMMIT;
+  `);
+}
 
 // Identifies this database instance. Clients holding data from another epoch
 // (e.g. after the database was wiped or restored) discard it and resync.
@@ -289,51 +302,70 @@ export function mergeUsers(from, to) {
     db.prepare('UPDATE sessions SET user_id = ? WHERE user_id = ?').run(to, from);
     db.prepare('UPDATE push_subscriptions SET owner = ? WHERE owner = ?').run(to, from);
     db.prepare('UPDATE OR IGNORE reminders_sent SET owner = ? WHERE owner = ?').run(to, from);
-    db.prepare('UPDATE OR IGNORE board_members SET board = ? WHERE board = ?').run(to, from);
-    db.prepare('DELETE FROM board_members WHERE board = ?').run(from);
+    db.prepare('UPDATE OR IGNORE project_members SET board = ? WHERE board = ?').run(to, from);
+    db.prepare('DELETE FROM project_members WHERE board = ?').run(from);
     return seq;
   });
 }
 
+// Invitations to deleted projects stay in the table but give no access.
+const LIVE_PROJECT = `JOIN records r ON r.owner = m.board AND r.id = m.project AND json_extract(r.data, '$.deleted') = 0`;
 const selectMembers = db.prepare(`
-  SELECT m.email, m.added_at,
+  SELECT m.email, m.project, MIN(m.added_at) OVER (PARTITION BY m.email) AS first_added,
     (SELECT i.name FROM identities i WHERE i.email = m.email ORDER BY i.linked_at LIMIT 1) AS name,
     EXISTS (SELECT 1 FROM identities i WHERE i.email = m.email) AS joined
-  FROM board_members m WHERE m.board = ? ORDER BY m.added_at
+  FROM project_members m ${LIVE_PROJECT}
+  WHERE m.board = ? ORDER BY first_added, m.email
 `);
-const insertMember = db.prepare('INSERT OR IGNORE INTO board_members (board, email, added_at) VALUES (?, ?, ?)');
-const removeMember = db.prepare('DELETE FROM board_members WHERE board = ? AND email = ?');
+const insertMember = db.prepare(
+  'INSERT OR IGNORE INTO project_members (board, project, email, added_at) VALUES (?, ?, ?, ?)',
+);
+const removeMember = db.prepare('DELETE FROM project_members WHERE board = ? AND email = ?');
+const removeProjectMember = db.prepare('DELETE FROM project_members WHERE board = ? AND email = ? AND project = ?');
 const selectUserBoards = db.prepare(`
-  SELECT DISTINCT m.board FROM board_members m
-  JOIN identities i ON i.email = m.email
+  SELECT DISTINCT m.board FROM project_members m
+  JOIN identities i ON i.email = m.email ${LIVE_PROJECT}
   WHERE i.user_id = ? AND m.board != ?
 `);
-const selectMembership = db.prepare(`
-  SELECT 1 FROM board_members m JOIN identities i ON i.email = m.email
-  WHERE m.board = ? AND i.user_id = ? LIMIT 1
+const selectUserProjects = db.prepare(`
+  SELECT DISTINCT m.project FROM project_members m JOIN identities i ON i.email = m.email ${LIVE_PROJECT}
+  WHERE m.board = ? AND i.user_id = ? ORDER BY m.project
 `);
-const selectMemberUsers = db.prepare(`
-  SELECT DISTINCT i.user_id FROM board_members m JOIN identities i ON i.email = m.email WHERE m.board = ?
+const selectProjectUsers = db.prepare(`
+  SELECT DISTINCT i.user_id FROM project_members m JOIN identities i ON i.email = m.email
+  WHERE m.board = ? AND m.project = ?
 `);
-const selectInvited = db.prepare('SELECT 1 FROM board_members WHERE email = ? LIMIT 1');
+const selectInvited = db.prepare('SELECT 1 FROM project_members WHERE email = ? LIMIT 1');
 const selectOwnerProfile = db.prepare(
   'SELECT email, name, picture FROM identities WHERE user_id = ? ORDER BY linked_at LIMIT 1',
 );
 const removeUserMemberships = db.prepare(`
-  DELETE FROM board_members WHERE board = ? AND email IN (SELECT email FROM identities WHERE user_id = ?)
+  DELETE FROM project_members WHERE board = ? AND email IN (SELECT email FROM identities WHERE user_id = ?)
 `);
 
-/** Invited e-mails of the board, with the name of the account that has it once someone signed in. */
+/**
+ * People invited to the board's projects: [{ email, name, joined, projects: [projectId] }];
+ * `name` comes from the account with this e-mail once someone signed in with it.
+ */
 export function listMembers(board) {
-  return selectMembers.all(board).map((m) => ({ email: m.email, name: m.name ?? null, joined: Boolean(m.joined) }));
+  const byEmail = new Map();
+  for (const row of selectMembers.all(board)) {
+    if (!byEmail.has(row.email)) {
+      byEmail.set(row.email, { email: row.email, name: row.name ?? null, joined: Boolean(row.joined), projects: [] });
+    }
+    byEmail.get(row.email).projects.push(row.project);
+  }
+  return [...byEmail.values()];
 }
 
-export function addMember(board, email) {
-  insertMember.run(board, email, Date.now());
+export function addMember(board, project, email) {
+  insertMember.run(board, project, email, Date.now());
 }
 
-export function deleteMember(board, email) {
-  return removeMember.run(board, email).changes > 0;
+/** Without `project`, from every project of the board. */
+export function deleteMember(board, email, project) {
+  const result = project ? removeProjectMember.run(board, email, project) : removeMember.run(board, email);
+  return result.changes > 0;
 }
 
 /** Other people's boards the user was invited to, with the owner's name, e-mail and photo. */
@@ -344,13 +376,14 @@ export function sharedBoards(userId) {
   });
 }
 
-export function isMember(board, userId) {
-  return Boolean(selectMembership.get(board, userId));
+/** Ids of the board's projects the user was invited to (sorted). */
+export function memberProjects(board, userId) {
+  return selectUserProjects.all(board, userId).map((r) => r.project);
 }
 
-/** Users who see the board: its owner and everyone who signed in with an invited e-mail. */
-export function boardUsers(board) {
-  return [...new Set([board, ...selectMemberUsers.all(board).map((r) => r.user_id)])];
+/** Users who see the project: the board's owner and everyone who signed in with an invited e-mail. */
+export function projectUsers(board, project) {
+  return [...new Set([board, ...selectProjectUsers.all(board, project).map((r) => r.user_id)])];
 }
 
 export function isInvited(email) {

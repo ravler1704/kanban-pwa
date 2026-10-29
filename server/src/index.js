@@ -27,11 +27,15 @@ startReminders();
 
 // The epoch identifies the board, not just the database: a device that holds another
 // user's board (e.g. signed in with a different account) discards it and resyncs.
-const boardEpoch = (owner) => (owner ? `${EPOCH}:${owner}` : EPOCH);
+// A member's epoch also changes with their access (projects opened or closed to them).
+const boardEpoch = (req) => {
+  const board = req.owner ? `${EPOCH}:${req.owner}` : EPOCH;
+  return req.access ? `${board}:${req.access.key}` : board;
+};
 
 app.get('/api/sync', (req, res) => {
   const since = Number.parseInt(req.query.since ?? '0', 10);
-  res.json({ epoch: boardEpoch(req.owner), ...pull(req.owner, Number.isFinite(since) ? since : 0) });
+  res.json({ epoch: boardEpoch(req), ...pull(req.owner, Number.isFinite(since) ? since : 0, 500, req.access) });
 });
 
 app.post('/api/sync', (req, res) => {
@@ -39,12 +43,12 @@ app.post('/api/sync', (req, res) => {
   if (typeof deviceId !== 'string' || deviceId.length > 64) {
     return res.status(400).json({ error: 'invalid deviceId' });
   }
-  const expected = boardEpoch(req.owner);
+  const expected = boardEpoch(req);
   if (epoch != null && epoch !== expected) {
     return res.status(409).json({ error: 'epoch mismatch', epoch: expected });
   }
   try {
-    const result = push(req.owner, deviceId, changes);
+    const result = push(req.owner, deviceId, changes, req.access);
     if (result.modified) broadcast(req.owner, { seq: result.seq, from: deviceId });
     res.json({ epoch: expected, results: result.results, seq: result.seq });
   } catch (err) {

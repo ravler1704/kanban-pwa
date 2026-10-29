@@ -402,6 +402,12 @@ body {
 .account-row { align-items: center; }
 .account-provider { min-width: 5.5rem; color: var(--muted); font-size: 0.85rem; }
 .account-email { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.member { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
+.member-projects { display: flex; flex-wrap: wrap; gap: 0.3rem 0.9rem; font-size: 0.9rem; }
+.member-project { display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; }
+.member-project input { accent-color: var(--accent); margin: 0; }
+.member-invite { flex-wrap: wrap; margin-top: 0.5rem; }
+.member-invite .field { flex: 1 1 10rem; }
 .theme-options { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .theme-options .btn { flex: 1; }
 .account-link { display: flex; flex-direction: column; align-items: center; gap: 0.6rem; }
