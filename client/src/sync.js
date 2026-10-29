@@ -120,8 +120,13 @@ async function push() {
 
 // ---- pull: fetch everything changed on the server since the last known seq ----
 
+// An outdated build (still cached on a device) drops record types and fields it does not know,
+// and the seq moves past them. So the first pull of a build with other types or fields starts over.
+const SCHEMA = JSON.stringify(typeNames.map((type) => [type, TYPES[type].fields]));
+
 async function pull() {
-  let since = (await db.meta.get('lastSeq'))?.value ?? 0;
+  const schemaChanged = (await db.meta.get('schema'))?.value !== SCHEMA;
+  let since = schemaChanged ? 0 : (await db.meta.get('lastSeq'))?.value ?? 0;
   let hasMore = true;
 
   while (hasMore) {
@@ -157,7 +162,11 @@ async function pull() {
         }
         await table.put(next);
       }
-      await db.meta.bulkPut([{ key: 'lastSeq', value: res.seq }, { key: 'epoch', value: res.epoch }]);
+      await db.meta.bulkPut([
+        { key: 'lastSeq', value: res.seq },
+        { key: 'epoch', value: res.epoch },
+        { key: 'schema', value: SCHEMA },
+      ]);
     });
 
     since = res.seq;
