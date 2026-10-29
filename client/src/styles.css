@@ -238,6 +238,10 @@ body {
 .manage-input:hover { border-color: var(--border); }
 .manage-input:focus { outline: none; border-color: var(--accent); }
 .manage-add .manage-input { border-color: var(--border); border-style: dashed; }
+.manage-field { flex: 1; min-width: 0; }
+.manage-field .manage-input { width: 100%; padding-left: 0.7rem; padding-right: 0.7rem; border-color: var(--border); }
+.manage-field .manage-input:focus { border-color: var(--accent); }
+.manage-row > .btn, .manage-add > .btn { align-self: stretch; }
 .manage-project-name { font-weight: 600; }
 .card-label {
   display: block;

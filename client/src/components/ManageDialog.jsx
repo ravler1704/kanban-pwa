@@ -10,7 +10,7 @@ import { db } from '../db.js';
 import Modal from './Modal.jsx';
 
 /** Text input that saves on Enter / blur and reverts on Escape. */
-function NameInput({ value, onSave, className = '', ariaLabel, maxLength = 200 }) {
+function NameInput({ value, onSave, className = '', label, maxLength = 200 }) {
   const [draft, setDraft] = useState(value);
   const [prev, setPrev] = useState(value);
   if (value !== prev) {
@@ -26,25 +26,27 @@ function NameInput({ value, onSave, className = '', ariaLabel, maxLength = 200 }
   }
 
   return (
-    <input
-      className={`manage-input ${className}`}
-      value={draft}
-      aria-label={ariaLabel}
-      maxLength={maxLength}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={commit}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') e.currentTarget.blur();
-        if (e.key === 'Escape') {
-          e.stopPropagation();
-          setDraft(value);
-        }
-      }}
-    />
+    <label className="field manage-field">
+      <span className="field-label">{label}</span>
+      <input
+        className={`manage-input ${className}`}
+        value={draft}
+        maxLength={maxLength}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur();
+          if (e.key === 'Escape') {
+            e.stopPropagation();
+            setDraft(value);
+          }
+        }}
+      />
+    </label>
   );
 }
 
-function AddForm({ placeholder, onAdd }) {
+function AddForm({ label, onAdd }) {
   const [name, setName] = useState('');
   return (
     <form
@@ -57,13 +59,15 @@ function AddForm({ placeholder, onAdd }) {
         setName('');
       }}
     >
-      <input
-        className="manage-input"
-        value={name}
-        placeholder={placeholder}
-        maxLength={200}
-        onChange={(e) => setName(e.target.value)}
-      />
+      <label className="field manage-field">
+        <span className="field-label">{label}</span>
+        <input
+          className="manage-input"
+          value={name}
+          maxLength={200}
+          onChange={(e) => setName(e.target.value)}
+        />
+      </label>
       <button type="submit" className="btn btn-small" disabled={!name.trim()}>Добавить</button>
     </form>
   );
@@ -84,9 +88,12 @@ function DeleteColumnDialog({ column, count, columns, onClose }) {
     <Modal title="Удалить колонку" onClose={onClose}>
       <form className="editor" onSubmit={submit}>
         <p>В колонке «{column.name}» карточек: {count}. Куда их перенести?</p>
-        <select className="select" value={targetId} onChange={(e) => setTargetId(e.target.value)}>
-          {others.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
+        <label className="field">
+          <span className="field-label">Перенести карточки в</span>
+          <select className="select" value={targetId} onChange={(e) => setTargetId(e.target.value)}>
+            {others.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </label>
         <div className="actions">
           <button type="button" className="btn" onClick={onClose}>Отмена</button>
           <button type="submit" className="btn btn-danger">Перенести и удалить</button>
@@ -147,7 +154,7 @@ function ColumnSetsEditor({ model, synced, initialSetId }) {
         <button className="btn btn-small" onClick={addSet}>Новый набор</button>
       </div>
       <div className="manage-row">
-        <NameInput key={set.id} value={set.name} className="manage-project-name" ariaLabel="Название набора"
+        <NameInput key={set.id} value={set.name} className="manage-project-name" label="Название набора"
           maxLength={100} onSave={(name) => renameColumnSet(set.id, name)} />
         <button className="btn btn-small btn-danger" disabled={users.length > 0 || model.sets.length === 1}
           title={users.length > 0 ? 'Сначала переключите доски на другой набор' : undefined}
@@ -172,7 +179,7 @@ function ColumnsEditor({ setId, columns }) {
     <div className="manage-columns">
       {columns.map((c, i) => (
         <div key={c.id} className="manage-row">
-          <NameInput value={c.name} ariaLabel="Название колонки" maxLength={100}
+          <NameInput value={c.name} label="Название колонки" maxLength={100}
             onSave={(name) => renameColumn(c.id, name)} />
           <button className="btn btn-small" title="Выше" aria-label="Выше" disabled={i === 0}
             onClick={() => moveColumn(c.id, -1)}>↑</button>
@@ -183,7 +190,7 @@ function ColumnsEditor({ setId, columns }) {
             onClick={() => remove(c)}>Удалить</button>
         </div>
       ))}
-      <AddForm placeholder="Новая колонка" onAdd={(name) => createColumn(setId, name)} />
+      <AddForm label="Новая колонка" onAdd={(name) => createColumn(setId, name)} />
       {deleting && (
         <DeleteColumnDialog column={deleting.column} count={deleting.count} columns={columns}
           onClose={() => setDeleting(null)} />
@@ -292,7 +299,7 @@ export default function ManageDialog({ model, columnsSynced, initialSetId, proje
           {projects.map((p) => (
             <section key={p.id} className="manage-project">
               <div className="manage-row">
-                <NameInput value={p.name} className="manage-project-name" ariaLabel="Название проекта"
+                <NameInput value={p.name} className="manage-project-name" label="Название проекта"
                   onSave={(name) => renameProject(p.id, name)} />
                 <button className="btn btn-small btn-danger" onClick={() => removeProject(p)}>Удалить</button>
               </div>
@@ -308,16 +315,16 @@ export default function ManageDialog({ model, columnsSynced, initialSetId, proje
               <div className="manage-sections">
                 {sections.filter((s) => s.projectId === p.id).map((s) => (
                   <div key={s.id} className="manage-row">
-                    <NameInput value={s.name} ariaLabel="Название раздела"
+                    <NameInput value={s.name} label="Название раздела"
                       onSave={(name) => renameSection(s.id, name)} />
                     <button className="btn btn-small btn-danger" onClick={() => removeSection(s)}>Удалить</button>
                   </div>
                 ))}
-                <AddForm placeholder="Новый раздел" onAdd={(name) => createSection(p.id, name)} />
+                <AddForm label="Новый раздел" onAdd={(name) => createSection(p.id, name)} />
               </div>
             </section>
           ))}
-          <AddForm placeholder="Новый проект" onAdd={createProject} />
+          <AddForm label="Новый проект" onAdd={createProject} />
         </div>
       )}
       {tab === 'columns' && (
