@@ -30,8 +30,8 @@ export default function NewCardDialog({ groups, columns, target, onClose }) {
     const preferred = target ?? defaultTarget(groups);
     return preferred ? encode(preferred.projectId, preferred.sectionId) : '';
   });
-  // The first column is usually the backlog; new work goes to the second one when there is one.
-  const [columnId, setColumnId] = useState((columns[1] ?? columns[0]).id);
+  // New cards land in «Входящие» (the default backlog column), or the first column if it was removed.
+  const [columnId, setColumnId] = useState((columns.find((c) => c.id === 'backlog') ?? columns[0]).id);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
 
