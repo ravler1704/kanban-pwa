@@ -1,11 +1,11 @@
 import { useState, useSyncExternalStore } from 'react';
-import { fileUrl, formatSize, isImage, removeFile, uploadFile } from '../files.js';
+import { attachFiles, dismissUpload, fileUrl, formatSize, isImage, removeFile, uploadStore } from '../files.js';
 import { syncStatus } from '../sync.js';
 
 /** Files of the card: image thumbnails and a list of the others; `readOnly` only shows them. */
 export default function Attachments({ card, readOnly }) {
   const { online } = useSyncExternalStore(syncStatus.subscribe, syncStatus.get);
-  const [uploads, setUploads] = useState([]);
+  const uploads = useSyncExternalStore(uploadStore.subscribe, uploadStore.get).filter((u) => u.cardId === card.id);
   const [error, setError] = useState(null);
   const [dragOver, setDragOver] = useState(false);
   const files = card.attachments ?? [];
@@ -14,22 +14,9 @@ export default function Attachments({ card, readOnly }) {
   // The server adds files to the card it has: a card created offline has to sync first.
   const canAttach = !readOnly && online && Boolean(card.server);
 
-  async function attach(list) {
+  function attach(list) {
     if (!canAttach || !list.length) return;
-    setError(null);
-    await Promise.all([...list].map(async (file) => {
-      const key = `${file.name}:${file.size}:${Math.random()}`;
-      setUploads((u) => [...u, { key, name: file.name, progress: 0 }]);
-      try {
-        await uploadFile(card.id, file, (progress) => {
-          setUploads((u) => u.map((x) => (x.key === key ? { ...x, progress } : x)));
-        });
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setUploads((u) => u.filter((x) => x.key !== key));
-      }
-    }));
+    attachFiles(card.id, [...list]);
   }
 
   async function remove(file) {
@@ -101,16 +88,26 @@ export default function Attachments({ card, readOnly }) {
           ))}
         </ul>
       )}
-      {uploads.map((u) => (
+      {uploads.map((u) => (u.error ? (
+        <div key={u.key} className="attachment-row attachment-failed">
+          <span className="attachment-name" title={u.error}>{u.name}</span>
+          <span className="attachment-size">{u.error}</span>
+          <button type="button" className="attachment-remove" title="Убрать" aria-label="Убрать"
+            onClick={() => dismissUpload(u.key)}>×</button>
+        </div>
+      ) : (
         <div key={u.key} className="attachment-row attachment-uploading">
           <span className="attachment-name">{u.name}</span>
           <span className="attachment-size muted">{Math.round(u.progress * 100)}%</span>
           <progress max="1" value={u.progress} />
         </div>
-      ))}
+      )))}
       {!readOnly && !online && <p className="muted attachments-hint">Файлы прикрепляются и удаляются только при подключении к интернету.</p>}
       {!readOnly && online && !card.server && (
         <p className="muted attachments-hint">Файлы можно будет прикрепить, когда карточка синхронизируется.</p>
+      )}
+      {uploads.some((u) => !u.error) && (
+        <p className="muted attachments-hint">Загрузка продолжится, если закрыть карточку; не закрывайте вкладку.</p>
       )}
       {!readOnly && canAttach && files.length === 0 && uploads.length === 0 && (
         <p className="muted attachments-hint">Нажмите «Прикрепить» или перетащите файлы сюда.</p>

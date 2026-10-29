@@ -630,6 +630,8 @@ body {
 .card-moves { display: flex; gap: 0.25rem; }
 .card-reminder { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; color: var(--accent); }
 .card-reminder-past { color: var(--muted); }
+.card-uploading { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; color: var(--accent); }
+.attachment-failed .attachment-size { color: var(--danger); flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card-files { display: inline-flex; align-items: center; gap: 0.2rem; font-size: 0.75rem; color: var(--muted); }
 .attachments {
   display: flex;

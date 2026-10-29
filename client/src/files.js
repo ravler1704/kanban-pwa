@@ -25,6 +25,48 @@ export function formatSize(bytes) {
   return `${value.toLocaleString('ru-RU', { maximumFractionDigits: value < 10 ? 1 : 0 })} ${units[unit]}`;
 }
 
+// ---- uploads in progress: they outlive the card editor, so the board and a reopened card show them ----
+
+let uploads = [];
+const listeners = new Set();
+
+function setUploads(next) {
+  uploads = next;
+  for (const l of listeners) l();
+}
+
+/** [{ key, cardId, name, progress (0…1), error }] */
+export const uploadStore = {
+  subscribe(listener) {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  },
+  get: () => uploads,
+};
+
+const update = (key, patch) => setUploads(uploads.map((u) => (u.key === key ? { ...u, ...patch } : u)));
+
+/** Starts uploading the files to the card in the background. */
+export function attachFiles(cardId, files) {
+  for (const file of files) {
+    const key = `${cardId}:${file.name}:${file.size}:${Math.random()}`;
+    setUploads([...uploads, { key, cardId, name: file.name, progress: 0, error: null }]);
+    uploadFile(cardId, file, (progress) => update(key, { progress }))
+      .then(() => setUploads(uploads.filter((u) => u.key !== key)))
+      .catch((err) => update(key, { error: err.message }));
+  }
+}
+
+/** Removes a failed upload from the list. */
+export function dismissUpload(key) {
+  setUploads(uploads.filter((u) => u.key !== key));
+}
+
+// Closing the page would cut uploads off.
+window.addEventListener('beforeunload', (e) => {
+  if (uploads.some((u) => !u.error)) e.preventDefault();
+});
+
 const ERRORS = {
   403: 'Здесь можно только смотреть.',
   404: 'Карточка ещё не на сервере или удалена.',
@@ -32,7 +74,7 @@ const ERRORS = {
 };
 
 /** Uploads one file to the card; `onProgress` gets 0…1. */
-export function uploadFile(cardId, file, onProgress) {
+function uploadFile(cardId, file, onProgress) {
   return new Promise((resolve, reject) => {
     const params = new URLSearchParams({ name: file.name, type: file.type || 'application/octet-stream' });
     const xhr = new XMLHttpRequest();

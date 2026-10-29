@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from 'react';
+import { uploadStore } from '../files.js';
 import { splitTags, tagKey } from '../tags.js';
 
 function formatReminder(ts) {
@@ -29,6 +31,22 @@ function ClipIcon() {
       strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
     </svg>
+  );
+}
+
+/** Files still uploading to the card (they continue after the editor is closed). */
+function UploadBadge({ cardId }) {
+  const uploads = useSyncExternalStore(uploadStore.subscribe, uploadStore.get).filter((u) => u.cardId === cardId);
+  if (!uploads.length) return null;
+  if (uploads.some((u) => u.error)) {
+    return <span className="badge badge-conflict" title="Откройте карточку, чтобы посмотреть">Файл не загружен</span>;
+  }
+  const progress = uploads.reduce((sum, u) => sum + u.progress, 0) / uploads.length;
+  return (
+    <span className="card-uploading" title={uploads.map((u) => u.name).join(', ')}>
+      <ClipIcon />
+      Загрузка {uploads.length > 1 ? `${uploads.length} файлов ` : ''}{Math.round(progress * 100)}%
+    </span>
   );
 }
 
@@ -102,6 +120,7 @@ export default function Card({
               {formatReminder(card.remindAt)}
             </span>
           )}
+          <UploadBadge cardId={card.id} />
           {card.attachments?.length > 0 && (
             <span className="card-files" title="Прикреплённые файлы">
               <ClipIcon />
