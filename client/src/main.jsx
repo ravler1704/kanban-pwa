@@ -6,6 +6,7 @@ import { checkAuth, completeYandexAuth } from './auth.js';
 import { refreshPush } from './push.js';
 import AuthGate from './components/AuthGate.jsx';
 import { startSync } from './sync.js';
+import { startTheme } from './theme.js';
 import { startUpdateChecks } from './update.js';
 import './styles.css';
 
@@ -47,6 +48,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') checkAuth();
 });
 startUpdateChecks();
+startTheme();
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

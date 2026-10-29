@@ -2,6 +2,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { authState, linkAccount, signOut, unlinkAccount } from '../auth.js';
 import { disablePush, enablePush, PUSH_HINTS, pushState } from '../push.js';
 import { syncStatus } from '../sync.js';
+import { getTheme, setTheme } from '../theme.js';
 import Modal from './Modal.jsx';
 import { GoogleButton, YandexButton } from './ProviderButtons.jsx';
 import SharingSection from './SharingSection.jsx';
@@ -140,10 +141,42 @@ function NotificationsTab() {
   );
 }
 
+const THEME_OPTIONS = [
+  { id: 'auto', label: 'Как в системе' },
+  { id: 'light', label: 'Светлая' },
+  { id: 'dark', label: 'Тёмная' },
+];
+
+function AppearanceTab() {
+  const [theme, setChoice] = useState(getTheme);
+
+  return (
+    <div className="manage">
+      <h4 className="manage-heading">Оформление на этом устройстве</h4>
+      <div className="theme-options" role="radiogroup" aria-label="Тема">
+        {THEME_OPTIONS.map((o) => (
+          <button key={o.id} type="button" role="radio" aria-checked={theme === o.id}
+            className={`btn ${theme === o.id ? 'btn-primary' : ''}`}
+            onClick={() => {
+              setTheme(o.id);
+              setChoice(o.id);
+            }}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+      <p className="muted account-hint">
+        «Как в системе» — светлая или тёмная вслед за настройками телефона или компьютера.
+      </p>
+    </div>
+  );
+}
+
 const TABS = [
   { id: 'signin', label: 'Вход', Content: SignInTab },
   { id: 'sharing', label: 'Доступ', Content: () => <div className="manage"><SharingSection /></div> },
   { id: 'notifications', label: 'Уведомления', Content: NotificationsTab },
+  { id: 'appearance', label: 'Тема', Content: AppearanceTab },
 ];
 const TAB_KEY = 'accountDialogTab';
 
