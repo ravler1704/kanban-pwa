@@ -1,20 +1,32 @@
-// Server-Sent Events: tells the owner's other devices there is something new to pull.
+// Server-Sent Events: tells the devices showing a board there is something new to pull.
+// Each stream is kept with the board it shows and the user who opened it.
 const clients = new Map();
 
-export function broadcast(owner, payload) {
+export function broadcast(board, payload) {
   const message = `data: ${JSON.stringify(payload)}\n\n`;
-  for (const [client, clientOwner] of clients) {
-    if (clientOwner === owner) client.write(message);
+  for (const [client, { board: clientBoard }] of clients) {
+    if (clientBoard === board) client.write(message);
   }
 }
 
-/** Closes the owner's streams; browsers reconnect and pick up the session's new owner. */
-export function disconnect(owner) {
-  for (const [client, clientOwner] of clients) {
-    if (clientOwner === owner) client.end();
+/**
+ * Closes the board's streams (except the ones of user `except`); browsers reconnect and
+ * the server checks their access again.
+ */
+export function disconnect(board, { except } = {}) {
+  for (const [client, { board: clientBoard, user }] of clients) {
+    if (clientBoard === board && user !== except) client.end();
   }
 }
 
+/** Closes every stream of the user; browsers reconnect and pick up the session's new owner. */
+export function disconnectUser(userId) {
+  for (const [client, { user }] of clients) {
+    if (user === userId) client.end();
+  }
+}
+
+/** Routes expect `req.owner` and `req.user` (set by requireAuth). */
 export function registerEvents(app) {
   app.get('/api/events', (req, res) => {
     res.set({
@@ -25,7 +37,7 @@ export function registerEvents(app) {
     });
     res.flushHeaders();
     res.write('retry: 3000\n\n');
-    clients.set(res, req.owner);
+    clients.set(res, { board: req.owner, user: req.user });
     req.on('close', () => clients.delete(res));
   });
 

@@ -1,4 +1,5 @@
 import Dexie from 'dexie';
+import { dbName } from './board.js';
 
 /**
  * Every synced record (project, section, card) stores:
@@ -7,7 +8,7 @@ import Dexie from 'dexie';
  *   dirty       — 1 when local values differ from `server` (IndexedDB can't index booleans)
  *   conflict    — { fields: { [field]: { mine, theirs } }, local: {...} } or null
  */
-export const db = new Dexie('kanban');
+export const db = new Dexie(dbName);
 
 db.version(1).stores({
   cards: 'id, columnId, dirty',

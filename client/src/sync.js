@@ -1,4 +1,5 @@
 import { isSignedOut, markSignedOut } from './auth.js';
+import { boardHeaders, boardQuery, dropCurrentBoard } from './board.js';
 import { clearLocalData, db, getDeviceId, isDirty, pickFields, sameValue, tableOf, TYPES } from './db.js';
 
 const deviceId = getDeviceId();
@@ -35,7 +36,7 @@ async function api(url, options = {}) {
   try {
     const res = await fetch(url, {
       ...options,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...boardHeaders() },
       body: options.body ? JSON.stringify(options.body) : undefined,
       signal: controller.signal,
       cache: 'no-store',
@@ -194,6 +195,8 @@ export async function sync() {
       // Local changes stay in IndexedDB and are pushed after signing in again.
       markSignedOut();
       setStatus({ serverReachable: true, error: null });
+    } else if (err.status === 403) {
+      await dropCurrentBoard();
     } else {
       setStatus({ serverReachable: false, error: err.message || String(err) });
     }
@@ -218,7 +221,7 @@ let events = null;
 function connectEvents() {
   if (isSignedOut()) return;
   if (events && events.readyState !== EventSource.CLOSED) return;
-  events = new EventSource('/api/events');
+  events = new EventSource(`/api/events${boardQuery()}`);
   events.onmessage = (e) => {
     try {
       const { from } = JSON.parse(e.data);

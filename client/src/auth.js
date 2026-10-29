@@ -1,3 +1,5 @@
+import Dexie from 'dexie';
+import { currentBoard, deleteSharedBoards, dropCurrentBoard, switchBoard } from './board.js';
 import { clearLocalData, db } from './db.js';
 import { disablePush, refreshPush } from './push.js';
 import { resume, stopEvents } from './sync.js';
@@ -79,7 +81,14 @@ export async function checkAuth() {
     const me = await getJson('/api/auth/me');
     if (me.status === 200) {
       const wasSignedOut = state.status !== 'signedIn';
-      setState({ status: 'signedIn', user: me.body.user });
+      const { user } = me.body;
+      setState({ status: 'signedIn', user });
+      if (currentBoard && !(user.boards ?? []).some((b) => b.id === currentBoard)) {
+        // Signed in as the board's owner, or no longer invited to it.
+        if (currentBoard === user.id) switchBoard(null);
+        else await dropCurrentBoard();
+        return;
+      }
       if (wasSignedOut) resume();
     } else if (me.status === 401) {
       markSignedOut();
@@ -223,6 +232,49 @@ export async function signOut() {
   await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
   stopEvents();
   await clearLocalData();
+  await deleteSharedBoards();
   setState({ status: 'signedOut', user: null });
+  // The page holds the shared board's database open: reopen with the own one.
+  if (currentBoard) switchBoard(null);
   return true;
+}
+
+// ---- sharing the own board ----
+
+async function postJson(url, body) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return { status: res.status, body: await res.json().catch(() => ({})) };
+}
+
+/** People invited to the own board: [{ email, name, joined }]. */
+export async function getMembers() {
+  const res = await fetch('/api/members', { cache: 'no-store' });
+  if (!res.ok) throw new Error('Не удалось загрузить список участников.');
+  return (await res.json()).members;
+}
+
+export async function inviteMember(email) {
+  const res = await postJson('/api/members', { email });
+  if (res.status === 400 && res.body.error === 'own email') throw new Error('Это адрес вашего аккаунта.');
+  if (res.status === 400) throw new Error('Проверьте адрес почты.');
+  if (res.status !== 200) throw new Error('Не удалось пригласить. Попробуйте ещё раз.');
+  return res.body.members;
+}
+
+export async function removeMember(email) {
+  const res = await postJson('/api/members/remove', { email });
+  if (res.status !== 200) throw new Error('Не удалось убрать участника. Попробуйте ещё раз.');
+  return res.body.members;
+}
+
+/** Leaves the shared board that is open now; the own board opens. */
+export async function leaveCurrentBoard() {
+  const res = await postJson('/api/boards/leave', { board: currentBoard });
+  if (res.status !== 200 && res.status !== 404) throw new Error('Не удалось покинуть доску. Попробуйте ещё раз.');
+  await Dexie.delete(db.name).catch(() => {});
+  switchBoard(null);
 }

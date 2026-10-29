@@ -23,13 +23,15 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const url = new URL(event.notification.data?.url || '/', self.location.origin);
   const cardId = url.searchParams.get('card');
+  // The board the card is on (the owner's id); the app switches to it if needed.
+  const board = url.searchParams.get('board');
 
   event.waitUntil((async () => {
     const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     const open = windows.find((w) => new URL(w.url).origin === self.location.origin);
     if (open) {
       await open.focus();
-      if (cardId) open.postMessage({ type: 'open-card', id: cardId });
+      if (cardId) open.postMessage({ type: 'open-card', id: cardId, board });
       return;
     }
     await self.clients.openWindow(url.href);

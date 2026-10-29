@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { isCurrentBoard, switchBoard } from './board.js';
 import { db } from './db.js';
 import { columnModel } from './columnSets.js';
 import StatusBar from './components/StatusBar.jsx';
@@ -91,7 +92,12 @@ export default function App() {
       history.replaceState(history.state, '', `${location.pathname}${params.size ? `?${params}` : ''}`);
     }
     const onMessage = (e) => {
-      if (e.data?.type === 'open-card') openFromReminder(e.data.id);
+      if (e.data?.type !== 'open-card') return;
+      if (e.data.board && !isCurrentBoard(e.data.board)) {
+        switchBoard(e.data.board, `?${new URLSearchParams({ card: e.data.id })}`);
+      } else {
+        openFromReminder(e.data.id);
+      }
     };
     navigator.serviceWorker?.addEventListener('message', onMessage);
     return () => navigator.serviceWorker?.removeEventListener('message', onMessage);

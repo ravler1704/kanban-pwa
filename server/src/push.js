@@ -1,6 +1,6 @@
 import webpush from 'web-push';
 import {
-  deletePushSubscription, getDueReminders, getMeta, getPushSubscriptions, getRecord, markReminderSent,
+  boardUsers, deletePushSubscription, getDueReminders, getMeta, getPushSubscriptions, getRecord, markReminderSent,
   pruneRemindersSent, savePushSubscription, setMeta,
 } from './db.js';
 
@@ -30,7 +30,7 @@ function parseSubscription(body) {
   return { endpoint, p256dh: keys.p256dh, auth: keys.auth };
 }
 
-/** Routes expect `req.owner` (set by requireAuth). */
+/** Routes expect `req.user` (set by requireAuth): a device subscribes for its user, not a board. */
 export function registerPushRoutes(app) {
   app.get('/api/push/key', (_req, res) => {
     res.json({ publicKey });
@@ -39,20 +39,22 @@ export function registerPushRoutes(app) {
   app.post('/api/push/subscribe', (req, res) => {
     const subscription = parseSubscription(req.body);
     if (!subscription) return res.status(400).json({ error: 'invalid subscription' });
-    savePushSubscription(req.owner, subscription);
+    savePushSubscription(req.user, subscription);
     res.json({ ok: true });
   });
 
   app.post('/api/push/unsubscribe', (req, res) => {
     const endpoint = req.body?.endpoint;
     if (typeof endpoint !== 'string') return res.status(400).json({ error: 'invalid endpoint' });
-    deletePushSubscription(endpoint, req.owner);
+    deletePushSubscription(endpoint, req.user);
     res.json({ ok: true });
   });
 }
 
-async function send(owner, payload) {
-  await Promise.all(getPushSubscriptions(owner).map(async (s) => {
+/** Sends to every device of everyone who sees the board. */
+async function send(board, payload) {
+  const subscriptions = boardUsers(board).flatMap((user) => getPushSubscriptions(user));
+  await Promise.all(subscriptions.map(async (s) => {
     try {
       await webpush.sendNotification(
         { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
@@ -78,7 +80,7 @@ function reminderPayload(owner, { id, card }) {
     title: where || card.title,
     body: where ? card.title : '',
     tag: `card-${id}`,
-    url: `/?card=${encodeURIComponent(id)}`,
+    url: `/?${new URLSearchParams({ ...(owner && { board: owner }), card: id })}`,
   };
 }
 

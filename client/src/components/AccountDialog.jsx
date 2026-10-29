@@ -4,6 +4,7 @@ import { disablePush, enablePush, PUSH_HINTS, pushState } from '../push.js';
 import { syncStatus } from '../sync.js';
 import Modal from './Modal.jsx';
 import { GoogleButton, YandexButton } from './ProviderButtons.jsx';
+import SharingSection from './SharingSection.jsx';
 
 const PROVIDERS = { google: 'Google', yandex: 'Яндекс', dev: 'Тестовый' };
 
@@ -58,7 +59,7 @@ export default function AccountDialog({ onClose }) {
     <Modal title="Аккаунт" onClose={onClose}>
       <div className="manage">
         <h4 className="manage-heading">Привязанные аккаунты</h4>
-        <p className="muted account-hint">Вход через любой из них открывает эту доску.</p>
+        <p className="muted account-hint">Вход через любой из них открывает вашу доску.</p>
         {identities.map((i) => (
           <div key={`${i.provider}:${i.subject}`} className="manage-row account-row">
             <span className="account-provider">{PROVIDERS[i.provider] ?? i.provider}</span>
@@ -87,6 +88,7 @@ export default function AccountDialog({ onClose }) {
         ) : (
           <p className="muted">Для привязки нужен интернет.</p>
         )}
+        <SharingSection />
         <h4 className="manage-heading">Напоминания на этом устройстве</h4>
         {push === 'enabled' && (
           <div className="manage-row account-row">

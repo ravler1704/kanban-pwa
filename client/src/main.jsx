@@ -42,6 +42,10 @@ completeYandexAuth().finally(() => {
   checkAuth().then(refreshPush);
   startSync();
 });
+// Boards shared with the user (or closed to them) since the app was opened.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') checkAuth();
+});
 startUpdateChecks();
 
 createRoot(document.getElementById('root')).render(

@@ -1,5 +1,6 @@
 import { useState, useSyncExternalStore } from 'react';
 import { authState } from '../auth.js';
+import { boardName, currentBoard, switchBoard } from '../board.js';
 import { sync, syncStatus } from '../sync.js';
 import AccountDialog from './AccountDialog.jsx';
 
@@ -47,9 +48,20 @@ export default function StatusBar({ pending, conflicts }) {
     label = 'Сервер недоступен';
   }
 
+  const boards = user?.boards ?? [];
+
   return (
     <header className="statusbar">
-      <h1 className="statusbar-title" title={user?.email || undefined}>{user?.name || user?.email || 'Канбан'}</h1>
+      {boards.length > 0 || currentBoard ? (
+        <select className="select board-select" aria-label="Доска" value={currentBoard ?? ''}
+          onChange={(e) => switchBoard(e.target.value || null)}>
+          <option value="">Моя доска</option>
+          {boards.map((b) => <option key={b.id} value={b.id}>{boardName(b)}</option>)}
+          {currentBoard && !boards.some((b) => b.id === currentBoard) && <option value={currentBoard}>Общая доска</option>}
+        </select>
+      ) : (
+        <h1 className="statusbar-title" title={user?.email || undefined}>{user?.name || user?.email || 'Канбан'}</h1>
+      )}
       <div className="status">
         <span className={`dot dot-${state}`} />
         <span>{label}</span>

@@ -115,6 +115,19 @@ db.exec(`
   );
 `);
 
+// People invited to a board. Membership follows the e-mail: whoever signs in with an account
+// that has this address (or links one) gets the board.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS board_members (
+    board       TEXT    NOT NULL,
+    email       TEXT    NOT NULL,
+    added_at    INTEGER NOT NULL,
+    PRIMARY KEY (board, email)
+  );
+  CREATE INDEX IF NOT EXISTS idx_board_members_email ON board_members(email);
+  CREATE INDEX IF NOT EXISTS idx_identities_email ON identities(email);
+`);
+
 // Identifies this database instance. Clients holding data from another epoch
 // (e.g. after the database was wiped or restored) discard it and resync.
 db.prepare('INSERT OR IGNORE INTO meta (key, value) VALUES (?, ?)').run('epoch', crypto.randomUUID());
@@ -276,8 +289,76 @@ export function mergeUsers(from, to) {
     db.prepare('UPDATE sessions SET user_id = ? WHERE user_id = ?').run(to, from);
     db.prepare('UPDATE push_subscriptions SET owner = ? WHERE owner = ?').run(to, from);
     db.prepare('UPDATE OR IGNORE reminders_sent SET owner = ? WHERE owner = ?').run(to, from);
+    db.prepare('UPDATE OR IGNORE board_members SET board = ? WHERE board = ?').run(to, from);
+    db.prepare('DELETE FROM board_members WHERE board = ?').run(from);
     return seq;
   });
+}
+
+const selectMembers = db.prepare(`
+  SELECT m.email, m.added_at,
+    (SELECT i.name FROM identities i WHERE i.email = m.email ORDER BY i.linked_at LIMIT 1) AS name,
+    EXISTS (SELECT 1 FROM identities i WHERE i.email = m.email) AS joined
+  FROM board_members m WHERE m.board = ? ORDER BY m.added_at
+`);
+const insertMember = db.prepare('INSERT OR IGNORE INTO board_members (board, email, added_at) VALUES (?, ?, ?)');
+const removeMember = db.prepare('DELETE FROM board_members WHERE board = ? AND email = ?');
+const selectUserBoards = db.prepare(`
+  SELECT DISTINCT m.board FROM board_members m
+  JOIN identities i ON i.email = m.email
+  WHERE i.user_id = ? AND m.board != ?
+`);
+const selectMembership = db.prepare(`
+  SELECT 1 FROM board_members m JOIN identities i ON i.email = m.email
+  WHERE m.board = ? AND i.user_id = ? LIMIT 1
+`);
+const selectMemberUsers = db.prepare(`
+  SELECT DISTINCT i.user_id FROM board_members m JOIN identities i ON i.email = m.email WHERE m.board = ?
+`);
+const selectInvited = db.prepare('SELECT 1 FROM board_members WHERE email = ? LIMIT 1');
+const selectOwnerProfile = db.prepare(
+  'SELECT email, name FROM identities WHERE user_id = ? ORDER BY linked_at LIMIT 1',
+);
+const removeUserMemberships = db.prepare(`
+  DELETE FROM board_members WHERE board = ? AND email IN (SELECT email FROM identities WHERE user_id = ?)
+`);
+
+/** Invited e-mails of the board, with the name of the account that has it once someone signed in. */
+export function listMembers(board) {
+  return selectMembers.all(board).map((m) => ({ email: m.email, name: m.name ?? null, joined: Boolean(m.joined) }));
+}
+
+export function addMember(board, email) {
+  insertMember.run(board, email, Date.now());
+}
+
+export function deleteMember(board, email) {
+  return removeMember.run(board, email).changes > 0;
+}
+
+/** Other people's boards the user was invited to, with the owner's name and e-mail. */
+export function sharedBoards(userId) {
+  return selectUserBoards.all(userId, userId).map(({ board }) => {
+    const owner = selectOwnerProfile.get(board);
+    return { id: board, name: owner?.name ?? null, email: owner?.email ?? null };
+  });
+}
+
+export function isMember(board, userId) {
+  return Boolean(selectMembership.get(board, userId));
+}
+
+/** Users who see the board: its owner and everyone who signed in with an invited e-mail. */
+export function boardUsers(board) {
+  return [...new Set([board, ...selectMemberUsers.all(board).map((r) => r.user_id)])];
+}
+
+export function isInvited(email) {
+  return Boolean(email) && Boolean(selectInvited.get(email.toLowerCase()));
+}
+
+export function leaveBoard(board, userId) {
+  return removeUserMemberships.run(board, userId).changes > 0;
 }
 
 const upsertSubscription = db.prepare(`

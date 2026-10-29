@@ -1,13 +1,14 @@
 import crypto from 'node:crypto';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import {
-  boardSummary, createSession, deleteIdentity, deleteSession, getIdentityUser, getSession,
-  listIdentities, mergeUsers, saveIdentity,
+  addMember, boardSummary, createSession, deleteIdentity, deleteMember, deleteSession, getIdentityUser, getSession,
+  isInvited, isMember, leaveBoard, listIdentities, listMembers, mergeUsers, saveIdentity, sharedBoards,
 } from './db.js';
-import { broadcast, disconnect } from './events.js';
+import { broadcast, disconnect, disconnectUser } from './events.js';
 
-// Sign-in with Google and/or Yandex. A user may link several accounts and gets one board.
-// ALLOWED_EMAILS optionally limits who may sign in (empty: anyone). Auth is off when no
+// Sign-in with Google and/or Yandex. A user may link several accounts and gets one board;
+// the owner may invite others to it by e-mail.
+// ALLOWED_EMAILS optionally limits who may sign in (empty: anyone; invited e-mails may always). Auth is off when no
 // provider is configured (local development), and everyone shares the board of owner ''.
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const YANDEX_CLIENT_ID = process.env.YANDEX_CLIENT_ID || '';
@@ -28,7 +29,10 @@ const SESSION_TTL_MS = 400 * 24 * 60 * 60 * 1000;
 const googleKeys = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'));
 
 const hash = (token) => crypto.createHash('sha256').update(token).digest('hex');
-const isAllowed = (email) => ALLOWED_EMAILS.size === 0 || (Boolean(email) && ALLOWED_EMAILS.has(email.toLowerCase()));
+const isAllowed = (email) => ALLOWED_EMAILS.size === 0
+  || (Boolean(email) && ALLOWED_EMAILS.has(email.toLowerCase()))
+  || isInvited(email);
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 class AuthError extends Error {
   constructor(status, error, extra = {}) {
@@ -66,22 +70,32 @@ const publicIdentity = (i) => ({
 
 function publicUser(session) {
   return {
+    id: session.user_id,
     email: session.email,
     name: session.name,
     picture: session.picture,
     identities: listIdentities(session.user_id).map(publicIdentity),
+    boards: sharedBoards(session.user_id),
   };
 }
 
-/** Sets `req.owner`: the board the request works with. */
+/**
+ * Sets `req.user` (the signed-in user) and `req.owner`: the board the request works with,
+ * the user's own unless another board the user is a member of is asked for
+ * (`X-Board` header, or `?board=` where headers can't be set, e.g. EventSource).
+ */
 export function requireAuth(req, res, next) {
   if (!authEnabled) {
+    req.user = '';
     req.owner = '';
     return next();
   }
   const session = currentSession(req);
   if (!session) return res.status(401).json({ error: 'unauthorized' });
-  req.owner = session.user_id;
+  req.user = session.user_id;
+  const board = req.get('x-board') || req.query.board;
+  if (board && board !== req.user && !isMember(board, req.user)) return res.status(403).json({ error: 'no access' });
+  req.owner = board || req.user;
   next();
 }
 
@@ -193,6 +207,7 @@ function link(req, res, identity, session) {
     const seq = mergeUsers(other, me);
     broadcast(me, { seq, from: null });
     disconnect(other);
+    disconnectUser(other);
   }
   saveIdentity({ ...identity, userId: me });
   res.json({ user: publicUser(session) });
@@ -249,6 +264,37 @@ export function registerAuthRoutes(app) {
       return res.status(404).json({ error: 'not found' });
     }
     res.json({ user: publicUser(session) });
+  });
+
+  // Members of the signed-in user's own board.
+  app.get('/api/members', requireAuth, (req, res) => {
+    if (!authEnabled) return res.status(404).json({ error: 'auth disabled' });
+    res.json({ members: listMembers(req.user) });
+  });
+
+  app.post('/api/members', requireAuth, (req, res) => {
+    if (!authEnabled) return res.status(404).json({ error: 'auth disabled' });
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    if (email.length > 254 || !EMAIL.test(email)) return res.status(400).json({ error: 'invalid email' });
+    if (listIdentities(req.user).some((i) => i.email === email)) return res.status(400).json({ error: 'own email' });
+    addMember(req.user, email);
+    res.json({ members: listMembers(req.user) });
+  });
+
+  app.post('/api/members/remove', requireAuth, (req, res) => {
+    if (!authEnabled) return res.status(404).json({ error: 'auth disabled' });
+    if (typeof req.body?.email !== 'string' || !deleteMember(req.user, req.body.email)) {
+      return res.status(404).json({ error: 'not found' });
+    }
+    disconnect(req.user, { except: req.user });
+    res.json({ members: listMembers(req.user) });
+  });
+
+  app.post('/api/boards/leave', requireAuth, (req, res) => {
+    if (!authEnabled) return res.status(404).json({ error: 'auth disabled' });
+    const board = req.body?.board;
+    if (typeof board !== 'string' || !leaveBoard(board, req.user)) return res.status(404).json({ error: 'not found' });
+    res.json({ boards: sharedBoards(req.user) });
   });
 
   app.post('/api/auth/logout', (req, res) => {
