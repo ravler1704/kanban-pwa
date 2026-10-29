@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import {
   changeProjectColumnSet, countCards, countColumnCards, createColumn, createColumnSet, createProject, createSection,
   deleteColumn, deleteColumnSet, deleteProject, deleteSection, moveColumn, moveProject, renameColumn, renameColumnSet,
-  renameProject, renameSection, setCheckedByDefault,
+  renameProject, renameSection, setCheckedByDefault, setColumnAddToTop,
 } from '../actions.js';
 import { isOwnBoard } from '../board.js';
 import { matchColumn } from '../columnSets.js';
@@ -180,10 +180,20 @@ function ColumnsEditor({ setId, columns }) {
 
   return (
     <div className="manage-columns">
+      <p className="manage-hint muted">
+        Новые и перенесённые в колонку карточки ставятся в её начало или в конец.
+        Перетаскиванием карточку можно поставить в любое место.
+      </p>
       {columns.map((c, i) => (
         <div key={c.id} className="manage-row">
           <NameInput value={c.name} label="Название колонки" maxLength={100}
             onSave={(name) => renameColumn(c.id, name)} />
+          <select className="select manage-place" value={c.addToTop ? 'top' : 'bottom'}
+            title="Куда ставить новые и перенесённые карточки" aria-label="Куда ставить карточки"
+            onChange={(e) => setColumnAddToTop(c.id, e.target.value === 'top')}>
+            <option value="bottom">В конец</option>
+            <option value="top">В начало</option>
+          </select>
           <button className="btn btn-small" title="Выше" aria-label="Выше" disabled={i === 0}
             onClick={() => moveColumn(c.id, -1)}>↑</button>
           <button className="btn btn-small" title="Ниже" aria-label="Ниже" disabled={i === columns.length - 1}

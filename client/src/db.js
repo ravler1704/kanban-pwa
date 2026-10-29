@@ -94,10 +94,25 @@ db.version(7)
     if (s.server) s.server.hidden ??= false;
   }));
 
+// v8: where cards added to a column go.
+db.version(8)
+  .stores({
+    columnSets: 'id, dirty',
+    columns: 'id, dirty',
+    projects: 'id, dirty',
+    sections: 'id, projectId, dirty',
+    cards: 'id, projectId, sectionId, dirty',
+    meta: 'key',
+  })
+  .upgrade((tx) => tx.table('columns').toCollection().modify((c) => {
+    c.addToTop ??= false;
+    if (c.server) c.server.addToTop ??= false;
+  }));
+
 // Push order matters: parents are created on the server before their children.
 export const TYPES = {
   columnSet: { table: 'columnSets', fields: ['name', 'position', 'deleted'] },
-  column: { table: 'columns', fields: ['setId', 'name', 'position', 'deleted'] },
+  column: { table: 'columns', fields: ['setId', 'name', 'position', 'deleted', 'addToTop'] },
   // hidden (projects, sections): unchecked by default in the board's project / section filter.
   project: { table: 'projects', fields: ['columnSetId', 'name', 'position', 'deleted', 'hidden'] },
   section: { table: 'sections', fields: ['projectId', 'name', 'position', 'deleted', 'hidden'] },

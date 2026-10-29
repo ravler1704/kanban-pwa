@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { createCard, moveCard, moveCardToEnd } from '../actions.js';
+import { createCard, moveCard, moveCardToColumn } from '../actions.js';
 import Card, { draggedCardId } from './Card.jsx';
 
 function positionBefore(cards, targetId) {
@@ -95,8 +95,8 @@ export default function Column({
             readOnly={readOnly}
             onOpen={() => onOpen(card.id)}
             onOpenLabel={() => onOpenGroup(card)}
-            onMoveLeft={!readOnly && prevColumn && (() => moveCardToEnd(card.id, prevColumn.id))}
-            onMoveRight={!readOnly && nextColumn && (() => moveCardToEnd(card.id, nextColumn.id))}
+            onMoveLeft={!readOnly && prevColumn && (() => moveCardToColumn(card.id, prevColumn.id))}
+            onMoveRight={!readOnly && nextColumn && (() => moveCardToColumn(card.id, nextColumn.id))}
           />
         ))}
         {showIndicator && cards.length === 0 && <div className="drop-indicator" />}

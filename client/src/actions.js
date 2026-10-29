@@ -65,7 +65,7 @@ export async function createColumnSet(name, copyFromSetId) {
     const set = await insert('columnSet', { name, position: maxPosition(await db.columnSets.toArray()) + 1 });
     id = set.id;
     for (const c of await liveColumns(copyFromSetId)) {
-      await insert('column', { setId: id, name: c.name, position: c.position });
+      await insert('column', { setId: id, name: c.name, position: c.position, addToTop: !!c.addToTop });
     }
   });
   requestSync();
@@ -109,12 +109,17 @@ export async function changeProjectColumnSet(projectId, setId, mapping) {
 // ---- columns ----
 
 export async function createColumn(setId, name) {
-  await insert('column', { setId, name, position: maxPosition(await liveColumns(setId)) + 1 });
+  await insert('column', { setId, name, position: maxPosition(await liveColumns(setId)) + 1, addToTop: false });
   requestSync();
 }
 
 export async function renameColumn(id, name) {
   await update('column', id, { name });
+  requestSync();
+}
+
+export async function setColumnAddToTop(id, addToTop) {
+  await update('column', id, { addToTop });
   requestSync();
 }
 
@@ -232,8 +237,12 @@ export async function deleteSection(id, { keepCards }) {
 
 // Card order is one per column across all projects and sections, so filtered views
 // (a project, a section) show the same relative order as the combined one.
-async function lastCardPosition(columnId) {
-  return maxPosition(await db.cards.filter((c) => c.columnId === columnId).toArray());
+/** Where a card added to the column goes: first or last, as the column is set up. */
+async function arrivalPosition(columnId, cardId = null) {
+  const cards = (await db.cards.filter((c) => c.columnId === columnId && c.id !== cardId).toArray()).filter(alive);
+  const column = await db.columns.get(columnId);
+  if (!column?.addToTop) return cards.reduce((max, c) => Math.max(max, c.position), 0) + 1;
+  return cards.reduce((min, c) => Math.min(min, c.position), 1) - 1;
 }
 
 export async function createCard({ projectId, sectionId }, columnId, title, description = '', remindAt = null) {
@@ -244,7 +253,7 @@ export async function createCard({ projectId, sectionId }, columnId, title, desc
     title,
     description,
     remindAt,
-    position: (await lastCardPosition(columnId)) + 1,
+    position: await arrivalPosition(columnId),
   });
   requestSync();
 }
@@ -262,8 +271,9 @@ export function moveCard(id, columnId, position) {
   return updateCard(id, { columnId, position });
 }
 
-export async function moveCardToEnd(id, columnId) {
-  return moveCard(id, columnId, (await lastCardPosition(columnId)) + 1);
+/** Moves the card to another column, first or last as that column is set up. */
+export async function moveCardToColumn(id, columnId) {
+  return moveCard(id, columnId, await arrivalPosition(columnId, id));
 }
 
 /** Moves the card to another project and/or section (`sectionId` null for the project itself). */

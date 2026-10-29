@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { deleteCard, moveCardToEnd, moveCardToGroup, updateCard } from '../actions.js';
+import { deleteCard, moveCardToColumn, moveCardToGroup, updateCard } from '../actions.js';
 import CardExtraFields from './CardExtraFields.jsx';
 import Modal from './Modal.jsx';
 import { GroupSelect } from './NewCardDialog.jsx';
@@ -70,7 +70,7 @@ function CardForm({ card, columnsOfProject, groups, onClose }) {
     if (remindAt !== toInputValue(card.remindAt)) patch.remindAt = fromInputValue(remindAt);
     if (Object.keys(patch).length) await updateCard(card.id, patch, base);
     await moveCardToGroup(card.id, group);
-    if (columnId !== card.columnId) await moveCardToEnd(card.id, columnId);
+    if (columnId !== card.columnId) await moveCardToColumn(card.id, columnId);
     onClose();
   }
 

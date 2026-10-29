@@ -398,6 +398,12 @@ body {
 .manage-field .manage-input { width: 100%; padding-left: 0.7rem; padding-right: 0.7rem; border-color: var(--border); }
 .manage-field .manage-input:focus { border-color: var(--accent); }
 .manage-row > .btn, .manage-add > .btn { align-self: stretch; }
+.manage-row > .manage-place { flex: none; width: auto; }
+@media (max-width: 520px) {
+  .manage-columns .manage-row { flex-wrap: wrap; }
+  .manage-columns .manage-row > .manage-field { flex-basis: 100%; }
+  .manage-columns .manage-row > .manage-place { flex: 1; }
+}
 .manage-check { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.9rem; cursor: pointer; }
 .manage-check input { accent-color: var(--accent); margin: 0; width: 1.05rem; height: 1.05rem; }
 .manage-row > .manage-check { padding: 0 0.2rem; }

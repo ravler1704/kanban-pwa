@@ -25,8 +25,9 @@ export const SCHEMAS = {
     deleteConflicts: false,
   },
   column: {
-    fields: { setId: ref, name: string(100), position: number, deleted: boolean },
-    defaults: { setId: DEFAULT_SET_ID, name: '', position: 0, deleted: false },
+    // addToTop: cards added or moved here (other than by dragging) go first instead of last.
+    fields: { setId: ref, name: string(100), position: number, deleted: boolean, addToTop: boolean },
+    defaults: { setId: DEFAULT_SET_ID, name: '', position: 0, deleted: false, addToTop: false },
     textFields: [],
     deleteConflicts: false,
   },
