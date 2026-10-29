@@ -195,6 +195,7 @@ body {
   cursor: pointer;
 }
 .check-menu-item:hover { background: var(--card); }
+.check-menu-all { border-bottom: 1px solid var(--border); border-radius: 6px 6px 0 0; margin-bottom: 0.2rem; }
 .check-menu-group {
   padding: 0.5rem 0.5rem 0.2rem;
   color: var(--muted);

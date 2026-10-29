@@ -9,6 +9,6 @@ export default function TagFilter({ tags, selected, onToggle, onClear }) {
     <CheckPicker label="Теги" className="tag-filter" searchFrom={0} searchPlaceholder="Поиск тега"
       notFound="Тегов не найдено" clearLabel="Сбросить теги"
       items={tags.map((t) => ({ key: t.key, name: `#${t.name}`, count: t.count }))}
-      selected={selected} onToggle={onToggle} onClear={onClear} />
+      selected={selected} onToggle={onToggle} onClear={selected.length ? onClear : null} />
   );
 }

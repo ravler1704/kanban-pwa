@@ -11,11 +11,13 @@ function ClearIcon() {
 
 /**
  * A picker button with a popover of checkboxes. `items` are { key, name, count?, group? }; items
- * sharing a `group` follow its heading (keep them together). Nothing selected shows `emptyLabel`.
+ * sharing a `group` follow its heading (keep them together). The button shows `summary`, or the
+ * selected names, or `emptyLabel` when nothing is selected; the clear button shows with `onClear`.
+ * With `onSetAll(checked)` the list starts with an «all» checkbox.
  * The search field appears with `searchFrom` or more items (0: always).
  */
 export default function CheckPicker({
-  label, items, selected, onToggle, onClear, emptyLabel = 'Все', clearLabel,
+  label, items, selected, onToggle, onClear, onSetAll, summary, emptyLabel = 'Все', clearLabel,
   searchPlaceholder = 'Поиск', notFound = 'Ничего не найдено', searchFrom = 8, className = '',
 }) {
   const [open, setOpen] = useState(false);
@@ -39,6 +41,7 @@ export default function CheckPicker({
   }, [open]);
 
   const active = selected.length > 0;
+  const allChecked = items.every((i) => selected.includes(i.key));
   const nameOf = (key) => items.find((i) => i.key === key)?.name ?? key;
   const searchable = items.length >= searchFrom;
   const query = search.trim().replace(/^#+/, '').toLowerCase();
@@ -52,11 +55,11 @@ export default function CheckPicker({
   return (
     <div className={`picker check-picker ${className}`} ref={root}>
       <span className="picker-label">{label}</span>
-      <button type="button" className={`select ${active ? '' : 'select-empty'}`} aria-expanded={open}
+      <button type="button" className={`select ${onClear ? '' : 'select-empty'}`} aria-expanded={open}
         onClick={toggleOpen}>
-        {active ? selected.map(nameOf).join(', ') : emptyLabel}
+        {summary ?? (active ? selected.map(nameOf).join(', ') : emptyLabel)}
       </button>
-      {active && (
+      {onClear && (
         <button className="btn-clear" title={clearLabel} aria-label={clearLabel} onClick={onClear}>
           <ClearIcon />
         </button>
@@ -72,6 +75,14 @@ export default function CheckPicker({
                 onToggle(found[0].key);
                 setSearch('');
               }} />
+          )}
+          {onSetAll && !query && items.length > 1 && (
+            <label className="check-menu-item check-menu-all">
+              <input type="checkbox" checked={allChecked}
+                ref={(el) => { if (el) el.indeterminate = active && !allChecked; }}
+                onChange={() => onSetAll(!allChecked)} />
+              <span className="check-menu-name">Все</span>
+            </label>
           )}
           {found.length === 0 && <p className="check-menu-empty">{notFound}</p>}
           {found.map((item, i) => (

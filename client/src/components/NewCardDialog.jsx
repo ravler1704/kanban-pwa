@@ -29,15 +29,10 @@ export function GroupSelect({ groups, value, onChange }) {
   );
 }
 
-const encodeAll = (groups) => groups.flatMap((g) => [
-  ...(g.whole === false ? [] : [encode(g.project.id, null)]),
-  ...g.sections.map((s) => encode(g.project.id, s.id)),
-]);
+const encodeAll = (groups) =>
+  groups.flatMap((g) => [encode(g.project.id, null), ...g.sections.map((s) => encode(g.project.id, s.id))]);
 
-/**
- * Where a new card goes when several projects are shown: the last used destination, or the first
- * one. A group with `whole: false` is filtered to its sections, so the project itself is no destination.
- */
+/** Where a new card goes when several projects are shown: the last used destination, or the first one. */
 export function defaultTarget(groups) {
   const values = encodeAll(groups);
   const last = localStorage.getItem(LAST_KEY);

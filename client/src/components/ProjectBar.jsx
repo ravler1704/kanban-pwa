@@ -49,9 +49,9 @@ const VIEWS = [
 ];
 
 /**
- * `projectFilter` / `sectionFilter` are { selected, onToggle, onClear } of ids; nothing selected
- * means all projects (except hidden ones) / the whole projects. `sectionGroups` ({ project, sections })
- * are the projects whose sections can be picked. `conflictsBySection` is keyed by
+ * `projectFilter` / `sectionFilter` are CheckPicker props ({ selected, onToggle, onSetAll, onClear,
+ * summary }) over project / section ids. `sectionGroups` ({ project, sections }) are the projects
+ * whose sections can be picked. `conflictsBySection` is keyed by
  * `${projectId}|${sectionId ?? ''}`. Without `onManage` / `onAddCard` (read only) their buttons are not shown.
  */
 export default function ProjectBar({
@@ -77,12 +77,12 @@ export default function ProjectBar({
   return (
     <nav className="projectbar">
       {!publicToken && (
-        <CheckPicker label="Проекты" emptyLabel="Все проекты" clearLabel="Показать все проекты"
+        <CheckPicker label="Проекты" emptyLabel="Не выбраны" clearLabel="Показать все проекты"
           searchPlaceholder="Поиск проекта" items={projectItems} {...projectFilter} />
       )}
 
       {sectionItems.length > 0 && (
-        <CheckPicker label="Разделы" emptyLabel="Все разделы" clearLabel="Показать все разделы"
+        <CheckPicker label="Разделы" emptyLabel="Не выбраны" clearLabel="Показать все разделы"
           searchPlaceholder="Поиск раздела" items={sectionItems} {...sectionFilter} />
       )}
 
