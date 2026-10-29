@@ -73,12 +73,12 @@ export default function ProjectBar({
     <nav className="projectbar">
       {!publicToken && (
         <CheckPicker label="Проекты" emptyLabel="Не выбраны" clearLabel="Показать все проекты"
-          searchPlaceholder="Поиск проекта" items={projectItems} {...projectFilter} />
+          searchPlaceholder="Поиск проекта" notFound="Проектов не найдено" items={projectItems} {...projectFilter} />
       )}
 
       {sectionItems.length > 0 && (
         <CheckPicker label="Разделы" emptyLabel="Не выбраны" clearLabel="Показать все разделы"
-          searchPlaceholder="Поиск раздела" items={sectionItems} {...sectionFilter} />
+          searchPlaceholder="Поиск раздела" notFound="Разделов не найдено" items={sectionItems} {...sectionFilter} />
       )}
 
       {columnSets && (

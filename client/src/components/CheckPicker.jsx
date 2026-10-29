@@ -13,12 +13,11 @@ function ClearIcon() {
  * A picker button with a popover of checkboxes. `items` are { key, name, count?, group? }; items
  * sharing a `group` follow its heading (keep them together). The button shows `summary`, or the
  * selected names, or `emptyLabel` when nothing is selected; the clear button shows with `onClear`.
- * With `onSetAll(checked)` the list starts with an «all» checkbox.
- * The search field appears with `searchFrom` or more items (0: always).
+ * With `onSetAll(checked)` the list starts with an «all» checkbox. The search matches names and groups.
  */
 export default function CheckPicker({
   label, items, selected, onToggle, onClear, onSetAll, summary, emptyLabel = 'Все', clearLabel,
-  searchPlaceholder = 'Поиск', notFound = 'Ничего не найдено', searchFrom = 8, className = '',
+  searchPlaceholder = 'Поиск', notFound = 'Ничего не найдено', className = '',
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -43,9 +42,10 @@ export default function CheckPicker({
   const active = selected.length > 0;
   const allChecked = items.every((i) => selected.includes(i.key));
   const nameOf = (key) => items.find((i) => i.key === key)?.name ?? key;
-  const searchable = items.length >= searchFrom;
   const query = search.trim().replace(/^#+/, '').toLowerCase();
-  const found = query ? items.filter((i) => i.name.toLowerCase().includes(query)) : items;
+  const found = query
+    ? items.filter((i) => [i.name, i.group ?? ''].some((text) => text.toLowerCase().includes(query)))
+    : items;
 
   function toggleOpen() {
     setSearch('');
@@ -66,16 +66,14 @@ export default function CheckPicker({
       )}
       {open && (
         <div className="check-menu">
-          {searchable && (
-            <input className="check-search" type="search" placeholder={searchPlaceholder} autoFocus
-              value={search} onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key !== 'Enter' || !found.length) return;
-                e.preventDefault();
-                onToggle(found[0].key);
-                setSearch('');
-              }} />
-          )}
+          <input className="check-search" type="search" placeholder={searchPlaceholder} autoFocus
+            value={search} onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter' || !found.length) return;
+              e.preventDefault();
+              onToggle(found[0].key);
+              setSearch('');
+            }} />
           {onSetAll && !query && items.length > 1 && (
             <label className="check-menu-item check-menu-all">
               <input type="checkbox" checked={allChecked}
