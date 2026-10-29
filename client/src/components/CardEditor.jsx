@@ -1,16 +1,17 @@
 import { useState } from 'react';
-import { deleteCard, moveCardToEnd, moveCardToSection, updateCard } from '../actions.js';
+import { deleteCard, moveCardToEnd, moveCardToGroup, updateCard } from '../actions.js';
 import CardExtraFields from './CardExtraFields.jsx';
 import Modal from './Modal.jsx';
+import { GroupSelect } from './NewCardDialog.jsx';
 import { fromInputValue, toInputValue } from './ReminderField.jsx';
 
-/** `sections` are the live sections of the card's project. */
-export default function CardEditor({ card, columns, sections, onClose }) {
+/** `groups` are the projects with their sections ({ project, sections }) the card can be moved to. */
+export default function CardEditor({ card, columns, groups, onClose }) {
   // Snapshot of the card when the editor opened, used to detect concurrent remote edits.
   const [base] = useState(() => ({ title: card.title, description: card.description }));
   const [title, setTitle] = useState(card.title);
   const [description, setDescription] = useState(card.description);
-  const [sectionId, setSectionId] = useState(card.sectionId ?? '');
+  const [group, setGroup] = useState({ projectId: card.projectId, sectionId: card.sectionId ?? null });
   const [columnId, setColumnId] = useState(card.columnId);
   const [remindAt, setRemindAt] = useState(() => toInputValue(card.remindAt));
 
@@ -23,7 +24,7 @@ export default function CardEditor({ card, columns, sections, onClose }) {
     if (description !== base.description) patch.description = description;
     if (remindAt !== toInputValue(card.remindAt)) patch.remindAt = fromInputValue(remindAt);
     if (Object.keys(patch).length) await updateCard(card.id, patch, base);
-    if ((sectionId || null) !== card.sectionId) await moveCardToSection(card.id, sectionId || null);
+    await moveCardToGroup(card.id, group);
     if (columnId !== card.columnId) await moveCardToEnd(card.id, columnId);
     onClose();
   }
@@ -53,21 +54,13 @@ export default function CardEditor({ card, columns, sections, onClose }) {
           remindAt={remindAt}
           onRemindAt={setRemindAt}
         />
+        <GroupSelect groups={groups} value={group} onChange={setGroup} />
         <label>
           Статус
           <select className="select" value={columnId} onChange={(e) => setColumnId(e.target.value)}>
             {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </label>
-        {sections.length > 0 && (
-          <label>
-            Раздел
-            <select className="select" value={sectionId} onChange={(e) => setSectionId(e.target.value)}>
-              <option value="">Не выбран</option>
-              {sections.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </label>
-        )}
         <div className="actions">
           <button type="button" className="btn btn-danger" onClick={remove}>Удалить</button>
           <span className="spacer" />

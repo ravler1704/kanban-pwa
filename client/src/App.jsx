@@ -198,7 +198,7 @@ export default function App() {
 
       {openCard && (openCard.conflict
         ? <ConflictDialog card={openCard} onClose={() => setOpenCardId(null)} />
-        : <CardEditor card={openCard} columns={columns} sections={sectionsOf(openCard.projectId)}
+        : <CardEditor card={openCard} columns={columns} groups={pickerGroups}
           onClose={() => setOpenCardId(null)} />)}
 
       {addingCard && (

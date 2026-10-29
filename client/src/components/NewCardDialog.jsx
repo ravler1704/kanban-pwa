@@ -12,6 +12,23 @@ const decode = (value) => {
   return { projectId, sectionId: sectionId || null };
 };
 
+/** "Project / section" select; `value` and `onChange` use { projectId, sectionId }. */
+export function GroupSelect({ groups, value, onChange }) {
+  return (
+    <label>
+      Проект / раздел
+      <select className="select" value={encode(value.projectId, value.sectionId)} onChange={(e) => onChange(decode(e.target.value))}>
+        {groups.flatMap((g) => [
+          <option key={g.project.id} value={encode(g.project.id, null)}>{g.project.name}</option>,
+          ...g.sections.map((s) => (
+            <option key={s.id} value={encode(g.project.id, s.id)}>{g.project.name} / {s.name}</option>
+          )),
+        ])}
+      </select>
+    </label>
+  );
+}
+
 const encodeAll = (groups) =>
   groups.flatMap((g) => [encode(g.project.id, null), ...g.sections.map((s) => encode(g.project.id, s.id))]);
 
@@ -60,17 +77,7 @@ export default function NewCardDialog({ groups, columns, target, onClose }) {
           onRemindAt={setRemindAt}
           descriptionRows={4}
         />
-        <label>
-          Проект / раздел
-          <select className="select" value={where} onChange={(e) => setWhere(e.target.value)}>
-            {groups.flatMap((g) => [
-              <option key={g.project.id} value={encode(g.project.id, null)}>{g.project.name}</option>,
-              ...g.sections.map((s) => (
-                <option key={s.id} value={encode(g.project.id, s.id)}>{g.project.name} / {s.name}</option>
-              )),
-            ])}
-          </select>
-        </label>
+        <GroupSelect groups={groups} value={decode(where)} onChange={(v) => setWhere(encode(v.projectId, v.sectionId))} />
         <label>
           Колонка
           <select className="select" value={columnId} onChange={(e) => setColumnId(e.target.value)}>

@@ -184,10 +184,11 @@ export async function moveCardToEnd(id, columnId) {
   return moveCard(id, columnId, (await lastCardPosition(columnId)) + 1);
 }
 
-export async function moveCardToSection(id, sectionId) {
+/** Moves the card to another project and/or section (`sectionId` null for the project itself). */
+export async function moveCardToGroup(id, { projectId, sectionId }) {
   const card = await db.cards.get(id);
-  if (!card || card.sectionId === sectionId) return;
-  return updateCard(id, { sectionId });
+  if (!card || (card.projectId === projectId && card.sectionId === sectionId)) return;
+  return updateCard(id, { projectId, sectionId });
 }
 
 /** `resolution` is a set of field values to apply; the conflict is cleared. */
