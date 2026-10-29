@@ -468,8 +468,6 @@ body {
 .field-adds { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .btn.field-add { border-style: dashed; background: none; color: var(--muted); font-size: 0.85rem; }
 .reminder-input input { flex: 1; min-width: 0; }
-.reminder-hint { margin: -0.4rem 0 0; font-size: 0.8rem; }
-.reminder-hint .login-error { margin: 0.4rem 0 0; }
 .add-card input, .editor input, .editor textarea, .conflict-field input, .conflict-field textarea {
   width: 100%;
   background: var(--bg);

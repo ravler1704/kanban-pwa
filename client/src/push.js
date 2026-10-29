@@ -19,9 +19,37 @@ export function pushState() {
   return 'available';
 }
 
+/**
+ * Where to allow notifications again: once denied, the browser neither re-prompts nor lets the
+ * page reset the permission, so this points the user at the right settings screen.
+ */
+function deniedHint() {
+  const ua = navigator.userAgent;
+  const prefix = 'Уведомления запрещены. Чтобы разрешить: ';
+  if (isIos) {
+    return `${prefix}«Настройки» телефона → «Уведомления» → Kanban → включите «Допуск уведомлений».`;
+  }
+  if (/Android/.test(ua)) {
+    return isStandalone
+      ? `${prefix}удерживайте значок Kanban → «О приложении» → «Уведомления» → включите их.`
+      : `${prefix}меню браузера ⋮ → «Настройки» → «Настройки сайтов» → «Уведомления» → выберите этот сайт → «Разрешить».`;
+  }
+  if (/Firefox\//.test(ua)) {
+    return `${prefix}нажмите значок слева от адреса сайта и уберите запрет у «Отправлять уведомления».`;
+  }
+  if (/Safari\//.test(ua) && !/Chrome\/|Chromium\//.test(ua)) {
+    return isStandalone
+      ? `${prefix}«Системные настройки» → «Уведомления» → Kanban → включите «Разрешить уведомления».`
+      : `${prefix}Safari → «Настройки» → «Веб-сайты» → «Уведомления» → для этого сайта выберите «Разрешить».`;
+  }
+  return isStandalone
+    ? `${prefix}меню приложения ⋮ → «Информация о приложении» → «Настройки сайта» → «Уведомления» → «Разрешить».`
+    : `${prefix}нажмите значок слева от адреса сайта → «Уведомления» → «Разрешить».`;
+}
+
 /** Explanations for the states in which this device cannot be subscribed. */
 export const PUSH_HINTS = {
-  denied: 'Уведомления запрещены для этого сайта — разрешите их в настройках браузера или телефона.',
+  denied: deniedHint(),
   needsInstall: 'На iPhone уведомления приходят только в приложении: «Поделиться» → «На экран „Домой“», затем откройте его оттуда.',
   unsupported: 'Этот браузер не поддерживает уведомления; напоминания придут на другие ваши устройства.',
 };

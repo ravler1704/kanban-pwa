@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { authState, linkAccount, signOut, unlinkAccount } from '../auth.js';
 import { disablePush, enablePush, PUSH_HINTS, pushState } from '../push.js';
 import { syncStatus } from '../sync.js';
@@ -14,6 +14,23 @@ export default function AccountDialog({ onClose }) {
   const [busy, setBusy] = useState(false);
   const identities = auth.user?.identities ?? [];
   const [push, setPush] = useState(pushState);
+
+  // Permission can only be restored in the browser/OS settings: pick that up when the user returns.
+  useEffect(() => {
+    const recheck = () => setPush(pushState());
+    let status;
+    navigator.permissions?.query({ name: 'notifications' }).then((s) => {
+      status = s;
+      status.addEventListener('change', recheck);
+    }).catch(() => {});
+    document.addEventListener('visibilitychange', recheck);
+    window.addEventListener('focus', recheck);
+    return () => {
+      status?.removeEventListener('change', recheck);
+      document.removeEventListener('visibilitychange', recheck);
+      window.removeEventListener('focus', recheck);
+    };
+  }, []);
 
   async function run(action) {
     setBusy(true);
@@ -96,6 +113,9 @@ export default function AccountDialog({ onClose }) {
           </div>
         )}
         {push !== 'enabled' && push !== 'available' && <p className="muted account-hint">{PUSH_HINTS[push]}</p>}
+        {push === 'denied' && (
+          <button className="btn btn-small" onClick={() => setPush(pushState())}>Я разрешил — проверить</button>
+        )}
         {busy && <p className="muted">Подождите…</p>}
         {error && <p className="login-error">{error}</p>}
       </div>
