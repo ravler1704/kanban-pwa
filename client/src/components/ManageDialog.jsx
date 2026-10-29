@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   changeProjectColumnSet, countCards, countColumnCards, createColumn, createColumnSet, createProject, createSection,
-  deleteColumn, deleteColumnSet, deleteProject, deleteSection, moveColumn, renameColumn, renameColumnSet,
+  deleteColumn, deleteColumnSet, deleteProject, deleteSection, moveColumn, moveProject, renameColumn, renameColumnSet,
   renameProject, renameSection,
 } from '../actions.js';
 import { matchColumn } from '../columnSets.js';
@@ -244,6 +244,118 @@ function ChangeSetDialog({ model, project, setId, onClose }) {
   );
 }
 
+function plural(n, one, few, many) {
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+  return many;
+}
+
+const SEARCH_FROM = 7;
+
+function Chevron() {
+  return (
+    <svg className="chevron" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+      strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m9 6 6 6-6 6" />
+    </svg>
+  );
+}
+
+function ProjectItem({ model, project, sections, columnsSynced, expanded, onToggle, canMoveUp, canMoveDown,
+  onChangeSet, onRemove, onRemoveSection }) {
+  const setName = model.sets.find((s) => s.id === model.setIdOf(project))?.name;
+  const meta = [
+    sections.length ? `${sections.length} ${plural(sections.length, 'раздел', 'раздела', 'разделов')}` : 'без разделов',
+    columnsSynced && setName && `набор «${setName}»`,
+  ].filter(Boolean).join(' · ');
+
+  return (
+    <section className={`manage-project ${expanded ? 'manage-project-open' : ''}`}>
+      <div className="manage-project-head">
+        <button type="button" className="manage-project-toggle" aria-expanded={expanded} onClick={onToggle}>
+          <Chevron />
+          <span className="manage-project-title">
+            <span className="manage-project-label">{project.name}</span>
+            <span className="manage-project-meta">{meta}</span>
+          </span>
+        </button>
+        {canMoveUp !== null && (
+          <>
+            <button className="btn btn-small" title="Выше" aria-label="Выше" disabled={!canMoveUp}
+              onClick={() => moveProject(project.id, -1)}>↑</button>
+            <button className="btn btn-small" title="Ниже" aria-label="Ниже" disabled={!canMoveDown}
+              onClick={() => moveProject(project.id, 1)}>↓</button>
+          </>
+        )}
+      </div>
+      {expanded && (
+        <div className="manage-project-body">
+          <div className="manage-row">
+            <NameInput value={project.name} className="manage-project-name" label="Название проекта"
+              onSave={(name) => renameProject(project.id, name)} />
+            <button className="btn btn-small btn-danger" onClick={onRemove}>Удалить</button>
+          </div>
+          {columnsSynced && (
+            <label className="field">
+              <span className="field-label">Набор колонок</span>
+              <select className="select" value={model.setIdOf(project)} onChange={(e) => onChangeSet(e.target.value)}>
+                {model.sets.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </label>
+          )}
+          <div className="manage-sections">
+            <h4 className="manage-heading">Разделы</h4>
+            {sections.map((s) => (
+              <div key={s.id} className="manage-row">
+                <NameInput value={s.name} label="Название раздела" onSave={(name) => renameSection(s.id, name)} />
+                <button className="btn btn-small btn-danger" onClick={() => onRemoveSection(s)}>Удалить</button>
+              </div>
+            ))}
+            <AddForm label="Новый раздел" onAdd={(name) => createSection(project.id, name)} />
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ProjectsEditor({ model, projects, sections, columnsSynced, onChangeSet, onRemove, onRemoveSection }) {
+  const [expandedId, setExpandedId] = useState(() => (projects.length === 1 ? projects[0].id : null));
+  const [query, setQuery] = useState('');
+  const sectionsOf = (id) => sections.filter((s) => s.projectId === id);
+
+  const needle = query.trim().toLowerCase();
+  const visible = needle
+    ? projects.filter((p) => p.name.toLowerCase().includes(needle)
+      || sectionsOf(p.id).some((s) => s.name.toLowerCase().includes(needle)))
+    : projects;
+
+  return (
+    <div className="manage">
+      <AddForm label="Новый проект" onAdd={async (name) => setExpandedId(await createProject(name))} />
+      {projects.length >= SEARCH_FROM && (
+        <label className="field">
+          <span className="field-label">Поиск проекта</span>
+          <input type="search" className="manage-search" value={query} onChange={(e) => setQuery(e.target.value)} />
+        </label>
+      )}
+      {projects.length === 0 && <p className="muted">Пока нет ни одного проекта.</p>}
+      {projects.length > 0 && visible.length === 0 && <p className="muted">Ничего не найдено.</p>}
+      <div className="manage-projects">
+        {visible.map((p, i) => (
+          <ProjectItem key={p.id} model={model} project={p} sections={sectionsOf(p.id)} columnsSynced={columnsSynced}
+            expanded={expandedId === p.id} onToggle={() => setExpandedId(expandedId === p.id ? null : p.id)}
+            canMoveUp={needle ? null : i > 0} canMoveDown={i < visible.length - 1}
+            onChangeSet={(setId) => onChangeSet(p, setId)} onRemove={() => onRemove(p)}
+            onRemoveSection={onRemoveSection} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const TABS = [
   { id: 'projects', label: 'Проекты и разделы' },
   { id: 'columns', label: 'Колонки' },
@@ -285,46 +397,21 @@ export default function ManageDialog({ model, columnsSynced, initialSetId, proje
 
   return (
     <Modal title="Настройки доски" onClose={onClose}>
-      <div className="tabs" role="tablist">
-        {TABS.map((t) => (
-          <button key={t.id} type="button" role="tab" aria-selected={tab === t.id}
-            className={`tab ${tab === t.id ? 'tab-active' : ''}`} onClick={() => selectTab(t.id)}>
-            {t.label}
-          </button>
-        ))}
+      <div className="tabs-bar">
+        <div className="tabs" role="tablist">
+          {TABS.map((t) => (
+            <button key={t.id} type="button" role="tab" aria-selected={tab === t.id}
+              className={`tab ${tab === t.id ? 'tab-active' : ''}`} onClick={() => selectTab(t.id)}>
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
       {tab === 'projects' && (
-        <div className="manage" role="tabpanel">
-          {projects.length === 0 && <p className="muted">Пока нет ни одного проекта.</p>}
-          {projects.map((p) => (
-            <section key={p.id} className="manage-project">
-              <div className="manage-row">
-                <NameInput value={p.name} className="manage-project-name" label="Название проекта"
-                  onSave={(name) => renameProject(p.id, name)} />
-                <button className="btn btn-small btn-danger" onClick={() => removeProject(p)}>Удалить</button>
-              </div>
-              {columnsSynced && (
-                <label className="field">
-                  <span className="field-label">Набор колонок</span>
-                  <select className="select" value={model.setIdOf(p)}
-                    onChange={(e) => setChangingSet({ project: p, setId: e.target.value })}>
-                    {model.sets.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
-                </label>
-              )}
-              <div className="manage-sections">
-                {sections.filter((s) => s.projectId === p.id).map((s) => (
-                  <div key={s.id} className="manage-row">
-                    <NameInput value={s.name} label="Название раздела"
-                      onSave={(name) => renameSection(s.id, name)} />
-                    <button className="btn btn-small btn-danger" onClick={() => removeSection(s)}>Удалить</button>
-                  </div>
-                ))}
-                <AddForm label="Новый раздел" onAdd={(name) => createSection(p.id, name)} />
-              </div>
-            </section>
-          ))}
-          <AddForm label="Новый проект" onAdd={createProject} />
+        <div role="tabpanel">
+          <ProjectsEditor model={model} projects={projects} sections={sections} columnsSynced={columnsSynced}
+            onChangeSet={(project, setId) => setChangingSet({ project, setId })}
+            onRemove={removeProject} onRemoveSection={removeSection} />
         </div>
       )}
       {tab === 'columns' && (

@@ -164,6 +164,23 @@ export async function renameProject(id, name) {
   requestSync();
 }
 
+/** Swaps the project with its neighbour; `direction` is -1 (up) or 1 (down). */
+export async function moveProject(id, direction) {
+  await db.transaction('rw', db.projects, async () => {
+    const projects = (await db.projects.toArray()).filter(alive)
+      .sort((a, b) => a.position - b.position || a.id.localeCompare(b.id));
+    const index = projects.findIndex((p) => p.id === id);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= projects.length) return;
+    [projects[index], projects[target]] = [projects[target], projects[index]];
+    // Renumbered rather than swapped: older projects may share a position.
+    for (const [i, p] of projects.entries()) {
+      if (p.position !== i + 1) await update('project', p.id, { position: i + 1 });
+    }
+  });
+  requestSync();
+}
+
 export async function deleteProject(id) {
   await db.transaction('rw', db.projects, db.sections, db.cards, async () => {
     const cards = await db.cards.where('projectId').equals(id).toArray();
