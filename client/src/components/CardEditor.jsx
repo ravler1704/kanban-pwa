@@ -48,6 +48,12 @@ export default function CardEditor({ card, columns, groups, onClose }) {
           <span className="field-label">Название</span>
           <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={500} />
         </label>
+        <label className="field">
+          <span className="field-label">Статус</span>
+          <select className="select" value={columnId} onChange={(e) => setColumnId(e.target.value)}>
+            {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </label>
         <CardExtraFields
           description={description}
           onDescription={setDescription}
@@ -55,12 +61,6 @@ export default function CardEditor({ card, columns, groups, onClose }) {
           onRemindAt={setRemindAt}
         />
         <GroupSelect groups={groups} value={group} onChange={setGroup} />
-        <label className="field">
-          <span className="field-label">Статус</span>
-          <select className="select" value={columnId} onChange={(e) => setColumnId(e.target.value)}>
-            {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </label>
         <div className="actions">
           <button type="button" className="btn btn-danger" onClick={remove}>Удалить</button>
           <span className="spacer" />
