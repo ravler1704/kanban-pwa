@@ -352,7 +352,8 @@ function ProjectsEditor({ model, projects, sections, columnsSynced, onChangeSet,
   return (
     <div className="manage">
       {isOwnBoard
-        ? <AddForm label="Новый проект" onAdd={async (name) => setExpandedId(await createProject(name))} />
+        ? <AddForm label="Новый проект"
+            onAdd={async (name) => setExpandedId(await createProject(name, model.newProjectSetId))} />
         : <p className="muted">Проекты и колонки настраивает владелец доски, здесь можно менять разделы.</p>}
       {projects.length >= SEARCH_FROM && (
         <label className="field">

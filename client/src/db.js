@@ -99,15 +99,28 @@ export async function clearLocalData() {
   await db.transaction('rw', tables, () => Promise.all(tables.map((t) => t.clear())));
 }
 
-// Same ids as the columns the server creates, so cards added before the first sync land in them.
+// New projects get this set while it exists.
+export const SIMPLE_SET_ID = 'simple';
+
+// Same ids as the sets and columns the server creates, so cards added before the first sync land in them.
 export const DEFAULT_COLUMNS = [
-  { id: 'backlog', name: 'Входящие', position: 1 },
-  { id: 'todo', name: 'Запланировано', position: 2 },
-  { id: 'doing', name: 'В работе', position: 3 },
-  { id: 'review', name: 'На проверке', position: 4 },
-  { id: 'done', name: 'Завершено', position: 5 },
-].map((c) => ({ ...c, setId: DEFAULT_SET_ID }));
-export const DEFAULT_SETS = [{ id: DEFAULT_SET_ID, name: 'Основной', position: 1 }];
+  ...[
+    { id: 'simple-todo', name: 'Запланировано', position: 1 },
+    { id: 'simple-doing', name: 'В работе', position: 2 },
+    { id: 'simple-done', name: 'Завершено', position: 3 },
+  ].map((c) => ({ ...c, setId: SIMPLE_SET_ID })),
+  ...[
+    { id: 'backlog', name: 'Входящие', position: 1 },
+    { id: 'todo', name: 'Запланировано', position: 2 },
+    { id: 'doing', name: 'В работе', position: 3 },
+    { id: 'review', name: 'На проверке', position: 4 },
+    { id: 'done', name: 'Завершено', position: 5 },
+  ].map((c) => ({ ...c, setId: DEFAULT_SET_ID })),
+];
+export const DEFAULT_SETS = [
+  { id: SIMPLE_SET_ID, name: '3 колонки', position: 1 },
+  { id: DEFAULT_SET_ID, name: '5 колонок', position: 2 },
+];
 
 export function tableOf(type) {
   return db.table(TYPES[type].table);

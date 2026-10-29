@@ -249,28 +249,47 @@ const DEFAULT_COLUMNS = [
   { id: 'done', name: 'Завершено' },
 ];
 
+// The template new projects get (the client picks it while it exists).
+const SIMPLE_SET_ID = 'simple';
+const SIMPLE_COLUMNS = [
+  { id: 'simple-todo', name: 'Запланировано' },
+  { id: 'simple-doing', name: 'В работе' },
+  { id: 'simple-done', name: 'Завершено' },
+];
+
 const seeded = new Set();
 
 /**
- * Creates the default column set once per board, and the default columns for new boards.
+ * Creates the column set templates once per board: «3 колонки» and the default set with five columns.
  * Columns and projects from before column sets belong to the default set (see the schema defaults).
  */
 export function seedColumns(owner) {
   if (seeded.has(owner)) return;
-  // '' is the board from before per-user boards; it keeps its original flag.
+  // '' is the board from before per-user boards; it keeps its original flags.
   const flag = owner ? `columnsSeeded:${owner}` : 'columnsSeeded';
+  const simpleFlag = `simpleSetSeeded:${owner}`;
   const server = { version: 1, deviceId: 'server' };
+  const addColumns = (setId, columns) => columns.forEach(({ id, name }, i) => {
+    if (!getRecord(owner, id)) saveRecord(owner, 'column', id, { setId, name, position: i + 1, deleted: false }, server);
+  });
   transaction(() => {
     if (!getRecord(owner, DEFAULT_SET_ID)) {
-      saveRecord(owner, 'columnSet', DEFAULT_SET_ID, { name: 'Основной', position: 1, deleted: false }, server);
+      // Boards from before the templates keep the name their set always had.
+      const name = getMeta(flag) ? 'Основной' : '5 колонок';
+      saveRecord(owner, 'columnSet', DEFAULT_SET_ID, { name, position: 2, deleted: false }, server);
     }
-    if (getMeta(flag)) return;
-    DEFAULT_COLUMNS.forEach(({ id, name }, i) => {
-      if (!getRecord(owner, id)) {
-        saveRecord(owner, 'column', id, { setId: DEFAULT_SET_ID, name, position: i + 1, deleted: false }, server);
+    if (!getMeta(flag)) {
+      addColumns(DEFAULT_SET_ID, DEFAULT_COLUMNS);
+      setMeta(flag, '1');
+    }
+    // Once: a set the user deleted stays deleted.
+    if (!getMeta(simpleFlag)) {
+      if (!getRecord(owner, SIMPLE_SET_ID)) {
+        saveRecord(owner, 'columnSet', SIMPLE_SET_ID, { name: '3 колонки', position: 1, deleted: false }, server);
       }
-    });
-    setMeta(flag, '1');
+      addColumns(SIMPLE_SET_ID, SIMPLE_COLUMNS);
+      setMeta(simpleFlag, '1');
+    }
   });
   seeded.add(owner);
 }

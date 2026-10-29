@@ -1,4 +1,4 @@
-import { DEFAULT_COLUMNS, DEFAULT_SET_ID, DEFAULT_SETS } from './db.js';
+import { DEFAULT_COLUMNS, DEFAULT_SET_ID, DEFAULT_SETS, SIMPLE_SET_ID } from './db.js';
 
 const byPosition = (a, b) => a.position - b.position || a.id.localeCompare(b.id);
 
@@ -23,7 +23,10 @@ export function columnModel(rawSets, rawColumns, projects) {
   const columnsOfProject = (projectId) => columnsOf(setIdOf(projectById.get(projectId)));
   const projectsOf = (setId) => projects.filter((p) => setIdOf(p) === setId);
 
-  return { sets, columns, columnsOf, setIdOf, columnsOfProject, projectsOf };
+  // For a new project: the «3 колонки» template unless the user deleted it.
+  const newProjectSetId = setIds.has(SIMPLE_SET_ID) ? SIMPLE_SET_ID : sets[0].id;
+
+  return { sets, columns, columnsOf, setIdOf, columnsOfProject, projectsOf, newProjectSetId };
 }
 
 /** Column of `columns` that best matches `column` from another set: same id, same name, or the first. */
