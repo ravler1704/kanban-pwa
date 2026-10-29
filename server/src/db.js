@@ -317,7 +317,7 @@ const selectMemberUsers = db.prepare(`
 `);
 const selectInvited = db.prepare('SELECT 1 FROM board_members WHERE email = ? LIMIT 1');
 const selectOwnerProfile = db.prepare(
-  'SELECT email, name FROM identities WHERE user_id = ? ORDER BY linked_at LIMIT 1',
+  'SELECT email, name, picture FROM identities WHERE user_id = ? ORDER BY linked_at LIMIT 1',
 );
 const removeUserMemberships = db.prepare(`
   DELETE FROM board_members WHERE board = ? AND email IN (SELECT email FROM identities WHERE user_id = ?)
@@ -336,11 +336,11 @@ export function deleteMember(board, email) {
   return removeMember.run(board, email).changes > 0;
 }
 
-/** Other people's boards the user was invited to, with the owner's name and e-mail. */
+/** Other people's boards the user was invited to, with the owner's name, e-mail and photo. */
 export function sharedBoards(userId) {
   return selectUserBoards.all(userId, userId).map(({ board }) => {
     const owner = selectOwnerProfile.get(board);
-    return { id: board, name: owner?.name ?? null, email: owner?.email ?? null };
+    return { id: board, name: owner?.name ?? null, email: owner?.email ?? null, picture: owner?.picture ?? null };
   });
 }
 

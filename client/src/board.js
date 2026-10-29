@@ -37,7 +37,7 @@ function initialBoard() {
 export const currentBoard = initialBoard();
 export const dbName = currentBoard ? `${SHARED_DB_PREFIX}${currentBoard}` : OWN_DB;
 
-/** `board` is one of `user.boards`: { id, name, email } of its owner. */
+/** `board` is one of `user.boards`: { id, name, email, picture } of its owner. */
 export const boardName = (board) => `Доска: ${board.name || board.email || 'без имени'}`;
 
 export const isCurrentBoard = (board) => normalize(board) === currentBoard;

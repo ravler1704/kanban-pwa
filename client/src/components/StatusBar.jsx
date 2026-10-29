@@ -50,11 +50,13 @@ export default function StatusBar({ pending, conflicts }) {
   }
 
   const boards = user?.boards ?? [];
+  // On someone else's board, the header shows whose it is.
+  const boardOwner = currentBoard ? boards.find((b) => b.id === currentBoard) : null;
 
   return (
     <header className="statusbar">
       <div className="statusbar-user">
-        {user && <Avatar user={user} />}
+        {user && <Avatar user={boardOwner ?? user} />}
         {boards.length > 0 || currentBoard ? (
           <select className="select board-select" aria-label="Доска" value={currentBoard ?? ''}
             title={user?.name || user?.email || undefined} onChange={(e) => switchBoard(e.target.value || null)}>
