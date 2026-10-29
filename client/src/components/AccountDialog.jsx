@@ -211,7 +211,11 @@ export default function AccountDialog({ onClose }) {
       </div>
       <div role="tabpanel"><Content /></div>
       <div className="actions">
-        <button className="btn" onClick={logout} disabled={!online}>Выйти</button>
+        <button className="btn btn-danger" onClick={logout} disabled={!online}
+          title={online ? 'Данные этой доски будут удалены с устройства' : 'Для выхода нужен интернет'}>
+          Выйти из аккаунта
+        </button>
+        <span className="spacer" />
         <button className="btn btn-primary" onClick={onClose}>Готово</button>
       </div>
     </Modal>
