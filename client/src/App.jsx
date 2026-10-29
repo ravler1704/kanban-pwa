@@ -365,6 +365,7 @@ export default function App() {
               tags,
               selected: tagFilter,
               onToggle: toggleTag,
+              onSetAll: (on) => changeTagFilter(on ? tags.map((t) => t.key) : []),
               onClear: () => changeTagFilter([]),
             } : null}
             view={view}
