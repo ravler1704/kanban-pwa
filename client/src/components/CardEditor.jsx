@@ -6,8 +6,39 @@ import { GroupSelect } from './NewCardDialog.jsx';
 import { matchColumn } from '../columnSets.js';
 import { fromInputValue, toInputValue } from './ReminderField.jsx';
 
-/** `groups` are the projects with their sections ({ project, sections }) the card can be moved to. */
-export default function CardEditor({ card, columnsOfProject, groups, onClose }) {
+/** The card without editing: a view-only public link. */
+function CardView({ card, columnsOfProject, groups, onClose }) {
+  const column = columnsOfProject(card.projectId).find((c) => c.id === card.columnId);
+  const section = groups.find((g) => g.project.id === card.projectId)?.sections.find((s) => s.id === card.sectionId);
+  return (
+    <Modal title="Карточка" onClose={onClose}>
+      <div className="editor card-view">
+        <h3 className="card-view-title">{card.title || <em className="muted">Без названия</em>}</h3>
+        <p className="muted">
+          {[column?.name, section?.name].filter(Boolean).join(' · ')}
+          {card.remindAt && ` · напоминание ${new Date(card.remindAt).toLocaleString('ru-RU', {
+            day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
+          })}`}
+        </p>
+        {card.description && <p className="card-view-desc">{card.description}</p>}
+        <div className="actions">
+          <span className="spacer" />
+          <button type="button" className="btn" onClick={onClose}>Закрыть</button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+/**
+ * `groups` are the projects with their sections ({ project, sections }) the card can be moved to.
+ * `readOnly`: the card is only shown.
+ */
+export default function CardEditor({ readOnly, ...props }) {
+  return readOnly ? <CardView {...props} /> : <CardForm {...props} />;
+}
+
+function CardForm({ card, columnsOfProject, groups, onClose }) {
   // Snapshot of the card when the editor opened, used to detect concurrent remote edits.
   const [base] = useState(() => ({ title: card.title, description: card.description }));
   const [title, setTitle] = useState(card.title);

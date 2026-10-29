@@ -1,6 +1,7 @@
 import { useState, useSyncExternalStore } from 'react';
 import { authState } from '../auth.js';
-import { boardName, currentBoard, switchBoard } from '../board.js';
+import { boardName, currentBoard, publicToken, switchBoard } from '../board.js';
+import { usePublicLink } from '../public.js';
 import { sync, syncStatus } from '../sync.js';
 import AccountDialog from './AccountDialog.jsx';
 import Avatar from './Avatar.jsx';
@@ -31,6 +32,21 @@ function formatTime(ts) {
   return ts ? new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '—';
 }
 
+/** On a public link: whose project it is and what the visitor may do. */
+function PublicTitle() {
+  const { info } = usePublicLink();
+  const owner = info?.owner?.name;
+  return (
+    <div className="statusbar-user">
+      {info?.owner && <Avatar user={info.owner} />}
+      <h1 className="statusbar-title" title={owner ? `Владелец: ${owner}` : undefined}>
+        {info?.project.name ?? 'Проект'}
+      </h1>
+      {info && <span className="badge public-mode">{info.mode === 'edit' ? 'Можно редактировать' : 'Только просмотр'}</span>}
+    </div>
+  );
+}
+
 export default function StatusBar({ pending, conflicts }) {
   const s = useSyncExternalStore(syncStatus.subscribe, syncStatus.get);
   const { user } = useSyncExternalStore(authState.subscribe, authState.get);
@@ -55,7 +71,7 @@ export default function StatusBar({ pending, conflicts }) {
 
   return (
     <header className="statusbar">
-      <div className="statusbar-user">
+      {publicToken ? <PublicTitle /> : <div className="statusbar-user">
         {user && <Avatar user={boardOwner ?? user} />}
         {boards.length > 0 || currentBoard ? (
           <select className="select board-select" aria-label="Доска" value={currentBoard ?? ''}
@@ -67,7 +83,7 @@ export default function StatusBar({ pending, conflicts }) {
         ) : (
           <h1 className="statusbar-title" title={user?.email || undefined}>{user?.name || user?.email || 'Канбан'}</h1>
         )}
-      </div>
+      </div>}
       <div className="status">
         <span className={`dot dot-${state}`} />
         <span>{label}</span>
@@ -78,7 +94,8 @@ export default function StatusBar({ pending, conflicts }) {
           title="Синхронизировать" aria-label="Синхронизировать">
           <SyncIcon spinning={s.syncing} />
         </button>
-        {user && (
+        {publicToken && <a className="btn btn-small" href="/" title="Открыть свою доску">Мой Канбан</a>}
+        {user && !publicToken && (
           <button className="btn btn-small btn-icon-only" onClick={() => setAccountOpen(true)}
             title={user.email ? `Аккаунт: ${user.email}` : 'Аккаунт'} aria-label="Аккаунт">
             <AccountIcon />

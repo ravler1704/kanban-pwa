@@ -120,14 +120,15 @@ const withDefaults = (record) => (record && SCHEMAS[record.type] ? { ...SCHEMAS[
  * What a member of the board may see: `projects` (ids the member was invited to) and `sets`,
  * the column sets these projects use. `key` changes whenever either changes; it is part of the
  * member's epoch, so their devices then download the board again (records of newly opened
- * projects are older than what the device already has).
+ * projects are older than what the device already has). With `readOnly` (a public link for
+ * viewing) nothing may be changed.
  */
-export function memberAccess(owner, projectIds) {
+export function memberAccess(owner, projectIds, { readOnly = false } = {}) {
   const projects = new Set(projectIds);
   const sets = new Set();
   for (const id of projectIds) sets.add(withDefaults(getRecord(owner, id))?.columnSetId ?? DEFAULT_SET_ID);
   const key = crypto.createHash('sha256').update(JSON.stringify([projectIds, [...sets].sort()])).digest('hex').slice(0, 16);
-  return { projects, sets, key };
+  return { projects, sets, key, readOnly };
 }
 
 function visibleTo(access, record) {
@@ -157,7 +158,7 @@ function tombstone(type, id, record) {
 
 /** Members edit cards and sections of their projects; projects and columns are the owner's. */
 function memberMayChange(access, type, current, fields) {
-  if (type !== 'card' && type !== 'section') return false;
+  if (access.readOnly || (type !== 'card' && type !== 'section')) return false;
   if (current && !access.projects.has(current.projectId)) return false;
   return access.projects.has(fields.projectId ?? current?.projectId);
 }

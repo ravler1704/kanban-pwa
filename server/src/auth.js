@@ -1,9 +1,10 @@
 import crypto from 'node:crypto';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import {
-  addMember, boardSummary, countEmailCodeAttempt, createSession, deleteIdentity, deleteMember, deleteSession,
-  findUserByEmail, getEmailCode, getIdentityUser, getRecord, getSession, isInvited, leaveBoard, listIdentities,
-  listMembers, memberProjects, mergeUsers, pruneEmailCodes, saveEmailCode, saveIdentity, sharedBoards, useEmailCode,
+  addMember, boardSummary, countEmailCodeAttempt, createSession, deleteIdentity, deleteMember, deletePublicLink,
+  deleteSession, findUserByEmail, getEmailCode, getIdentityUser, getPublicLink, getRecord, getSession, isInvited,
+  leaveBoard, listIdentities, listMembers, listPublicLinks, memberProjects, mergeUsers, pruneEmailCodes,
+  saveEmailCode, saveIdentity, savePublicLink, sharedBoards, useEmailCode,
 } from './db.js';
 import { broadcast, disconnect, disconnectUser } from './events.js';
 import {
@@ -115,6 +116,21 @@ export function requireAuth(req, res, next) {
     req.access = memberAccess(board, projects);
   }
   req.owner = board || req.user;
+  next();
+}
+
+/**
+ * Like requireAuth, but a request made through a public link (`X-Public` header, or `?public=`
+ * for EventSource) gets the link's project like a member, without signing in (`req.user` is null).
+ */
+export function requireAuthOrPublic(req, res, next) {
+  const token = req.get('x-public') || req.query.public;
+  if (!token) return requireAuth(req, res, next);
+  const link = typeof token === 'string' ? getPublicLink(token) : null;
+  if (!link) return res.status(404).json({ error: 'no link' });
+  req.user = null;
+  req.owner = link.board;
+  req.access = memberAccess(link.board, [link.project], { readOnly: link.mode !== 'edit' });
   next();
 }
 
@@ -422,6 +438,38 @@ export function registerAuthRoutes(app) {
     }
     disconnect(req.user, { except: req.user });
     res.json({ members: listMembers(req.user) });
+  });
+
+  // Public links to projects of the signed-in user's own board.
+  app.get('/api/public-links', requireAuth, (req, res) => {
+    res.json({ links: listPublicLinks(req.user) });
+  });
+
+  app.post('/api/public-links', requireAuth, (req, res) => {
+    const { project, mode } = req.body ?? {};
+    if (mode !== 'view' && mode !== 'edit') return res.status(400).json({ error: 'invalid mode' });
+    const record = typeof project === 'string' ? getRecord(req.user, project) : null;
+    if (record?.type !== 'project' || record.deleted) return res.status(404).json({ error: 'no project' });
+    savePublicLink(req.user, project, mode);
+    // Open streams of visitors belong to the old mode; reconnecting picks up the new one.
+    disconnect(req.user, { except: req.user });
+    res.json({ links: listPublicLinks(req.user) });
+  });
+
+  app.post('/api/public-links/remove', requireAuth, (req, res) => {
+    const { project } = req.body ?? {};
+    if (typeof project !== 'string' || !deletePublicLink(req.user, project)) {
+      return res.status(404).json({ error: 'not found' });
+    }
+    disconnect(req.user, { except: req.user });
+    res.json({ links: listPublicLinks(req.user) });
+  });
+
+  // What a public link opens; asked by visitors, who are not signed in.
+  app.get('/api/public/:token', (req, res) => {
+    const link = getPublicLink(req.params.token);
+    if (!link) return res.status(404).json({ error: 'no link' });
+    res.json({ project: { id: link.project, name: link.name }, mode: link.mode, owner: link.owner });
   });
 
   app.post('/api/boards/leave', requireAuth, (req, res) => {

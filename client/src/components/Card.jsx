@@ -45,7 +45,9 @@ function TaggedText({ text, activeTags, onTag }) {
 export let draggedCardId = null;
 
 /** `dropMark` ('before' | 'after' | null) shows where a dragged card would be inserted. */
-export default function Card({ card, label, dropMark, activeTags, onTag, onOpen, onOpenLabel, onMoveLeft, onMoveRight }) {
+export default function Card({
+  card, label, dropMark, activeTags, onTag, readOnly, onOpen, onOpenLabel, onMoveLeft, onMoveRight,
+}) {
   const classes = ['card'];
   if (dropMark) classes.push(`card-drop-${dropMark}`);
   if (card.conflict) classes.push('card-conflict');
@@ -55,7 +57,7 @@ export default function Card({ card, label, dropMark, activeTags, onTag, onOpen,
     <article
       className={classes.join(' ')}
       data-card-id={card.id}
-      draggable={!card.conflict}
+      draggable={!card.conflict && !readOnly}
       onDragStart={(e) => {
         draggedCardId = card.id;
         e.dataTransfer.setData('text/card-id', card.id);

@@ -169,6 +169,11 @@ body {
   border-radius: 8px;
   box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
 }
+.card-view-title { margin: 0; font-size: 1.1rem; word-break: break-word; }
+.card-view .muted { margin: 0; }
+.card-view-desc { margin: 0; white-space: pre-wrap; word-break: break-word; }
+.public-mode { flex: none; background: var(--card); color: var(--muted); }
+.public-url { flex: 1; min-width: 0; border-color: var(--border); }
 .tag-search {
   width: 100%;
   margin-bottom: 0.3rem;
@@ -633,6 +638,7 @@ textarea { resize: vertical; }
   font: inherit;
   cursor: pointer;
 }
+a.btn { display: inline-block; text-decoration: none; }
 .btn:hover:not(:disabled) { border-color: var(--muted); }
 .btn:disabled { opacity: 0.5; cursor: default; }
 .btn-small { padding: 0.25rem 0.6rem; font-size: 0.85rem; }

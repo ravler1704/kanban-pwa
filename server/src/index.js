@@ -1,7 +1,7 @@
 import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
-import { authEnabled, registerAuthRoutes, requireAuth } from './auth.js';
+import { authEnabled, registerAuthRoutes, requireAuth, requireAuthOrPublic } from './auth.js';
 import { EPOCH } from './db.js';
 import { broadcast, registerEvents } from './events.js';
 import { registerPushRoutes, startReminders } from './push.js';
@@ -21,7 +21,8 @@ app.get('/api/health', (_req, res) => {
 });
 
 registerAuthRoutes(app);
-app.use(['/api/sync', '/api/events', '/api/push'], requireAuth);
+app.use(['/api/sync', '/api/events'], requireAuthOrPublic);
+app.use('/api/push', requireAuth);
 registerPushRoutes(app);
 startReminders();
 

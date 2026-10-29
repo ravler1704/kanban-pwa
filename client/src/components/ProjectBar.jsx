@@ -61,6 +61,7 @@ function ClearIcon() {
  * `project` is null when no project is selected (all projects are shown);
  * `section` is null when no section is selected (the whole project is shown).
  * `conflictsBySection` is keyed by `${projectId}|${sectionId ?? ''}`.
+ * Without `onManage` / `onAddCard` (read only) their buttons are not shown.
  */
 export default function ProjectBar({
   projects, sections, project, section, conflictsBySection, onSelectProject, onSelectSection,
@@ -136,14 +137,18 @@ export default function ProjectBar({
           </button>
         ))}
       </div>
-      <button className="btn btn-small btn-icon-only" title="Настройки доски" aria-label="Настройки доски"
-        onClick={onManage}>
-        <SettingsIcon />
-      </button>
-      <button className="btn btn-primary btn-small btn-icon-only btn-add-card" title="Новая карточка" aria-label="Новая карточка"
-        onClick={onAddCard}>
-        <PlusIcon />
-      </button>
+      {onManage && (
+        <button className="btn btn-small btn-icon-only" title="Настройки доски" aria-label="Настройки доски"
+          onClick={onManage}>
+          <SettingsIcon />
+        </button>
+      )}
+      {onAddCard && (
+        <button className="btn btn-primary btn-small btn-icon-only btn-add-card" title="Новая карточка" aria-label="Новая карточка"
+          onClick={onAddCard}>
+          <PlusIcon />
+        </button>
+      )}
     </nav>
   );
 }

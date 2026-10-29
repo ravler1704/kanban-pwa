@@ -1,5 +1,6 @@
 import { isSignedOut, markSignedOut } from './auth.js';
-import { boardHeaders, boardQuery, dropCurrentBoard } from './board.js';
+import { boardHeaders, boardQuery, dropCurrentBoard, publicToken } from './board.js';
+import { markLinkGone, publicLinkGone } from './public.js';
 import { clearLocalData, db, getDeviceId, isDirty, pickFields, sameValue, tableOf, TYPES } from './db.js';
 
 const deviceId = getDeviceId();
@@ -188,7 +189,8 @@ export async function sync() {
     setStatus({ online: false });
     return;
   }
-  if (isSignedOut()) return;
+  if (!publicToken && isSignedOut()) return;
+  if (publicLinkGone()) return;
 
   running = true;
   setStatus({ syncing: true, online: true });
@@ -206,6 +208,9 @@ export async function sync() {
       setStatus({ serverReachable: true, error: null });
     } else if (err.status === 403) {
       await dropCurrentBoard();
+    } else if (err.status === 404 && publicToken) {
+      stopEvents();
+      markLinkGone();
     } else {
       setStatus({ serverReachable: false, error: err.message || String(err) });
     }
@@ -228,7 +233,7 @@ export function requestSync() {
 let events = null;
 
 function connectEvents() {
-  if (isSignedOut()) return;
+  if ((!publicToken && isSignedOut()) || publicLinkGone()) return;
   if (events && events.readyState !== EventSource.CLOSED) return;
   events = new EventSource(`/api/events${boardQuery()}`);
   events.onmessage = (e) => {

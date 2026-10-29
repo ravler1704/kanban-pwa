@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import App from './App.jsx';
 import { checkAuth, completeYandexAuth } from './auth.js';
+import { publicToken } from './board.js';
+import { loadPublicLink } from './public.js';
 import { refreshPush } from './push.js';
 import AuthGate from './components/AuthGate.jsx';
 import { startSync } from './sync.js';
@@ -38,15 +40,24 @@ if (navigator.storage?.persist) {
   navigator.storage.persist().catch(() => {});
 }
 
-// Returning from Yandex sign-in: finish it before the first sync so that sync runs signed in.
-completeYandexAuth().finally(() => {
-  checkAuth().then(refreshPush);
+if (publicToken) {
+  // A public link: no sign-in, no reminders on this device.
+  loadPublicLink();
   startSync();
-});
-// Boards shared with the user (or closed to them) since the app was opened.
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') checkAuth();
-});
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') loadPublicLink();
+  });
+} else {
+  // Returning from Yandex sign-in: finish it before the first sync so that sync runs signed in.
+  completeYandexAuth().finally(() => {
+    checkAuth().then(refreshPush);
+    startSync();
+  });
+  // Boards shared with the user (or closed to them) since the app was opened.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') checkAuth();
+  });
+}
 startUpdateChecks();
 startTheme();
 

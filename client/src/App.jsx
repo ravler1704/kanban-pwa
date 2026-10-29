@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { currentBoard, isCurrentBoard, switchBoard } from './board.js';
+import { isCurrentBoard, isOwnBoard, switchBoard } from './board.js';
+import { useReadOnly } from './public.js';
 import { db } from './db.js';
 import { columnModel } from './columnSets.js';
 import StatusBar from './components/StatusBar.jsx';
@@ -70,6 +71,7 @@ function useSelection() {
 }
 
 export default function App() {
+  const readOnly = useReadOnly();
   const [selection, select] = useSelection();
   const [openCardId, setOpenCardId] = useState(null);
   const [managing, setManaging] = useState(false);
@@ -241,7 +243,7 @@ export default function App() {
       <StatusBar pending={data.pending} conflicts={data.conflicted.length} />
 
       {projects.length === 0 ? (
-        currentBoard ? (
+        !isOwnBoard ? (
           <div className="empty">
             <p>Открытые вам проекты появятся здесь после синхронизации.</p>
           </div>
@@ -272,8 +274,8 @@ export default function App() {
             } : null}
             view={view}
             onView={changeView}
-            onManage={() => setManaging(true)}
-            onAddCard={() => setAddingCard(true)}
+            onManage={readOnly ? null : () => setManaging(true)}
+            onAddCard={readOnly ? null : () => setAddingCard(true)}
           />
           {view === 'calendar' ? (
             <CalendarView cards={visible} columns={model.columns} cardLabel={cardLabel} onOpen={setOpenCardId} />
@@ -290,6 +292,7 @@ export default function App() {
                   cardLabel={cardLabel}
                   activeTags={activeTags}
                   onTag={toggleTag}
+                  readOnly={readOnly}
                   onOpen={setOpenCardId}
                   onOpenGroup={openGroup}
                 />
@@ -302,7 +305,7 @@ export default function App() {
       {openCard && (openCard.conflict
         ? <ConflictDialog card={openCard} onClose={() => setOpenCardId(null)} />
         : <CardEditor card={openCard} columnsOfProject={model.columnsOfProject} groups={pickerGroups}
-          onClose={() => setOpenCardId(null)} />)}
+          readOnly={readOnly} onClose={() => setOpenCardId(null)} />)}
 
       {addingCard && (
         <NewCardDialog groups={pickerGroups} columnsOfProject={model.columnsOfProject}

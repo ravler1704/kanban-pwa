@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -141,6 +142,18 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_project_members_email ON project_members(email);
   CREATE INDEX IF NOT EXISTS idx_identities_email ON identities(email);
+`);
+// Public links: anyone with the link opens the project without signing in.
+// mode: 'view' (read only) or 'edit' (cards and sections, like a member).
+db.exec(`
+  CREATE TABLE IF NOT EXISTS public_links (
+    token       TEXT    PRIMARY KEY,
+    board       TEXT    NOT NULL,
+    project     TEXT    NOT NULL,
+    mode        TEXT    NOT NULL,
+    created_at  INTEGER NOT NULL,
+    UNIQUE (board, project)
+  );
 `);
 // Members of whole boards (before access per project) keep every project the board had.
 if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'board_members'").get()) {
@@ -357,6 +370,8 @@ export function mergeUsers(from, to) {
     db.prepare('UPDATE OR IGNORE reminders_sent SET owner = ? WHERE owner = ?').run(to, from);
     db.prepare('UPDATE OR IGNORE project_members SET board = ? WHERE board = ?').run(to, from);
     db.prepare('DELETE FROM project_members WHERE board = ?').run(from);
+    db.prepare('UPDATE OR IGNORE public_links SET board = ? WHERE board = ?').run(to, from);
+    db.prepare('DELETE FROM public_links WHERE board = ?').run(from);
     return seq;
   });
 }
@@ -445,6 +460,42 @@ export function isInvited(email) {
 
 export function leaveBoard(board, userId) {
   return removeUserMemberships.run(board, userId).changes > 0;
+}
+
+// Links to deleted projects stay in the table but open nothing.
+const selectPublicLink = db.prepare(`
+  SELECT m.token, m.board, m.project, m.mode, json_extract(r.data, '$.name') AS name
+  FROM public_links m ${LIVE_PROJECT} WHERE m.token = ?
+`);
+const selectPublicLinks = db.prepare(`
+  SELECT m.token, m.project, m.mode FROM public_links m ${LIVE_PROJECT} WHERE m.board = ? ORDER BY m.created_at
+`);
+const upsertPublicLink = db.prepare(`
+  INSERT INTO public_links (token, board, project, mode, created_at) VALUES (?, ?, ?, ?, ?)
+  ON CONFLICT(board, project) DO UPDATE SET mode = excluded.mode
+`);
+const removePublicLink = db.prepare('DELETE FROM public_links WHERE board = ? AND project = ?');
+
+/** { token, board, project, mode, name (the project's), owner: { name, picture } } or null. */
+export function getPublicLink(token) {
+  const link = selectPublicLink.get(token);
+  if (!link) return null;
+  const owner = selectOwnerProfile.get(link.board);
+  return { ...link, owner: { name: owner?.name ?? null, picture: owner?.picture ?? null } };
+}
+
+/** Public links of the board's projects: [{ token, project, mode }]. */
+export function listPublicLinks(board) {
+  return selectPublicLinks.all(board);
+}
+
+/** Creates the project's link, or changes its mode (the link itself stays). */
+export function savePublicLink(board, project, mode) {
+  upsertPublicLink.run(randomBytes(18).toString('base64url'), board, project, mode, Date.now());
+}
+
+export function deletePublicLink(board, project) {
+  return removePublicLink.run(board, project).changes > 0;
 }
 
 const upsertSubscription = db.prepare(`

@@ -1,14 +1,14 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { authState, inviteMember, leaveCurrentBoard, loadMembers, membersState, removeMember } from '../auth.js';
-import { boardName, currentBoard } from '../board.js';
+import { boardName, currentBoard, isOwnBoard } from '../board.js';
 import { db } from '../db.js';
 import { syncStatus } from '../sync.js';
 
 /** Projects of the own board can be shared: signed in and not on someone else's board. */
 export function useCanShare() {
   const { status } = useSyncExternalStore(authState.subscribe, authState.get);
-  return status === 'signedIn' && !currentBoard;
+  return status === 'signedIn' && isOwnBoard;
 }
 
 function useMembers() {

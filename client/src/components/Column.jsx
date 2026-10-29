@@ -18,7 +18,7 @@ function positionAtEnd(cards) {
  * `cardLabel(card)` returns the project/section shown on the card, or null for none.
  */
 export default function Column({
-  target, column, prevColumn, nextColumn, cards, cardLabel, activeTags, onTag, onOpen, onOpenGroup,
+  target, column, prevColumn, nextColumn, cards, cardLabel, activeTags, onTag, readOnly, onOpen, onOpenGroup,
 }) {
   const [title, setTitle] = useState('');
   // While a card is dragged over the column: the id of the card it would land before, or null for the end.
@@ -74,11 +74,11 @@ export default function Column({
   return (
     <section
       className={`column ${dragOver ? 'column-dragover' : ''}`}
-      onDragOver={handleDragOver}
+      onDragOver={readOnly ? undefined : handleDragOver}
       onDragLeave={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget)) setDropBefore(undefined);
       }}
-      onDrop={handleDrop}
+      onDrop={readOnly ? undefined : handleDrop}
     >
       <h2>
         {column.name} <span className="count">{cards.filter((c) => !c.deleted).length}</span>
@@ -92,15 +92,16 @@ export default function Column({
             dropMark={dropMark(i)}
             activeTags={activeTags}
             onTag={onTag}
+            readOnly={readOnly}
             onOpen={() => onOpen(card.id)}
             onOpenLabel={() => onOpenGroup(card)}
-            onMoveLeft={prevColumn && (() => moveCardToEnd(card.id, prevColumn.id))}
-            onMoveRight={nextColumn && (() => moveCardToEnd(card.id, nextColumn.id))}
+            onMoveLeft={!readOnly && prevColumn && (() => moveCardToEnd(card.id, prevColumn.id))}
+            onMoveRight={!readOnly && nextColumn && (() => moveCardToEnd(card.id, nextColumn.id))}
           />
         ))}
         {showIndicator && cards.length === 0 && <div className="drop-indicator" />}
       </div>
-      <form className="add-card" onSubmit={handleAdd}>
+      {!readOnly && <form className="add-card" onSubmit={handleAdd}>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -108,7 +109,7 @@ export default function Column({
           maxLength={500}
         />
         {title.trim() && <button type="submit" className="btn btn-primary btn-small">Добавить</button>}
-      </form>
+      </form>}
     </section>
   );
 }

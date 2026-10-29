@@ -34,8 +34,15 @@ function initialBoard() {
   return localStorage.getItem(BOARD_KEY) || null;
 }
 
-export const currentBoard = initialBoard();
-export const dbName = currentBoard ? `${SHARED_DB_PREFIX}${currentBoard}` : OWN_DB;
+// A public link `/p/<token>` opens one project without signing in, apart from the own board.
+const PUBLIC_DB_PREFIX = 'kanban-public:';
+export const publicToken = location.pathname.match(/^\/p\/([\w-]{8,64})\/?$/)?.[1] ?? null;
+
+export const currentBoard = publicToken ? null : initialBoard();
+export const dbName = publicToken ? `${PUBLIC_DB_PREFIX}${publicToken}`
+  : currentBoard ? `${SHARED_DB_PREFIX}${currentBoard}` : OWN_DB;
+/** The own board: neither someone else's board nor a public link. */
+export const isOwnBoard = !currentBoard && !publicToken;
 
 /** `board` is one of `user.boards`: { id, name, email, picture } of its owner. */
 export const boardName = (board) => `Доска: ${board.name || board.email || 'без имени'}`;
@@ -43,10 +50,16 @@ export const boardName = (board) => `Доска: ${board.name || board.email || 
 export const isCurrentBoard = (board) => normalize(board) === currentBoard;
 
 /** Request headers that select the board on the server. */
-export const boardHeaders = () => (currentBoard ? { 'X-Board': currentBoard } : {});
+export function boardHeaders() {
+  if (publicToken) return { 'X-Public': publicToken };
+  return currentBoard ? { 'X-Board': currentBoard } : {};
+}
 
 /** For EventSource, which can't send headers. */
-export const boardQuery = () => (currentBoard ? `?board=${encodeURIComponent(currentBoard)}` : '');
+export function boardQuery() {
+  if (publicToken) return `?public=${publicToken}`;
+  return currentBoard ? `?board=${encodeURIComponent(currentBoard)}` : '';
+}
 
 /** Opens another board (null: the own one); `search` is the query of the page to open. */
 export function switchBoard(board, search = '') {

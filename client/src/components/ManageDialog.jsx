@@ -5,14 +5,12 @@ import {
   deleteColumn, deleteColumnSet, deleteProject, deleteSection, moveColumn, moveProject, renameColumn, renameColumnSet,
   renameProject, renameSection, setProjectHidden,
 } from '../actions.js';
-import { currentBoard } from '../board.js';
+import { isOwnBoard } from '../board.js';
 import { matchColumn } from '../columnSets.js';
 import { db } from '../db.js';
 import Modal from './Modal.jsx';
+import PublicLinkSettings from './PublicLinkSettings.jsx';
 import { ProjectMembers, useCanShare } from './SharingSection.jsx';
-
-// On someone else's board only sections of the shared projects can be changed.
-const isOwnBoard = !currentBoard;
 
 /** Text input that saves on Enter / blur and reverts on Escape. */
 function NameInput({ value, onSave, className = '', label, maxLength = 200 }) {
@@ -331,6 +329,7 @@ function ProjectItem({ model, project, sections, columnsSynced, expanded, onTogg
             <AddForm label="Новый раздел" onAdd={(name) => createSection(project.id, name)} />
           </div>
           {canShare && <ProjectMembers project={project} />}
+          {canShare && <PublicLinkSettings project={project} />}
         </div>
       )}
     </section>
