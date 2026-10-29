@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { createCard } from '../actions.js';
 import Modal from './Modal.jsx';
+import ReminderField, { fromInputValue } from './ReminderField.jsx';
 
 const LAST_KEY = 'lastTargetForNewCard';
 
@@ -34,12 +35,13 @@ export default function NewCardDialog({ groups, columns, target, onClose }) {
   const [columnId, setColumnId] = useState((columns.find((c) => c.id === 'backlog') ?? columns[0]).id);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [remindAt, setRemindAt] = useState('');
 
   async function submit(e) {
     e.preventDefault();
     if (!title.trim() || !where) return;
     localStorage.setItem(LAST_KEY, where);
-    await createCard(decode(where), columnId, title.trim(), description);
+    await createCard(decode(where), columnId, title.trim(), description, fromInputValue(remindAt));
     onClose();
   }
 
@@ -71,6 +73,7 @@ export default function NewCardDialog({ groups, columns, target, onClose }) {
             {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </label>
+        <ReminderField value={remindAt} onChange={setRemindAt} />
         <div className="actions">
           <span className="spacer" />
           <button type="button" className="btn" onClick={onClose}>Отмена</button>

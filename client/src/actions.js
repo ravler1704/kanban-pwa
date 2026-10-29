@@ -154,13 +154,14 @@ async function lastCardPosition(columnId) {
   return maxPosition(await db.cards.filter((c) => c.columnId === columnId).toArray());
 }
 
-export async function createCard({ projectId, sectionId }, columnId, title, description = '') {
+export async function createCard({ projectId, sectionId }, columnId, title, description = '', remindAt = null) {
   await insert('card', {
     projectId,
     sectionId,
     columnId,
     title,
     description,
+    remindAt,
     position: (await lastCardPosition(columnId)) + 1,
   });
   requestSync();
