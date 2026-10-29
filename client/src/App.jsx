@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { isCurrentBoard, isOwnBoard, publicToken, switchBoard } from './board.js';
+import { isCurrentBoard, isOwnBoard, switchBoard } from './board.js';
 import { useReadOnly } from './public.js';
 import { db } from './db.js';
 import { columnModel } from './columnSets.js';
 import StatusBar from './components/StatusBar.jsx';
-import ProjectBar, { ALL } from './components/ProjectBar.jsx';
+import ProjectBar from './components/ProjectBar.jsx';
 import Column from './components/Column.jsx';
 import CardEditor from './components/CardEditor.jsx';
 import ConflictDialog from './components/ConflictDialog.jsx';
@@ -20,17 +20,27 @@ const TAG_FILTER_KEY = 'tagFilter';
 const byPosition = (a, b) => a.position - b.position || a.id.localeCompare(b.id);
 const groupKey = (card) => `${card.projectId}|${card.sectionId ?? ''}`;
 
-// Selection lives in the URL (?project=&section=) so it can be bookmarked and the
-// back button works; localStorage keeps it between launches of the installed app.
+const SELECTION_KEYS = { projects: 'selectedProjects', sections: 'selectedSections' };
+const LEGACY_KEYS = { projects: 'selectedProject', sections: 'selectedSection' };
+const LEGACY_PARAMS = { projects: 'project', sections: 'section' };
+
+const idList = (value) => (value ? value.split(',').filter((id) => id && id !== 'all') : []);
+
+// Selection (checked projects and sections; none checked: all of them) lives in the URL
+// (?projects=&sections=) so it can be bookmarked and the back button works; localStorage keeps it
+// between launches of the installed app. Older builds kept a single ?project=&section=.
 function readSelection() {
   const params = new URLSearchParams(location.search);
-  if (params.has('project')) {
-    return { project: params.get('project'), section: params.get('section') };
-  }
-  return {
-    project: localStorage.getItem('selectedProject'),
-    section: localStorage.getItem('selectedSection'),
+  const read = (key) => {
+    if (params.has(key)) return idList(params.get(key));
+    if (params.has(LEGACY_PARAMS.projects)) return idList(params.get(LEGACY_PARAMS[key]));
+    try {
+      const stored = JSON.parse(localStorage.getItem(SELECTION_KEYS[key]));
+      if (Array.isArray(stored)) return stored.filter((id) => typeof id === 'string');
+    } catch { /* unreadable: fall back below */ }
+    return idList(localStorage.getItem(LEGACY_KEYS[key]));
   };
+  return { projects: read('projects'), sections: read('sections') };
 }
 
 function readTagFilter() {
@@ -54,15 +64,12 @@ function useSelection() {
   const select = useCallback((next) => {
     setSelection(next);
     const url = new URL(location.href);
-    for (const key of ['project', 'section']) {
-      const storageKey = key === 'project' ? 'selectedProject' : 'selectedSection';
-      if (next[key]) {
-        localStorage.setItem(storageKey, next[key]);
-        url.searchParams.set(key, next[key]);
-      } else {
-        localStorage.removeItem(storageKey);
-        url.searchParams.delete(key);
-      }
+    for (const key of ['projects', 'sections']) {
+      localStorage.removeItem(LEGACY_KEYS[key]);
+      url.searchParams.delete(LEGACY_PARAMS[key]);
+      localStorage.setItem(SELECTION_KEYS[key], JSON.stringify(next[key]));
+      if (next[key].length) url.searchParams.set(key, next[key].join(','));
+      else url.searchParams.delete(key);
     }
     if (url.href !== location.href) history.pushState(null, '', url);
   }, []);
@@ -106,7 +113,7 @@ export default function App() {
     async function openFromReminder(id) {
       const card = await db.cards.get(id);
       if (!card) return;
-      select({ project: card.projectId, section: null });
+      select({ projects: [card.projectId], sections: [] });
       setOpenCardId(id);
     }
     const params = new URLSearchParams(location.search);
@@ -150,19 +157,23 @@ export default function App() {
   const sectionById = new Map(allSections.map((s) => [s.id, s]));
   const sectionsOf = (projectId) => allSections.filter((s) => s.projectId === projectId);
 
-  // No project selected: all projects. No section selected: the whole project.
-  // A public link opens a single project, so there «all projects» would only add a pointless choice.
-  const project = selection.project === ALL && !publicToken
-    ? null
-    : projectById.get(selection.project) ?? projects[0] ?? null;
-  const projectSections = project ? sectionsOf(project.id) : [];
-  const section = project && sectionById.get(selection.section)?.projectId === project.id
-    ? sectionById.get(selection.section)
-    : null;
-
-  // Without a selected project the board shows every project except hidden ones. Hiding is the
-  // owner's way of tidying their own view, so on a board shared with you nothing is hidden.
-  const shownProjects = project ? [project] : projects.filter((p) => !isOwnBoard || !p.hidden);
+  // No project checked: every project except hidden ones. Hiding is the owner's way of tidying
+  // their own view, so on a board shared with you nothing is hidden.
+  const selectedProjects = projects.filter((p) => selection.projects.includes(p.id));
+  const shownProjects = selectedProjects.length
+    ? selectedProjects
+    : projects.filter((p) => !isOwnBoard || !p.hidden);
+  // Sections are picked within the checked projects (or the only one shown, e.g. by a public link).
+  // A project with checked sections shows only them, the others are shown whole.
+  const sectionScope = selectedProjects.length ? selectedProjects : shownProjects.length === 1 ? shownProjects : [];
+  const sectionGroups = sectionScope
+    .map((p) => ({ project: p, sections: sectionsOf(p.id) }))
+    .filter((g) => g.sections.length > 0);
+  const selectedSections = sectionGroups.flatMap((g) => g.sections.filter((s) => selection.sections.includes(s.id)));
+  const pickedSectionsOf = (projectId) => selectedSections.filter((s) => s.projectId === projectId);
+  // The single project / section in view, if it comes to one.
+  const project = shownProjects.length === 1 ? shownProjects[0] : null;
+  const section = project && selectedSections.length === 1 ? selectedSections[0] : null;
 
   // A board shows one column set: the project's, or with all projects shown, the chosen one
   // (only projects using it are on the board).
@@ -198,7 +209,10 @@ export default function App() {
   for (const c of data.conflicted) conflictsBySection[groupKey(c)] = (conflictsBySection[groupKey(c)] ?? 0) + 1;
 
   // Cards deleted remotely stay visible while the user has an unresolved conflict on them.
-  const inScope = cards.filter((c) => (!c.deleted || c.conflict) && (!section || c.sectionId === section.id));
+  const pickedSectionIds = new Set(selectedSections.map((s) => s.id));
+  const filteredProjects = new Set(selectedSections.map((s) => s.projectId));
+  const inScope = cards.filter((c) => (!c.deleted || c.conflict)
+    && (!filteredProjects.has(c.projectId) || pickedSectionIds.has(c.sectionId)));
 
   // Tags of the cards in view (spelled as first met), and the filtered ones even if no card has them now.
   const tagStats = new Map();
@@ -232,15 +246,27 @@ export default function App() {
     return s ? `${p.name} / ${s.name}` : p.name;
   };
 
-  const target = project ? { projectId: project.id, sectionId: section?.id ?? null } : null;
+  // Where new cards go: somewhere in view (a project filtered to sections is not shown whole).
+  const target = project
+    ? { projectId: project.id, sectionId: pickedSectionsOf(project.id)[0]?.id ?? null }
+    : null;
   const pickerGroups = projects.map((p) => ({ project: p, sections: sectionsOf(p.id) }));
-  const shownGroups = pickerGroups.filter((g) => shownProjects.includes(g.project));
+  const shownGroups = shownProjects.map((p) => {
+    const picked = pickedSectionsOf(p.id);
+    return picked.length ? { project: p, sections: picked, whole: false } : { project: p, sections: sectionsOf(p.id) };
+  });
   const boardGroups = shownGroups.filter((g) => model.setIdOf(g.project) === boardSetId);
   const boardCards = visible.filter((c) => model.setIdOf(projectById.get(c.projectId)) === boardSetId);
 
-  const selectProject = (id) => select({ project: id, section: null });
-  const selectSection = (id) => select({ project: project?.id ?? null, section: id });
-  const openGroup = (card) => select({ project: card.projectId, section: card.sectionId });
+  const toggle = (list, id) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
+  const checkedProjects = selectedProjects.map((p) => p.id);
+  const checkedSections = selectedSections.map((s) => s.id);
+  const toggleProject = (id) => {
+    const next = toggle(checkedProjects, id);
+    select({ projects: next, sections: selectedSections.filter((s) => next.includes(s.projectId)).map((s) => s.id) });
+  };
+  const toggleSection = (id) => select({ projects: checkedProjects, sections: toggle(checkedSections, id) });
+  const openGroup = (card) => select({ projects: [card.projectId], sections: card.sectionId ? [card.sectionId] : [] });
 
   return (
     <div className="app">
@@ -261,12 +287,18 @@ export default function App() {
         <>
           <ProjectBar
             projects={projects}
-            sections={projectSections}
-            project={project}
-            section={section}
+            sectionGroups={sectionGroups}
+            projectFilter={{
+              selected: checkedProjects,
+              onToggle: toggleProject,
+              onClear: () => select({ projects: [], sections: [] }),
+            }}
+            sectionFilter={{
+              selected: checkedSections,
+              onToggle: toggleSection,
+              onClear: () => select({ projects: checkedProjects, sections: [] }),
+            }}
             conflictsBySection={conflictsBySection}
-            onSelectProject={selectProject}
-            onSelectSection={selectSection}
             columnSets={!project && view === 'board' && usedSets.length > 1 ? usedSets : null}
             columnSetId={boardSetId}
             onSelectColumnSet={changeAllProjectsSet}
@@ -321,7 +353,7 @@ export default function App() {
           model={model}
           columnsSynced={data.columns.length > 0}
           initialSetId={boardSetId}
-          initialProjectId={project?.id ?? null}
+          initialProjectId={shownProjects[0]?.id ?? null}
           projects={projects}
           sections={allSections}
           onClose={() => setManaging(false)}

@@ -147,14 +147,14 @@ body {
   background: var(--border);
 }
 .projectbar > .btn-icon-only { align-self: stretch; padding: 0 0.8rem; }
-.tag-filter .select {
+.check-picker .select {
   min-width: 120px;
   overflow: hidden;
   text-align: left;
   white-space: nowrap;
 }
-.tag-filter .select.select-empty { padding-right: 2.4rem; }
-.tag-menu {
+.check-picker .select.select-empty { padding-right: 2.4rem; }
+.check-menu {
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
@@ -174,7 +174,7 @@ body {
 .card-view-desc { margin: 0; white-space: pre-wrap; word-break: break-word; }
 .public-mode { flex: none; background: var(--card); color: var(--muted); }
 .public-url { flex: 1; min-width: 0; border-color: var(--border); }
-.tag-search {
+.check-search {
   width: 100%;
   margin-bottom: 0.3rem;
   padding: 0.45rem 0.6rem;
@@ -184,9 +184,9 @@ body {
   color: var(--text);
   font: inherit;
 }
-.tag-search:focus { outline: none; border-color: var(--accent); }
-.tag-menu-empty { margin: 0; padding: 0.4rem 0.5rem; color: var(--muted); font-size: 0.85rem; }
-.tag-menu-item {
+.check-search:focus { outline: none; border-color: var(--accent); }
+.check-menu-empty { margin: 0; padding: 0.4rem 0.5rem; color: var(--muted); font-size: 0.85rem; }
+.check-menu-item {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -194,8 +194,16 @@ body {
   border-radius: 6px;
   cursor: pointer;
 }
-.tag-menu-item:hover { background: var(--card); }
-.tag-menu-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.check-menu-item:hover { background: var(--card); }
+.check-menu-group {
+  padding: 0.5rem 0.5rem 0.2rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.check-menu-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tag {
   display: inline;
   padding: 0 0.15em;

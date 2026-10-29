@@ -65,8 +65,9 @@ export function boardQuery() {
 export function switchBoard(board, search = '') {
   store(normalize(board));
   // Project and section ids belong to the board that is being left.
-  localStorage.removeItem('selectedProject');
-  localStorage.removeItem('selectedSection');
+  for (const key of ['selectedProjects', 'selectedSections', 'selectedProject', 'selectedSection']) {
+    localStorage.removeItem(key);
+  }
   location.assign(`/${search}`);
 }
 

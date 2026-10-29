@@ -1,7 +1,6 @@
 import { isOwnBoard, publicToken } from '../board.js';
+import CheckPicker from './CheckPicker.jsx';
 import TagFilter from './TagFilter.jsx';
-
-export const ALL = 'all';
 
 const withConflicts = (name, n) => (n ? `${name} (конфликты: ${n})` : name);
 
@@ -49,72 +48,42 @@ const VIEWS = [
   { id: 'calendar', label: 'Календарь', Icon: CalendarIcon },
 ];
 
-function ClearIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25"
-      strokeLinecap="round" aria-hidden="true">
-      <path d="M18 6 6 18M6 6l12 12" />
-    </svg>
-  );
-}
-
 /**
- * `project` is null when no project is selected (all projects are shown);
- * `section` is null when no section is selected (the whole project is shown).
- * `conflictsBySection` is keyed by `${projectId}|${sectionId ?? ''}`.
- * Without `onManage` / `onAddCard` (read only) their buttons are not shown.
+ * `projectFilter` / `sectionFilter` are { selected, onToggle, onClear } of ids; nothing selected
+ * means all projects (except hidden ones) / the whole projects. `sectionGroups` ({ project, sections })
+ * are the projects whose sections can be picked. `conflictsBySection` is keyed by
+ * `${projectId}|${sectionId ?? ''}`. Without `onManage` / `onAddCard` (read only) their buttons are not shown.
  */
 export default function ProjectBar({
-  projects, sections, project, section, conflictsBySection, onSelectProject, onSelectSection,
+  projects, sectionGroups, projectFilter, sectionFilter, conflictsBySection,
   columnSets, columnSetId, onSelectColumnSet, tagFilter, view, onView, onManage, onAddCard,
 }) {
-  const sumConflicts = (keys) => keys.reduce((sum, key) => sum + (conflictsBySection[key] ?? 0), 0);
   const allKeys = Object.keys(conflictsBySection);
-  const projectConflicts = (p) => sumConflicts(allKeys.filter((key) => key.startsWith(`${p.id}|`)));
-  const projectOption = (p) => <option key={p.id} value={p.id}>{withConflicts(p.name, projectConflicts(p))}</option>;
+  const projectConflicts = (p) => allKeys
+    .filter((key) => key.startsWith(`${p.id}|`))
+    .reduce((sum, key) => sum + conflictsBySection[key], 0);
   const hidden = isOwnBoard ? projects.filter((p) => p.hidden) : [];
+  const projectItems = [...projects.filter((p) => !hidden.includes(p)), ...hidden].map((p) => ({
+    key: p.id,
+    name: withConflicts(p.name, projectConflicts(p)),
+    group: hidden.includes(p) ? 'Скрытые' : undefined,
+  }));
+  const sectionItems = sectionGroups.flatMap(({ project, sections }) => sections.map((s) => ({
+    key: s.id,
+    name: withConflicts(s.name, conflictsBySection[`${project.id}|${s.id}`]),
+    group: sectionGroups.length > 1 ? project.name : undefined,
+  })));
 
   return (
     <nav className="projectbar">
-      <div className="picker">
-        <label className="picker-label" htmlFor="project-select">Проект</label>
-        <select
-          id="project-select"
-          className={`select ${project ? '' : 'select-empty'}`}
-          value={project?.id ?? ALL}
-          onChange={(e) => onSelectProject(e.target.value)}
-        >
-          {!publicToken && <option value={ALL}>{withConflicts('Все проекты', sumConflicts(allKeys))}</option>}
-          {projects.filter((p) => !hidden.includes(p)).map(projectOption)}
-          {hidden.length > 0 && <optgroup label="Скрытые">{hidden.map(projectOption)}</optgroup>}
-        </select>
-        {project && !publicToken && (
-          <button className="btn-clear" title="Показать все проекты" aria-label="Очистить проект"
-            onClick={() => onSelectProject(ALL)}><ClearIcon /></button>
-        )}
-      </div>
+      {!publicToken && (
+        <CheckPicker label="Проекты" emptyLabel="Все проекты" clearLabel="Показать все проекты"
+          searchPlaceholder="Поиск проекта" items={projectItems} {...projectFilter} />
+      )}
 
-      {project && sections.length > 0 && (
-        <div className="picker">
-          <label className="picker-label" htmlFor="section-select">Раздел</label>
-          <select
-            id="section-select"
-            className={`select ${section ? '' : 'select-empty'}`}
-            value={section?.id ?? ''}
-            onChange={(e) => onSelectSection(e.target.value || null)}
-          >
-            <option value="">{withConflicts('Не выбран', conflictsBySection[`${project.id}|`])}</option>
-            {sections.map((s) => (
-              <option key={s.id} value={s.id}>
-                {withConflicts(s.name, conflictsBySection[`${project.id}|${s.id}`])}
-              </option>
-            ))}
-          </select>
-          {section && (
-            <button className="btn-clear" title="Весь проект" aria-label="Очистить раздел"
-              onClick={() => onSelectSection(null)}><ClearIcon /></button>
-          )}
-        </div>
+      {sectionItems.length > 0 && (
+        <CheckPicker label="Разделы" emptyLabel="Все разделы" clearLabel="Показать все разделы"
+          searchPlaceholder="Поиск раздела" items={sectionItems} {...sectionFilter} />
       )}
 
       {columnSets && (
