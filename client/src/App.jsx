@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { isCurrentBoard, isOwnBoard, switchBoard } from './board.js';
+import { isCurrentBoard, isOwnBoard, publicToken, switchBoard } from './board.js';
 import { useReadOnly } from './public.js';
 import { db } from './db.js';
 import { columnModel } from './columnSets.js';
@@ -151,14 +151,18 @@ export default function App() {
   const sectionsOf = (projectId) => allSections.filter((s) => s.projectId === projectId);
 
   // No project selected: all projects. No section selected: the whole project.
-  const project = selection.project === ALL ? null : projectById.get(selection.project) ?? projects[0] ?? null;
+  // A public link opens a single project, so there «all projects» would only add a pointless choice.
+  const project = selection.project === ALL && !publicToken
+    ? null
+    : projectById.get(selection.project) ?? projects[0] ?? null;
   const projectSections = project ? sectionsOf(project.id) : [];
   const section = project && sectionById.get(selection.section)?.projectId === project.id
     ? sectionById.get(selection.section)
     : null;
 
-  // Without a selected project the board shows every project except hidden ones.
-  const shownProjects = project ? [project] : projects.filter((p) => !p.hidden);
+  // Without a selected project the board shows every project except hidden ones. Hiding is the
+  // owner's way of tidying their own view, so on a board shared with you nothing is hidden.
+  const shownProjects = project ? [project] : projects.filter((p) => !isOwnBoard || !p.hidden);
 
   // A board shows one column set: the project's, or with all projects shown, the chosen one
   // (only projects using it are on the board).

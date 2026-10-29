@@ -1,3 +1,4 @@
+import { isOwnBoard, publicToken } from '../board.js';
 import TagFilter from './TagFilter.jsx';
 
 export const ALL = 'all';
@@ -71,7 +72,7 @@ export default function ProjectBar({
   const allKeys = Object.keys(conflictsBySection);
   const projectConflicts = (p) => sumConflicts(allKeys.filter((key) => key.startsWith(`${p.id}|`)));
   const projectOption = (p) => <option key={p.id} value={p.id}>{withConflicts(p.name, projectConflicts(p))}</option>;
-  const hidden = projects.filter((p) => p.hidden);
+  const hidden = isOwnBoard ? projects.filter((p) => p.hidden) : [];
 
   return (
     <nav className="projectbar">
@@ -83,11 +84,11 @@ export default function ProjectBar({
           value={project?.id ?? ALL}
           onChange={(e) => onSelectProject(e.target.value)}
         >
-          <option value={ALL}>{withConflicts('Все проекты', sumConflicts(allKeys))}</option>
-          {projects.filter((p) => !p.hidden).map(projectOption)}
+          {!publicToken && <option value={ALL}>{withConflicts('Все проекты', sumConflicts(allKeys))}</option>}
+          {projects.filter((p) => !hidden.includes(p)).map(projectOption)}
           {hidden.length > 0 && <optgroup label="Скрытые">{hidden.map(projectOption)}</optgroup>}
         </select>
-        {project && (
+        {project && !publicToken && (
           <button className="btn-clear" title="Показать все проекты" aria-label="Очистить проект"
             onClick={() => onSelectProject(ALL)}><ClearIcon /></button>
         )}
