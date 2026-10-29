@@ -129,8 +129,23 @@ function ColumnsEditor({ columns, synced }) {
   );
 }
 
+const TABS = [
+  { id: 'projects', label: 'Проекты и разделы' },
+  { id: 'columns', label: 'Колонки' },
+];
+const TAB_KEY = 'manageDialogTab';
+
 export default function ManageDialog({ columns, columnsSynced, projects, sections, onClose }) {
   const [deleting, setDeleting] = useState(null);
+  const [tab, setTab] = useState(() => {
+    const saved = localStorage.getItem(TAB_KEY);
+    return TABS.some((t) => t.id === saved) ? saved : TABS[0].id;
+  });
+
+  function selectTab(id) {
+    setTab(id);
+    localStorage.setItem(TAB_KEY, id);
+  }
 
   async function removeProject(project) {
     if (!confirm(`Удалить проект «${project.name}» со всеми разделами и карточками?`)) return;
@@ -153,32 +168,44 @@ export default function ManageDialog({ columns, columnsSynced, projects, section
 
   return (
     <Modal title="Настройки доски" onClose={onClose}>
-      <div className="manage">
-        <h4 className="manage-heading">Проекты и разделы</h4>
-        {projects.length === 0 && <p className="muted">Пока нет ни одного проекта.</p>}
-        {projects.map((p) => (
-          <section key={p.id} className="manage-project">
-            <div className="manage-row">
-              <NameInput value={p.name} className="manage-project-name" ariaLabel="Название проекта"
-                onSave={(name) => renameProject(p.id, name)} />
-              <button className="btn btn-small btn-danger" onClick={() => removeProject(p)}>Удалить</button>
-            </div>
-            <div className="manage-sections">
-              {sections.filter((s) => s.projectId === p.id).map((s) => (
-                <div key={s.id} className="manage-row">
-                  <NameInput value={s.name} ariaLabel="Название раздела"
-                    onSave={(name) => renameSection(s.id, name)} />
-                  <button className="btn btn-small btn-danger" onClick={() => removeSection(s)}>Удалить</button>
-                </div>
-              ))}
-              <AddForm placeholder="Новый раздел" onAdd={(name) => createSection(p.id, name)} />
-            </div>
-          </section>
+      <div className="tabs" role="tablist">
+        {TABS.map((t) => (
+          <button key={t.id} type="button" role="tab" aria-selected={tab === t.id}
+            className={`tab ${tab === t.id ? 'tab-active' : ''}`} onClick={() => selectTab(t.id)}>
+            {t.label}
+          </button>
         ))}
-        <AddForm placeholder="Новый проект" onAdd={createProject} />
-        <h4 className="manage-heading">Колонки</h4>
-        <ColumnsEditor columns={columns} synced={columnsSynced} />
       </div>
+      {tab === 'projects' && (
+        <div className="manage" role="tabpanel">
+          {projects.length === 0 && <p className="muted">Пока нет ни одного проекта.</p>}
+          {projects.map((p) => (
+            <section key={p.id} className="manage-project">
+              <div className="manage-row">
+                <NameInput value={p.name} className="manage-project-name" ariaLabel="Название проекта"
+                  onSave={(name) => renameProject(p.id, name)} />
+                <button className="btn btn-small btn-danger" onClick={() => removeProject(p)}>Удалить</button>
+              </div>
+              <div className="manage-sections">
+                {sections.filter((s) => s.projectId === p.id).map((s) => (
+                  <div key={s.id} className="manage-row">
+                    <NameInput value={s.name} ariaLabel="Название раздела"
+                      onSave={(name) => renameSection(s.id, name)} />
+                    <button className="btn btn-small btn-danger" onClick={() => removeSection(s)}>Удалить</button>
+                  </div>
+                ))}
+                <AddForm placeholder="Новый раздел" onAdd={(name) => createSection(p.id, name)} />
+              </div>
+            </section>
+          ))}
+          <AddForm placeholder="Новый проект" onAdd={createProject} />
+        </div>
+      )}
+      {tab === 'columns' && (
+        <div className="manage" role="tabpanel">
+          <ColumnsEditor columns={columns} synced={columnsSynced} />
+        </div>
+      )}
       <div className="actions">
         <button className="btn btn-primary" onClick={onClose}>Готово</button>
       </div>
