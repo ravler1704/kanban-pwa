@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { createCard } from '../actions.js';
-import DescriptionField from './DescriptionField.jsx';
+import CardExtraFields from './CardExtraFields.jsx';
 import Modal from './Modal.jsx';
-import ReminderField, { fromInputValue } from './ReminderField.jsx';
+import { fromInputValue } from './ReminderField.jsx';
 
 const LAST_KEY = 'lastTargetForNewCard';
 
@@ -53,7 +53,13 @@ export default function NewCardDialog({ groups, columns, target, onClose }) {
           Название
           <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={500} autoFocus />
         </label>
-        <DescriptionField value={description} onChange={setDescription} rows={4} />
+        <CardExtraFields
+          description={description}
+          onDescription={setDescription}
+          remindAt={remindAt}
+          onRemindAt={setRemindAt}
+          descriptionRows={4}
+        />
         <label>
           Проект / раздел
           <select className="select" value={where} onChange={(e) => setWhere(e.target.value)}>
@@ -71,7 +77,6 @@ export default function NewCardDialog({ groups, columns, target, onClose }) {
             {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </label>
-        <ReminderField value={remindAt} onChange={setRemindAt} />
         <div className="actions">
           <span className="spacer" />
           <button type="button" className="btn" onClick={onClose}>Отмена</button>

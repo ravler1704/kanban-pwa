@@ -41,30 +41,22 @@ function ReminderPushStatus() {
 }
 
 /**
- * `value` is in the datetime-local format (see toInputValue), '' for no reminder.
- * Without a reminder only an "add" button is shown.
+ * Expanded reminder; `value` is in the datetime-local format (see toInputValue), '' for none.
+ * «Убрать» clears it and calls `onCollapse`.
  */
-export default function ReminderField({ value, onChange }) {
-  const [open, setOpen] = useState(false);
+export default function ReminderField({ value, onChange, onCollapse }) {
   const input = useRef(null);
 
   useEffect(() => {
-    if (!open || value) return;
+    if (input.current?.value) return;
     input.current?.focus();
     try {
       input.current?.showPicker?.();
     } catch {
       // Not allowed without a user gesture in some browsers; the focused field is enough.
     }
-  }, [open, value]);
+  }, []);
 
-  if (!open && !value) {
-    return (
-      <button type="button" className="btn reminder-add" onClick={() => setOpen(true)}>
-        + Добавить напоминание
-      </button>
-    );
-  }
   return (
     <>
       <label>
@@ -73,7 +65,7 @@ export default function ReminderField({ value, onChange }) {
           <input ref={input} type="datetime-local" value={value} onChange={(e) => onChange(e.target.value)} />
           <button type="button" className="btn btn-small" onClick={() => {
             onChange('');
-            setOpen(false);
+            onCollapse();
           }}>
             Убрать
           </button>

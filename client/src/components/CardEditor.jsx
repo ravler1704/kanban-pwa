@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { deleteCard, moveCardToEnd, moveCardToSection, updateCard } from '../actions.js';
-import DescriptionField from './DescriptionField.jsx';
+import CardExtraFields from './CardExtraFields.jsx';
 import Modal from './Modal.jsx';
-import ReminderField, { fromInputValue, toInputValue } from './ReminderField.jsx';
+import { fromInputValue, toInputValue } from './ReminderField.jsx';
 
 /** `sections` are the live sections of the card's project. */
 export default function CardEditor({ card, columns, sections, onClose }) {
@@ -47,14 +47,18 @@ export default function CardEditor({ card, columns, sections, onClose }) {
           Название
           <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={500} />
         </label>
-        <DescriptionField value={description} onChange={setDescription} />
+        <CardExtraFields
+          description={description}
+          onDescription={setDescription}
+          remindAt={remindAt}
+          onRemindAt={setRemindAt}
+        />
         <label>
           Статус
           <select className="select" value={columnId} onChange={(e) => setColumnId(e.target.value)}>
             {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </label>
-        <ReminderField value={remindAt} onChange={setRemindAt} />
         {sections.length > 0 && (
           <label>
             Раздел
