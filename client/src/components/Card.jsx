@@ -1,3 +1,5 @@
+import { splitTags, tagKey } from '../tags.js';
+
 function formatReminder(ts) {
   const d = new Date(ts);
   const now = new Date();
@@ -21,11 +23,29 @@ function BellIcon() {
   );
 }
 
+/** Text with its #tags as buttons that toggle the tag filter; `activeTags` are the filtered tag keys. */
+function TaggedText({ text, activeTags, onTag }) {
+  return splitTags(text).map((part, i) => {
+    if (typeof part === 'string') return part;
+    const active = activeTags.has(tagKey(part.tag));
+    return (
+      <button key={i} type="button" className={`tag ${active ? 'tag-active' : ''}`}
+        title={active ? 'Убрать из фильтра' : 'Показать карточки с этим тегом'}
+        onClick={(e) => {
+          e.stopPropagation();
+          onTag(part.tag);
+        }}>
+        #{part.tag}
+      </button>
+    );
+  });
+}
+
 /** Id of the card being dragged: `dataTransfer` can't be read until the drop. */
 export let draggedCardId = null;
 
 /** `dropMark` ('before' | 'after' | null) shows where a dragged card would be inserted. */
-export default function Card({ card, label, dropMark, onOpen, onOpenLabel, onMoveLeft, onMoveRight }) {
+export default function Card({ card, label, dropMark, activeTags, onTag, onOpen, onOpenLabel, onMoveLeft, onMoveRight }) {
   const classes = ['card'];
   if (dropMark) classes.push(`card-drop-${dropMark}`);
   if (card.conflict) classes.push('card-conflict');
@@ -54,8 +74,14 @@ export default function Card({ card, label, dropMark, onOpen, onOpenLabel, onMov
           {label}
         </button>
       )}
-      <div className="card-title">{card.title || <em className="muted">Без названия</em>}</div>
-      {card.description && <div className="card-desc">{card.description}</div>}
+      <div className="card-title">
+        {card.title
+          ? <TaggedText text={card.title} activeTags={activeTags} onTag={onTag} />
+          : <em className="muted">Без названия</em>}
+      </div>
+      {card.description && (
+        <div className="card-desc"><TaggedText text={card.description} activeTags={activeTags} onTag={onTag} /></div>
+      )}
       <div className="card-footer">
         <div className="card-badges">
           {card.remindAt && (

@@ -11,9 +11,11 @@ import ConflictDialog from './components/ConflictDialog.jsx';
 import ManageDialog from './components/ManageDialog.jsx';
 import NewCardDialog, { defaultTarget } from './components/NewCardDialog.jsx';
 import CalendarView from './components/CalendarView.jsx';
+import { splitTags, tagKey, tagsOf } from './tags.js';
 
 const VIEW_KEY = 'view';
 const ALL_SET_KEY = 'allProjectsColumnSet';
+const TAG_FILTER_KEY = 'tagFilter';
 const byPosition = (a, b) => a.position - b.position || a.id.localeCompare(b.id);
 const groupKey = (card) => `${card.projectId}|${card.sectionId ?? ''}`;
 
@@ -28,6 +30,15 @@ function readSelection() {
     project: localStorage.getItem('selectedProject'),
     section: localStorage.getItem('selectedSection'),
   };
+}
+
+function readTagFilter() {
+  try {
+    const keys = JSON.parse(localStorage.getItem(TAG_FILTER_KEY));
+    return Array.isArray(keys) ? keys.filter((k) => typeof k === 'string') : [];
+  } catch {
+    return [];
+  }
 }
 
 function useSelection() {
@@ -74,6 +85,17 @@ export default function App() {
   const changeAllProjectsSet = (id) => {
     setAllProjectsSet(id);
     localStorage.setItem(ALL_SET_KEY, id);
+  };
+
+  // Tag keys: only cards with any of them are shown.
+  const [tagFilter, setTagFilter] = useState(readTagFilter);
+  const changeTagFilter = (next) => {
+    setTagFilter(next);
+    localStorage.setItem(TAG_FILTER_KEY, JSON.stringify(next));
+  };
+  const toggleTag = (name) => {
+    const key = tagKey(name);
+    changeTagFilter(tagFilter.includes(key) ? tagFilter.filter((k) => k !== key) : [...tagFilter, key]);
   };
 
   // A tapped reminder opens its card: `?card=` when the app starts from the notification,
@@ -170,9 +192,30 @@ export default function App() {
   for (const c of data.conflicted) conflictsBySection[groupKey(c)] = (conflictsBySection[groupKey(c)] ?? 0) + 1;
 
   // Cards deleted remotely stay visible while the user has an unresolved conflict on them.
-  const visible = cards
-    .filter((c) => (!c.deleted || c.conflict) && (!section || c.sectionId === section.id))
-    .sort(byPosition);
+  const inScope = cards.filter((c) => (!c.deleted || c.conflict) && (!section || c.sectionId === section.id));
+
+  // Tags of the cards in view (spelled as first met), and the filtered ones even if no card has them now.
+  const tagStats = new Map();
+  for (const card of inScope) {
+    for (const text of [card.title, card.description]) {
+      for (const part of splitTags(text)) {
+        if (typeof part === 'string') continue;
+        const key = tagKey(part.tag);
+        if (!tagStats.has(key)) tagStats.set(key, { key, name: part.tag, cards: new Set() });
+        tagStats.get(key).cards.add(card.id);
+      }
+    }
+  }
+  for (const key of tagFilter) if (!tagStats.has(key)) tagStats.set(key, { key, name: key, cards: new Set() });
+  const tags = [...tagStats.values()]
+    .map(({ key, name, cards: tagged }) => ({ key, name, count: tagged.size }))
+    .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+  const activeTags = new Set(tagFilter);
+
+  const visible = (tagFilter.length
+    ? inScope.filter((c) => [...tagsOf(c)].some((key) => activeTags.has(key)))
+    : inScope
+  ).sort(byPosition);
   const openCard = cards.find((c) => c.id === openCardId);
 
   // What the current view does not already say about where a card belongs.
@@ -221,6 +264,12 @@ export default function App() {
             columnSets={!project && view === 'board' && usedSets.length > 1 ? usedSets : null}
             columnSetId={boardSetId}
             onSelectColumnSet={changeAllProjectsSet}
+            tagFilter={tags.length ? {
+              tags,
+              selected: tagFilter,
+              onToggle: toggleTag,
+              onClear: () => changeTagFilter([]),
+            } : null}
             view={view}
             onView={changeView}
             onManage={() => setManaging(true)}
@@ -239,6 +288,8 @@ export default function App() {
                   nextColumn={columns[index + 1]}
                   cards={boardCards.filter((c) => c.columnId === col.id)}
                   cardLabel={cardLabel}
+                  activeTags={activeTags}
+                  onTag={toggleTag}
                   onOpen={setOpenCardId}
                   onOpenGroup={openGroup}
                 />

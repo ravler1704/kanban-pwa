@@ -147,6 +147,51 @@ body {
   background: var(--border);
 }
 .projectbar > .btn-icon-only { align-self: stretch; padding: 0 0.8rem; }
+.tag-filter .select {
+  min-width: 120px;
+  overflow: hidden;
+  text-align: left;
+  white-space: nowrap;
+}
+.tag-filter .select.select-empty { padding-right: 2.4rem; }
+.tag-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 20;
+  min-width: 100%;
+  max-width: min(90vw, 320px);
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 0.3rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
+}
+.tag-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.tag-menu-item:hover { background: var(--card); }
+.tag-menu-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag {
+  display: inline;
+  padding: 0 0.15em;
+  border: none;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+.tag:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.tag-active { background: var(--accent); color: var(--bg); }
+.tag-active:hover { background: var(--accent); }
 .view-switch {
   align-self: stretch;
   display: flex;

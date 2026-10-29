@@ -17,7 +17,9 @@ function positionAtEnd(cards) {
  * `target` ({ projectId, sectionId }) is where new cards go.
  * `cardLabel(card)` returns the project/section shown on the card, or null for none.
  */
-export default function Column({ target, column, prevColumn, nextColumn, cards, cardLabel, onOpen, onOpenGroup }) {
+export default function Column({
+  target, column, prevColumn, nextColumn, cards, cardLabel, activeTags, onTag, onOpen, onOpenGroup,
+}) {
   const [title, setTitle] = useState('');
   // While a card is dragged over the column: the id of the card it would land before, or null for the end.
   const [dropBefore, setDropBefore] = useState(undefined);
@@ -88,6 +90,8 @@ export default function Column({ target, column, prevColumn, nextColumn, cards, 
             card={card}
             label={cardLabel?.(card)}
             dropMark={dropMark(i)}
+            activeTags={activeTags}
+            onTag={onTag}
             onOpen={() => onOpen(card.id)}
             onOpenLabel={() => onOpenGroup(card)}
             onMoveLeft={prevColumn && (() => moveCardToEnd(card.id, prevColumn.id))}

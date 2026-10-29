@@ -1,3 +1,5 @@
+import TagFilter from './TagFilter.jsx';
+
 export const ALL = 'all';
 
 const withConflicts = (name, n) => (n ? `${name} (конфликты: ${n})` : name);
@@ -62,7 +64,7 @@ function ClearIcon() {
  */
 export default function ProjectBar({
   projects, sections, project, section, conflictsBySection, onSelectProject, onSelectSection,
-  columnSets, columnSetId, onSelectColumnSet, view, onView, onManage, onAddCard,
+  columnSets, columnSetId, onSelectColumnSet, tagFilter, view, onView, onManage, onAddCard,
 }) {
   const sumConflicts = (keys) => keys.reduce((sum, key) => sum + (conflictsBySection[key] ?? 0), 0);
   const allKeys = Object.keys(conflictsBySection);
@@ -123,6 +125,8 @@ export default function ProjectBar({
           </select>
         </div>
       )}
+
+      {tagFilter && <TagFilter {...tagFilter} />}
 
       <div className="view-switch" role="group" aria-label="Вид">
         {VIEWS.map(({ id, label, Icon }) => (
