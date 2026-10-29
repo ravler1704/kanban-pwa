@@ -257,6 +257,7 @@ export async function createCard({ projectId, sectionId }, columnId, title, desc
     title,
     description,
     remindAt,
+    attachments: [],
     position: await arrivalPosition(columnId),
   });
   requestSync();

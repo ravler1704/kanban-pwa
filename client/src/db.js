@@ -109,6 +109,21 @@ db.version(8)
     if (c.server) c.server.addToTop ??= false;
   }));
 
+// v9: files attached to cards.
+db.version(9)
+  .stores({
+    columnSets: 'id, dirty',
+    columns: 'id, dirty',
+    projects: 'id, dirty',
+    sections: 'id, projectId, dirty',
+    cards: 'id, projectId, sectionId, dirty',
+    meta: 'key',
+  })
+  .upgrade((tx) => tx.table('cards').toCollection().modify((c) => {
+    c.attachments ??= [];
+    if (c.server) c.server.attachments ??= [];
+  }));
+
 // Push order matters: parents are created on the server before their children.
 export const TYPES = {
   columnSet: { table: 'columnSets', fields: ['name', 'position', 'deleted'] },
@@ -120,7 +135,8 @@ export const TYPES = {
     table: 'cards',
     // sectionId is null for cards that belong to the project directly.
     // remindAt: Unix time in ms of the push reminder, or null.
-    fields: ['projectId', 'sectionId', 'columnId', 'title', 'description', 'position', 'deleted', 'remindAt'],
+    // attachments: [{ id, name, size, type, addedAt }], changed by the server only (files.js).
+    fields: ['projectId', 'sectionId', 'columnId', 'title', 'description', 'position', 'deleted', 'remindAt', 'attachments'],
   },
 };
 
@@ -157,7 +173,10 @@ export function tableOf(type) {
 }
 
 // Records saved before a field existed lack it; treat a missing value as null.
-export const sameValue = (a, b) => (a ?? null) === (b ?? null);
+// Lists (attachments) are copies after a round trip through IndexedDB: compared by content.
+export const sameValue = (a, b) => (typeof a === 'object' && a && typeof b === 'object' && b
+  ? JSON.stringify(a) === JSON.stringify(b)
+  : (a ?? null) === (b ?? null));
 
 export function pickFields(type, source) {
   const out = {};

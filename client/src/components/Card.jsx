@@ -23,6 +23,15 @@ function BellIcon() {
   );
 }
 
+function ClipIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+    </svg>
+  );
+}
+
 /** Text with its #tags as buttons that toggle the tag filter; `activeTags` are the filtered tag keys. */
 function TaggedText({ text, activeTags, onTag }) {
   return splitTags(text).map((part, i) => {
@@ -91,6 +100,12 @@ export default function Card({
               title="Напоминание">
               <BellIcon />
               {formatReminder(card.remindAt)}
+            </span>
+          )}
+          {card.attachments?.length > 0 && (
+            <span className="card-files" title="Прикреплённые файлы">
+              <ClipIcon />
+              {card.attachments.length}
             </span>
           )}
           {card.conflict && <span className="badge badge-conflict">Конфликт — нажмите, чтобы решить</span>}

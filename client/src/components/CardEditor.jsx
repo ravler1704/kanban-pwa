@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { deleteCard, moveCardToColumn, moveCardToGroup, updateCard } from '../actions.js';
+import Attachments from './Attachments.jsx';
 import CardExtraFields from './CardExtraFields.jsx';
 import Modal from './Modal.jsx';
 import { GroupSelect } from './NewCardDialog.jsx';
@@ -21,6 +22,7 @@ function CardView({ card, columnsOfProject, groups, onClose }) {
           })}`}
         </p>
         {card.description && <p className="card-view-desc">{card.description}</p>}
+        <Attachments card={card} readOnly />
         <div className="actions">
           <span className="spacer" />
           <button type="button" className="btn" onClick={onClose}>Закрыть</button>
@@ -105,6 +107,7 @@ function CardForm({ card, columnsOfProject, groups, onClose }) {
           remindAt={remindAt}
           onRemindAt={setRemindAt}
         />
+        <Attachments card={card} />
         <GroupSelect groups={groups} value={group} onChange={changeGroup} />
         {otherSet && (
           <p className="notice">

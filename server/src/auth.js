@@ -3,10 +3,11 @@ import { createRemoteJWKSet, jwtVerify } from 'jose';
 import {
   addMember, boardSummary, countEmailCodeAttempt, createSession, deleteIdentity, deleteMember, deletePublicLink,
   deleteSession, deleteUser, findUserByEmail, getEmailCode, getIdentityUser, getPublicLink, getRecord, getSession, isInvited,
-  leaveBoard, listIdentities, listMembers, listPublicLinks, memberProjects, mergeUsers, pruneEmailCodes,
+  leaveBoard, listIdentities, listMembers, listPublicLinks, memberProjects, mergeUsers, ownerFileIds, pruneEmailCodes,
   saveEmailCode, saveIdentity, savePublicLink, sharedBoards, useEmailCode,
 } from './db.js';
 import { broadcast, disconnect, disconnectUser } from './events.js';
+import { removeFiles } from './files.js';
 import {
   clearMailSettings, mailEnabled, mailFromEnv, mailSettings, saveMailSettings, sendMail,
 } from './mail.js';
@@ -530,7 +531,9 @@ export function registerAuthRoutes(app) {
   app.post('/api/auth/delete-account', (req, res) => {
     const session = authEnabled && currentSession(req);
     if (!session) return res.status(401).json({ error: 'unauthorized' });
+    const files = ownerFileIds(session.user_id);
     deleteUser(session.user_id);
+    removeFiles(files);
     // Members' and visitors' streams of the board, then the user's own on any board.
     disconnect(session.user_id);
     disconnectUser(session.user_id);

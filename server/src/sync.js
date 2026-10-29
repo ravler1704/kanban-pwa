@@ -7,6 +7,9 @@ const optionalRef = (v) => v === null || ref(v);
 const number = (v) => typeof v === 'number' && Number.isFinite(v);
 const boolean = (v) => typeof v === 'boolean';
 const optionalTime = (v) => v === null || (Number.isInteger(v) && v > 0);
+const attachment = (v) => v !== null && typeof v === 'object' && ref(v.id) && string(255)(v.name)
+  && Number.isInteger(v.size) && v.size >= 0 && string(255)(v.type) && Number.isInteger(v.addedAt);
+const attachments = (v) => Array.isArray(v) && v.length <= 1000 && v.every(attachment);
 
 /**
  * textFields — merged field-by-field; concurrent edits of the same field become a
@@ -56,11 +59,15 @@ export const SCHEMAS = {
       deleted: boolean,
       // Unix time in ms when a push reminder is sent to the owner's devices.
       remindAt: optionalTime,
+      // Files ({ id, name, size, type, addedAt }); only the server changes them (see files.js).
+      attachments,
     },
     defaults: {
       sectionId: null, columnId: 'todo', title: '', description: '', position: 0, deleted: false, remindAt: null,
+      attachments: [],
     },
     textFields: ['title', 'description'],
+    serverFields: ['attachments'],
     deleteConflicts: true,
   },
 };
@@ -97,11 +104,13 @@ function validateChange(change) {
   if (!schema) throw new ValidationError('invalid type');
   if (!ref(id)) throw new ValidationError('invalid id');
   if (!Number.isInteger(baseVersion) || baseVersion < 0) throw new ValidationError('invalid baseVersion');
+  const fields = validateFields(schema, change.fields, { partial: true });
+  for (const f of schema.serverFields ?? []) delete fields[f];
   return {
     type,
     id,
     baseVersion,
-    fields: validateFields(schema, change.fields, { partial: true }),
+    fields,
     base: change.base == null ? null : validateFields(schema, change.base, { partial: false }),
   };
 }
@@ -226,6 +235,23 @@ function applyChange(owner, deviceId, { type, id, baseVersion, fields, base }, a
   return Object.keys(conflicts).length
     ? result('conflict', record, conflicts)
     : result('merged', record);
+}
+
+/** The live card, or null; with `access` (a member or a public link) only one of its projects. */
+export function visibleCard(owner, cardId, access) {
+  const card = withDefaults(getRecord(owner, cardId));
+  if (card?.type !== 'card' || card.deleted) return null;
+  return access && !access.projects.has(card.projectId) ? null : card;
+}
+
+/** Applies `change` (attachments → attachments) to the card as the server; returns the new seq. */
+export function changeAttachments(owner, cardId, change) {
+  return transaction(() => {
+    const card = withDefaults(getRecord(owner, cardId));
+    const next = { ...card, attachments: change(card.attachments) };
+    saveRecord(owner, 'card', cardId, pickData(SCHEMAS.card, next), { version: card.version + 1, deviceId: 'server' });
+    return getMaxSeq(owner);
+  });
 }
 
 /** `access` (see memberAccess) limits a member's changes; null for the board's owner. */

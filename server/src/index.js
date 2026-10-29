@@ -4,6 +4,7 @@ import path from 'node:path';
 import { authEnabled, registerAuthRoutes, requireAuth, requireAuthOrPublic } from './auth.js';
 import { EPOCH } from './db.js';
 import { broadcast, registerEvents } from './events.js';
+import { registerFileRoutes, startFileCleanup } from './files.js';
 import { registerPushRoutes, startReminders } from './push.js';
 import { push, pull, ValidationError } from './sync.js';
 
@@ -21,7 +22,9 @@ app.get('/api/health', (_req, res) => {
 });
 
 registerAuthRoutes(app);
-app.use(['/api/sync', '/api/events'], requireAuthOrPublic);
+app.use(['/api/sync', '/api/events', '/api/cards', '/api/files'], requireAuthOrPublic);
+registerFileRoutes(app);
+startFileCleanup();
 app.use('/api/push', requireAuth);
 registerPushRoutes(app);
 startReminders();
@@ -79,7 +82,9 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: 'internal error' });
 });
 
-app.listen(PORT, HOST, () => {
+const server = app.listen(PORT, HOST, () => {
   console.log(`Kanban server listening on http://${HOST ?? 'localhost'}:${PORT}`);
   console.log(authEnabled ? 'Sign-in is required' : 'Auth is disabled (no GOOGLE_CLIENT_ID / YANDEX_CLIENT_ID)');
 });
+// Uploads of large files over a slow connection take longer than the default 5 minutes.
+server.requestTimeout = 0;

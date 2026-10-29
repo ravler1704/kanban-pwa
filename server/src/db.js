@@ -4,7 +4,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const DB_PATH = process.env.DB_PATH || path.join(import.meta.dirname, '..', 'data', 'kanban.db');
-fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+export const DB_DIR = path.dirname(DB_PATH);
+fs.mkdirSync(DB_DIR, { recursive: true });
 
 export const db = new DatabaseSync(DB_PATH);
 
@@ -239,6 +240,28 @@ export function saveRecord(owner, type, id, data, { version, deviceId }) {
     updatedBy: deviceId ?? null,
   });
   return getRecord(owner, id);
+}
+
+// ---- files attached to cards (the ids are file names in the files directory) ----
+
+const CARD_FILES = `FROM records r, json_each(r.data, '$.attachments') j WHERE r.type = 'card'`;
+const selectCardByFile = db.prepare(`SELECT r.id ${CARD_FILES} AND r.owner = ? AND json_extract(j.value, '$.id') = ? LIMIT 1`);
+const selectKeptFiles = db.prepare(`
+  SELECT json_extract(j.value, '$.id') AS id ${CARD_FILES} AND (json_extract(r.data, '$.deleted') = 0 OR r.updated_at > ?)
+`);
+const selectOwnerFiles = db.prepare(`SELECT json_extract(j.value, '$.id') AS id ${CARD_FILES} AND r.owner = ?`);
+
+export function findCardByFile(owner, fileId) {
+  return selectCardByFile.get(owner, fileId)?.id ?? null;
+}
+
+/** Files of live cards and of cards deleted after `deletedSince` (they may still be restored). */
+export function keptFileIds(deletedSince) {
+  return new Set(selectKeptFiles.all(deletedSince).map((r) => r.id));
+}
+
+export function ownerFileIds(owner) {
+  return selectOwnerFiles.all(owner).map((r) => r.id);
 }
 
 // Once: «Завершено» of the template sets puts cards first unless the user chose otherwise.

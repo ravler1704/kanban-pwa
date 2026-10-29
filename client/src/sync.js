@@ -108,7 +108,7 @@ async function push() {
       const next = { ...local, server: serverSnapshot(r.type, r.record) };
       for (const f of TYPES[r.type].fields) {
         // Keep edits the user made while the request was in flight.
-        if (local[f] === sentRec[f]) next[f] = r.record[f];
+        if (sameValue(local[f], sentRec[f])) next[f] = r.record[f];
       }
       if (r.status === 'conflict') {
         next.conflict = { fields: r.conflicts, local: pickFields(r.type, sentRec) };
