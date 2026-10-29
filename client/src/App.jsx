@@ -179,11 +179,13 @@ export default function App() {
             onAddCard={() => setAddingCard(true)}
           />
           <main className="board" style={{ '--columns': columns.length }}>
-            {columns.map((col) => (
+            {columns.map((col, index) => (
               <Column
                 key={col.id}
                 target={target ?? defaultTarget(pickerGroups)}
                 column={col}
+                prevColumn={columns[index - 1]}
+                nextColumn={columns[index + 1]}
                 cards={visible.filter((c) => c.columnId === col.id)}
                 cardLabel={cardLabel}
                 onOpen={setOpenCardId}
