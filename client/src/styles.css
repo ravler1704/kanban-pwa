@@ -306,6 +306,9 @@ body {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* Room for the drop line above the first / below the last card inside the scroll area. */
+  padding-block: 6px;
+  margin-block: -6px;
 }
 
 .card {
@@ -317,6 +320,19 @@ body {
   user-select: none;
 }
 .card:hover { border-color: var(--muted); }
+/* Drop position: a line in the gap above/below a card, drawn without moving the cards. */
+.card-drop-before, .card-drop-after { position: relative; }
+.card-drop-before::before, .card-drop-after::after, .drop-indicator {
+  content: '';
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+.card-drop-before::before, .card-drop-after::after { position: absolute; left: 0; right: 0; }
+.card-drop-before::before { top: calc(-0.25rem - 2.5px); }
+.card-drop-after::after { bottom: calc(-0.25rem - 2.5px); }
+.drop-indicator { flex: none; }
 .card-conflict { border-color: var(--warn); }
 .card-deleted { opacity: 0.6; border-style: dashed; }
 .card-title { font-weight: 600; word-break: break-word; }

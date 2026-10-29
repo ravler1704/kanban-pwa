@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createCard, moveCard, moveCardToEnd } from '../actions.js';
-import Card from './Card.jsx';
+import Card, { draggedCardId } from './Card.jsx';
 
 function positionBefore(cards, targetId) {
   const index = cards.findIndex((c) => c.id === targetId);
@@ -19,12 +19,30 @@ function positionAtEnd(cards) {
  */
 export default function Column({ target, column, prevColumn, nextColumn, cards, cardLabel, onOpen, onOpenGroup }) {
   const [title, setTitle] = useState('');
-  const [dragOver, setDragOver] = useState(false);
+  // While a card is dragged over the column: the id of the card it would land before, or null for the end.
+  const [dropBefore, setDropBefore] = useState(undefined);
+  const list = useRef(null);
+  const dragOver = dropBefore !== undefined;
 
-  function handleDrop(e, beforeId = null) {
+  useEffect(() => {
+    const reset = () => setDropBefore(undefined);
+    window.addEventListener('dragend', reset);
+    return () => window.removeEventListener('dragend', reset);
+  }, []);
+
+  function handleDragOver(e) {
     e.preventDefault();
-    e.stopPropagation();
-    setDragOver(false);
+    const target = [...list.current.querySelectorAll(':scope > .card')].find((el) => {
+      const rect = el.getBoundingClientRect();
+      return e.clientY < rect.top + rect.height / 2;
+    });
+    setDropBefore(target?.dataset.cardId ?? null);
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    const beforeId = dropBefore ?? null;
+    setDropBefore(undefined);
     const id = e.dataTransfer.getData('text/card-id');
     if (!id || id === beforeId) return;
 
@@ -32,6 +50,16 @@ export default function Column({ target, column, prevColumn, nextColumn, cards, 
     const position = beforeId ? positionBefore(others, beforeId) : positionAtEnd(others);
     moveCard(id, column.id, position);
   }
+
+  // Dropping right before or after the dragged card itself wouldn't move it.
+  const index = dropBefore ? cards.findIndex((c) => c.id === dropBefore) : cards.length;
+  const showIndicator = dragOver && cards[index]?.id !== draggedCardId && cards[index - 1]?.id !== draggedCardId;
+  const dropMark = (i) => {
+    if (!showIndicator) return null;
+    if (i === index) return 'before';
+    if (i === cards.length - 1 && index === cards.length) return 'after';
+    return null;
+  };
 
   function handleAdd(e) {
     e.preventDefault();
@@ -44,31 +72,29 @@ export default function Column({ target, column, prevColumn, nextColumn, cards, 
   return (
     <section
       className={`column ${dragOver ? 'column-dragover' : ''}`}
-      onDragOver={(e) => {
-        e.preventDefault();
-        setDragOver(true);
-      }}
+      onDragOver={handleDragOver}
       onDragLeave={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget)) setDragOver(false);
+        if (!e.currentTarget.contains(e.relatedTarget)) setDropBefore(undefined);
       }}
       onDrop={handleDrop}
     >
       <h2>
         {column.name} <span className="count">{cards.filter((c) => !c.deleted).length}</span>
       </h2>
-      <div className="cards">
-        {cards.map((card) => (
+      <div className="cards" ref={list}>
+        {cards.map((card, i) => (
           <Card
             key={card.id}
             card={card}
             label={cardLabel?.(card)}
+            dropMark={dropMark(i)}
             onOpen={() => onOpen(card.id)}
             onOpenLabel={() => onOpenGroup(card)}
-            onDrop={(e) => handleDrop(e, card.id)}
             onMoveLeft={prevColumn && (() => moveCardToEnd(card.id, prevColumn.id))}
             onMoveRight={nextColumn && (() => moveCardToEnd(card.id, nextColumn.id))}
           />
         ))}
+        {showIndicator && cards.length === 0 && <div className="drop-indicator" />}
       </div>
       <form className="add-card" onSubmit={handleAdd}>
         <input

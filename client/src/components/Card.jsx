@@ -21,21 +21,29 @@ function BellIcon() {
   );
 }
 
-export default function Card({ card, label, onOpen, onOpenLabel, onDrop, onMoveLeft, onMoveRight }) {
+/** Id of the card being dragged: `dataTransfer` can't be read until the drop. */
+export let draggedCardId = null;
+
+/** `dropMark` ('before' | 'after' | null) shows where a dragged card would be inserted. */
+export default function Card({ card, label, dropMark, onOpen, onOpenLabel, onMoveLeft, onMoveRight }) {
   const classes = ['card'];
+  if (dropMark) classes.push(`card-drop-${dropMark}`);
   if (card.conflict) classes.push('card-conflict');
   if (card.deleted) classes.push('card-deleted');
 
   return (
     <article
       className={classes.join(' ')}
+      data-card-id={card.id}
       draggable={!card.conflict}
       onDragStart={(e) => {
+        draggedCardId = card.id;
         e.dataTransfer.setData('text/card-id', card.id);
         e.dataTransfer.effectAllowed = 'move';
       }}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={onDrop}
+      onDragEnd={() => {
+        draggedCardId = null;
+      }}
       onClick={onOpen}
     >
       {label && (
