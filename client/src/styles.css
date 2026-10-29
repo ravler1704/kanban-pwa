@@ -435,6 +435,13 @@ body {
 .member-project input { accent-color: var(--accent); margin: 0; }
 .member-invite { flex-wrap: wrap; margin-top: 0.5rem; }
 .member-invite .field { flex: 1 1 10rem; }
+.mail-fields { border: none; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.mail-port { width: 5.5rem; flex: none; }
+.mail-ssl { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.9rem; }
+.mail-ssl input { accent-color: var(--accent); margin: 0; }
+.mail-settings .manage-input { border-color: var(--border); padding-left: 0.7rem; padding-right: 0.7rem; width: 100%; }
+.mail-actions { flex-wrap: wrap; }
+.mail-ok { color: var(--ok); margin: 0; }
 .theme-options { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .theme-options .btn { flex: 1; }
 .account-link { display: flex; flex-direction: column; align-items: center; gap: 0.6rem; }

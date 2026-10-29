@@ -6,7 +6,9 @@ import {
   listMembers, memberProjects, mergeUsers, pruneEmailCodes, saveEmailCode, saveIdentity, sharedBoards, useEmailCode,
 } from './db.js';
 import { broadcast, disconnect, disconnectUser } from './events.js';
-import { mailEnabled, sendMail } from './mail.js';
+import {
+  clearMailSettings, mailEnabled, mailFromEnv, mailSettings, saveMailSettings, sendMail,
+} from './mail.js';
 import { memberAccess } from './sync.js';
 
 // Sign-in with Google, Yandex and/or a code sent by e-mail. A user may link several accounts and
@@ -18,14 +20,19 @@ const YANDEX_CLIENT_ID = process.env.YANDEX_CLIENT_ID || '';
 const ALLOWED_EMAILS = new Set(
   (process.env.ALLOWED_EMAILS || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean),
 );
-export const authEnabled = Boolean(GOOGLE_CLIENT_ID || YANDEX_CLIENT_ID || mailEnabled);
+// Administrators (e-mails of any of their linked accounts) set up the server in the app, e.g. its mail.
+const ADMIN_EMAILS = new Set(
+  (process.env.ADMIN_EMAILS || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean),
+);
+export const authEnabled = Boolean(GOOGLE_CLIENT_ID || YANDEX_CLIENT_ID || mailFromEnv);
 // Local development only: a "test account" button that signs in without a provider. Even when
 // enabled, it is accepted only from this machine (behind Caddy req.ip is the real client).
 const DEV_LOGIN = authEnabled && process.env.DEV_LOGIN === '1';
 const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 const devLoginAllowed = (req) => DEV_LOGIN && LOOPBACK.has(req.ip);
 // Without SMTP the test setup prints sign-in codes to the server log instead of mailing them.
-const emailLoginAllowed = (req) => mailEnabled || devLoginAllowed(req);
+const emailLoginAllowed = (req) => mailEnabled() || devLoginAllowed(req);
+const isAdmin = (userId) => listIdentities(userId).some((i) => i.email && ADMIN_EMAILS.has(i.email.toLowerCase()));
 
 const COOKIE = 'kanban_session';
 // Browsers cap cookie lifetime at 400 days.
@@ -81,6 +88,7 @@ function publicUser(session) {
     picture: session.picture,
     identities: listIdentities(session.user_id).map(publicIdentity),
     boards: sharedBoards(session.user_id),
+    admin: isAdmin(session.user_id),
   };
 }
 
@@ -225,7 +233,7 @@ async function sendCode(req) {
     windowStart: previous?.window_start ?? now,
     sends: sends + 1,
   });
-  if (!mailEnabled) {
+  if (!mailEnabled()) {
     console.log(`Sign-in code for ${email}: ${code}`);
     return;
   }
@@ -421,6 +429,54 @@ export function registerAuthRoutes(app) {
     const board = req.body?.board;
     if (typeof board !== 'string' || !leaveBoard(board, req.user)) return res.status(404).json({ error: 'not found' });
     res.json({ boards: sharedBoards(req.user) });
+  });
+
+  // --- Server settings for administrators ---
+
+  const requireAdmin = (req, res, next) => {
+    const session = authEnabled && currentSession(req);
+    if (!session) return res.status(401).json({ error: 'unauthorized' });
+    if (!isAdmin(session.user_id)) return res.status(403).json({ error: 'not admin' });
+    req.session = session;
+    next();
+  };
+
+  app.get('/api/admin/mail', requireAdmin, (req, res) => res.json(mailSettings()));
+
+  app.post('/api/admin/mail', requireAdmin, async (req, res) => {
+    if (mailFromEnv) return res.status(409).json({ error: 'set in env' });
+    const { host, port, secure, user, pass, from } = req.body ?? {};
+    const text = (v, max) => typeof v === 'string' && v.trim().length > 0 && v.length <= max;
+    if (!text(host, 253) || !Number.isInteger(port) || port < 1 || port > 65535 || typeof secure !== 'boolean'
+      || !text(user, 254) || (pass != null && typeof pass !== 'string') || (pass?.length ?? 0) > 500
+      || (from != null && typeof from !== 'string') || (from?.length ?? 0) > 300) {
+      return res.status(400).json({ error: 'invalid settings' });
+    }
+    try {
+      await saveMailSettings({ host: host.trim(), port, secure, user: user.trim(), pass, from: from?.trim() ?? '' });
+    } catch (err) {
+      // The mail server's answer helps to fix the login or the password.
+      return res.status(400).json({ error: 'smtp failed', detail: String(err.response ?? err.message).slice(0, 300) });
+    }
+    res.json(mailSettings());
+  });
+
+  app.post('/api/admin/mail/test', requireAdmin, async (req, res) => {
+    if (!mailEnabled()) return res.status(409).json({ error: 'not configured' });
+    const to = req.session.email || listIdentities(req.session.user_id).find((i) => i.email)?.email;
+    if (!to) return res.status(400).json({ error: 'no email' });
+    try {
+      await sendMail({ to, subject: 'Канбан: проверка почты', text: 'Почта для кодов входа настроена — это письмо дошло.' });
+    } catch (err) {
+      return res.status(502).json({ error: 'smtp failed', detail: String(err.response ?? err.message).slice(0, 300) });
+    }
+    res.json({ to });
+  });
+
+  app.post('/api/admin/mail/remove', requireAdmin, (req, res) => {
+    if (mailFromEnv) return res.status(409).json({ error: 'set in env' });
+    clearMailSettings();
+    res.json(mailSettings());
   });
 
   app.post('/api/auth/logout', (req, res) => {

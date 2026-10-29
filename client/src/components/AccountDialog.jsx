@@ -5,6 +5,7 @@ import { syncStatus } from '../sync.js';
 import { getTheme, setTheme } from '../theme.js';
 import Modal from './Modal.jsx';
 import { EmailCodeForm, GoogleButton, YandexButton } from './ProviderButtons.jsx';
+import MailSettings from './MailSettings.jsx';
 import SharingSection from './SharingSection.jsx';
 
 const PROVIDERS = { google: 'Google', yandex: 'Яндекс', email: 'Почта', dev: 'Тестовый' };
@@ -181,16 +182,17 @@ const TABS = [
   { id: 'sharing', label: 'Доступ', Content: () => <div className="manage"><SharingSection /></div> },
   { id: 'notifications', label: 'Уведомления', Content: NotificationsTab },
   { id: 'appearance', label: 'Тема', Content: AppearanceTab },
+  { id: 'server', label: 'Сервер', Content: MailSettings, admin: true },
 ];
 const TAB_KEY = 'accountDialogTab';
 
 export default function AccountDialog({ onClose }) {
   const { online } = useSyncExternalStore(syncStatus.subscribe, syncStatus.get);
-  const [tab, setTab] = useState(() => {
-    const saved = localStorage.getItem(TAB_KEY);
-    return TABS.some((t) => t.id === saved) ? saved : TABS[0].id;
-  });
-  const { Content } = TABS.find((t) => t.id === tab);
+  const { user } = useSyncExternalStore(authState.subscribe, authState.get);
+  const tabs = TABS.filter((t) => !t.admin || user?.admin);
+  const [picked, setTab] = useState(() => localStorage.getItem(TAB_KEY));
+  const tab = tabs.some((t) => t.id === picked) ? picked : tabs[0].id;
+  const { Content } = tabs.find((t) => t.id === tab);
 
   function selectTab(id) {
     setTab(id);
@@ -205,7 +207,7 @@ export default function AccountDialog({ onClose }) {
     <Modal title="Аккаунт" onClose={onClose}>
       <div className="tabs-bar">
         <div className="tabs" role="tablist">
-          {TABS.map((t) => (
+          {tabs.map((t) => (
             <button key={t.id} type="button" role="tab" aria-selected={tab === t.id}
               className={`tab ${tab === t.id ? 'tab-active' : ''}`} onClick={() => selectTab(t.id)}>
               {t.label}
