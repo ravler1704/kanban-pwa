@@ -66,6 +66,16 @@ body {
 }
 .statusbar h1 { margin: 0; font-size: 1.25rem; }
 .statusbar-title { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.statusbar-user { display: flex; align-items: center; gap: 0.6rem; min-width: 0; max-width: 100%; }
+.avatar { flex: none; border-radius: 50%; object-fit: cover; }
+.avatar-letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+}
 .board-select { min-width: 0; max-width: 100%; font-size: 1.1rem; font-weight: 600; text-overflow: ellipsis; }
 .status { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; font-size: 0.9rem; }
 
