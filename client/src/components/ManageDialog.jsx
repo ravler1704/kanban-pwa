@@ -267,7 +267,7 @@ function Chevron() {
 }
 
 function ProjectItem({ model, project, sections, columnsSynced, expanded, onToggle, canMoveUp, canMoveDown,
-  onChangeSet, onRemove, onRemoveSection, canShare }) {
+  onChangeSet, onRemove }) {
   const setName = model.sets.find((s) => s.id === model.setIdOf(project))?.name;
   const meta = [
     project.hidden && 'скрыт',
@@ -285,14 +285,12 @@ function ProjectItem({ model, project, sections, columnsSynced, expanded, onTogg
             <span className="manage-project-meta">{meta}</span>
           </span>
         </button>
-        {isOwnBoard && (
-          <button className="btn btn-small" aria-pressed={!!project.hidden}
-            title={project.hidden ? 'Показывать карточки в «Все проекты»' : 'Не показывать карточки в «Все проекты»'}
-            onClick={() => setProjectHidden(project.id, !project.hidden)}>
-            {project.hidden ? 'Показать' : 'Скрыть'}
-          </button>
-        )}
-        {isOwnBoard && canMoveUp !== null && (
+        <button className="btn btn-small" aria-pressed={!!project.hidden}
+          title={project.hidden ? 'Показывать карточки в «Все проекты»' : 'Не показывать карточки в «Все проекты»'}
+          onClick={() => setProjectHidden(project.id, !project.hidden)}>
+          {project.hidden ? 'Показать' : 'Скрыть'}
+        </button>
+        {canMoveUp !== null && (
           <>
             <button className="btn btn-small" title="Выше" aria-label="Выше" disabled={!canMoveUp}
               onClick={() => moveProject(project.id, -1)}>↑</button>
@@ -303,14 +301,12 @@ function ProjectItem({ model, project, sections, columnsSynced, expanded, onTogg
       </div>
       {expanded && (
         <div className="manage-project-body">
-          {isOwnBoard && (
-            <div className="manage-row">
-              <NameInput value={project.name} className="manage-project-name" label="Название проекта"
-                onSave={(name) => renameProject(project.id, name)} />
-              <button className="btn btn-small btn-danger" onClick={onRemove}>Удалить</button>
-            </div>
-          )}
-          {isOwnBoard && columnsSynced && (
+          <div className="manage-row">
+            <NameInput value={project.name} className="manage-project-name" label="Название проекта"
+              onSave={(name) => renameProject(project.id, name)} />
+            <button className="btn btn-small btn-danger" onClick={onRemove}>Удалить</button>
+          </div>
+          {columnsSynced && (
             <label className="field">
               <span className="field-label">Набор колонок</span>
               <select className="select" value={model.setIdOf(project)} onChange={(e) => onChangeSet(e.target.value)}>
@@ -318,79 +314,112 @@ function ProjectItem({ model, project, sections, columnsSynced, expanded, onTogg
               </select>
             </label>
           )}
-          <div className="manage-sections">
-            <h4 className="manage-heading">Разделы</h4>
-            {sections.map((s) => (
-              <div key={s.id} className="manage-row">
-                <NameInput value={s.name} label="Название раздела" onSave={(name) => renameSection(s.id, name)} />
-                <button className="btn btn-small btn-danger" onClick={() => onRemoveSection(s)}>Удалить</button>
-              </div>
-            ))}
-            <AddForm label="Новый раздел" onAdd={(name) => createSection(project.id, name)} />
-          </div>
-          {canShare && <ProjectMembers project={project} />}
-          {canShare && <PublicLinkSettings project={project} />}
         </div>
       )}
     </section>
   );
 }
 
-function ProjectsEditor({ model, projects, sections, columnsSynced, onChangeSet, onRemove, onRemoveSection }) {
+/** The own board's projects: adding, order, hiding; a project expands to its name and column set. */
+function ProjectsEditor({ model, projects, sections, columnsSynced, onChangeSet, onRemove, onAdded }) {
   const [expandedId, setExpandedId] = useState(() => (projects.length === 1 ? projects[0].id : null));
   const [query, setQuery] = useState('');
-  const canShare = useCanShare();
   const sectionsOf = (id) => sections.filter((s) => s.projectId === id);
 
   const needle = query.trim().toLowerCase();
-  const visible = needle
-    ? projects.filter((p) => p.name.toLowerCase().includes(needle)
-      || sectionsOf(p.id).some((s) => s.name.toLowerCase().includes(needle)))
-    : projects;
+  const visible = needle ? projects.filter((p) => p.name.toLowerCase().includes(needle)) : projects;
+
+  async function add(name) {
+    const id = await createProject(name, model.newProjectSetId);
+    setExpandedId(id);
+    onAdded(id);
+  }
 
   return (
     <div className="manage">
-      {isOwnBoard
-        ? <AddForm label="Новый проект"
-            onAdd={async (name) => setExpandedId(await createProject(name, model.newProjectSetId))} />
-        : <p className="muted">Проекты и колонки настраивает владелец доски, здесь можно менять разделы.</p>}
+      <AddForm label="Новый проект" onAdd={add} />
       {projects.length >= SEARCH_FROM && (
         <label className="field">
           <span className="field-label">Поиск проекта</span>
           <input type="search" className="manage-search" value={query} onChange={(e) => setQuery(e.target.value)} />
         </label>
       )}
-      {projects.length === 0 && (
-        <p className="muted">{isOwnBoard ? 'Пока нет ни одного проекта.' : 'Вам пока не открыт ни один проект.'}</p>
-      )}
+      {projects.length === 0 && <p className="muted">Пока нет ни одного проекта.</p>}
       {projects.length > 0 && visible.length === 0 && <p className="muted">Ничего не найдено.</p>}
       <div className="manage-projects">
         {visible.map((p, i) => (
           <ProjectItem key={p.id} model={model} project={p} sections={sectionsOf(p.id)} columnsSynced={columnsSynced}
             expanded={expandedId === p.id} onToggle={() => setExpandedId(expandedId === p.id ? null : p.id)}
             canMoveUp={needle ? null : i > 0} canMoveDown={i < visible.length - 1}
-            onChangeSet={(setId) => onChangeSet(p, setId)} onRemove={() => onRemove(p)}
-            onRemoveSection={onRemoveSection} canShare={canShare} />
+            onChangeSet={(setId) => onChangeSet(p, setId)} onRemove={() => onRemove(p)} />
         ))}
       </div>
     </div>
   );
 }
 
-const TABS = [
-  { id: 'projects', label: 'Проекты и разделы' },
-  ...(isOwnBoard ? [{ id: 'columns', label: 'Колонки' }] : []),
-];
+/** Which project the «Разделы» and «Доступ» tabs show. */
+function ProjectPicker({ projects, project, onChange }) {
+  return (
+    <label className="field">
+      <span className="field-label">Проект</span>
+      <select className="select" value={project.id} onChange={(e) => onChange(e.target.value)}>
+        {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function SectionsEditor({ projects, project, sections, onProject, onRemoveSection }) {
+  const own = sections.filter((s) => s.projectId === project.id);
+  return (
+    <div className="manage">
+      {!isOwnBoard && <p className="muted">Проекты и колонки настраивает владелец доски, здесь можно менять разделы.</p>}
+      <ProjectPicker projects={projects} project={project} onChange={onProject} />
+      {own.length === 0 && <p className="muted">В проекте нет разделов — все карточки лежат в нём самом.</p>}
+      {own.map((s) => (
+        <div key={s.id} className="manage-row">
+          <NameInput value={s.name} label="Название раздела" onSave={(name) => renameSection(s.id, name)} />
+          <button className="btn btn-small btn-danger" onClick={() => onRemoveSection(s)}>Удалить</button>
+        </div>
+      ))}
+      <AddForm label="Новый раздел" onAdd={(name) => createSection(project.id, name)} />
+    </div>
+  );
+}
+
+function AccessEditor({ projects, project, onProject }) {
+  return (
+    <div className="manage manage-access">
+      <ProjectPicker projects={projects} project={project} onChange={onProject} />
+      <ProjectMembers project={project} />
+      <PublicLinkSettings project={project} />
+    </div>
+  );
+}
+
 const TAB_KEY = 'manageDialogTab';
 
-/** `initialSetId` is the column set opened on the «Колонки» tab (the one of the current board). */
-export default function ManageDialog({ model, columnsSynced, initialSetId, projects, sections, onClose }) {
+/**
+ * `initialSetId` is the column set opened on the «Колонки» tab and `initialProjectId` the project
+ * of the «Разделы» and «Доступ» tabs (those of the current board; null with all projects shown).
+ */
+export default function ManageDialog({
+  model, columnsSynced, initialSetId, initialProjectId, projects, sections, onClose,
+}) {
+  const canShare = useCanShare();
+  const tabs = [
+    ...(isOwnBoard ? [{ id: 'projects', label: 'Проекты' }] : []),
+    { id: 'sections', label: 'Разделы' },
+    ...(canShare ? [{ id: 'access', label: 'Доступ' }] : []),
+    ...(isOwnBoard ? [{ id: 'columns', label: 'Колонки' }] : []),
+  ];
   const [deleting, setDeleting] = useState(null);
   const [changingSet, setChangingSet] = useState(null);
-  const [tab, setTab] = useState(() => {
-    const saved = localStorage.getItem(TAB_KEY);
-    return TABS.some((t) => t.id === saved) ? saved : TABS[0].id;
-  });
+  const [savedTab, setTab] = useState(() => localStorage.getItem(TAB_KEY));
+  const tab = tabs.some((t) => t.id === savedTab) ? savedTab : tabs[0].id;
+  const [projectId, setProjectId] = useState(initialProjectId);
+  const project = projects.find((p) => p.id === projectId) ?? projects[0];
 
   function selectTab(id) {
     setTab(id);
@@ -418,9 +447,9 @@ export default function ManageDialog({ model, columnsSynced, initialSetId, proje
 
   return (
     <Modal title="Настройки доски" onClose={onClose}>
-      {TABS.length > 1 && <div className="tabs-bar">
+      {tabs.length > 1 && <div className="tabs-bar">
         <div className="tabs" role="tablist">
-          {TABS.map((t) => (
+          {tabs.map((t) => (
             <button key={t.id} type="button" role="tab" aria-selected={tab === t.id}
               className={`tab ${tab === t.id ? 'tab-active' : ''}`} onClick={() => selectTab(t.id)}>
               {t.label}
@@ -431,8 +460,24 @@ export default function ManageDialog({ model, columnsSynced, initialSetId, proje
       {tab === 'projects' && (
         <div role="tabpanel">
           <ProjectsEditor model={model} projects={projects} sections={sections} columnsSynced={columnsSynced}
-            onChangeSet={(project, setId) => setChangingSet({ project, setId })}
-            onRemove={removeProject} onRemoveSection={removeSection} />
+            onChangeSet={(p, setId) => setChangingSet({ project: p, setId })}
+            onRemove={removeProject} onAdded={setProjectId} />
+        </div>
+      )}
+      {(tab === 'sections' || tab === 'access') && !project && (
+        <p className="muted">
+          {isOwnBoard ? 'Сначала создайте проект на вкладке «Проекты».' : 'Вам пока не открыт ни один проект.'}
+        </p>
+      )}
+      {tab === 'sections' && project && (
+        <div role="tabpanel">
+          <SectionsEditor projects={projects} project={project} sections={sections} onProject={setProjectId}
+            onRemoveSection={removeSection} />
+        </div>
+      )}
+      {tab === 'access' && project && (
+        <div role="tabpanel">
+          <AccessEditor projects={projects} project={project} onProject={setProjectId} />
         </div>
       )}
       {tab === 'columns' && (

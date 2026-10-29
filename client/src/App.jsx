@@ -317,6 +317,7 @@ export default function App() {
           model={model}
           columnsSynced={data.columns.length > 0}
           initialSetId={boardSetId}
+          initialProjectId={project?.id ?? null}
           projects={projects}
           sections={allSections}
           onClose={() => setManaging(false)}
