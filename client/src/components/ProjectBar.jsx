@@ -62,7 +62,7 @@ function ClearIcon() {
  */
 export default function ProjectBar({
   projects, sections, project, section, conflictsBySection, onSelectProject, onSelectSection,
-  view, onView, onManage, onAddCard,
+  columnSets, columnSetId, onSelectColumnSet, view, onView, onManage, onAddCard,
 }) {
   const sumConflicts = (keys) => keys.reduce((sum, key) => sum + (conflictsBySection[key] ?? 0), 0);
   const allKeys = Object.keys(conflictsBySection);
@@ -109,6 +109,17 @@ export default function ProjectBar({
             <button className="btn-clear" title="Весь проект" aria-label="Очистить раздел"
               onClick={() => onSelectSection(null)}><ClearIcon /></button>
           )}
+        </div>
+      )}
+
+      {columnSets && (
+        <div className="picker">
+          <label className="picker-label" htmlFor="column-set-select">Колонки</label>
+          <select id="column-set-select" className="select" value={columnSetId}
+            title="Доски с разными наборами колонок показываются по отдельности"
+            onChange={(e) => onSelectColumnSet(e.target.value)}>
+            {columnSets.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
         </div>
       )}
 

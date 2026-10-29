@@ -1,8 +1,12 @@
 import { useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import {
-  countCards, countColumnCards, createColumn, createProject, createSection, deleteColumn, deleteProject,
-  deleteSection, moveColumn, renameColumn, renameProject, renameSection,
+  changeProjectColumnSet, countCards, countColumnCards, createColumn, createColumnSet, createProject, createSection,
+  deleteColumn, deleteColumnSet, deleteProject, deleteSection, moveColumn, renameColumn, renameColumnSet,
+  renameProject, renameSection,
 } from '../actions.js';
+import { matchColumn } from '../columnSets.js';
+import { db } from '../db.js';
 import Modal from './Modal.jsx';
 
 /** Text input that saves on Enter / blur and reverts on Escape. */
@@ -92,12 +96,71 @@ function DeleteColumnDialog({ column, count, columns, onClose }) {
   );
 }
 
-function ColumnsEditor({ columns, synced }) {
-  const [deleting, setDeleting] = useState(null);
+const projectList = (projects) => projects.map((p) => `«${p.name}»`).join(', ');
+
+/** Which boards a change of the set affects; shown above its columns so it is never a surprise. */
+function SetUsage({ projects }) {
+  if (projects.length === 0) {
+    return <p className="set-usage set-usage-unused">Этот набор пока не использует ни одна доска.</p>;
+  }
+  return (
+    <p className="set-usage">
+      {projects.length === 1
+        ? <>Набор использует доска {projectList(projects)}. Изменения колонок сразу применятся к ней.</>
+        : <>Набор используют доски: {projectList(projects)}. Изменения колонок сразу применятся ко всем этим доскам.</>}
+    </p>
+  );
+}
+
+function ColumnSetsEditor({ model, synced, initialSetId }) {
+  const [picked, setPicked] = useState(initialSetId);
+  const set = model.sets.find((s) => s.id === picked) ?? model.sets[0];
+  const users = model.projectsOf(set.id);
 
   if (!synced) {
     return <p className="muted">Колонки можно будет изменить после первой синхронизации с сервером.</p>;
   }
+
+  async function addSet() {
+    const name = prompt('Название нового набора колонок (колонки скопируются из текущего):', `${set.name} — копия`);
+    if (!name?.trim()) return;
+    setPicked(await createColumnSet(name.trim().slice(0, 100), set.id));
+  }
+
+  async function removeSet() {
+    if (!confirm(`Удалить набор «${set.name}» вместе с его колонками?`)) return;
+    await deleteColumnSet(set.id);
+    setPicked(null);
+  }
+
+  return (
+    <div className="manage">
+      <div className="manage-row">
+        <label className="field set-picker">
+          <span className="field-label">Набор колонок</span>
+          <select className="select" value={set.id} onChange={(e) => setPicked(e.target.value)}>
+            {model.sets.map((s) => (
+              <option key={s.id} value={s.id}>{s.name} ({model.projectsOf(s.id).length})</option>
+            ))}
+          </select>
+        </label>
+        <button className="btn btn-small" onClick={addSet}>Новый набор</button>
+      </div>
+      <div className="manage-row">
+        <NameInput key={set.id} value={set.name} className="manage-project-name" ariaLabel="Название набора"
+          maxLength={100} onSave={(name) => renameColumnSet(set.id, name)} />
+        <button className="btn btn-small btn-danger" disabled={users.length > 0 || model.sets.length === 1}
+          title={users.length > 0 ? 'Сначала переключите доски на другой набор' : undefined}
+          onClick={removeSet}>Удалить набор</button>
+      </div>
+      <SetUsage projects={users} />
+      <ColumnsEditor setId={set.id} columns={model.columnsOf(set.id)} />
+    </div>
+  );
+}
+
+function ColumnsEditor({ setId, columns }) {
+  const [deleting, setDeleting] = useState(null);
 
   async function remove(column) {
     const count = await countColumnCards(column.id);
@@ -120,12 +183,57 @@ function ColumnsEditor({ columns, synced }) {
             onClick={() => remove(c)}>Удалить</button>
         </div>
       ))}
-      <AddForm placeholder="Новая колонка" onAdd={createColumn} />
+      <AddForm placeholder="Новая колонка" onAdd={(name) => createColumn(setId, name)} />
       {deleting && (
         <DeleteColumnDialog column={deleting.column} count={deleting.count} columns={columns}
           onClose={() => setDeleting(null)} />
       )}
     </div>
+  );
+}
+
+/** Switching a project to another column set: where the cards of each current column go. */
+function ChangeSetDialog({ model, project, setId, onClose }) {
+  const from = model.columnsOf(model.setIdOf(project));
+  const to = model.columnsOf(setId);
+  const set = model.sets.find((s) => s.id === setId);
+  const counts = useLiveQuery(async () => {
+    const cards = await db.cards.where('projectId').equals(project.id).toArray();
+    const out = {};
+    for (const c of cards) if (!c.deleted) out[c.columnId] = (out[c.columnId] ?? 0) + 1;
+    return out;
+  }, [project.id]);
+  const [mapping, setMapping] = useState(() => Object.fromEntries(from.map((c) => [c.id, matchColumn(c, to)?.id])));
+
+  async function submit(e) {
+    e.preventDefault();
+    await changeProjectColumnSet(project.id, setId, mapping);
+    onClose();
+  }
+
+  return (
+    <Modal title="Сменить набор колонок" onClose={onClose}>
+      <form className="editor" onSubmit={submit}>
+        <p>
+          У доски «{project.name}» будут колонки набора «{set.name}»: {to.map((c) => c.name).join(', ')}.
+          Выберите, куда перенести карточки из текущих колонок.
+        </p>
+        {to.length === 0 && <p className="notice">В наборе «{set.name}» нет колонок — сначала добавьте их.</p>}
+        {to.length > 0 && from.map((c) => (
+          <label key={c.id} className="field">
+            <span className="field-label">«{c.name}» — карточек: {counts?.[c.id] ?? 0}</span>
+            <select className="select" value={mapping[c.id]}
+              onChange={(e) => setMapping((m) => ({ ...m, [c.id]: e.target.value }))}>
+              {to.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </label>
+        ))}
+        <div className="actions">
+          <button type="button" className="btn" onClick={onClose}>Отмена</button>
+          <button type="submit" className="btn btn-primary" disabled={to.length === 0}>Сменить набор</button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
@@ -135,8 +243,10 @@ const TABS = [
 ];
 const TAB_KEY = 'manageDialogTab';
 
-export default function ManageDialog({ columns, columnsSynced, projects, sections, onClose }) {
+/** `initialSetId` is the column set opened on the «Колонки» tab (the one of the current board). */
+export default function ManageDialog({ model, columnsSynced, initialSetId, projects, sections, onClose }) {
   const [deleting, setDeleting] = useState(null);
+  const [changingSet, setChangingSet] = useState(null);
   const [tab, setTab] = useState(() => {
     const saved = localStorage.getItem(TAB_KEY);
     return TABS.some((t) => t.id === saved) ? saved : TABS[0].id;
@@ -186,6 +296,15 @@ export default function ManageDialog({ columns, columnsSynced, projects, section
                   onSave={(name) => renameProject(p.id, name)} />
                 <button className="btn btn-small btn-danger" onClick={() => removeProject(p)}>Удалить</button>
               </div>
+              {columnsSynced && (
+                <label className="field">
+                  <span className="field-label">Набор колонок</span>
+                  <select className="select" value={model.setIdOf(p)}
+                    onChange={(e) => setChangingSet({ project: p, setId: e.target.value })}>
+                    {model.sets.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </label>
+              )}
               <div className="manage-sections">
                 {sections.filter((s) => s.projectId === p.id).map((s) => (
                   <div key={s.id} className="manage-row">
@@ -202,9 +321,13 @@ export default function ManageDialog({ columns, columnsSynced, projects, section
         </div>
       )}
       {tab === 'columns' && (
-        <div className="manage" role="tabpanel">
-          <ColumnsEditor columns={columns} synced={columnsSynced} />
+        <div role="tabpanel">
+          <ColumnSetsEditor model={model} synced={columnsSynced} initialSetId={initialSetId} />
         </div>
+      )}
+      {changingSet && (
+        <ChangeSetDialog model={model} project={changingSet.project} setId={changingSet.setId}
+          onClose={() => setChangingSet(null)} />
       )}
       <div className="actions">
         <button className="btn btn-primary" onClick={onClose}>Готово</button>

@@ -13,16 +13,25 @@ const optionalTime = (v) => v === null || (Number.isInteger(v) && v > 0);
  * deleteConflicts — whether delete-vs-edit is reported as a conflict; otherwise
  *   deletion wins.
  */
+export const DEFAULT_SET_ID = 'default';
+
 export const SCHEMAS = {
-  column: {
+  // A named list of columns; every project (board) uses one set.
+  columnSet: {
     fields: { name: string(100), position: number, deleted: boolean },
     defaults: { name: '', position: 0, deleted: false },
     textFields: [],
     deleteConflicts: false,
   },
+  column: {
+    fields: { setId: ref, name: string(100), position: number, deleted: boolean },
+    defaults: { setId: DEFAULT_SET_ID, name: '', position: 0, deleted: false },
+    textFields: [],
+    deleteConflicts: false,
+  },
   project: {
-    fields: { name: string(200), position: number, deleted: boolean },
-    defaults: { name: '', position: 0, deleted: false },
+    fields: { columnSetId: ref, name: string(200), position: number, deleted: boolean },
+    defaults: { columnSetId: DEFAULT_SET_ID, name: '', position: 0, deleted: false },
     textFields: [],
     deleteConflicts: false,
   },
@@ -186,16 +195,23 @@ const DEFAULT_COLUMNS = [
 
 const seeded = new Set();
 
-/** Creates the default columns once per board. */
+/**
+ * Creates the default column set once per board, and the default columns for new boards.
+ * Columns and projects from before column sets belong to the default set (see the schema defaults).
+ */
 export function seedColumns(owner) {
   if (seeded.has(owner)) return;
   // '' is the board from before per-user boards; it keeps its original flag.
   const flag = owner ? `columnsSeeded:${owner}` : 'columnsSeeded';
+  const server = { version: 1, deviceId: 'server' };
   transaction(() => {
+    if (!getRecord(owner, DEFAULT_SET_ID)) {
+      saveRecord(owner, 'columnSet', DEFAULT_SET_ID, { name: 'Основной', position: 1, deleted: false }, server);
+    }
     if (getMeta(flag)) return;
     DEFAULT_COLUMNS.forEach(({ id, name }, i) => {
       if (!getRecord(owner, id)) {
-        saveRecord(owner, 'column', id, { name, position: i + 1, deleted: false }, { version: 1, deviceId: 'server' });
+        saveRecord(owner, 'column', id, { setId: DEFAULT_SET_ID, name, position: i + 1, deleted: false }, server);
       }
     });
     setMeta(flag, '1');

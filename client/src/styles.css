@@ -197,6 +197,17 @@ body {
   letter-spacing: 0.04em;
 }
 .manage-columns { display: flex; flex-direction: column; gap: 0.4rem; }
+.set-picker { flex: 1; min-width: 0; }
+.set-usage {
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--warn);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+.set-usage-unused { border-color: var(--border); background: none; color: var(--muted); }
 .manage-project {
   border: 1px solid var(--border);
   border-radius: 10px;

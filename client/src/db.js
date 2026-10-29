@@ -40,10 +40,34 @@ db.version(4).stores({
   meta: 'key',
 });
 
+// v5: column sets. Columns and projects synced before them belong to the default set.
+export const DEFAULT_SET_ID = 'default';
+
+db.version(5)
+  .stores({
+    columnSets: 'id, dirty',
+    columns: 'id, dirty',
+    projects: 'id, dirty',
+    sections: 'id, projectId, dirty',
+    cards: 'id, projectId, sectionId, dirty',
+    meta: 'key',
+  })
+  .upgrade((tx) => Promise.all([
+    tx.table('columns').toCollection().modify((c) => {
+      c.setId ??= DEFAULT_SET_ID;
+      if (c.server) c.server.setId ??= DEFAULT_SET_ID;
+    }),
+    tx.table('projects').toCollection().modify((p) => {
+      p.columnSetId ??= DEFAULT_SET_ID;
+      if (p.server) p.server.columnSetId ??= DEFAULT_SET_ID;
+    }),
+  ]));
+
 // Push order matters: parents are created on the server before their children.
 export const TYPES = {
-  column: { table: 'columns', fields: ['name', 'position', 'deleted'] },
-  project: { table: 'projects', fields: ['name', 'position', 'deleted'] },
+  columnSet: { table: 'columnSets', fields: ['name', 'position', 'deleted'] },
+  column: { table: 'columns', fields: ['setId', 'name', 'position', 'deleted'] },
+  project: { table: 'projects', fields: ['columnSetId', 'name', 'position', 'deleted'] },
   section: { table: 'sections', fields: ['projectId', 'name', 'position', 'deleted'] },
   card: {
     table: 'cards',
@@ -54,7 +78,7 @@ export const TYPES = {
 };
 
 export async function clearLocalData() {
-  const tables = [db.columns, db.projects, db.sections, db.cards, db.meta];
+  const tables = [db.columnSets, db.columns, db.projects, db.sections, db.cards, db.meta];
   await db.transaction('rw', tables, () => Promise.all(tables.map((t) => t.clear())));
 }
 
@@ -65,7 +89,8 @@ export const DEFAULT_COLUMNS = [
   { id: 'doing', name: 'В работе', position: 3 },
   { id: 'review', name: 'На проверке', position: 4 },
   { id: 'done', name: 'Завершено', position: 5 },
-];
+].map((c) => ({ ...c, setId: DEFAULT_SET_ID }));
+export const DEFAULT_SETS = [{ id: DEFAULT_SET_ID, name: 'Основной', position: 1 }];
 
 export function tableOf(type) {
   return db.table(TYPES[type].table);

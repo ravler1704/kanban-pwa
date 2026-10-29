@@ -213,7 +213,7 @@ export async function completeYandexAuth() {
 /** Signs out and removes the board from this device. Returns false if the user cancelled. */
 export async function signOut() {
   const pending = (await Promise.all(
-    [db.columns, db.projects, db.sections, db.cards].map((t) => t.where('dirty').equals(1).count()),
+    [db.columnSets, db.columns, db.projects, db.sections, db.cards].map((t) => t.where('dirty').equals(1).count()),
   )).reduce((a, b) => a + b, 0);
   if (pending > 0 && !confirm(`Есть несинхронизированные изменения (${pending}). При выходе они пропадут. Выйти?`)) {
     return false;

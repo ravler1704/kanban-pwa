@@ -1,4 +1,4 @@
-import { db, isDirty, newId, pickFields, tableOf, TYPES } from './db.js';
+import { db, DEFAULT_SET_ID, isDirty, newId, pickFields, tableOf, TYPES } from './db.js';
 import { requestSync } from './sync.js';
 
 const alive = (r) => !r.deleted;
@@ -49,12 +49,67 @@ async function cardsIn(projectId, sectionId) {
   return cards.filter((c) => alive(c) && c.sectionId === sectionId);
 }
 
+// ---- column sets ----
+
+const setOfColumn = (c) => c.setId ?? DEFAULT_SET_ID;
+const setOfProject = (p) => p.columnSetId ?? DEFAULT_SET_ID;
+
+const liveColumns = async (setId) => (await db.columns.toArray())
+  .filter((c) => alive(c) && setOfColumn(c) === setId)
+  .sort((a, b) => a.position - b.position);
+
+/** New set with a copy of the columns of `copyFromSetId`. Returns the new set id. */
+export async function createColumnSet(name, copyFromSetId) {
+  let id;
+  await db.transaction('rw', db.columnSets, db.columns, async () => {
+    const set = await insert('columnSet', { name, position: maxPosition(await db.columnSets.toArray()) + 1 });
+    id = set.id;
+    for (const c of await liveColumns(copyFromSetId)) {
+      await insert('column', { setId: id, name: c.name, position: c.position });
+    }
+  });
+  requestSync();
+  return id;
+}
+
+export async function renameColumnSet(id, name) {
+  await update('columnSet', id, { name });
+  requestSync();
+}
+
+/** Only sets no project uses can be deleted; their columns go with them. */
+export async function deleteColumnSet(id) {
+  await db.transaction('rw', db.columnSets, db.columns, db.projects, async () => {
+    const used = (await db.projects.toArray()).some((p) => alive(p) && setOfProject(p) === id);
+    if (used) throw new Error('Набор используется досками');
+    for (const c of await liveColumns(id)) await update('column', c.id, { deleted: true });
+    await update('columnSet', id, { deleted: true });
+  });
+  requestSync();
+}
+
+/**
+ * Switches the project to another column set. `mapping` maps each old column id to a
+ * column of the new set; cards in columns missing from it go to the first new column.
+ */
+export async function changeProjectColumnSet(projectId, setId, mapping) {
+  await db.transaction('rw', db.projects, db.columns, db.cards, async () => {
+    const target = await liveColumns(setId);
+    if (!target.length) throw new Error('В наборе нет колонок');
+    const cards = (await db.cards.where('projectId').equals(projectId).toArray()).filter(alive);
+    for (const c of cards) {
+      const columnId = mapping[c.columnId] ?? target[0].id;
+      if (columnId !== c.columnId) await update('card', c.id, { columnId });
+    }
+    await update('project', projectId, { columnSetId: setId });
+  });
+  requestSync();
+}
+
 // ---- columns ----
 
-const liveColumns = async () => (await db.columns.toArray()).filter(alive).sort((a, b) => a.position - b.position);
-
-export async function createColumn(name) {
-  await insert('column', { name, position: maxPosition(await db.columns.toArray()) + 1 });
+export async function createColumn(setId, name) {
+  await insert('column', { setId, name, position: maxPosition(await liveColumns(setId)) + 1 });
   requestSync();
 }
 
@@ -66,7 +121,9 @@ export async function renameColumn(id, name) {
 /** Swaps the column with its neighbour; `direction` is -1 (left) or 1 (right). */
 export async function moveColumn(id, direction) {
   await db.transaction('rw', db.columns, async () => {
-    const columns = await liveColumns();
+    const column = await db.columns.get(id);
+    if (!column) return;
+    const columns = await liveColumns(setOfColumn(column));
     const index = columns.findIndex((c) => c.id === id);
     const other = columns[index + direction];
     if (index < 0 || !other) return;
@@ -94,8 +151,10 @@ export async function deleteColumn(id, targetId) {
 
 // ---- projects ----
 
-export async function createProject(name) {
-  const project = await insert('project', { name, position: maxPosition(await db.projects.toArray()) + 1 });
+export async function createProject(name, columnSetId = DEFAULT_SET_ID) {
+  const project = await insert('project', {
+    name, columnSetId, position: maxPosition(await db.projects.toArray()) + 1,
+  });
   requestSync();
   return project.id;
 }

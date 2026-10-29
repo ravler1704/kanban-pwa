@@ -44,20 +44,28 @@ export function defaultTarget(groups) {
  * `target` ({ projectId, sectionId }) is the current selection; when null (all projects
  * are shown) the last used destination is preselected.
  */
-export default function NewCardDialog({ groups, columns, target, onClose }) {
+export default function NewCardDialog({ groups, columnsOfProject, target, onClose }) {
   const [where, setWhere] = useState(() => {
     const preferred = target ?? defaultTarget(groups);
     return preferred ? encode(preferred.projectId, preferred.sectionId) : '';
   });
-  // New cards land in «Входящие» (the default backlog column), or the first column if it was removed.
-  const [columnId, setColumnId] = useState((columns.find((c) => c.id === 'backlog') ?? columns[0]).id);
+  // The project's column set decides the choice. New cards land in «Входящие» (the default
+  // backlog column) or the first column; a picked column is kept by name across sets.
+  const columns = where ? columnsOfProject(decode(where).projectId) : [];
+  const [picked, setPicked] = useState(null);
+  const column = columns.find((c) => c.id === picked?.id)
+    ?? (picked && columns.find((c) => c.name === picked.name))
+    ?? columns.find((c) => c.id === 'backlog')
+    ?? columns[0];
+  const columnId = column?.id ?? '';
+  const setColumnId = (id) => setPicked(columns.find((c) => c.id === id));
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [remindAt, setRemindAt] = useState('');
 
   async function submit(e) {
     e.preventDefault();
-    if (!title.trim() || !where) return;
+    if (!title.trim() || !where || !columnId) return;
     localStorage.setItem(LAST_KEY, where);
     await createCard(decode(where), columnId, title.trim(), description, fromInputValue(remindAt));
     onClose();

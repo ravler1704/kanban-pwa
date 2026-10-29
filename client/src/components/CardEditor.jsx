@@ -3,10 +3,11 @@ import { deleteCard, moveCardToEnd, moveCardToGroup, updateCard } from '../actio
 import CardExtraFields from './CardExtraFields.jsx';
 import Modal from './Modal.jsx';
 import { GroupSelect } from './NewCardDialog.jsx';
+import { matchColumn } from '../columnSets.js';
 import { fromInputValue, toInputValue } from './ReminderField.jsx';
 
 /** `groups` are the projects with their sections ({ project, sections }) the card can be moved to. */
-export default function CardEditor({ card, columns, groups, onClose }) {
+export default function CardEditor({ card, columnsOfProject, groups, onClose }) {
   // Snapshot of the card when the editor opened, used to detect concurrent remote edits.
   const [base] = useState(() => ({ title: card.title, description: card.description }));
   const [title, setTitle] = useState(card.title);
@@ -14,6 +15,19 @@ export default function CardEditor({ card, columns, groups, onClose }) {
   const [group, setGroup] = useState({ projectId: card.projectId, sectionId: card.sectionId ?? null });
   const [columnId, setColumnId] = useState(card.columnId);
   const [remindAt, setRemindAt] = useState(() => toInputValue(card.remindAt));
+
+  // Another project may use another column set: the status then is one of its columns.
+  const columns = columnsOfProject(group.projectId);
+  const ownColumns = columnsOfProject(card.projectId);
+  const otherSet = columns.map((c) => c.id).join() !== ownColumns.map((c) => c.id).join();
+
+  function changeGroup(next) {
+    const nextColumns = columnsOfProject(next.projectId);
+    if (!nextColumns.some((c) => c.id === columnId)) {
+      setColumnId(matchColumn(ownColumns.find((c) => c.id === columnId), nextColumns)?.id ?? columnId);
+    }
+    setGroup(next);
+  }
 
   const changedRemotely = card.title !== base.title || card.description !== base.description;
 
@@ -60,7 +74,12 @@ export default function CardEditor({ card, columns, groups, onClose }) {
           remindAt={remindAt}
           onRemindAt={setRemindAt}
         />
-        <GroupSelect groups={groups} value={group} onChange={setGroup} />
+        <GroupSelect groups={groups} value={group} onChange={changeGroup} />
+        {otherSet && (
+          <p className="notice">
+            У этого проекта другой набор колонок — проверьте статус, в который попадёт карточка.
+          </p>
+        )}
         <div className="actions">
           <button type="button" className="btn btn-danger" onClick={remove}>Удалить</button>
           <span className="spacer" />
