@@ -1,4 +1,4 @@
-import { db, DEFAULT_SET_ID, isDirty, newId, pickFields, tableOf, TYPES } from './db.js';
+import { db, DEFAULT_COLUMNS, DEFAULT_SET_ID, isDirty, newId, pickFields, tableOf, TYPES } from './db.js';
 import { requestSync } from './sync.js';
 
 const alive = (r) => !r.deleted;
@@ -244,7 +244,7 @@ export async function deleteSection(id, { keepCards }) {
 /** Where a card added to the column goes: first or last, as the column is set up. */
 async function arrivalPosition(columnId, cardId = null) {
   const cards = (await db.cards.filter((c) => c.columnId === columnId && c.id !== cardId).toArray()).filter(alive);
-  const column = await db.columns.get(columnId);
+  const column = await db.columns.get(columnId) ?? DEFAULT_COLUMNS.find((c) => c.id === columnId);
   if (!column?.addToTop) return cards.reduce((max, c) => Math.max(max, c.position), 0) + 1;
   return cards.reduce((min, c) => Math.min(min, c.position), 1) - 1;
 }

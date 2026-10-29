@@ -241,6 +241,21 @@ export function saveRecord(owner, type, id, data, { version, deviceId }) {
   return getRecord(owner, id);
 }
 
+// Once: «Завершено» of the template sets puts cards first unless the user chose otherwise.
+if (!getMeta('doneColumnsOnTop')) {
+  transaction(() => {
+    const rows = db.prepare(`
+      SELECT owner, id, data, version FROM records
+      WHERE type = 'column' AND id IN ('done', 'simple-done') AND json_extract(data, '$.addToTop') IS NULL
+    `).all();
+    for (const row of rows) {
+      const data = { ...JSON.parse(row.data), addToTop: true };
+      saveRecord(row.owner, 'column', row.id, data, { version: row.version + 1, deviceId: 'server' });
+    }
+    setMeta('doneColumnsOnTop', '1');
+  });
+}
+
 const insertSession = db.prepare(`
   INSERT INTO sessions (token_hash, user_id, provider, email, name, picture, created_at, expires_at)
   VALUES (:tokenHash, :userId, :provider, :email, :name, :picture, :createdAt, :expiresAt)

@@ -137,15 +137,15 @@ export const DEFAULT_COLUMNS = [
   ...[
     { id: 'simple-todo', name: 'Запланировано', position: 1 },
     { id: 'simple-doing', name: 'В работе', position: 2 },
-    { id: 'simple-done', name: 'Завершено', position: 3 },
-  ].map((c) => ({ ...c, setId: SIMPLE_SET_ID })),
+    { id: 'simple-done', name: 'Завершено', position: 3, addToTop: true },
+  ].map((c) => ({ addToTop: false, ...c, setId: SIMPLE_SET_ID })),
   ...[
     { id: 'backlog', name: 'Входящие', position: 1 },
     { id: 'todo', name: 'Запланировано', position: 2 },
     { id: 'doing', name: 'В работе', position: 3 },
     { id: 'review', name: 'На проверке', position: 4 },
-    { id: 'done', name: 'Завершено', position: 5 },
-  ].map((c) => ({ ...c, setId: DEFAULT_SET_ID })),
+    { id: 'done', name: 'Завершено', position: 5, addToTop: true },
+  ].map((c) => ({ addToTop: false, ...c, setId: DEFAULT_SET_ID })),
 ];
 export const DEFAULT_SETS = [
   { id: SIMPLE_SET_ID, name: '3 колонки', position: 1 },

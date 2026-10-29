@@ -248,7 +248,7 @@ const DEFAULT_COLUMNS = [
   { id: 'todo', name: 'Запланировано' },
   { id: 'doing', name: 'В работе' },
   { id: 'review', name: 'На проверке' },
-  { id: 'done', name: 'Завершено' },
+  { id: 'done', name: 'Завершено', addToTop: true },
 ];
 
 // The template new projects get (the client picks it while it exists).
@@ -256,7 +256,7 @@ const SIMPLE_SET_ID = 'simple';
 const SIMPLE_COLUMNS = [
   { id: 'simple-todo', name: 'Запланировано' },
   { id: 'simple-doing', name: 'В работе' },
-  { id: 'simple-done', name: 'Завершено' },
+  { id: 'simple-done', name: 'Завершено', addToTop: true },
 ];
 
 const seeded = new Set();
@@ -271,8 +271,10 @@ export function seedColumns(owner) {
   const flag = owner ? `columnsSeeded:${owner}` : 'columnsSeeded';
   const simpleFlag = `simpleSetSeeded:${owner}`;
   const server = { version: 1, deviceId: 'server' };
-  const addColumns = (setId, columns) => columns.forEach(({ id, name }, i) => {
-    if (!getRecord(owner, id)) saveRecord(owner, 'column', id, { setId, name, position: i + 1, deleted: false }, server);
+  const addColumns = (setId, columns) => columns.forEach(({ id, name, addToTop = false }, i) => {
+    if (!getRecord(owner, id)) {
+      saveRecord(owner, 'column', id, { setId, name, position: i + 1, deleted: false, addToTop }, server);
+    }
   });
   transaction(() => {
     if (!getRecord(owner, DEFAULT_SET_ID)) {
