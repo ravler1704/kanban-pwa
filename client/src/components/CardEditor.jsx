@@ -83,7 +83,7 @@ export default function CardEditor({ card, columns, sections, onClose }) {
         )}
         <label>
           Название
-          <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={500} autoFocus />
+          <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={500} />
         </label>
         <label>
           Описание
