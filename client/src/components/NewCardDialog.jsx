@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { createCard } from '../actions.js';
+import DescriptionField from './DescriptionField.jsx';
 import Modal from './Modal.jsx';
 import ReminderField, { fromInputValue } from './ReminderField.jsx';
 
@@ -52,10 +53,7 @@ export default function NewCardDialog({ groups, columns, target, onClose }) {
           Название
           <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={500} autoFocus />
         </label>
-        <label>
-          Описание
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} maxLength={10000} />
-        </label>
+        <DescriptionField value={description} onChange={setDescription} rows={4} />
         <label>
           Проект / раздел
           <select className="select" value={where} onChange={(e) => setWhere(e.target.value)}>

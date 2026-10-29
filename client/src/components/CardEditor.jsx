@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { deleteCard, moveCardToEnd, moveCardToSection, updateCard } from '../actions.js';
+import DescriptionField from './DescriptionField.jsx';
 import Modal from './Modal.jsx';
 import ReminderField, { fromInputValue, toInputValue } from './ReminderField.jsx';
 
@@ -46,10 +47,7 @@ export default function CardEditor({ card, columns, sections, onClose }) {
           Название
           <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={500} />
         </label>
-        <label>
-          Описание
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={6} maxLength={10000} />
-        </label>
+        <DescriptionField value={description} onChange={setDescription} />
         <label>
           Статус
           <select className="select" value={columnId} onChange={(e) => setColumnId(e.target.value)}>

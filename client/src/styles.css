@@ -349,6 +349,7 @@ body {
 .add-card input:focus, .editor input:focus, .editor textarea:focus,
 .conflict-field input:focus, .conflict-field textarea:focus { outline: none; border-color: var(--accent); }
 textarea { resize: vertical; }
+.textarea-collapsed { resize: none; overflow: hidden; }
 
 .btn {
   background: var(--card);
