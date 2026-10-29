@@ -9,7 +9,7 @@ self.addEventListener('push', (event) => {
     data = { title: event.data?.text() };
   }
   event.waitUntil(
-    self.registration.showNotification(data.title || 'Напоминание', {
+    self.registration.showNotification(data.title || '', {
       body: data.body || '',
       tag: data.tag,
       renotify: Boolean(data.tag),

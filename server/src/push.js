@@ -67,13 +67,16 @@ async function send(owner, payload) {
   }));
 }
 
+/** Title is "Project / Section", body is the card title. */
 function reminderPayload(owner, { id, card }) {
-  const project = getRecord(owner, card.projectId);
-  const details = [project && !project.deleted ? project.name : null, card.description.split('\n')[0]]
-    .filter(Boolean).join(' · ');
+  const name = (recordId) => {
+    const record = recordId ? getRecord(owner, recordId) : null;
+    return record && !record.deleted ? record.name : null;
+  };
+  const where = [name(card.projectId), name(card.sectionId)].filter(Boolean).join(' / ');
   return {
-    title: card.title || 'Напоминание',
-    body: details || 'Напоминание по карточке',
+    title: where || card.title,
+    body: where ? card.title : '',
     tag: `card-${id}`,
     url: `/?card=${encodeURIComponent(id)}`,
   };
