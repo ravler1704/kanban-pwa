@@ -1,9 +1,9 @@
 import { useState, useSyncExternalStore } from 'react';
-import { signInAsTestUser, signInWithGoogle } from '../auth.js';
+import { signInAsTestUser, signInWithEmail, signInWithGoogle } from '../auth.js';
 import { syncStatus } from '../sync.js';
-import { GoogleButton, YandexButton } from './ProviderButtons.jsx';
+import { EmailCodeForm, GoogleButton, YandexButton } from './ProviderButtons.jsx';
 
-export default function LoginScreen({ clientId, yandexClientId, devLogin, notice }) {
+export default function LoginScreen({ clientId, yandexClientId, devLogin, emailLogin, notice }) {
   const { online } = useSyncExternalStore(syncStatus.subscribe, syncStatus.get);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -33,6 +33,12 @@ export default function LoginScreen({ clientId, yandexClientId, devLogin, notice
                 onCredential={(credential) => run(() => signInWithGoogle(credential))} />
             )}
             {yandexClientId && <YandexButton disabled={busy}>Войти с Яндекс ID</YandexButton>}
+            {emailLogin && (
+              <>
+                {(clientId || yandexClientId) && <span className="login-or">или по почте</span>}
+                <EmailCodeForm submitLabel="Войти" onCode={signInWithEmail} />
+              </>
+            )}
             {devLogin && (
               <button type="button" className="btn login-dev" disabled={busy} onClick={() => run(signInAsTestUser)}>
                 Войти в тестовый аккаунт

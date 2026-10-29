@@ -1,15 +1,16 @@
 import crypto from 'node:crypto';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import {
-  addMember, boardSummary, createSession, deleteIdentity, deleteMember, deleteSession, getIdentityUser, getRecord,
-  getSession, isInvited, leaveBoard, listIdentities, listMembers, memberProjects, mergeUsers, saveIdentity,
-  sharedBoards,
+  addMember, boardSummary, countEmailCodeAttempt, createSession, deleteIdentity, deleteMember, deleteSession,
+  findUserByEmail, getEmailCode, getIdentityUser, getRecord, getSession, isInvited, leaveBoard, listIdentities,
+  listMembers, memberProjects, mergeUsers, pruneEmailCodes, saveEmailCode, saveIdentity, sharedBoards, useEmailCode,
 } from './db.js';
 import { broadcast, disconnect, disconnectUser } from './events.js';
+import { mailEnabled, sendMail } from './mail.js';
 import { memberAccess } from './sync.js';
 
-// Sign-in with Google and/or Yandex. A user may link several accounts and gets one board;
-// the owner may invite others to it by e-mail.
+// Sign-in with Google, Yandex and/or a code sent by e-mail. A user may link several accounts and
+// gets one board; the owner may invite others to its projects by e-mail.
 // ALLOWED_EMAILS optionally limits who may sign in (empty: anyone; invited e-mails may always). Auth is off when no
 // provider is configured (local development), and everyone shares the board of owner ''.
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
@@ -17,12 +18,14 @@ const YANDEX_CLIENT_ID = process.env.YANDEX_CLIENT_ID || '';
 const ALLOWED_EMAILS = new Set(
   (process.env.ALLOWED_EMAILS || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean),
 );
-export const authEnabled = Boolean(GOOGLE_CLIENT_ID || YANDEX_CLIENT_ID);
+export const authEnabled = Boolean(GOOGLE_CLIENT_ID || YANDEX_CLIENT_ID || mailEnabled);
 // Local development only: a "test account" button that signs in without a provider. Even when
 // enabled, it is accepted only from this machine (behind Caddy req.ip is the real client).
 const DEV_LOGIN = authEnabled && process.env.DEV_LOGIN === '1';
 const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 const devLoginAllowed = (req) => DEV_LOGIN && LOOPBACK.has(req.ip);
+// Without SMTP the test setup prints sign-in codes to the server log instead of mailing them.
+const emailLoginAllowed = (req) => mailEnabled || devLoginAllowed(req);
 
 const COOKIE = 'kanban_session';
 // Browsers cap cookie lifetime at 400 days.
@@ -172,18 +175,108 @@ async function verifyDev(req) {
   return { provider: 'dev', subject: 'test', email: 'test@localhost', name: 'Тестовый аккаунт', picture: null };
 }
 
+// E-mail: a new 4-digit code at every sign-in. A code allows a few guesses and lives briefly;
+// an address gets a limited number of codes a day and an IP a limited number an hour.
+const CODE_TTL_MS = 10 * 60 * 1000;
+const CODE_ATTEMPTS = 5;
+const RESEND_MS = 60 * 1000;
+const CODES_PER_EMAIL = 10;
+const EMAIL_WINDOW_MS = 24 * 60 * 60 * 1000;
+const CODES_PER_IP = 20;
+const IP_WINDOW_MS = 60 * 60 * 1000;
+const codesByIp = new Map();
+
+const normalizeEmail = (value) => (typeof value === 'string' ? value.trim().toLowerCase() : '');
+const codeHash = (email, code) => hash(`${email}:${code}`);
+
+function takeIpQuota(ip, now) {
+  if (codesByIp.size > 10_000) codesByIp.clear();
+  const recent = (codesByIp.get(ip) ?? []).filter((t) => now - t < IP_WINDOW_MS);
+  if (recent.length >= CODES_PER_IP) return false;
+  codesByIp.set(ip, [...recent, now]);
+  return true;
+}
+
+async function sendCode(req) {
+  if (!emailLoginAllowed(req)) throw new AuthError(404, 'provider disabled');
+  const email = normalizeEmail(req.body?.email);
+  if (email.length > 254 || !EMAIL.test(email)) throw new AuthError(400, 'invalid email');
+  if (req.body?.link === true) {
+    if (!currentSession(req)) throw new AuthError(401, 'unauthorized');
+  } else if (!isAllowed(email)) {
+    throw new AuthError(403, 'not allowed', { email });
+  }
+
+  const now = Date.now();
+  pruneEmailCodes(now - EMAIL_WINDOW_MS);
+  const previous = getEmailCode(email);
+  if (previous && now - previous.sent_at < RESEND_MS) {
+    throw new AuthError(429, 'too soon', { retryIn: Math.ceil((previous.sent_at + RESEND_MS - now) / 1000) });
+  }
+  const sends = previous ? previous.sends : 0;
+  if (sends >= CODES_PER_EMAIL || !takeIpQuota(req.ip, now)) throw new AuthError(429, 'too many');
+
+  const code = String(crypto.randomInt(10_000)).padStart(4, '0');
+  saveEmailCode({
+    email,
+    codeHash: codeHash(email, code),
+    sentAt: now,
+    expiresAt: now + CODE_TTL_MS,
+    windowStart: previous?.window_start ?? now,
+    sends: sends + 1,
+  });
+  if (!mailEnabled) {
+    console.log(`Sign-in code for ${email}: ${code}`);
+    return;
+  }
+  try {
+    await sendMail({
+      to: email,
+      subject: `Код для входа: ${code}`,
+      text: `Ваш код для входа в Канбан: ${code}\n\nКод действует 10 минут. `
+        + 'Если вы не пытались войти, просто не обращайте внимания на это письмо.',
+    });
+  } catch (err) {
+    console.error('Sending the sign-in code failed:', err);
+    useEmailCode(email);
+    throw new AuthError(502, 'mail failed');
+  }
+}
+
+/** The code stays valid until the sign-in completes (a merge confirmation re-sends it). */
+async function verifyEmail(req) {
+  if (!emailLoginAllowed(req)) throw new AuthError(404, 'provider disabled');
+  const email = normalizeEmail(req.body?.email);
+  const code = String(req.body?.code ?? '');
+  const row = email ? getEmailCode(email) : null;
+  if (!row?.code_hash || row.expires_at < Date.now() || row.attempts >= CODE_ATTEMPTS) {
+    throw new AuthError(410, 'code expired');
+  }
+  const ok = /^\d{4}$/.test(code)
+    && crypto.timingSafeEqual(Buffer.from(codeHash(email, code)), Buffer.from(row.code_hash));
+  if (!ok) {
+    const left = CODE_ATTEMPTS - countEmailCodeAttempt(email);
+    throw left > 0 ? new AuthError(401, 'invalid code', { attemptsLeft: left }) : new AuthError(410, 'code expired');
+  }
+  return {
+    provider: 'email', subject: email, email, name: null, picture: null, complete: () => useEmailCode(email),
+  };
+}
+
 // --- Sign-in and linking ---
 
 function startSession(req, res, userId, identity) {
   const token = crypto.randomBytes(32).toString('base64url');
   const now = Date.now();
+  // E-mail sign-in has no name or photo: those of another linked account are shown.
+  const profile = listIdentities(userId).find((i) => i.name || i.picture);
   const session = {
     tokenHash: hash(token),
     userId,
     provider: identity.provider,
     email: identity.email ?? '',
-    name: identity.name,
-    picture: identity.picture,
+    name: identity.name ?? profile?.name ?? null,
+    picture: identity.picture ?? profile?.picture ?? null,
     createdAt: now,
     expiresAt: now + SESSION_TTL_MS,
   };
@@ -196,7 +289,10 @@ function signIn(req, res, identity) {
   if (identity.provider !== 'dev' && !isAllowed(identity.email)) {
     throw new AuthError(403, 'not allowed', { email: identity.email });
   }
-  const userId = getIdentityUser(identity.provider, identity.subject) ?? `u:${crypto.randomUUID()}`;
+  // A confirmed address opens the board of the account (e.g. Google) that has it.
+  const userId = getIdentityUser(identity.provider, identity.subject)
+    ?? (identity.provider === 'email' ? findUserByEmail(identity.email) : null)
+    ?? `u:${crypto.randomUUID()}`;
   saveIdentity({ ...identity, userId });
   startSession(req, res, userId, identity);
 }
@@ -233,6 +329,7 @@ function authRoute(verify) {
       } else {
         signIn(req, res, identity);
       }
+      identity.complete?.();
     } catch (err) {
       if (!(err instanceof AuthError)) throw err;
       res.status(err.status).json(err.body);
@@ -247,6 +344,7 @@ export function registerAuthRoutes(app) {
       clientId: GOOGLE_CLIENT_ID || null,
       yandexClientId: YANDEX_CLIENT_ID || null,
       devLogin: devLoginAllowed(req),
+      emailLogin: authEnabled && emailLoginAllowed(req),
     });
   });
 
@@ -260,6 +358,18 @@ export function registerAuthRoutes(app) {
   app.post('/api/auth/google', authRoute((req) => verifyGoogle(req.body)));
   app.post('/api/auth/yandex', authRoute((req) => verifyYandex(req.body)));
   app.post('/api/auth/dev', authRoute(verifyDev));
+  app.post('/api/auth/email', authRoute(verifyEmail));
+
+  app.post('/api/auth/email/code', async (req, res) => {
+    if (!authEnabled) return res.status(404).json({ error: 'auth disabled' });
+    try {
+      await sendCode(req);
+      res.json({ ok: true, resendIn: RESEND_MS / 1000 });
+    } catch (err) {
+      if (!(err instanceof AuthError)) throw err;
+      res.status(err.status).json(err.body);
+    }
+  });
 
   app.post('/api/auth/unlink', (req, res) => {
     const session = authEnabled && currentSession(req);

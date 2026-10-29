@@ -115,6 +115,20 @@ db.exec(`
   );
 `);
 
+// Sign-in by e-mail: the last code sent to each address (empty `code_hash` once used) and how many
+// codes the address got since `window_start`, which limits guessing.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS email_codes (
+    email         TEXT PRIMARY KEY,
+    code_hash     TEXT    NOT NULL,
+    sent_at       INTEGER NOT NULL,
+    expires_at    INTEGER NOT NULL,
+    attempts      INTEGER NOT NULL,
+    window_start  INTEGER NOT NULL,
+    sends         INTEGER NOT NULL
+  );
+`);
+
 // People invited to projects of a board. Access follows the e-mail: whoever signs in with an
 // account that has this address (or links one) gets these projects.
 db.exec(`
@@ -268,6 +282,45 @@ export function listIdentities(userId) {
 
 export function deleteIdentity(userId, provider, subject) {
   return removeIdentity.run(userId, provider, subject).changes > 0;
+}
+
+const selectUserByEmail = db.prepare('SELECT user_id FROM identities WHERE email = ? ORDER BY linked_at LIMIT 1');
+
+/** The user who has an account with this e-mail (the earliest linked one), or null. */
+export function findUserByEmail(email) {
+  return selectUserByEmail.get(email)?.user_id ?? null;
+}
+
+const selectEmailCode = db.prepare('SELECT * FROM email_codes WHERE email = ?');
+const upsertEmailCode = db.prepare(`
+  INSERT INTO email_codes (email, code_hash, sent_at, expires_at, attempts, window_start, sends)
+  VALUES (:email, :codeHash, :sentAt, :expiresAt, 0, :windowStart, :sends)
+  ON CONFLICT(email) DO UPDATE SET code_hash = excluded.code_hash, sent_at = excluded.sent_at,
+    expires_at = excluded.expires_at, attempts = 0, window_start = excluded.window_start, sends = excluded.sends
+`);
+const addEmailCodeAttempt = db.prepare('UPDATE email_codes SET attempts = attempts + 1 WHERE email = ? RETURNING attempts');
+const clearEmailCode = db.prepare("UPDATE email_codes SET code_hash = '' WHERE email = ?");
+const removeOldEmailCodes = db.prepare('DELETE FROM email_codes WHERE window_start < ?');
+
+export function getEmailCode(email) {
+  return selectEmailCode.get(email) ?? null;
+}
+
+export function saveEmailCode(code) {
+  upsertEmailCode.run(code);
+}
+
+/** Counts a wrong guess; returns how many were made. */
+export function countEmailCodeAttempt(email) {
+  return addEmailCodeAttempt.get(email)?.attempts ?? 0;
+}
+
+export function useEmailCode(email) {
+  clearEmailCode.run(email);
+}
+
+export function pruneEmailCodes(before) {
+  removeOldEmailCodes.run(before);
 }
 
 const selectLiveRecords = db.prepare('SELECT type, data FROM records WHERE owner = ?');

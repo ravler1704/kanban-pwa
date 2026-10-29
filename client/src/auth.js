@@ -23,6 +23,7 @@ const configFields = (config) => ({
   clientId: config?.clientId ?? null,
   yandexClientId: config?.yandexClientId ?? null,
   devLogin: Boolean(config?.devLogin),
+  emailLogin: Boolean(config?.emailLogin),
 });
 
 function initialState() {
@@ -121,8 +122,31 @@ function authError({ status, body }, action) {
   if (status === 403 && body.error === 'not allowed') {
     return new Error(`У аккаунта ${body.email ?? ''} нет доступа к этой доске.`);
   }
+  if (body.error === 'invalid code') {
+    return new Error(`Неверный код. Осталось попыток: ${body.attemptsLeft}.`);
+  }
+  if (body.error === 'code expired') return new Error('Код больше не действует — запросите новый.');
   if (status === 502) return new Error('Сервис входа не отвечает. Попробуйте позже.');
   return new Error(`Не удалось ${action}. Попробуйте ещё раз.`);
+}
+
+/**
+ * Asks the server to mail a sign-in code (`link`: for linking the address to the signed-in user).
+ * Resolves to the seconds before another code can be requested.
+ */
+export async function requestEmailCode(email, { link = false } = {}) {
+  const res = await postAuth('email/code', { email, link });
+  if (res.status === 200) return res.body.resendIn;
+  if (res.status === 400) throw new Error('Проверьте адрес почты.');
+  if (res.status === 403) throw authError(res, 'отправить код');
+  if (res.body.error === 'too soon') throw new Error(`Новый код можно запросить через ${res.body.retryIn} с.`);
+  if (res.body.error === 'too many') throw new Error('Слишком много запросов кода. Попробуйте позже.');
+  if (res.body.error === 'mail failed') throw new Error('Не удалось отправить письмо. Попробуйте позже.');
+  throw new Error('Не удалось отправить код. Попробуйте ещё раз.');
+}
+
+export function signInWithEmail(email, code) {
+  return signIn('email', { email, code });
 }
 
 async function signIn(provider, payload) {
@@ -250,7 +274,6 @@ async function postJson(url, body) {
   return { status: res.status, body: await res.json().catch(() => ({})) };
 }
 
-/** People invited to the own board: [{ email, name, joined }]. */
 // People invited to projects of the own board: [{ email, name, joined, projects: [projectId] }],
 // null until loaded. Shared by the «Доступ» tab and the project settings.
 let members = null;

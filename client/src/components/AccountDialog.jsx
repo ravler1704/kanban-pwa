@@ -4,10 +4,10 @@ import { disablePush, enablePush, PUSH_HINTS, pushState } from '../push.js';
 import { syncStatus } from '../sync.js';
 import { getTheme, setTheme } from '../theme.js';
 import Modal from './Modal.jsx';
-import { GoogleButton, YandexButton } from './ProviderButtons.jsx';
+import { EmailCodeForm, GoogleButton, YandexButton } from './ProviderButtons.jsx';
 import SharingSection from './SharingSection.jsx';
 
-const PROVIDERS = { google: 'Google', yandex: 'Яндекс', dev: 'Тестовый' };
+const PROVIDERS = { google: 'Google', yandex: 'Яндекс', email: 'Почта', dev: 'Тестовый' };
 
 /** `busy` and `error` of one tab's actions; `run` wraps an action with them. */
 function useAction() {
@@ -63,6 +63,10 @@ function SignInTab() {
               onCredential={(credential) => run(() => linkAccount('google', { credential }))} />
           )}
           {auth.yandexClientId && <YandexButton link disabled={busy}>Привязать Яндекс ID</YandexButton>}
+          {auth.emailLogin && (
+            <EmailCodeForm link submitLabel="Привязать почту"
+              onCode={(email, code) => linkAccount('email', { email, code })} />
+          )}
           {auth.devLogin && !identities.some((i) => i.provider === 'dev') && (
             <button type="button" className="btn login-dev" disabled={busy}
               onClick={() => run(() => linkAccount('dev', {}))}>

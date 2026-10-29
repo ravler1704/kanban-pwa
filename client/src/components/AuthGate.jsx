@@ -11,7 +11,7 @@ export default function AuthGate({ children }) {
   if (auth.status === 'signedOut') {
     return (
       <LoginScreen clientId={auth.clientId} yandexClientId={auth.yandexClientId}
-        devLogin={auth.devLogin} notice={auth.notice} />
+        devLogin={auth.devLogin} emailLogin={auth.emailLogin} notice={auth.notice} />
     );
   }
   return children;
