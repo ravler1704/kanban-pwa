@@ -1,8 +1,8 @@
 /** Expanded description; `onCollapse` is called when it loses focus while empty. */
 export default function DescriptionField({ value, onChange, onCollapse, rows = 6 }) {
   return (
-    <label>
-      Описание
+    <label className="field">
+      <span className="field-label">Описание</span>
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}

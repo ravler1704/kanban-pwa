@@ -15,8 +15,8 @@ const decode = (value) => {
 /** "Project / section" select; `value` and `onChange` use { projectId, sectionId }. */
 export function GroupSelect({ groups, value, onChange }) {
   return (
-    <label>
-      Проект / раздел
+    <label className="field">
+      <span className="field-label">Проект / раздел</span>
       <select className="select" value={encode(value.projectId, value.sectionId)} onChange={(e) => onChange(decode(e.target.value))}>
         {groups.flatMap((g) => [
           <option key={g.project.id} value={encode(g.project.id, null)}>{g.project.name}</option>,
@@ -66,8 +66,8 @@ export default function NewCardDialog({ groups, columns, target, onClose }) {
   return (
     <Modal title="Новая карточка" onClose={onClose}>
       <form className="editor" onSubmit={submit}>
-        <label>
-          Название
+        <label className="field">
+          <span className="field-label">Название</span>
           <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={500} autoFocus />
         </label>
         <CardExtraFields
@@ -78,8 +78,8 @@ export default function NewCardDialog({ groups, columns, target, onClose }) {
           descriptionRows={4}
         />
         <GroupSelect groups={groups} value={decode(where)} onChange={(v) => setWhere(encode(v.projectId, v.sectionId))} />
-        <label>
-          Колонка
+        <label className="field">
+          <span className="field-label">Колонка</span>
           <select className="select" value={columnId} onChange={(e) => setColumnId(e.target.value)}>
             {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>

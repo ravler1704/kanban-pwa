@@ -59,8 +59,8 @@ export default function ReminderField({ value, onChange, onCollapse }) {
 
   return (
     <>
-      <label>
-        Напоминание
+      <label className="field">
+        <span className="field-label">Напоминание</span>
         <span className="reminder-input">
           <input ref={input} type="datetime-local" value={value} onChange={(e) => onChange(e.target.value)} />
           <button type="button" className="btn btn-small" onClick={() => {

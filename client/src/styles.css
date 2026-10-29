@@ -396,7 +396,6 @@ body {
   height: 2.5rem;
   line-height: 1.25;
 }
-.editor textarea { min-height: 2.5rem; }
 .editor input[type="datetime-local"] {
   -webkit-appearance: none;
   appearance: none;
@@ -444,7 +443,25 @@ textarea { resize: vertical; }
 .modal h3 { margin-top: 0; }
 
 .editor { display: flex; flex-direction: column; gap: 0.8rem; }
-.editor label, .conflict-field label { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.85rem; color: var(--muted); }
+/* Labelled field: the caption sits inside the box, above the value (like the project picker). */
+.field { position: relative; display: block; }
+.field-label {
+  position: absolute;
+  z-index: 1;
+  left: calc(0.7rem + 1px);
+  top: calc(0.3rem + 1px);
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1;
+  pointer-events: none;
+}
+.field input, .field textarea, .field .select {
+  padding-top: 1.15rem;
+  padding-bottom: 0.35rem;
+}
+.field input, .field .select { height: 2.9rem; }
+.field .select { width: 100%; }
+.field textarea { min-height: 2.9rem; }
 .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; justify-content: flex-end; }
 .notice {
   margin: 0;

@@ -78,8 +78,8 @@ function FieldConflict({ card, onClose }) {
                 <span className="version-text">{theirs || '—'}</span>
               </button>
             </div>
-            <label>
-              Итог
+            <label className="field">
+              <span className="field-label">Итог</span>
               <Input
                 value={values[f]}
                 rows={4}

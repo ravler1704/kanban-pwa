@@ -44,8 +44,8 @@ export default function CardEditor({ card, columns, groups, onClose }) {
             пересекающиеся правки попадут в окно разрешения конфликта.
           </p>
         )}
-        <label>
-          Название
+        <label className="field">
+          <span className="field-label">Название</span>
           <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={500} />
         </label>
         <CardExtraFields
@@ -55,8 +55,8 @@ export default function CardEditor({ card, columns, groups, onClose }) {
           onRemindAt={setRemindAt}
         />
         <GroupSelect groups={groups} value={group} onChange={setGroup} />
-        <label>
-          Статус
+        <label className="field">
+          <span className="field-label">Статус</span>
           <select className="select" value={columnId} onChange={(e) => setColumnId(e.target.value)}>
             {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
