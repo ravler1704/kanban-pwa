@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
-  changeProjectColumnSet, countCards, countColumnCards, createColumn, createColumnSet, createProject, createSection,
+  changeProjectColumnSet, countCards, countColumnCards, countProjectCards, createColumn, createColumnSet, createProject, createSection,
   deleteColumn, deleteColumnSet, deleteProject, deleteSection, moveColumn, moveProject, renameColumn, renameColumnSet,
   renameProject, renameSection, setCheckedByDefault, setColumnAddToTop,
 } from '../actions.js';
@@ -459,6 +459,12 @@ export default function ManageDialog({
     }
   }
 
+  // Cards have to be placed in the new columns; an empty project just switches.
+  async function changeSet(project, setId) {
+    if (await countProjectCards(project.id)) setChangingSet({ project, setId });
+    else await changeProjectColumnSet(project.id, setId, {});
+  }
+
   async function finishDelete(keepCards) {
     await deleteSection(deleting.section.id, { keepCards });
     setDeleting(null);
@@ -479,7 +485,7 @@ export default function ManageDialog({
       {tab === 'projects' && (
         <div role="tabpanel">
           <ProjectsEditor model={model} projects={projects} sections={sections} columnsSynced={columnsSynced}
-            onChangeSet={(p, setId) => setChangingSet({ project: p, setId })}
+            onChangeSet={changeSet}
             onRemove={removeProject} onAdded={setProjectId} />
         </div>
       )}

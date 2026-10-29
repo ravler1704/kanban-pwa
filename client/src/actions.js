@@ -106,6 +106,10 @@ export async function changeProjectColumnSet(projectId, setId, mapping) {
   requestSync();
 }
 
+export async function countProjectCards(projectId) {
+  return (await db.cards.where('projectId').equals(projectId).toArray()).filter(alive).length;
+}
+
 // ---- columns ----
 
 export async function createColumn(setId, name) {
