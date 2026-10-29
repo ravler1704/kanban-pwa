@@ -1,6 +1,36 @@
 import { useState, useSyncExternalStore } from 'react';
-import { attachFiles, dismissUpload, fileUrl, formatSize, isImage, removeFile, uploadStore } from '../files.js';
+import { createPortal } from 'react-dom';
+import {
+  attachFiles, dismissUpload, fileUrl, formatSize, isImage, isVideo, removeFile, uploadStore,
+} from '../files.js';
 import { syncStatus } from '../sync.js';
+import Modal from './Modal.jsx';
+
+function VideoPlayer({ file, onClose }) {
+  // Outside the card editor's form and its scrolling box.
+  return createPortal(
+    <Modal title={file.name} onClose={onClose}>
+      <div className="video-player">
+        <video src={fileUrl(file)} controls autoPlay playsInline />
+        <div className="actions">
+          <a className="btn" href={fileUrl(file, { download: true })}>Скачать · {formatSize(file.size)}</a>
+          <span className="spacer" />
+          <button type="button" className="btn btn-primary" onClick={onClose}>Закрыть</button>
+        </div>
+      </div>
+    </Modal>,
+    document.body,
+  );
+}
+
+function PlayIcon() {
+  return (
+    <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="11" fill="rgb(0 0 0 / 0.55)" />
+      <path d="M10 8l6 4-6 4z" fill="#fff" />
+    </svg>
+  );
+}
 
 /** Files of the card: image thumbnails and a list of the others; `readOnly` only shows them. */
 export default function Attachments({ card, readOnly }) {
@@ -8,9 +38,10 @@ export default function Attachments({ card, readOnly }) {
   const uploads = useSyncExternalStore(uploadStore.subscribe, uploadStore.get).filter((u) => u.cardId === card.id);
   const [error, setError] = useState(null);
   const [dragOver, setDragOver] = useState(false);
+  const [playing, setPlaying] = useState(null);
   const files = card.attachments ?? [];
-  const images = files.filter(isImage);
-  const others = files.filter((f) => !isImage(f));
+  const thumbs = files.filter((f) => isImage(f) || isVideo(f));
+  const others = files.filter((f) => !isImage(f) && !isVideo(f));
   // The server adds files to the card it has: a card created offline has to sync first.
   const canAttach = !readOnly && online && Boolean(card.server);
 
@@ -65,18 +96,28 @@ export default function Attachments({ card, readOnly }) {
           </label>
         )}
       </div>
-      {images.length > 0 && (
+      {thumbs.length > 0 && (
         <div className="attachment-thumbs">
-          {images.map((f) => (
+          {thumbs.map((f) => (
             <div key={f.id} className="attachment-thumb">
-              <a href={fileUrl(f)} target="_blank" rel="noreferrer" title={`${f.name} · ${formatSize(f.size)}`}>
-                <img src={fileUrl(f)} alt={f.name} loading="lazy" />
-              </a>
+              {isVideo(f) ? (
+                <button type="button" className="attachment-video" title={`${f.name} · ${formatSize(f.size)}`}
+                  onClick={() => setPlaying(f)}>
+                  {/* The first frame as the preview. */}
+                  <video src={`${fileUrl(f)}#t=0.1`} preload="metadata" muted playsInline tabIndex={-1} />
+                  <PlayIcon />
+                </button>
+              ) : (
+                <a href={fileUrl(f)} target="_blank" rel="noreferrer" title={`${f.name} · ${formatSize(f.size)}`}>
+                  <img src={fileUrl(f)} alt={f.name} loading="lazy" />
+                </a>
+              )}
               {removeButton(f)}
             </div>
           ))}
         </div>
       )}
+      {playing && <VideoPlayer file={playing} onClose={() => setPlaying(null)} />}
       {others.length > 0 && (
         <ul className="attachment-list">
           {others.map((f) => (

@@ -12,6 +12,7 @@ export function fileUrl(file, { download = false } = {}) {
 }
 
 export const isImage = (file) => /^image\/(png|jpeg|gif|webp|avif|bmp)$/.test(file.type);
+export const isVideo = (file) => /^video\/(mp4|webm|ogg|quicktime)$/.test(file.type);
 
 export function formatSize(bytes) {
   if (bytes < 1024) return `${bytes} Б`;

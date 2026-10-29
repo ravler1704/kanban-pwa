@@ -23,7 +23,7 @@ const filePath = (id) => path.join(FILES_DIR, id);
 const FILE_ID = /^[0-9a-f-]{36}$/;
 
 // Shown in the browser; anything else (HTML, SVG, …) is downloaded so it can't run as our page.
-const INLINE_TYPES = /^(image\/(png|jpeg|gif|webp|avif|bmp)|video\/(mp4|webm|ogg)|audio\/[\w.+-]+|application\/pdf|text\/plain)$/;
+const INLINE_TYPES = /^(image\/(png|jpeg|gif|webp|avif|bmp)|video\/(mp4|webm|ogg|quicktime)|audio\/[\w.+-]+|application\/pdf|text\/plain)$/;
 
 function contentDisposition(kind, name) {
   const ascii = name.replace(/[^\x20-\x7e]|["\\]/g, '_');
