@@ -68,8 +68,14 @@ async function post(url, body) {
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }
 
+// `serviceWorker.ready` never settles when the service worker failed to register.
+const READY_TIMEOUT_MS = 5000;
+
 async function subscription({ create }) {
-  const registration = await navigator.serviceWorker.ready;
+  const registration = await Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('service worker not ready')), READY_TIMEOUT_MS)),
+  ]);
   const existing = await registration.pushManager.getSubscription();
   if (existing || !create) return existing;
   const res = await fetch('/api/push/key', { cache: 'no-store' });
@@ -94,10 +100,10 @@ export async function enablePush() {
   localStorage.setItem(SUBSCRIBED_KEY, '1');
 }
 
-export async function disablePush() {
-  const sub = pushSupported ? await subscription({ create: false }) : null;
+export async function disablePush({ server = true } = {}) {
+  const sub = pushSupported ? await subscription({ create: false }).catch(() => null) : null;
   if (sub) {
-    await post('/api/push/unsubscribe', { endpoint: sub.endpoint }).catch(() => {});
+    if (server) await post('/api/push/unsubscribe', { endpoint: sub.endpoint }).catch(() => {});
     await sub.unsubscribe().catch(() => {});
   }
   localStorage.removeItem(SUBSCRIBED_KEY);

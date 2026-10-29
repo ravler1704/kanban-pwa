@@ -265,9 +265,16 @@ export async function signOut() {
 
 /** Deletes the account with its board on the server, then everything of it on this device. */
 export async function deleteAccount() {
-  await disablePush();
-  const res = await fetch('/api/auth/delete-account', { method: 'POST' });
-  if (!res.ok) throw new Error('Не удалось удалить аккаунт.');
+  let res;
+  try {
+    res = await fetch('/api/auth/delete-account', { method: 'POST' });
+  } catch {
+    throw new Error('Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.');
+  }
+  if (res.status === 401) throw new Error('Сессия истекла: выйдите, войдите снова и повторите удаление.');
+  if (!res.ok) throw new Error(`Не удалось удалить аккаунт (ошибка ${res.status}).`);
+  // The server has dropped this device's subscription with the account.
+  await disablePush({ server: false });
   stopEvents();
   await clearLocalData();
   await deleteSharedBoards();

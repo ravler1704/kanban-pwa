@@ -120,12 +120,13 @@ function DeleteAccount({ online }) {
         <button type="submit" className="btn btn-danger"
           disabled={busy || !online || word.trim().toLowerCase() !== DELETE_WORD}
           title={online ? undefined : 'Для удаления нужен интернет'}>
-          Удалить навсегда
+          {busy ? 'Удаляем…' : 'Удалить навсегда'}
         </button>
         <button type="button" className="btn" disabled={busy} onClick={() => { setOpen(false); setWord(''); }}>
           Отмена
         </button>
       </div>
+      {!online && <p className="muted account-hint">Для удаления нужен интернет.</p>}
       {error && <p className="login-error">{error}</p>}
     </form>
   );
