@@ -288,6 +288,36 @@ export async function moveCardToGroup(id, { projectId, sectionId }) {
   return updateCard(id, { projectId, sectionId });
 }
 
+// ---- comments and project chats ----
+
+/**
+ * A comment on the card `cardId`, or with cardId null a message of the project's chat. `author`
+ * is the signed-in user; the server sets the author fields itself, these show until it answers.
+ */
+export async function addComment({ cardId = null, projectId }, text, author) {
+  await insert('comment', {
+    cardId,
+    projectId,
+    text,
+    authorId: author?.id ?? '',
+    authorName: author?.name || author?.email || '',
+    authorPicture: author?.picture ?? '',
+    createdAt: Date.now(),
+    editedAt: null,
+  });
+  requestSync();
+}
+
+export async function editComment(id, text) {
+  await db.transaction('rw', db.comments, () => update('comment', id, { text, editedAt: Date.now() }));
+  requestSync();
+}
+
+export async function deleteComment(id) {
+  await db.transaction('rw', db.comments, () => update('comment', id, { deleted: true, text: '' }));
+  requestSync();
+}
+
 /** `resolution` is a set of field values to apply; the conflict is cleared. */
 export async function resolveConflict(id, resolution) {
   await db.transaction('rw', db.cards, async () => {

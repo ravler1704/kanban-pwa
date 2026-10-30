@@ -9,6 +9,14 @@ export function broadcast(board, payload) {
   }
 }
 
+/** To every open app of the user, whatever board it shows. */
+export function notifyUser(userId, payload) {
+  const message = `data: ${JSON.stringify(payload)}\n\n`;
+  for (const [client, { user }] of clients) {
+    if (user === userId) client.write(message);
+  }
+}
+
 /**
  * Closes the board's streams (except the ones of user `except`); browsers reconnect and
  * the server checks their access again.

@@ -1,5 +1,7 @@
 import crypto from 'node:crypto';
-import { getMaxSeq, getMeta, getRecord, getRecordsSince, saveRecord, setMeta, transaction } from './db.js';
+import {
+  commentIdsOfCard, getMaxSeq, getMeta, getRecord, getRecordsSince, saveRecord, setMeta, transaction,
+} from './db.js';
 
 const string = (max) => (v) => typeof v === 'string' && v.length <= max;
 const ref = (v) => typeof v === 'string' && v.length > 0 && v.length <= 64;
@@ -69,6 +71,28 @@ export const SCHEMAS = {
     textFields: ['title', 'description'],
     serverFields: ['attachments'],
     deleteConflicts: true,
+  },
+  // A comment on a card, or (cardId null) a message in the project's chat. The server sets the
+  // author and keeps projectId equal to the card's; only the author edits, the author or the
+  // board's owner deletes (see applyComment).
+  comment: {
+    fields: {
+      cardId: optionalRef,
+      projectId: ref,
+      text: string(4000),
+      authorId: string(200),
+      authorName: string(200),
+      authorPicture: string(2000),
+      createdAt: (v) => Number.isInteger(v) && v >= 0,
+      editedAt: optionalTime,
+      deleted: boolean,
+    },
+    defaults: {
+      cardId: null, text: '', authorId: '', authorName: '', authorPicture: '', createdAt: 0, editedAt: null, deleted: false,
+    },
+    textFields: [],
+    serverFields: ['authorId', 'authorName', 'authorPicture', 'editedAt'],
+    deleteConflicts: false,
   },
 };
 
@@ -145,7 +169,8 @@ function visibleTo(access, record) {
   switch (record.type) {
     case 'project': return access.projects.has(record.id);
     case 'section':
-    case 'card': return access.projects.has(record.projectId);
+    case 'card':
+    case 'comment': return access.projects.has(record.projectId);
     case 'columnSet': return access.sets.has(record.id);
     case 'column': return access.sets.has(record.setId);
     default: return false;
@@ -171,6 +196,73 @@ function memberMayChange(access, type, current, fields) {
   if (access.readOnly || (type !== 'card' && type !== 'section')) return false;
   if (current && !access.projects.has(current.projectId)) return false;
   return access.projects.has(fields.projectId ?? current?.projectId);
+}
+
+/**
+ * Comments are not merged: the author writes them as `actor` ({ id, name, picture }; null through
+ * a public link, which can't comment). Fields other than text and deleted can't be changed.
+ */
+function applyComment(owner, deviceId, { id, fields }, access, actor) {
+  const schema = SCHEMAS.comment;
+  const current = withDefaults(getRecord(owner, id));
+  const result = (status, record, extra) => ({ type: 'comment', id, status, record, ...extra });
+  const save = (data, version) => saveRecord(owner, 'comment', id, pickData(schema, data), { version, deviceId });
+  const reject = () => result('merged', current && (!access || visibleTo(access, current))
+    ? current : tombstone('comment', id, current));
+  if (!actor || access?.readOnly) return reject();
+
+  if (!current) {
+    const data = { ...schema.defaults, ...fields };
+    if (!data.text.trim() || data.deleted) return reject();
+    let projectId = data.projectId;
+    if (data.cardId) {
+      const card = getRecord(owner, data.cardId);
+      if (card?.type !== 'card') return reject();
+      projectId = card.projectId;
+    } else if (!ref(projectId) || getRecord(owner, projectId)?.type !== 'project') {
+      return reject();
+    }
+    if (access && !access.projects.has(projectId)) return reject();
+    const now = Date.now();
+    const record = save({
+      ...data,
+      projectId,
+      authorId: actor.id,
+      authorName: actor.name ?? '',
+      authorPicture: actor.picture ?? '',
+      createdAt: data.createdAt > 0 ? Math.min(data.createdAt, now) : now,
+      editedAt: null,
+    }, 1);
+    return result('applied', record, { created: true });
+  }
+  if (current.type !== 'comment') throw new ValidationError(`record ${id} is not a comment`);
+  if (access && !visibleTo(access, current)) return reject();
+
+  const own = current.authorId === actor.id;
+  const next = { ...current };
+  if (fields.deleted === true) {
+    if (current.deleted) return result('applied', current);
+    if (!own && actor.id !== owner) return reject();
+    next.deleted = true;
+    next.text = '';
+  } else if ('text' in fields && fields.text !== current.text) {
+    if (!own || current.deleted || !fields.text.trim()) return reject();
+    next.text = fields.text;
+    next.editedAt = Date.now();
+  }
+  if (next.text === current.text && next.deleted === current.deleted) return result('applied', current);
+  return result('applied', save(next, current.version + 1));
+}
+
+/** Comments follow their card into another project. */
+function moveComments(owner, cardId, projectId) {
+  for (const commentId of commentIdsOfCard(owner, cardId)) {
+    const comment = withDefaults(getRecord(owner, commentId));
+    if (comment.projectId === projectId) continue;
+    saveRecord(owner, 'comment', commentId, pickData(SCHEMAS.comment, { ...comment, projectId }), {
+      version: comment.version + 1, deviceId: 'server',
+    });
+  }
 }
 
 function applyChange(owner, deviceId, { type, id, baseVersion, fields, base }, access) {
@@ -254,15 +346,26 @@ export function changeAttachments(owner, cardId, change) {
   });
 }
 
-/** `access` (see memberAccess) limits a member's changes; null for the board's owner. */
-export function push(owner, deviceId, rawChanges, access = null) {
+/**
+ * `access` (see memberAccess) limits a member's changes; null for the board's owner. `actor`
+ * ({ id, name, picture }) is who writes comments; null through a public link.
+ */
+export function push(owner, deviceId, rawChanges, access = null, actor = null) {
   if (!Array.isArray(rawChanges) || rawChanges.length > 1000) {
     throw new ValidationError('changes must be an array of at most 1000 items');
   }
   const changes = rawChanges.map(validateChange);
   return transaction(() => {
     const before = getMaxSeq(owner);
-    const results = changes.map((c) => applyChange(owner, deviceId, c, access));
+    const results = changes.map((c) => {
+      if (c.type === 'comment') return applyComment(owner, deviceId, c, access, actor);
+      const previous = c.type === 'card' ? getRecord(owner, c.id) : null;
+      const r = applyChange(owner, deviceId, c, access);
+      if (previous && r.record.projectId && r.record.projectId !== previous.projectId) {
+        moveComments(owner, c.id, r.record.projectId);
+      }
+      return r;
+    });
     const seq = getMaxSeq(owner);
     return { results, seq, modified: seq !== before };
   });
@@ -335,7 +438,7 @@ export function pull(owner, since, limit = 500, access = null) {
     // A device downloading from scratch has nothing to hide yet.
     records = records.flatMap((r) => {
       if (visibleTo(access, r)) return [r];
-      return since > 0 && (r.type === 'card' || r.type === 'section') ? [tombstone(r.type, r.id, r)] : [];
+      return since > 0 && ['card', 'section', 'comment'].includes(r.type) ? [tombstone(r.type, r.id, r)] : [];
     });
   }
   return { records, seq, hasMore };

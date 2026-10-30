@@ -2,7 +2,8 @@ import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
 import { authEnabled, registerAuthRoutes, requireAuth, requireAuthOrPublic } from './auth.js';
-import { EPOCH } from './db.js';
+import { notifyComments, registerChatRoutes } from './chat.js';
+import { EPOCH, userProfile } from './db.js';
 import { broadcast, registerEvents } from './events.js';
 import { registerFileRoutes, startFileCleanup } from './files.js';
 import { registerPushRoutes, startReminders } from './push.js';
@@ -27,6 +28,8 @@ registerFileRoutes(app);
 startFileCleanup();
 app.use('/api/push', requireAuth);
 registerPushRoutes(app);
+app.use(['/api/people', '/api/dm'], requireAuth);
+registerChatRoutes(app);
 startReminders();
 
 // The epoch identifies the board, not just the database: a device that holds another
@@ -52,8 +55,10 @@ app.post('/api/sync', (req, res) => {
     return res.status(409).json({ error: 'epoch mismatch', epoch: expected });
   }
   try {
-    const result = push(req.owner, deviceId, changes, req.access);
+    const actor = req.user == null ? null : userProfile(req.user);
+    const result = push(req.owner, deviceId, changes, req.access, actor);
     if (result.modified) broadcast(req.owner, { seq: result.seq, from: deviceId });
+    notifyComments(req.owner, result.results.filter((r) => r.created).map((r) => r.record));
     res.json({ epoch: expected, results: result.results, seq: result.seq });
   } catch (err) {
     if (err instanceof ValidationError) return res.status(400).json({ error: err.message });

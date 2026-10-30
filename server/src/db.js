@@ -171,6 +171,28 @@ if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'boa
   `);
 }
 
+// Direct messages between users who share a project (they may be on different boards), and
+// until when each user has read their conversation with each peer.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS direct_messages (
+    id          TEXT    PRIMARY KEY,
+    sender      TEXT    NOT NULL,
+    recipient   TEXT    NOT NULL,
+    text        TEXT    NOT NULL,
+    created_at  INTEGER NOT NULL,
+    edited_at   INTEGER,
+    deleted     INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE INDEX IF NOT EXISTS idx_dm_pair ON direct_messages(sender, recipient, created_at);
+  CREATE INDEX IF NOT EXISTS idx_dm_recipient ON direct_messages(recipient, created_at);
+  CREATE TABLE IF NOT EXISTS dm_reads (
+    user_id     TEXT    NOT NULL,
+    peer        TEXT    NOT NULL,
+    read_at     INTEGER NOT NULL,
+    PRIMARY KEY (user_id, peer)
+  );
+`);
+
 // Identifies this database instance. Clients holding data from another epoch
 // (e.g. after the database was wiped or restored) discard it and resync.
 db.prepare('INSERT OR IGNORE INTO meta (key, value) VALUES (?, ?)').run('epoch', crypto.randomUUID());
@@ -412,13 +434,19 @@ export function mergeUsers(from, to) {
     db.prepare('DELETE FROM project_members WHERE board = ?').run(from);
     db.prepare('UPDATE OR IGNORE public_links SET board = ? WHERE board = ?').run(to, from);
     db.prepare('DELETE FROM public_links WHERE board = ?').run(from);
+    db.prepare('UPDATE direct_messages SET sender = ? WHERE sender = ?').run(to, from);
+    db.prepare('UPDATE direct_messages SET recipient = ? WHERE recipient = ?').run(to, from);
+    db.prepare('DELETE FROM direct_messages WHERE sender = recipient').run();
+    db.prepare('UPDATE OR IGNORE dm_reads SET user_id = ? WHERE user_id = ?').run(to, from);
+    db.prepare('UPDATE OR IGNORE dm_reads SET peer = ? WHERE peer = ?').run(to, from);
+    db.prepare('DELETE FROM dm_reads WHERE user_id = ? OR peer = ? OR user_id = peer').run(from, from);
     return seq;
   });
 }
 
 /**
  * Deletes the user and everything of theirs: the board, linked accounts, sessions, reminders,
- * invitations to their projects and their public links. Invitations of their addresses to other
+ * invitations to their projects, their public links and direct messages. Invitations of their addresses to other
  * boards go too, unless another user's account has the same address.
  */
 export function deleteUser(userId) {
@@ -433,6 +461,8 @@ export function deleteUser(userId) {
     db.prepare('DELETE FROM project_members WHERE board = ?').run(userId);
     db.prepare('DELETE FROM public_links WHERE board = ?').run(userId);
     db.prepare('DELETE FROM meta WHERE key IN (?, ?)').run(`columnsSeeded:${userId}`, `simpleSetSeeded:${userId}`);
+    db.prepare('DELETE FROM direct_messages WHERE sender = ? OR recipient = ?').run(userId, userId);
+    db.prepare('DELETE FROM dm_reads WHERE user_id = ? OR peer = ?').run(userId, userId);
     const usedElsewhere = db.prepare('SELECT 1 FROM identities WHERE lower(email) = ?');
     for (const email of emails) {
       db.prepare('DELETE FROM email_codes WHERE email = ?').run(email);
@@ -525,6 +555,129 @@ export function isInvited(email) {
 
 export function leaveBoard(board, userId) {
   return removeUserMemberships.run(board, userId).changes > 0;
+}
+
+/** { id, name, email, picture } from the user's first linked account. */
+export function userProfile(userId) {
+  const p = selectOwnerProfile.get(userId);
+  return { id: userId, name: p?.name ?? null, email: p?.email ?? null, picture: p?.picture ?? null };
+}
+
+const selectLiveProjects = db.prepare(`
+  SELECT id FROM records WHERE owner = ? AND type = 'project' AND json_extract(data, '$.deleted') = 0
+`);
+
+export function liveProjectIds(owner) {
+  return selectLiveProjects.all(owner).map((r) => r.id);
+}
+
+const selectCommentsOfCard = db.prepare(`
+  SELECT id FROM records WHERE owner = ? AND type = 'comment' AND json_extract(data, '$.cardId') = ?
+`);
+
+export function commentIdsOfCard(owner, cardId) {
+  return selectCommentsOfCard.all(owner, cardId).map((r) => r.id);
+}
+
+// People sharing a live project with the user: whoever joined the user's projects, the owners of
+// boards the user joined, and others who joined the same projects there.
+const selectContactsOnOwnBoard = db.prepare(`
+  SELECT DISTINCT i.user_id AS id FROM project_members m JOIN identities i ON i.email = m.email ${LIVE_PROJECT}
+  WHERE m.board = ?
+`);
+const selectContactsOnOtherBoards = db.prepare(`
+  SELECT DISTINCT m.board AS owner, i2.user_id AS member
+  FROM project_members m JOIN identities i ON i.email = m.email ${LIVE_PROJECT}
+  LEFT JOIN project_members m2 ON m2.board = m.board AND m2.project = m.project
+  LEFT JOIN identities i2 ON i2.email = m2.email
+  WHERE i.user_id = ?
+`);
+
+export function contactIds(userId) {
+  const ids = new Set(selectContactsOnOwnBoard.all(userId).map((r) => r.id));
+  for (const { owner, member } of selectContactsOnOtherBoards.all(userId)) {
+    ids.add(owner);
+    if (member) ids.add(member);
+  }
+  ids.delete(userId);
+  return [...ids];
+}
+
+// ---- direct messages ----
+
+const toMessage = (row) => ({
+  id: row.id,
+  sender: row.sender,
+  recipient: row.recipient,
+  text: row.text,
+  createdAt: row.created_at,
+  editedAt: row.edited_at,
+  deleted: Boolean(row.deleted),
+});
+
+const selectDmPeers = db.prepare(`
+  SELECT CASE WHEN sender = :user THEN recipient ELSE sender END AS peer, MAX(created_at) AS last_at
+  FROM direct_messages WHERE sender = :user OR recipient = :user GROUP BY peer
+`);
+const selectLastDm = db.prepare(`
+  SELECT * FROM direct_messages
+  WHERE (sender = :user AND recipient = :peer) OR (sender = :peer AND recipient = :user)
+  ORDER BY created_at DESC, id DESC LIMIT 1
+`);
+const selectDmUnread = db.prepare(`
+  SELECT d.sender AS peer, COUNT(*) AS unread FROM direct_messages d
+  LEFT JOIN dm_reads r ON r.user_id = d.recipient AND r.peer = d.sender
+  WHERE d.recipient = ? AND d.deleted = 0 AND d.created_at > COALESCE(r.read_at, 0)
+  GROUP BY d.sender
+`);
+const selectDmThread = db.prepare(`
+  SELECT * FROM direct_messages
+  WHERE ((sender = :user AND recipient = :peer) OR (sender = :peer AND recipient = :user)) AND created_at < :before
+  ORDER BY created_at DESC, id DESC LIMIT :limit
+`);
+const selectDm = db.prepare('SELECT * FROM direct_messages WHERE id = ?');
+const insertDm = db.prepare(`
+  INSERT OR IGNORE INTO direct_messages (id, sender, recipient, text, created_at) VALUES (?, ?, ?, ?, ?)
+`);
+const updateDm = db.prepare('UPDATE direct_messages SET text = ?, edited_at = ?, deleted = ? WHERE id = ?');
+const upsertDmRead = db.prepare(`
+  INSERT INTO dm_reads (user_id, peer, read_at) VALUES (?, ?, ?)
+  ON CONFLICT(user_id, peer) DO UPDATE SET read_at = MAX(read_at, excluded.read_at)
+`);
+
+/** The user's conversations: { [peer]: { last (message), unread } }. */
+export function dmConversations(userId) {
+  const unread = new Map(selectDmUnread.all(userId).map((r) => [r.peer, r.unread]));
+  const out = {};
+  for (const { peer } of selectDmPeers.all({ user: userId })) {
+    out[peer] = { last: toMessage(selectLastDm.get({ user: userId, peer })), unread: unread.get(peer) ?? 0 };
+  }
+  return out;
+}
+
+/** Up to `limit` messages before `before`, oldest first. */
+export function dmThread(userId, peer, before, limit) {
+  return selectDmThread.all({ user: userId, peer, before, limit }).reverse().map(toMessage);
+}
+
+export function getDm(id) {
+  const row = selectDm.get(id);
+  return row ? toMessage(row) : null;
+}
+
+/** Returns the message, also when this id was saved before (a repeated request). */
+export function addDm({ id, sender, recipient, text, createdAt }) {
+  insertDm.run(id, sender, recipient, text, createdAt);
+  return getDm(id);
+}
+
+export function changeDm(id, { text, deleted }) {
+  updateDm.run(deleted ? '' : text, Date.now(), deleted ? 1 : 0, id);
+  return getDm(id);
+}
+
+export function markDmRead(userId, peer, at) {
+  upsertDmRead.run(userId, peer, at);
 }
 
 // Links to deleted projects stay in the table but open nothing.

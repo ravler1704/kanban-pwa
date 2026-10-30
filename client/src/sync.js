@@ -2,6 +2,8 @@ import { isSignedOut, markSignedOut } from './auth.js';
 import { boardHeaders, boardQuery, dropCurrentBoard, publicToken } from './board.js';
 import { markLinkGone, publicLinkGone } from './public.js';
 import { clearLocalData, db, getDeviceId, isDirty, pickFields, sameValue, tableOf, TYPES } from './db.js';
+import { dmChanged, refreshDm } from './dm.js';
+import { refreshPeople } from './people.js';
 
 const deviceId = getDeviceId();
 
@@ -238,13 +240,18 @@ function connectEvents() {
   events = new EventSource(`/api/events${boardQuery()}`);
   events.onmessage = (e) => {
     try {
-      const { from } = JSON.parse(e.data);
-      if (from !== deviceId) requestSync();
+      const data = JSON.parse(e.data);
+      // A direct message to or from the user (the peer's id), on whatever board.
+      if ('dm' in data) dmChanged(data.dm);
+      else if (data.from !== deviceId) requestSync();
     } catch {
       // ignore malformed messages
     }
   };
-  events.onopen = () => requestSync();
+  events.onopen = () => {
+    requestSync();
+    if (!publicToken) refreshDm();
+  };
 }
 
 export function stopEvents() {
@@ -256,6 +263,7 @@ export function stopEvents() {
 export function resume() {
   connectEvents();
   requestSync();
+  refreshPeople();
 }
 
 let started = false;
@@ -283,6 +291,8 @@ export function startSync() {
   setInterval(() => {
     connectEvents();
     sync();
+    refreshPeople();
   }, 30_000);
   sync();
+  refreshPeople({ force: true });
 }

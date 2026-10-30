@@ -56,7 +56,7 @@ const VIEWS = [
  */
 export default function ProjectBar({
   projects, sectionGroups, projectFilter, sectionFilter, conflictsBySection,
-  columnSets, columnSetId, onSelectColumnSet, tagFilter, view, onView, onManage, onAddCard,
+  columnSets, columnSetId, onSelectColumnSet, tagFilter, view, onView, onManage, onAddCard, children,
 }) {
   const allKeys = Object.keys(conflictsBySection);
   const projectConflicts = (p) => allKeys
@@ -93,6 +93,8 @@ export default function ProjectBar({
       )}
 
       {tagFilter && <TagFilter {...tagFilter} />}
+
+      {children}
 
       <div className="view-switch" role="group" aria-label="Вид">
         {VIEWS.map(({ id, label, Icon }) => (

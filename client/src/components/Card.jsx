@@ -34,6 +34,15 @@ function ClipIcon() {
   );
 }
 
+export function CommentIcon({ size = 12 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
 /** Files still uploading to the card (they continue after the editor is closed). */
 function UploadBadge({ cardId }) {
   const uploads = useSyncExternalStore(uploadStore.subscribe, uploadStore.get).filter((u) => u.cardId === cardId);
@@ -125,6 +134,13 @@ export default function Card({
             <span className="card-files" title="Прикреплённые файлы">
               <ClipIcon />
               {card.attachments.length}
+            </span>
+          )}
+          {card.comments && (
+            <span className={`card-comments${card.comments.unread ? ' card-comments-unread' : ''}`}
+              title={card.comments.unread ? `Новых комментариев: ${card.comments.unread}` : 'Комментарии'}>
+              <CommentIcon />
+              {card.comments.count}
             </span>
           )}
           {card.conflict && <span className="badge badge-conflict">Конфликт — нажмите, чтобы решить</span>}

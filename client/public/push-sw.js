@@ -1,5 +1,5 @@
-// Imported into the generated service worker (see vite.config.js): shows card reminders
-// and opens the card when the notification is tapped.
+// Imported into the generated service worker (see vite.config.js): shows card reminders, comments
+// and chat messages, and opens the card or the chat when the notification is tapped.
 
 self.addEventListener('push', (event) => {
   let data = {};
@@ -23,7 +23,9 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const url = new URL(event.notification.data?.url || '/', self.location.origin);
   const cardId = url.searchParams.get('card');
-  // The board the card is on (the owner's id); the app switches to it if needed.
+  // A project's chat ('project:<id>') or direct messages ('dm:<user id>').
+  const chat = url.searchParams.get('chat');
+  // The board the card or chat is on (the owner's id); the app switches to it if needed.
   const board = url.searchParams.get('board');
 
   event.waitUntil((async () => {
@@ -32,6 +34,7 @@ self.addEventListener('notificationclick', (event) => {
     if (open) {
       await open.focus();
       if (cardId) open.postMessage({ type: 'open-card', id: cardId, board });
+      else if (chat) open.postMessage({ type: 'open-chat', chat, board });
       return;
     }
     await self.clients.openWindow(url.href);

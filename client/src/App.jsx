@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { authState } from './auth.js';
+import { isUnread, seenStore } from './seen.js';
 import { isCurrentBoard, isOwnBoard, publicToken, switchBoard } from './board.js';
 import { useReadOnly } from './public.js';
 import { db } from './db.js';
@@ -12,6 +14,8 @@ import ConflictDialog from './components/ConflictDialog.jsx';
 import ManageDialog from './components/ManageDialog.jsx';
 import NewCardDialog, { defaultTarget } from './components/NewCardDialog.jsx';
 import CalendarView from './components/CalendarView.jsx';
+import ChatDialog from './components/ChatDialog.jsx';
+import PeopleBar from './components/People.jsx';
 import { splitTags, tagKey, tagsOf } from './tags.js';
 
 const VIEW_KEY = 'view';
@@ -129,10 +133,14 @@ function useSelection() {
 
 export default function App() {
   const readOnly = useReadOnly();
+  const me = useSyncExternalStore(authState.subscribe, authState.get).user?.id ?? '';
+  const seen = useSyncExternalStore(seenStore.subscribe, seenStore.get);
   const [selection, select] = useSelection();
   const [openCardId, setOpenCardId] = useState(null);
   const [managing, setManaging] = useState(false);
   const [addingCard, setAddingCard] = useState(false);
+  // The chats window: null closed, '' the list, 'project:<id>' or 'dm:<user id>' a conversation.
+  const [chat, setChat] = useState(null);
   const [view, setView] = useState(() => (localStorage.getItem(VIEW_KEY) === 'calendar' ? 'calendar' : 'board'));
 
   const changeView = (next) => {
@@ -170,12 +178,23 @@ export default function App() {
       setOpenCardId(id);
     }
     const params = new URLSearchParams(location.search);
-    if (params.has('card')) {
-      openFromReminder(params.get('card'));
+    if (params.has('card') || params.has('chat')) {
+      if (params.has('card')) openFromReminder(params.get('card'));
+      if (params.has('chat')) setChat(params.get('chat'));
       params.delete('card');
+      params.delete('chat');
       history.replaceState(history.state, '', `${location.pathname}${params.size ? `?${params}` : ''}`);
     }
     const onMessage = (e) => {
+      if (e.data?.type === 'open-chat') {
+        // Direct messages open on any board; a project's chat on the project's board.
+        if (e.data.board && !e.data.chat.startsWith('dm:') && !isCurrentBoard(e.data.board)) {
+          switchBoard(e.data.board, `?${new URLSearchParams({ chat: e.data.chat })}`);
+        } else {
+          setChat(e.data.chat);
+        }
+        return;
+      }
       if (e.data?.type !== 'open-card') return;
       if (e.data.board && !isCurrentBoard(e.data.board)) {
         switchBoard(e.data.board, `?${new URLSearchParams({ card: e.data.id })}`);
@@ -242,7 +261,21 @@ export default function App() {
     [scopeProjectIds],
   );
 
+  const projectComments = useLiveQuery(
+    () => db.comments.where('projectId').anyOf(scopeProjectIds ? scopeProjectIds.split(',') : [])
+      .filter((c) => c.cardId && !c.deleted).toArray(),
+    [scopeProjectIds],
+  );
+
   if (!data || !projectCards) return <div className="loading">Загрузка…</div>;
+
+  const commentStats = new Map();
+  for (const c of projectComments ?? []) {
+    const stats = commentStats.get(c.cardId) ?? { count: 0, unread: 0 };
+    stats.count += 1;
+    if (isUnread(seen, c, me)) stats.unread += 1;
+    commentStats.set(c.cardId, stats);
+  }
 
   // Cards whose section is gone (e.g. deleted on another device) belong to the project itself;
   // cards whose column is not in the project's set show up in its first column.
@@ -255,6 +288,7 @@ export default function App() {
         ...c,
         sectionId: c.sectionId && sectionById.has(c.sectionId) ? c.sectionId : null,
         columnId: columnIds.includes(c.columnId) ? c.columnId : columnIds[0],
+        comments: commentStats.get(c.id) ?? null,
       };
     });
 
@@ -372,7 +406,9 @@ export default function App() {
             onView={changeView}
             onManage={readOnly ? null : () => setManaging(true)}
             onAddCard={readOnly ? null : () => setAddingCard(true)}
-          />
+          >
+            {!publicToken && <PeopleBar projects={shownProjects} allProjects={projects} onChat={setChat} />}
+          </ProjectBar>
           {shownProjects.length === 0 ? (
             <div className="empty">
               <p>Не отмечен ни один проект — отметьте нужные в списке «Проекты».</p>
@@ -406,6 +442,10 @@ export default function App() {
         ? <ConflictDialog card={openCard} onClose={() => setOpenCardId(null)} />
         : <CardEditor card={openCard} columnsOfProject={model.columnsOfProject} groups={pickerGroups}
           readOnly={readOnly} onClose={() => setOpenCardId(null)} />)}
+
+      {chat !== null && !publicToken && (
+        <ChatDialog key={chat} projects={projects} thread={chat} onClose={() => setChat(null)} />
+      )}
 
       {addingCard && (
         <NewCardDialog groups={pickerGroups} columnsOfProject={model.columnsOfProject}

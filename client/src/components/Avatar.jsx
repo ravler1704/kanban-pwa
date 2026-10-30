@@ -16,8 +16,12 @@ export default function Avatar({ user, size = 28 }) {
         onError={() => setFailed(user.picture)} />
     );
   }
+  // Each person gets their own color, so letters of different people tell apart.
+  let hash = 0;
+  for (const ch of label) hash = (hash * 31 + ch.codePointAt(0)) % 360;
   return (
-    <span className="avatar avatar-letter" style={{ ...style, fontSize: size * 0.45 }} aria-hidden="true">
+    <span className="avatar avatar-letter" aria-hidden="true"
+      style={{ ...style, fontSize: size * 0.45, background: label ? `hsl(${hash} 55% 55%)` : undefined }}>
       {label.trim().charAt(0).toUpperCase() || '?'}
     </span>
   );

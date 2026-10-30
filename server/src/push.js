@@ -52,8 +52,13 @@ export function registerPushRoutes(app) {
 }
 
 /** Sends to every device of everyone who sees the project. */
-async function send(board, project, payload) {
-  const subscriptions = projectUsers(board, project).flatMap((user) => getPushSubscriptions(user));
+function send(board, project, payload) {
+  return sendToUsers(projectUsers(board, project), payload);
+}
+
+/** Sends to every device of the users. */
+export async function sendToUsers(users, payload) {
+  const subscriptions = users.flatMap((user) => getPushSubscriptions(user));
   await Promise.all(subscriptions.map(async (s) => {
     try {
       await webpush.sendNotification(

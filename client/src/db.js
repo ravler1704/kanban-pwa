@@ -124,6 +124,17 @@ db.version(9)
     if (c.server) c.server.attachments ??= [];
   }));
 
+// v10: comments on cards and messages of project chats.
+db.version(10).stores({
+  columnSets: 'id, dirty',
+  columns: 'id, dirty',
+  projects: 'id, dirty',
+  sections: 'id, projectId, dirty',
+  cards: 'id, projectId, sectionId, dirty',
+  comments: 'id, cardId, projectId, dirty',
+  meta: 'key',
+});
+
 // Push order matters: parents are created on the server before their children.
 export const TYPES = {
   columnSet: { table: 'columnSets', fields: ['name', 'position', 'deleted'] },
@@ -138,10 +149,16 @@ export const TYPES = {
     // attachments: [{ id, name, size, type, addedAt }], changed by the server only (files.js).
     fields: ['projectId', 'sectionId', 'columnId', 'title', 'description', 'position', 'deleted', 'remindAt', 'attachments'],
   },
+  // A comment on a card, or (cardId null) a message of the project's chat. The server sets the
+  // author fields and editedAt.
+  comment: {
+    table: 'comments',
+    fields: ['cardId', 'projectId', 'text', 'authorId', 'authorName', 'authorPicture', 'createdAt', 'editedAt', 'deleted'],
+  },
 };
 
 export async function clearLocalData() {
-  const tables = [db.columnSets, db.columns, db.projects, db.sections, db.cards, db.meta];
+  const tables = [db.columnSets, db.columns, db.projects, db.sections, db.cards, db.comments, db.meta];
   await db.transaction('rw', tables, () => Promise.all(tables.map((t) => t.clear())));
 }
 

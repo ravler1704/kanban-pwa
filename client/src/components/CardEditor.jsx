@@ -2,11 +2,17 @@ import { useState } from 'react';
 import { deleteCard, moveCardToColumn, moveCardToGroup, updateCard } from '../actions.js';
 import Attachments from './Attachments.jsx';
 import CardExtraFields from './CardExtraFields.jsx';
+import Comments from './Comments.jsx';
 import Modal from './Modal.jsx';
 import { GroupSelect } from './NewCardDialog.jsx';
 import { matchColumn } from '../columnSets.js';
 import { fromInputValue, toInputValue } from './ReminderField.jsx';
 import TitleField from './TitleField.jsx';
+
+/** Comments sent right away, apart from the card's «Сохранить». */
+function CardComments({ card }) {
+  return <Comments card={card} title="Комментарии" className="chat-embedded" />;
+}
 
 /** The card without editing: a view-only public link. */
 function CardView({ card, columnsOfProject, groups, onClose }) {
@@ -24,6 +30,7 @@ function CardView({ card, columnsOfProject, groups, onClose }) {
         </p>
         {card.description && <p className="card-view-desc">{card.description}</p>}
         <Attachments card={card} readOnly />
+        <CardComments card={card} />
         <div className="actions">
           <span className="spacer" />
           <button type="button" className="btn" onClick={onClose}>Закрыть</button>
@@ -119,6 +126,7 @@ function CardForm({ card, columnsOfProject, groups, onClose }) {
           <button type="submit" className="btn btn-primary">Сохранить</button>
         </div>
       </form>
+      <CardComments card={card} />
     </Modal>
   );
 }
