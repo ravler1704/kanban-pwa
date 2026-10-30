@@ -5,6 +5,7 @@ import { usePublicLink } from '../public.js';
 import { sync, syncStatus } from '../sync.js';
 import AccountDialog from './AccountDialog.jsx';
 import Avatar from './Avatar.jsx';
+import { ChatButton } from './People.jsx';
 
 function SyncIcon({ spinning }) {
   return (
@@ -47,7 +48,7 @@ function PublicTitle() {
   );
 }
 
-export default function StatusBar({ pending, conflicts }) {
+export default function StatusBar({ pending, conflicts, projects, onChat }) {
   const s = useSyncExternalStore(syncStatus.subscribe, syncStatus.get);
   const { user } = useSyncExternalStore(authState.subscribe, authState.get);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -101,6 +102,7 @@ export default function StatusBar({ pending, conflicts }) {
             <AccountIcon />
           </button>
         )}
+        {user && !publicToken && <ChatButton projects={projects} onChat={onChat} />}
       </div>
       {accountOpen && <AccountDialog onClose={() => setAccountOpen(false)} />}
     </header>

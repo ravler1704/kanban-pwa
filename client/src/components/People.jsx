@@ -45,42 +45,51 @@ function PeopleDialog({ people, projects, allProjects, me, onChat, onClose }) {
 }
 
 /**
- * Avatars of the people who see the shown `projects` (the board's owner sees all of them) and the
- * chats button with the number of unread messages. `onChat(thread)` opens the chats ('' for the list).
+ * The chats button with the number of unread messages (direct ones and the chats of `projects`);
+ * shown when the board is shared or there is someone to write to.
  */
-export default function PeopleBar({ projects, allProjects, onChat }) {
-  const { user } = useSyncExternalStore(authState.subscribe, authState.get);
+export function ChatButton({ projects, onChat }) {
   const all = useSyncExternalStore(peopleStore.subscribe, peopleStore.get);
   const { contacts } = useSyncExternalStore(dmStore.subscribe, dmStore.get);
   const chats = useProjectChats();
-  const [open, setOpen] = useState(false);
-  const me = user?.id ?? '';
 
   useEffect(() => {
     refreshDm();
   }, []);
 
+  if (all.length < 2 && contacts.length === 0) return null;
+  const unread = dmUnread(contacts) + projects.reduce((sum, p) => sum + (chats[p.id]?.unread ?? 0), 0);
+  return (
+    <button type="button" className="btn btn-small btn-icon-only chat-button" onClick={() => onChat('')}
+      title={unread ? `Чаты: непрочитанных ${unread}` : 'Чаты'} aria-label="Чаты">
+      <CommentIcon size={18} />
+      {unread > 0 && <span className="chat-unread chat-unread-dot">{unread > 99 ? '99+' : unread}</span>}
+    </button>
+  );
+}
+
+/**
+ * Avatars of the people who see the shown `projects` (the board's owner sees all of them).
+ * `onChat(thread)` opens the chats.
+ */
+export default function PeopleBar({ projects, allProjects, onChat }) {
+  const { user } = useSyncExternalStore(authState.subscribe, authState.get);
+  const all = useSyncExternalStore(peopleStore.subscribe, peopleStore.get);
+  const [open, setOpen] = useState(false);
+  const me = user?.id ?? '';
+
   const shown = new Set(projects.map((p) => p.id));
   const people = all
     .filter((p) => p.owner || p.projects.some((id) => shown.has(id)))
     .sort((a, b) => Number(b.owner) - Number(a.owner) || personName(a).localeCompare(personName(b), 'ru'));
-  const unread = dmUnread(contacts) + allProjects.reduce((sum, p) => sum + (chats[p.id]?.unread ?? 0), 0);
-  const shared = people.length > 1;
-  if (!shared && contacts.length === 0) return null;
+  if (people.length < 2) return null;
 
   return (
     <div className="people-bar">
-      {shared && (
-        <button type="button" className="avatar-stack" onClick={() => setOpen(true)}
-          title={`Участники: ${people.map(personName).join(', ')}`} aria-label="Участники">
-          {people.slice(0, STACK).map((p) => <Avatar key={p.id} user={p} size={28} />)}
-          {people.length > STACK && <span className="avatar avatar-letter avatar-more">+{people.length - STACK}</span>}
-        </button>
-      )}
-      <button type="button" className="btn btn-small btn-icon-only chat-button" onClick={() => onChat('')}
-        title={unread ? `Чаты: непрочитанных ${unread}` : 'Чаты'} aria-label="Чаты">
-        <CommentIcon size={18} />
-        {unread > 0 && <span className="chat-unread chat-unread-dot">{unread > 99 ? '99+' : unread}</span>}
+      <button type="button" className="avatar-stack" onClick={() => setOpen(true)}
+        title={`Участники: ${people.map(personName).join(', ')}`} aria-label="Участники">
+        {people.slice(0, STACK).map((p) => <Avatar key={p.id} user={p} size={28} />)}
+        {people.length > STACK && <span className="avatar avatar-letter avatar-more">+{people.length - STACK}</span>}
       </button>
       {open && (
         <PeopleDialog people={people} projects={projects} allProjects={allProjects} me={me}

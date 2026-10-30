@@ -371,7 +371,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <StatusBar pending={data.pending} conflicts={data.conflicted.length} />
+      <StatusBar pending={data.pending} conflicts={data.conflicted.length} projects={projects} onChat={setChat} />
 
       {projects.length === 0 ? (
         !isOwnBoard ? (
