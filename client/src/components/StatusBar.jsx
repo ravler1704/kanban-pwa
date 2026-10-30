@@ -48,7 +48,7 @@ function PublicTitle() {
   );
 }
 
-export default function StatusBar({ pending, conflicts, projects, onChat }) {
+export default function StatusBar({ pending, conflicts, spaces, projects, onChat }) {
   const s = useSyncExternalStore(syncStatus.subscribe, syncStatus.get);
   const { user } = useSyncExternalStore(authState.subscribe, authState.get);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -102,7 +102,7 @@ export default function StatusBar({ pending, conflicts, projects, onChat }) {
             <AccountIcon />
           </button>
         )}
-        {user && !publicToken && <ChatButton projects={projects} onChat={onChat} />}
+        {user && !publicToken && <ChatButton spaces={spaces} projects={projects} onChat={onChat} />}
       </div>
       {accountOpen && <AccountDialog onClose={() => setAccountOpen(false)} />}
     </header>

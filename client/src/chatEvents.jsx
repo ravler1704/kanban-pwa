@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db.js';
 
-// Notes of changes the server writes into a project's chat: a comment whose `event` is JSON
+// Notes of changes the server writes into a project's or space's chat: a comment whose `event` is JSON
 // { k: kind, card: { id, title, number }, ... } (see recordEvents in server/src/sync.js).
 // Notes from before card numbers existed have none; `numbers` (card id → number) fills it in.
 
@@ -55,6 +55,12 @@ function parts(e) {
     case 'project.rename': return [`Проект ${q(e.from)} переименован в ${q(e.name)}`];
     case 'project.columns': return [`Проекту назначен набор колонок ${q(e.name)}`];
     case 'project.space': return [`Проект перенесён в пространство ${q(e.name)}`];
+    case 'project.delete': return [`Удалён проект ${q(e.name)}`];
+    case 'project.restore': return [`Восстановлен проект ${q(e.name)}`];
+    case 'project.out': return [`Проект ${q(e.name)} перенесён в пространство ${q(e.space)}`];
+    case 'project.in': return [`Проект ${q(e.name)} перенесён сюда из пространства ${q(e.space)}`];
+    case 'space.create': return [`Создано пространство ${q(e.name)}`];
+    case 'space.rename': return [`Пространство ${q(e.from)} переименовано в ${q(e.name)}`];
     default: return ['Изменения в проекте'];
   }
 }

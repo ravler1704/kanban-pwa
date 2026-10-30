@@ -1,7 +1,7 @@
 import { dbName } from './board.js';
 
-// Until when this device has read each thread of comments: `card:<id>` (a card's comments) and
-// `project:<id>` (a project's chat). Comments from before the first start of this build count as
+// Until when this device has read each thread of comments: `card:<id>` (a card's comments),
+// `project:<id>` and `space:<id>` (a project's or space's chat). Comments from before the first start of this build count as
 // read, so an existing board does not light up everywhere at once.
 
 const KEY = `seen:${dbName}`;
@@ -37,7 +37,10 @@ export function markSeen(thread, at) {
   for (const l of listeners) l();
 }
 
-export const threadOf = (comment) => (comment.cardId ? `card:${comment.cardId}` : `project:${comment.projectId}`);
+export const threadOf = (comment) => {
+  if (comment.cardId) return `card:${comment.cardId}`;
+  return comment.spaceId ? `space:${comment.spaceId}` : `project:${comment.projectId}`;
+};
 
 /** Whether `comment` is one the user (`me`) has not read yet; notes of changes don't count. */
 export const isUnread = (seenMap, comment, me) => !comment.deleted && !comment.event && comment.authorId !== me

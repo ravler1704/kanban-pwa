@@ -131,6 +131,7 @@ export function registerChatRoutes(app) {
 /** Push to the others who see the project: comments just added on the board (records from push). */
 export function notifyComments(owner, comments) {
   for (const c of comments) {
+    if (!c.projectId) continue;
     const recipients = projectUsers(owner, c.projectId).filter((id) => id !== c.authorId);
     if (recipients.length === 0) continue;
     const board = owner ? { board: owner } : {};

@@ -247,6 +247,8 @@ export default function App() {
   const projects = data?.projects.filter((p) => !p.deleted).sort(byPosition) ?? [];
   const spaces = liveSpaces(data?.spaces ?? []);
   const spaceOn = (id) => !spacesOff.includes(id);
+  // Space chats are the board owner's; members only see the spaces of their projects.
+  const chatSpaces = isOwnBoard && data?.spaces.some((s) => !s.deleted) ? spaces : [];
   // Projects of the checked spaces: the «Проекты» list and the board show only them.
   const spaceProjects = projects.filter((p) => spaceOn(spaceIdOf(p, spaces)));
   const model = columnModel(data?.columnSets ?? [], data?.columns ?? [], projects);
@@ -426,7 +428,8 @@ export default function App() {
 
   return (
     <div className="app">
-      <StatusBar pending={data.pending} conflicts={data.conflicted.length} projects={projects} onChat={setChat} />
+      <StatusBar pending={data.pending} conflicts={data.conflicted.length} spaces={chatSpaces} projects={projects}
+        onChat={setChat} />
 
       {projects.length === 0 ? (
         !isOwnBoard ? (
@@ -514,7 +517,7 @@ export default function App() {
           readOnly={readOnly} onClose={() => setOpenCardId(null)} />)}
 
       {chat !== null && !publicToken && (
-        <ChatDialog key={chat} projects={projects} thread={chat} onClose={() => setChat(null)}
+        <ChatDialog key={chat} spaces={chatSpaces} projects={projects} thread={chat} onClose={() => setChat(null)}
           onOpenCard={(id) => {
             setChat(null);
             openFromReminder(id);

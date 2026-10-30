@@ -341,13 +341,15 @@ export async function moveCardToGroup(id, { projectId, sectionId }) {
 // ---- comments and project chats ----
 
 /**
- * A comment on the card `cardId`, or with cardId null a message of the project's chat. `author`
- * is the signed-in user; the server sets the author fields itself, these show until it answers.
+ * A comment on the card `cardId`, or with cardId null a message of the chat of `projectId` or
+ * `spaceId`. `author` is the signed-in user; the server sets the author fields itself, these show
+ * until it answers.
  */
-export async function addComment({ cardId = null, projectId }, text, author) {
+export async function addComment({ cardId = null, projectId = null, spaceId = null }, text, author) {
   await insert('comment', {
     cardId,
     projectId,
+    spaceId,
     text,
     authorId: author?.id ?? '',
     authorName: author?.name || author?.email || '',

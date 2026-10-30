@@ -4,26 +4,25 @@ import { addComment, deleteComment, editComment } from '../actions.js';
 import { authState } from '../auth.js';
 import { isOwnBoard, publicToken } from '../board.js';
 import { db } from '../db.js';
-import { markSeen } from '../seen.js';
+import { markSeen, threadOf } from '../seen.js';
 import ChatThread from './ChatThread.jsx';
 
 /** Comments shown as a chat message: unsynced ones are marked. */
 const toMessage = (c) => ({ ...c, pending: Boolean(c.dirty && !c.server) });
 
 /**
- * Live comments of a thread: the card `cardId`, or with cardId null the chat of `projectId`.
- * Reading them marks the thread read on this device.
+ * Live comments of a thread: the card `cardId`, or with cardId null the chat of `projectId` or
+ * `spaceId`. Reading them marks the thread read on this device.
  */
-export function useComments({ cardId, projectId }) {
-  const comments = useLiveQuery(
-    () => (cardId
-      ? db.comments.where('cardId').equals(cardId).toArray()
-      : db.comments.where('projectId').equals(projectId).filter((c) => !c.cardId).toArray()),
-    [cardId, projectId],
-  );
+export function useComments({ cardId, projectId, spaceId }) {
+  const comments = useLiveQuery(() => {
+    if (cardId) return db.comments.where('cardId').equals(cardId).toArray();
+    if (spaceId) return db.comments.filter((c) => c.spaceId === spaceId).toArray();
+    return db.comments.where('projectId').equals(projectId).filter((c) => !c.cardId).toArray();
+  }, [cardId, projectId, spaceId]);
   const live = (comments ?? []).filter((c) => !c.deleted).sort((a, b) => a.createdAt - b.createdAt);
   const latest = live[live.length - 1]?.createdAt ?? 0;
-  const thread = cardId ? `card:${cardId}` : `project:${projectId}`;
+  const thread = threadOf({ cardId, projectId, spaceId });
   useEffect(() => {
     if (latest) markSeen(thread, latest);
   }, [thread, latest]);
@@ -31,12 +30,13 @@ export function useComments({ cardId, projectId }) {
 }
 
 /**
- * The chat of a card (`card`) or of a project (`projectId`). Signed-in people write; through a public
- * link comments are only shown. The board's owner may delete anyone's.
+ * The chat of a card (`card`), a project (`projectId`) or a space (`spaceId`). Signed-in people write;
+ * through a public link comments are only shown. The board's owner may delete anyone's.
  */
-export default function Comments({ card, projectId, title, className, placeholder, onOpenCard }) {
+export default function Comments({ card, projectId, spaceId, title, className, placeholder, onOpenCard }) {
   const { user } = useSyncExternalStore(authState.subscribe, authState.get);
-  const where = card ? { cardId: card.id, projectId: card.projectId } : { cardId: null, projectId };
+  const where = card ? { cardId: card.id, projectId: card.projectId }
+    : spaceId ? { cardId: null, projectId: null, spaceId } : { cardId: null, projectId };
   const messages = useComments(where);
   const me = user?.id ?? '';
   const canWrite = !publicToken;

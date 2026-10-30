@@ -87,14 +87,16 @@ export const SCHEMAS = {
     serverFields: ['attachments', 'number'],
     deleteConflicts: true,
   },
-  // A comment on a card, or (cardId null) a message in the project's chat. The server sets the
+  // A comment on a card, or (cardId null) a message in the project's chat, or (spaceId set,
+  // projectId null) in the space's chat, which only the board's owner sees. The server sets the
   // author and keeps projectId equal to the card's; only the author edits, the author or the
   // board's owner deletes (see applyComment). `event` (JSON, see recordEvents) makes it a note of
-  // a change in the project, written by the server.
+  // a change in the project or space, written by the server.
   comment: {
     fields: {
       cardId: optionalRef,
-      projectId: ref,
+      projectId: optionalRef,
+      spaceId: optionalRef,
       text: string(4000),
       authorId: string(200),
       authorName: string(200),
@@ -105,7 +107,7 @@ export const SCHEMAS = {
       event: string(4000),
     },
     defaults: {
-      cardId: null, text: '', authorId: '', authorName: '', authorPicture: '', createdAt: 0, editedAt: null, deleted: false,
+      cardId: null, spaceId: null, text: '', authorId: '', authorName: '', authorPicture: '', createdAt: 0, editedAt: null, deleted: false,
       event: '',
     },
     textFields: [],
@@ -201,8 +203,8 @@ function visibleTo(access, record) {
     case 'space': return access.spaces.has(record.id);
     case 'project': return access.projects.has(record.id);
     case 'section':
-    case 'card':
-    case 'comment': return access.projects.has(record.projectId);
+    case 'card': return access.projects.has(record.projectId);
+    case 'comment': return !record.spaceId && access.projects.has(record.projectId);
     case 'columnSet': return access.sets.has(record.id);
     case 'column': return access.sets.has(record.setId);
     default: return false;
@@ -247,10 +249,15 @@ function applyComment(owner, deviceId, { id, fields }, access, actor) {
     const data = { ...schema.defaults, ...fields };
     if (!data.text.trim() || data.deleted) return reject();
     let projectId = data.projectId;
+    const spaceId = data.cardId ? null : data.spaceId;
     if (data.cardId) {
       const card = getRecord(owner, data.cardId);
       if (card?.type !== 'card') return reject();
       projectId = card.projectId;
+    } else if (spaceId) {
+      const space = withDefaults(getRecord(owner, spaceId));
+      if (access || space?.type !== 'space' || space.deleted) return reject();
+      projectId = null;
     } else if (!ref(projectId) || getRecord(owner, projectId)?.type !== 'project') {
       return reject();
     }
@@ -259,6 +266,7 @@ function applyComment(owner, deviceId, { id, fields }, access, actor) {
     const record = save({
       ...data,
       projectId,
+      spaceId,
       authorId: actor.id,
       authorName: actor.name ?? '',
       authorPicture: actor.picture ?? '',
@@ -291,12 +299,14 @@ const GUEST = { id: '', name: 'Гость по ссылке', picture: null };
 // Notes of one change keep their order in the chat (sorted by time).
 let lastEventAt = 0;
 
-function addEvent(owner, projectId, actor, event) {
+/** A note in the chat of a project ({ projectId }) or of a space ({ spaceId }). */
+function addEvent(owner, chat, actor, event) {
   const who = actor ?? GUEST;
   lastEventAt = Math.max(Date.now(), lastEventAt + 1);
   saveRecord(owner, 'comment', crypto.randomUUID(), pickData(SCHEMAS.comment, {
     ...SCHEMAS.comment.defaults,
-    projectId,
+    projectId: chat.projectId ?? null,
+    spaceId: chat.spaceId ?? null,
     authorId: who.id,
     authorName: who.name || who.email || '',
     authorPicture: who.picture ?? '',
@@ -314,7 +324,8 @@ const nameOf = (owner, id) => (id ? withDefaults(getRecord(owner, id))?.name ?? 
  */
 function recordEvents(owner, actor, type, before, after) {
   if (!after || after.type !== type || (before && after.version === before.version)) return;
-  const event = (projectId, e) => addEvent(owner, projectId, actor, e);
+  const event = (projectId, e) => addEvent(owner, { projectId }, actor, e);
+  const spaceEvent = (spaceId, e) => addEvent(owner, { spaceId }, actor, e);
   if (type === 'card') {
     const card = { id: after.id, title: after.title, number: after.number };
     const at = after.projectId;
@@ -348,17 +359,34 @@ function recordEvents(owner, actor, type, before, after) {
       event(at, { k: 'section.rename', name: after.name, from: before.name });
     }
   } else if (type === 'project') {
-    if (after.deleted) return;
+    // The project's own chat, and that of its space for what concerns the space.
     if (!before) {
+      if (after.deleted) return;
       event(after.id, { k: 'project.create', name: after.name });
+      spaceEvent(after.spaceId, { k: 'project.create', name: after.name });
       return;
     }
-    if (after.name !== before.name) event(after.id, { k: 'project.rename', name: after.name, from: before.name });
+    if (after.deleted !== before.deleted) {
+      spaceEvent(after.spaceId, { k: after.deleted ? 'project.delete' : 'project.restore', name: after.name });
+    }
+    if (after.deleted) return;
+    if (after.name !== before.name) {
+      event(after.id, { k: 'project.rename', name: after.name, from: before.name });
+      spaceEvent(after.spaceId, { k: 'project.rename', name: after.name, from: before.name });
+    }
     if (after.columnSetId !== before.columnSetId) {
       event(after.id, { k: 'project.columns', name: nameOf(owner, after.columnSetId) });
     }
     if (after.spaceId !== before.spaceId) {
       event(after.id, { k: 'project.space', name: nameOf(owner, after.spaceId) });
+      spaceEvent(before.spaceId, { k: 'project.out', name: after.name, space: nameOf(owner, after.spaceId) });
+      spaceEvent(after.spaceId, { k: 'project.in', name: after.name, space: nameOf(owner, before.spaceId) });
+    }
+  } else if (type === 'space') {
+    if (!before) {
+      if (!after.deleted) spaceEvent(after.id, { k: 'space.create', name: after.name });
+    } else if (!after.deleted && after.name !== before.name) {
+      spaceEvent(after.id, { k: 'space.rename', name: after.name, from: before.name });
     }
   }
 }
@@ -483,7 +511,7 @@ export function changeAttachments(owner, cardId, change, actor, event) {
     const card = withDefaults(getRecord(owner, cardId));
     const next = { ...card, attachments: change(card.attachments) };
     saveRecord(owner, 'card', cardId, pickData(SCHEMAS.card, next), { version: card.version + 1, deviceId: 'server' });
-    addEvent(owner, card.projectId, actor, { ...event, card: { id: card.id, title: card.title, number: card.number } });
+    addEvent(owner, { projectId: card.projectId }, actor, { ...event, card: { id: card.id, title: card.title, number: card.number } });
     return getMaxSeq(owner);
   });
 }

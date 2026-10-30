@@ -45,11 +45,10 @@ function PeopleDialog({ people, projects, allProjects, me, onChat, onClose }) {
 }
 
 /**
- * The chats button with the number of unread messages (direct ones and the chats of `projects`);
- * shown when the board is shared or there is someone to write to.
+ * The chats button with the number of unread messages (direct ones and the chats of `spaces` and
+ * `projects`).
  */
-export function ChatButton({ projects, onChat }) {
-  const all = useSyncExternalStore(peopleStore.subscribe, peopleStore.get);
+export function ChatButton({ spaces, projects, onChat }) {
   const { contacts } = useSyncExternalStore(dmStore.subscribe, dmStore.get);
   const chats = useChats();
 
@@ -57,9 +56,9 @@ export function ChatButton({ projects, onChat }) {
     refreshDm();
   }, []);
 
-  if (all.length < 2 && contacts.length === 0) return null;
   const shown = new Set(projects.map((p) => p.id));
   const unread = dmUnread(contacts)
+    + spaces.reduce((sum, s) => sum + (chats.spaces[s.id]?.unread ?? 0), 0)
     + projects.reduce((sum, p) => sum + (chats.projects[p.id]?.unread ?? 0), 0)
     + chats.cards.reduce((sum, c) => sum + (shown.has(c.card.projectId) ? c.unread : 0), 0);
   return (

@@ -170,12 +170,12 @@ export const TYPES = {
     // number: #1, #2, … within the board, given by the server (null until the card is synced).
     fields: ['projectId', 'sectionId', 'columnId', 'title', 'description', 'position', 'deleted', 'remindAt', 'attachments', 'number'],
   },
-  // A comment on a card, or (cardId null) a message of the project's chat. The server sets the
-  // author fields and editedAt; `event` (JSON, see chatEvents.jsx) is the server's note of a change
-  // in the project.
+  // A comment on a card, or (cardId null) a message of the project's chat, or (spaceId set, projectId
+  // null) of the space's chat. The server sets the author fields and editedAt; `event` (JSON, see
+  // chatEvents.jsx) is the server's note of a change in the project or space.
   comment: {
     table: 'comments',
-    fields: ['cardId', 'projectId', 'text', 'authorId', 'authorName', 'authorPicture', 'createdAt', 'editedAt', 'deleted', 'event'],
+    fields: ['cardId', 'projectId', 'spaceId', 'text', 'authorId', 'authorName', 'authorPicture', 'createdAt', 'editedAt', 'deleted', 'event'],
   },
 };
 
