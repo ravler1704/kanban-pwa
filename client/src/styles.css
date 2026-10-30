@@ -645,6 +645,7 @@ body {
 .attachments-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 .attachments-title { color: var(--muted); font-size: 0.85rem; font-weight: 600; }
 .attachments-head .btn { cursor: pointer; }
+.attachments-actions { display: flex; gap: 0.4rem; }
 .btn.btn-disabled { opacity: 0.5; cursor: default; }
 .attachments-hint { margin: 0; font-size: 0.8rem; }
 .attachment-thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 0.4rem; }

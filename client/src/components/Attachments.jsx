@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import {
   attachFiles, dismissUpload, fileUrl, formatSize, isImage, isVideo, removeFile, uploadStore,
@@ -32,8 +32,13 @@ function PlayIcon() {
   );
 }
 
-/** Files of the card: image thumbnails and a list of the others; `readOnly` only shows them. */
-export default function Attachments({ card, readOnly }) {
+/**
+ * Files of the card: image and video thumbnails and a list of the others; `readOnly` only shows them.
+ * `pickOnOpen` opens the file chooser right away; `onCollapse` hides the empty section.
+ */
+export default function Attachments({ card, readOnly, pickOnOpen, onCollapse }) {
+  const picker = useRef(null);
+  const autoPicked = useRef(false);
   const { online } = useSyncExternalStore(syncStatus.subscribe, syncStatus.get);
   const uploads = useSyncExternalStore(uploadStore.subscribe, uploadStore.get).filter((u) => u.cardId === card.id);
   const [error, setError] = useState(null);
@@ -44,6 +49,13 @@ export default function Attachments({ card, readOnly }) {
   const others = files.filter((f) => !isImage(f) && !isVideo(f));
   // The server adds files to the card it has: a card created offline has to sync first.
   const canAttach = !readOnly && online && Boolean(card.server);
+
+  // Still within the click on «+ Файлы», so the browser lets the chooser open.
+  useEffect(() => {
+    if (!pickOnOpen || !canAttach || autoPicked.current) return;
+    autoPicked.current = true;
+    picker.current?.click();
+  }, []);
 
   function attach(list) {
     if (!canAttach || !list.length) return;
@@ -86,14 +98,19 @@ export default function Attachments({ card, readOnly }) {
       <div className="attachments-head">
         <span className="attachments-title">Файлы{files.length > 0 && ` · ${files.length}`}</span>
         {!readOnly && (
-          <label className={`btn btn-small ${canAttach ? '' : 'btn-disabled'}`}>
-            Прикрепить
-            <input type="file" multiple hidden disabled={!canAttach}
-              onChange={(e) => {
-                attach(e.target.files);
-                e.target.value = '';
-              }} />
-          </label>
+          <span className="attachments-actions">
+            <label className={`btn btn-small ${canAttach ? '' : 'btn-disabled'}`}>
+              Прикрепить
+              <input ref={picker} type="file" multiple hidden disabled={!canAttach}
+                onChange={(e) => {
+                  attach(e.target.files);
+                  e.target.value = '';
+                }} />
+            </label>
+            {onCollapse && files.length === 0 && uploads.length === 0 && (
+              <button type="button" className="btn btn-small" onClick={onCollapse}>Убрать</button>
+            )}
+          </span>
         )}
       </div>
       {thumbs.length > 0 && (

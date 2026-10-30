@@ -106,8 +106,8 @@ function CardForm({ card, columnsOfProject, groups, onClose }) {
           onDescription={setDescription}
           remindAt={remindAt}
           onRemindAt={setRemindAt}
+          card={card}
         />
-        <Attachments card={card} />
         <GroupSelect groups={groups} value={group} onChange={changeGroup} />
         {otherSet && (
           <p className="notice">
