@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { EventText, parseEvent } from '../chatEvents.jsx';
+import { EventText, parseEvent, useCardNumbers } from '../chatEvents.jsx';
 import Avatar from './Avatar.jsx';
 
 const URL_RE = /(https?:\/\/[^\s<>"]+[^\s<>".,;:!?)\]}'»])/g;
@@ -109,6 +109,7 @@ export default function ChatThread({
   const atBottom = useRef(true);
   const [selected, setSelected] = useState(null);
   const [editing, setEditing] = useState(null);
+  const cardNumbers = useCardNumbers();
   const lastId = messages[messages.length - 1]?.id;
 
   useLayoutEffect(() => {
@@ -138,7 +139,7 @@ export default function ChatThread({
                   <Avatar user={{ name: m.authorName, picture: m.authorPicture }} size={18} />
                   <span className="chat-event-text">
                     {m.authorName && <span className="chat-event-author">{m.authorName}: </span>}
-                    <EventText event={event} onOpenCard={onOpenCard} />
+                    <EventText event={event} numbers={cardNumbers} onOpenCard={onOpenCard} />
                   </span>
                   <span className="chat-time" title={new Date(m.createdAt).toLocaleString('ru-RU')}>{time(m.createdAt)}</span>
                 </div>

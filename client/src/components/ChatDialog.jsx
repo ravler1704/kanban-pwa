@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { authState } from '../auth.js';
-import { messageText } from '../chatEvents.jsx';
+import { messageText, useCardNumbers } from '../chatEvents.jsx';
 import { db } from '../db.js';
 import {
   deleteDm, dmStore, editDm, loadThread, markDmRead, onDmThreadChange, refreshDm, sendDm,
@@ -101,7 +101,7 @@ function DmThread({ peer }) {
   );
 }
 
-function ChatListItem({ avatar, title, subtitle, last, unread, active, onClick }) {
+function ChatListItem({ avatar, title, subtitle, last, text, unread, active, onClick }) {
   return (
     <button type="button" className={`chat-list-item ${active ? 'active' : ''}`} onClick={onClick}>
       {avatar}
@@ -111,7 +111,7 @@ function ChatListItem({ avatar, title, subtitle, last, unread, active, onClick }
           {last && <span className="chat-list-time muted">{shortTime(last.createdAt)}</span>}
         </span>
         {subtitle && <span className="chat-list-subtitle muted">{subtitle}</span>}
-        <span className="chat-list-preview muted">{last ? preview(messageText(last)) : 'Нет сообщений'}</span>
+        <span className="chat-list-preview muted">{last ? preview(text) : 'Нет сообщений'}</span>
       </span>
       {unread > 0 && <span className="chat-unread">{unread}</span>}
     </button>
@@ -146,6 +146,7 @@ export default function ChatDialog({ projects, thread: initialThread, onOpenCard
   const [search, setSearch] = useState('');
   const { contacts, loaded } = useSyncExternalStore(dmStore.subscribe, dmStore.get);
   const chats = useChats();
+  const numbers = useCardNumbers();
 
   useEffect(() => {
     refreshDm();
@@ -178,7 +179,7 @@ export default function ChatDialog({ projects, thread: initialThread, onOpenCard
   ].sort((a, b) => (b.last?.createdAt ?? 0) - (a.last?.createdAt ?? 0) || a.title.localeCompare(b.title, 'ru'));
   const query = search.trim().toLocaleLowerCase('ru');
   const found = query
-    ? items.filter((i) => [i.title, i.subtitle, i.last && messageText(i.last)]
+    ? items.filter((i) => [i.title, i.subtitle, i.last && messageText(i.last, numbers)]
       .some((text) => text?.toLocaleLowerCase('ru').includes(query)))
     : items;
 
@@ -191,6 +192,7 @@ export default function ChatDialog({ projects, thread: initialThread, onOpenCard
           <div className="chat-list">
             {found.map((i) => (
               <ChatListItem key={i.thread} avatar={i.avatar} title={i.title} subtitle={i.subtitle}
+                text={i.last && messageText(i.last, numbers)}
                 last={i.last} unread={i.unread} active={thread === i.thread} onClick={() => setThread(i.thread)} />
             ))}
             {query && found.length === 0 && <p className="muted chat-list-note">Ничего не найдено.</p>}

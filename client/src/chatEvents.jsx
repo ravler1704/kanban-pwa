@@ -1,8 +1,27 @@
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from './db.js';
+
 // Notes of changes the server writes into a project's chat: a comment whose `event` is JSON
-// { k: kind, card: { id, title }, ... } (see recordEvents in server/src/sync.js).
+// { k: kind, card: { id, title, number }, ... } (see recordEvents in server/src/sync.js).
+// Notes from before card numbers existed have none; `numbers` (card id → number) fills it in.
 
 const q = (name) => `«${name?.trim() || 'Без названия'}»`;
-const cardName = (card) => `${card.number ? `#${card.number} ` : ''}${q(card.title)}`;
+
+function cardName(card, numbers) {
+  const number = card.number ?? numbers?.get(card.id);
+  return `${number ? `#${number} ` : ''}${q(card.title)}`;
+}
+
+/** Card id → number of the board's cards (deleted ones too). */
+export function useCardNumbers() {
+  return useLiveQuery(async () => {
+    const numbers = new Map();
+    await db.cards.each((c) => {
+      if (c.number) numbers.set(c.id, c.number);
+    });
+    return numbers;
+  }, []);
+}
 
 const remindTime = (at) => new Date(at).toLocaleString('ru-RU', {
   day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
@@ -49,19 +68,20 @@ export function parseEvent(json) {
 }
 
 /** The message as plain text: a note of a change is described in words. */
-export function messageText(m) {
+export function messageText(m, numbers) {
   const e = m.event && parseEvent(m.event);
   if (!e) return m.text;
-  return parts(e).map((p) => (typeof p === 'string' ? p : cardName(p.card ?? {}))).join('');
+  return parts(e).map((p) => (typeof p === 'string' ? p : cardName(p.card ?? {}, numbers))).join('');
 }
 
 /** The note `event` (parsed); the card's title opens it with `onOpenCard(id)`. */
-export function EventText({ event, onOpenCard }) {
+export function EventText({ event, numbers, onOpenCard }) {
   return parts(event).map((p, i) => {
     if (typeof p === 'string') return p;
     if (!p.card) return null;
+    const name = cardName(p.card, numbers);
     return onOpenCard
-      ? <button key={i} type="button" className="chat-event-card" onClick={() => onOpenCard(p.card.id)}>{cardName(p.card)}</button>
-      : <strong key={i}>{cardName(p.card)}</strong>;
+      ? <button key={i} type="button" className="chat-event-card" onClick={() => onOpenCard(p.card.id)}>{name}</button>
+      : <strong key={i}>{name}</strong>;
   });
 }
