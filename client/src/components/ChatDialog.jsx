@@ -142,8 +142,8 @@ const cardTitle = (card) => card.title.trim() || 'Без названия';
  */
 export default function ChatDialog({ projects, thread: initialThread, onOpenCard, onClose }) {
   const [thread, setThread] = useState(initialThread || '');
-  const { contacts, loaded, error } = useSyncExternalStore(dmStore.subscribe, dmStore.get);
-  const { online } = useSyncExternalStore(syncStatus.subscribe, syncStatus.get);
+  const [search, setSearch] = useState('');
+  const { contacts, loaded } = useSyncExternalStore(dmStore.subscribe, dmStore.get);
   const chats = useChats();
 
   useEffect(() => {
@@ -158,42 +158,42 @@ export default function ChatDialog({ projects, thread: initialThread, onOpenCard
   const peer = kind === 'dm' ? contacts.find((c) => c.id === id) ?? (loaded ? null : { id }) : null;
   const open = Boolean(project || card || peer);
   const projectName = new Map(projects.map((p) => [p.id, p.name]));
-  const cardChats = chats.cards.filter((c) => projectName.has(c.card.projectId));
 
-  const sortedContacts = [...contacts].sort((a, b) => (b.last?.createdAt ?? 0) - (a.last?.createdAt ?? 0)
-    || personName(a).localeCompare(personName(b), 'ru'));
+  // All chats in one list: the latest message first, those without messages after them.
+  const items = [
+    ...projects.map((p) => ({
+      thread: `project:${p.id}`, avatar: <ProjectAvatar />, title: p.name,
+      last: chats.projects[p.id]?.last ?? null, unread: chats.projects[p.id]?.unread ?? 0,
+    })),
+    ...chats.cards.filter((c) => projectName.has(c.card.projectId)).map((c) => ({
+      thread: `card:${c.card.id}`, avatar: <CardAvatar />, title: cardTitle(c.card),
+      subtitle: projects.length > 1 ? projectName.get(c.card.projectId) : null,
+      last: c.last, unread: c.unread,
+    })),
+    ...contacts.map((c) => ({
+      thread: `dm:${c.id}`, avatar: <Avatar user={c} size={36} />, title: personName(c),
+      last: c.last && !c.last.deleted ? c.last : null, unread: c.unread,
+    })),
+  ].sort((a, b) => (b.last?.createdAt ?? 0) - (a.last?.createdAt ?? 0) || a.title.localeCompare(b.title, 'ru'));
+  const query = search.trim().toLocaleLowerCase('ru');
+  const found = query
+    ? items.filter((i) => [i.title, i.subtitle, i.last?.text]
+      .some((text) => text?.toLocaleLowerCase('ru').includes(query)))
+    : items;
 
   return (
     <Modal title="Чаты" onClose={onClose} className="modal-chat" closeButton>
       <div className={`chat-dialog ${open ? 'chat-dialog-open' : ''}`}>
-        <nav className="chat-list" aria-label="Чаты">
-          <h4>Чаты проектов</h4>
-          {projects.map((p) => (
-            <ChatListItem key={p.id} avatar={<ProjectAvatar />} title={p.name}
-              last={chats.projects[p.id]?.last} unread={chats.projects[p.id]?.unread ?? 0}
-              active={project?.id === p.id} onClick={() => setThread(`project:${p.id}`)} />
-          ))}
-          <h4>Чаты карточек</h4>
-          {cardChats.length === 0 && (
-            <p className="muted chat-list-note">Комментариев к карточкам пока нет.</p>
-          )}
-          {cardChats.map((c) => (
-            <ChatListItem key={c.card.id} avatar={<CardAvatar />} title={cardTitle(c.card)}
-              subtitle={projects.length > 1 ? projectName.get(c.card.projectId) : null}
-              last={c.last} unread={c.unread}
-              active={card?.id === c.card.id} onClick={() => setThread(`card:${c.card.id}`)} />
-          ))}
-          <h4>Личные сообщения</h4>
-          {!online && <p className="muted chat-list-note">Нет подключения к интернету.</p>}
-          {online && error && <p className="muted chat-list-note">{error}</p>}
-          {online && loaded && contacts.length === 0 && (
-            <p className="muted chat-list-note">Пока не с кем: пригласите людей в проект или примите приглашение.</p>
-          )}
-          {sortedContacts.map((c) => (
-            <ChatListItem key={c.id} avatar={<Avatar user={c} size={36} />} title={personName(c)}
-              last={c.last && !c.last.deleted ? c.last : null} unread={c.unread}
-              active={peer?.id === c.id} onClick={() => setThread(`dm:${c.id}`)} />
-          ))}
+        <nav className="chat-side" aria-label="Чаты">
+          <input className="check-search chat-search" type="search" placeholder="Поиск по чатам"
+            value={search} onChange={(e) => setSearch(e.target.value)} />
+          <div className="chat-list">
+            {found.map((i) => (
+              <ChatListItem key={i.thread} avatar={i.avatar} title={i.title} subtitle={i.subtitle}
+                last={i.last} unread={i.unread} active={thread === i.thread} onClick={() => setThread(i.thread)} />
+            ))}
+            {query && found.length === 0 && <p className="muted chat-list-note">Ничего не найдено.</p>}
+          </div>
         </nav>
         <section className="chat-pane">
           {open ? (
