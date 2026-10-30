@@ -98,11 +98,18 @@ body {
 
 .projectbar {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-direction: column;
   gap: 0.5rem;
   padding: 0.75rem 1.25rem 0;
 }
+.projectbar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.projectbar-row:empty { display: none; }
+.projectbar-actions { min-height: 2.25rem; }
 .picker { position: relative; display: inline-flex; min-width: 0; }
 .picker .select-empty { color: var(--muted); font-weight: normal; }
 .picker-label {
@@ -146,7 +153,7 @@ body {
   transform: translateY(-50%);
   background: var(--border);
 }
-.projectbar > .btn-icon-only { align-self: stretch; padding: 0 0.8rem; }
+.projectbar-row > .btn-icon-only { align-self: stretch; padding: 0 0.8rem; }
 .check-picker .select {
   min-width: 120px;
   overflow: hidden;
@@ -240,7 +247,7 @@ body {
 }
 .view-switch-btn:hover { color: var(--text); }
 .view-switch-btn.active { background: var(--card); color: var(--text); }
-.projectbar > .btn-add-card { margin-left: auto; }
+.projectbar-row > .btn-add-card { margin-left: auto; }
 .btn-clear {
   background: none;
   border: none;

@@ -71,51 +71,55 @@ export default function ProjectBar({
 
   return (
     <nav className="projectbar">
-      {!publicToken && (
-        <CheckPicker label="Проекты" emptyLabel="Не выбраны" clearLabel="Как по умолчанию"
-          searchPlaceholder="Поиск проекта" notFound="Проектов не найдено" items={projectItems} {...projectFilter} />
-      )}
+      <div className="projectbar-row">
+        {!publicToken && (
+          <CheckPicker label="Проекты" emptyLabel="Не выбраны" clearLabel="Как по умолчанию"
+            searchPlaceholder="Поиск проекта" notFound="Проектов не найдено" items={projectItems} {...projectFilter} />
+        )}
 
-      {sectionItems.length > 0 && (
-        <CheckPicker label="Разделы" emptyLabel="Не выбраны" clearLabel="Как по умолчанию"
-          searchPlaceholder="Поиск раздела" notFound="Разделов не найдено" items={sectionItems} {...sectionFilter} />
-      )}
+        {sectionItems.length > 0 && (
+          <CheckPicker label="Разделы" emptyLabel="Не выбраны" clearLabel="Как по умолчанию"
+            searchPlaceholder="Поиск раздела" notFound="Разделов не найдено" items={sectionItems} {...sectionFilter} />
+        )}
 
-      {columnSets && (
-        <div className="picker">
-          <label className="picker-label" htmlFor="column-set-select">Колонки</label>
-          <select id="column-set-select" className="select" value={columnSetId}
-            title="Доски с разными наборами колонок показываются по отдельности"
-            onChange={(e) => onSelectColumnSet(e.target.value)}>
-            {columnSets.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-        </div>
-      )}
+        {columnSets && (
+          <div className="picker">
+            <label className="picker-label" htmlFor="column-set-select">Колонки</label>
+            <select id="column-set-select" className="select" value={columnSetId}
+              title="Доски с разными наборами колонок показываются по отдельности"
+              onChange={(e) => onSelectColumnSet(e.target.value)}>
+              {columnSets.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+        )}
 
-      {tagFilter && <TagFilter {...tagFilter} />}
-
-      {children}
-
-      <div className="view-switch" role="group" aria-label="Вид">
-        {VIEWS.map(({ id, label, Icon }) => (
-          <button key={id} type="button" className={`view-switch-btn ${view === id ? 'active' : ''}`}
-            title={label} aria-label={label} aria-pressed={view === id} onClick={() => onView(id)}>
-            <Icon />
-          </button>
-        ))}
+        {tagFilter && <TagFilter {...tagFilter} />}
       </div>
-      {onManage && (
-        <button className="btn btn-small btn-icon-only" title="Настройки доски" aria-label="Настройки доски"
-          onClick={onManage}>
-          <SettingsIcon />
-        </button>
-      )}
-      {onAddCard && (
-        <button className="btn btn-primary btn-small btn-icon-only btn-add-card" title="Новая карточка" aria-label="Новая карточка"
-          onClick={onAddCard}>
-          <PlusIcon />
-        </button>
-      )}
+
+      <div className="projectbar-row projectbar-actions">
+        {children}
+
+        <div className="view-switch" role="group" aria-label="Вид">
+          {VIEWS.map(({ id, label, Icon }) => (
+            <button key={id} type="button" className={`view-switch-btn ${view === id ? 'active' : ''}`}
+              title={label} aria-label={label} aria-pressed={view === id} onClick={() => onView(id)}>
+              <Icon />
+            </button>
+          ))}
+        </div>
+        {onManage && (
+          <button className="btn btn-small btn-icon-only" title="Настройки доски" aria-label="Настройки доски"
+            onClick={onManage}>
+            <SettingsIcon />
+          </button>
+        )}
+        {onAddCard && (
+          <button className="btn btn-primary btn-small btn-icon-only btn-add-card" title="Новая карточка" aria-label="Новая карточка"
+            onClick={onAddCard}>
+            <PlusIcon />
+          </button>
+        )}
+      </div>
     </nav>
   );
 }
