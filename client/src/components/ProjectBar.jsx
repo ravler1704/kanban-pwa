@@ -78,12 +78,12 @@ export default function ProjectBar({
         )}
 
         {!publicToken && (
-          <CheckPicker label="Проекты" emptyLabel="Не выбраны" clearLabel="Как по умолчанию"
+          <CheckPicker label="Проекты" emptyLabel="Не выбраны" clearLabel="Показать все"
             searchPlaceholder="Поиск проекта" notFound="Проектов не найдено" items={projectItems} {...projectFilter} />
         )}
 
         {sectionItems.length > 0 && (
-          <CheckPicker label="Разделы" emptyLabel="Не выбраны" clearLabel="Как по умолчанию"
+          <CheckPicker label="Разделы" emptyLabel="Не выбраны" clearLabel="Показать все"
             searchPlaceholder="Поиск раздела" notFound="Разделов не найдено" items={sectionItems} {...sectionFilter} />
         )}
 

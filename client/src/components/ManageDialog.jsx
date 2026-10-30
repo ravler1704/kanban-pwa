@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import {
   changeProjectColumnSet, countCards, countColumnCards, countProjectCards, createColumn, createColumnSet, createProject, createSection,
   createSpace, deleteColumn, deleteColumnSet, deleteProject, deleteSection, deleteSpace, moveColumn, moveProject, moveSpace,
-  renameColumn, renameColumnSet, renameProject, renameSection, renameSpace, setCheckedByDefault, setColumnAddToTop,
+  renameColumn, renameColumnSet, renameProject, renameSection, renameSpace, setColumnAddToTop,
   setProjectSpace,
 } from '../actions.js';
 import { spaceIdOf } from '../spaces.js';
@@ -284,7 +284,6 @@ function ProjectItem({ model, project, sections, spaces, spacesSynced, columnsSy
   const spaceId = spaceIdOf(project, spaces);
   const meta = [
     spaces.length > 1 && spaces.find((s) => s.id === spaceId)?.name,
-    project.hidden && 'не отмечен по умолчанию',
     sections.length ? `${sections.length} ${plural(sections.length, 'раздел', 'раздела', 'разделов')}` : 'без разделов',
     columnsSynced && setName && `набор «${setName}»`,
   ].filter(Boolean).join(' · ');
@@ -315,7 +314,6 @@ function ProjectItem({ model, project, sections, spaces, spacesSynced, columnsSy
               onSave={(name) => renameProject(project.id, name)} />
             <button className="btn btn-small btn-danger" onClick={onRemove}>Удалить</button>
           </div>
-          <DefaultCheck type="project" record={project} label="Отмечен по умолчанию в списке «Проекты»" />
           {spacesSynced && (
             <label className="field">
               <span className="field-label">Пространство</span>
@@ -453,17 +451,6 @@ function ProjectPicker({ projects, project, onChange }) {
   );
 }
 
-/** The «checked by default in the board's filter» setting; with `title` and no `label`, just the box. */
-function DefaultCheck({ type, record, label, title }) {
-  return (
-    <label className="manage-check" title={title}>
-      <input type="checkbox" checked={!record.hidden} aria-label={label ? undefined : title}
-        onChange={(e) => setCheckedByDefault(type, record.id, e.target.checked)} />
-      {label}
-    </label>
-  );
-}
-
 function SectionsEditor({ projects, project, sections, onProject, onRemoveSection }) {
   const own = sections.filter((s) => s.projectId === project.id);
   return (
@@ -471,10 +458,8 @@ function SectionsEditor({ projects, project, sections, onProject, onRemoveSectio
       {!isOwnBoard && <p className="muted">Проекты и колонки настраивает владелец доски, здесь можно менять разделы.</p>}
       <ProjectPicker projects={projects} project={project} onChange={onProject} />
       {own.length === 0 && <p className="muted">В проекте нет разделов — все карточки лежат в нём самом.</p>}
-      {own.length > 0 && <p className="muted manage-hint">Галочка слева — раздел отмечен по умолчанию в списке «Разделы».</p>}
       {own.map((s) => (
         <div key={s.id} className="manage-row">
-          <DefaultCheck type="section" record={s} title="Отмечен по умолчанию в списке «Разделы»" />
           <NameInput value={s.name} label="Название раздела" onSave={(name) => renameSection(s.id, name)} />
           <button className="btn btn-small btn-danger" onClick={() => onRemoveSection(s)}>Удалить</button>
         </div>

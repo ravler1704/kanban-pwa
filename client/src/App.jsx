@@ -36,16 +36,15 @@ const OLD_KEYS = Object.values(SELECTION_KEYS).flat();
 const LEGACY_PARAMS = [['projects', 'sections'], ['project', 'section']];
 const LEGACY_STORAGE = [['selectedProjects', 'selectedSections'], ['selectedProject', 'selectedSection']];
 
-// Whether a project / section is checked when the user has not changed it. A public link opens
-// a single project, so it is always shown there.
-const projectCheckedByDefault = (p) => !!publicToken || !p.hidden;
-const sectionCheckedByDefault = (s) => !s.hidden;
+// Earlier builds left projects and sections with `hidden` unchecked until the user changed them;
+// a board's selection is converted once, keeping what was in view.
+const OLD_DEFAULTS_KEY = `selectionWithoutDefaults:${dbName}`;
 
-/** The selection storing exactly the given checked ids. */
+/** The selection storing exactly the given checked ids: the unchecked ones, so new ones show up checked. */
 function toggles(projects, sections, projectIds, sectionIds) {
   return {
-    projectToggles: projects.filter((p) => projectCheckedByDefault(p) !== projectIds.includes(p.id)).map((p) => p.id),
-    sectionToggles: sections.filter((s) => sectionCheckedByDefault(s) !== sectionIds.includes(s.id)).map((s) => s.id),
+    projectToggles: projects.filter((p) => !projectIds.includes(p.id)).map((p) => p.id),
+    sectionToggles: sections.filter((s) => !sectionIds.includes(s.id)).map((s) => s.id),
   };
 }
 
@@ -60,8 +59,8 @@ function storedList(key) {
   return value === null ? null : idList(value);
 }
 
-// Selection: projects and sections whose checkbox differs from its default (`projectToggles`,
-// `sectionToggles`), so new ones show up as their default says. It lives in the URL so the back
+// Selection: the unchecked projects and sections (`projectToggles`, `sectionToggles`), so new ones
+// show up checked. It lives in the URL so the back
 // button works; localStorage keeps it between launches of the installed app. `legacy` is a selection
 // of an older build ({ projects, sections }), replaced by the first change.
 function readSelection() {
@@ -190,12 +189,13 @@ export default function App() {
     if (!card || (card.deleted && !card.conflict)) return;
     const [projects, sections, spaces] = await Promise.all([db.projects.toArray(), db.sections.toArray(), db.spaces.toArray()]);
     const live = sections.filter((s) => !s.deleted);
-    const checked = live.filter(sectionCheckedByDefault).map((s) => s.id);
+    const off = readSelection().sectionToggles;
+    const checked = live.filter((s) => !off.includes(s.id)).map((s) => s.id);
     select(toggles(projects.filter((p) => !p.deleted), live, ...focusOn(live, checked, card.projectId, null)));
     const project = projects.find((p) => p.id === card.projectId);
     const spaceId = project && spaceIdOf(project, liveSpaces(spaces));
-    const off = readList(SPACES_OFF_KEY);
-    if (off.includes(spaceId)) changeSpacesOff(off.filter((s) => s !== spaceId));
+    const spacesOff = readList(SPACES_OFF_KEY);
+    if (spacesOff.includes(spaceId)) changeSpacesOff(spacesOff.filter((s) => s !== spaceId));
     setOpenCardId(id);
   }, [select, changeSpacesOff]);
 
@@ -259,13 +259,15 @@ export default function App() {
 
   // A checked project shows its own cards (those in no section) and those of its checked sections.
   // An older build's empty list meant all projects / the whole project.
+  // Until the selection is converted, `hidden` ones count as unchecked, as they did.
   const { legacy } = selection;
+  const oldDefaults = !publicToken && !localStorage.getItem(OLD_DEFAULTS_KEY);
   const isChecked = (p) => (legacy?.projects.length
     ? legacy.projects.includes(p.id)
-    : projectCheckedByDefault(p) !== selection.projectToggles.includes(p.id));
+    : !(oldDefaults && p.hidden) !== selection.projectToggles.includes(p.id));
   const isSectionChecked = (s) => (legacy?.sections.some((id) => sectionById.get(id)?.projectId === s.projectId)
     ? legacy.sections.includes(s.id)
-    : sectionCheckedByDefault(s) !== selection.sectionToggles.includes(s.id));
+    : !(oldDefaults && s.hidden) !== selection.sectionToggles.includes(s.id));
   const shownProjects = spaceProjects.filter(isChecked);
   const sectionGroups = shownProjects
     .map((p) => ({ project: p, sections: sectionsOf(p.id) }))
@@ -294,6 +296,14 @@ export default function App() {
       .filter((c) => c.cardId && !c.deleted).toArray(),
     [scopeProjectIds],
   );
+
+  useEffect(() => {
+    if (!data || !oldDefaults) return;
+    localStorage.setItem(OLD_DEFAULTS_KEY, '1');
+    if (projects.some((p) => p.hidden) || allSections.some((s) => s.hidden)) {
+      select(toggles(projects, allSections, projects.filter(isChecked).map((p) => p.id), [...checkedSectionIds]));
+    }
+  });
 
   if (!data || !projectCards) return <div className="loading">Загрузка…</div>;
 
@@ -376,24 +386,22 @@ export default function App() {
   const boardGroups = shownGroups.filter((g) => model.setIdOf(g.project) === boardSetId);
   const boardCards = visible.filter((c) => model.setIdOf(projectById.get(c.projectId)) === boardSetId);
 
-  // Changes are saved as differences from the defaults (see readSelection). Projects of unchecked
-  // spaces keep their checkboxes.
+  // The last choice is kept (see readSelection). Projects of unchecked spaces keep their checkboxes.
   const checkedProjects = shownProjects.map((p) => p.id);
   const checkedElsewhere = projects.filter((p) => !spaceProjects.includes(p) && isChecked(p)).map((p) => p.id);
   const checkedSections = [...checkedSectionIds];
   const save = (projectIds, sectionIds) => select(toggles(projects, allSections, projectIds, sectionIds));
   const saveProjects = (ids) => save([...checkedElsewhere, ...ids], checkedSections);
+  const saveSections = (ids) => save([...checkedElsewhere, ...checkedProjects], ids);
   const toggle = (list, id) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
   const pickableIds = pickableSections.map((s) => s.id);
   const otherSections = checkedSections.filter((id) => !pickableIds.includes(id));
-  const projectsAsDefault = spaceProjects.every((p) => isChecked(p) === projectCheckedByDefault(p));
-  const sectionsAsDefault = pickableSections.every((s) => checkedSectionIds.has(s.id) === sectionCheckedByDefault(s));
+  const allSectionsChecked = pickableIds.every((id) => checkedSectionIds.has(id));
   const projectFilter = {
     selected: checkedProjects,
     onToggle: (id) => saveProjects(toggle(checkedProjects, id)),
     onSetAll: (on) => saveProjects(on ? spaceProjects.map((p) => p.id) : []),
-    onClear: projectsAsDefault ? null
-      : () => saveProjects(spaceProjects.filter(projectCheckedByDefault).map((p) => p.id)),
+    onClear: checkedProjects.length === spaceProjects.length ? null : () => saveProjects(spaceProjects.map((p) => p.id)),
     summary: checkedProjects.length === spaceProjects.length ? 'Все проекты' : null,
   };
   const checkedSpaces = spaces.filter((s) => spaceOn(s.id)).map((s) => s.id);
@@ -409,13 +417,10 @@ export default function App() {
   };
   const sectionFilter = {
     selected: pickableIds.filter((id) => checkedSectionIds.has(id)),
-    onToggle: (id) => save(checkedProjects, toggle(checkedSections, id)),
-    onSetAll: (on) => save(checkedProjects, on ? [...otherSections, ...pickableIds] : otherSections),
-    onClear: sectionsAsDefault ? null : () => save(checkedProjects, [
-      ...otherSections,
-      ...pickableSections.filter(sectionCheckedByDefault).map((s) => s.id),
-    ]),
-    summary: pickableIds.every((id) => checkedSectionIds.has(id)) ? 'Все разделы' : null,
+    onToggle: (id) => saveSections(toggle(checkedSections, id)),
+    onSetAll: (on) => saveSections(on ? [...otherSections, ...pickableIds] : otherSections),
+    onClear: allSectionsChecked ? null : () => saveSections([...otherSections, ...pickableIds]),
+    summary: allSectionsChecked ? 'Все разделы' : null,
   };
   const openGroup = (card) => save(...focusOn(allSections, checkedSections, card.projectId, card.sectionId));
 

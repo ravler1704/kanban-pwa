@@ -229,12 +229,6 @@ export async function renameProject(id, name) {
   requestSync();
 }
 
-/** Whether the project / section is checked by default in the board's filter. */
-export async function setCheckedByDefault(type, id, checked) {
-  await update(type, id, { hidden: !checked });
-  requestSync();
-}
-
 /** Swaps the project with its neighbour; `direction` is -1 (up) or 1 (down). */
 export async function moveProject(id, direction) {
   await db.transaction('rw', db.projects, async () => {

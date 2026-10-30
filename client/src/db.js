@@ -159,7 +159,7 @@ export const TYPES = {
   space: { table: 'spaces', fields: ['name', 'position', 'deleted'] },
   columnSet: { table: 'columnSets', fields: ['name', 'position', 'deleted'] },
   column: { table: 'columns', fields: ['setId', 'name', 'position', 'deleted', 'addToTop'] },
-  // hidden (projects, sections): unchecked by default in the board's project / section filter.
+  // hidden (projects, sections): no longer set; read once to convert an older selection.
   project: { table: 'projects', fields: ['spaceId', 'columnSetId', 'name', 'position', 'deleted', 'hidden'] },
   section: { table: 'sections', fields: ['projectId', 'name', 'position', 'deleted', 'hidden'] },
   card: {
