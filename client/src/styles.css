@@ -1036,6 +1036,32 @@ a.btn { display: inline-block; text-decoration: none; }
 .chat-pane { display: flex; flex-direction: column; gap: 0.5rem; min-height: 0; min-width: 0; }
 .chat-pane-head { display: flex; align-items: center; gap: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
 .chat-pane-head .avatar-project { width: 28px; height: 28px; font-size: 0.85rem; }
+.chat-event {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin: 0.15rem auto;
+  max-width: 92%;
+  padding: 0.25rem 0.6rem;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--border) 35%, transparent);
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.chat-event .avatar { margin-top: 1px; font-size: 0.6rem; }
+.chat-event-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.chat-event-author { color: var(--text); font-weight: 600; }
+.chat-event-card {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.chat-event-card:hover { text-decoration: underline; }
+.chat-event .chat-time { flex: none; float: none; margin: 0.1rem 0 0; }
 .chat-pane-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chat-open-card { margin-left: auto; flex: none; }
 .chat-list-subtitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.75rem; }

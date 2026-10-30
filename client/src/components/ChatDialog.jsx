@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { authState } from '../auth.js';
+import { messageText } from '../chatEvents.jsx';
 import { db } from '../db.js';
 import {
   deleteDm, dmStore, editDm, loadThread, markDmRead, onDmThreadChange, refreshDm, sendDm,
@@ -110,7 +111,7 @@ function ChatListItem({ avatar, title, subtitle, last, unread, active, onClick }
           {last && <span className="chat-list-time muted">{shortTime(last.createdAt)}</span>}
         </span>
         {subtitle && <span className="chat-list-subtitle muted">{subtitle}</span>}
-        <span className="chat-list-preview muted">{last ? preview(last.text) : 'Нет сообщений'}</span>
+        <span className="chat-list-preview muted">{last ? preview(messageText(last)) : 'Нет сообщений'}</span>
       </span>
       {unread > 0 && <span className="chat-unread">{unread}</span>}
     </button>
@@ -177,7 +178,7 @@ export default function ChatDialog({ projects, thread: initialThread, onOpenCard
   ].sort((a, b) => (b.last?.createdAt ?? 0) - (a.last?.createdAt ?? 0) || a.title.localeCompare(b.title, 'ru'));
   const query = search.trim().toLocaleLowerCase('ru');
   const found = query
-    ? items.filter((i) => [i.title, i.subtitle, i.last?.text]
+    ? items.filter((i) => [i.title, i.subtitle, i.last && messageText(i.last)]
       .some((text) => text?.toLocaleLowerCase('ru').includes(query)))
     : items;
 
@@ -213,7 +214,10 @@ export default function ChatDialog({ projects, thread: initialThread, onOpenCard
                 )}
                 {peer && <><Avatar user={peer} size={28} /><strong>{personName(peer)}</strong></>}
               </header>
-              {project && <Comments key={project.id} projectId={project.id} className="chat-full" placeholder="Сообщение" />}
+              {project && (
+                <Comments key={project.id} projectId={project.id} className="chat-full" placeholder="Сообщение"
+                  onOpenCard={onOpenCard} />
+              )}
               {card && <Comments key={card.id} card={card} className="chat-full" />}
               {peer && <DmThread key={peer.id} peer={peer} />}
             </>

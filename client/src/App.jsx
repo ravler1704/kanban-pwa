@@ -170,7 +170,7 @@ export default function App() {
   // Opens a card, first showing its project if it is not on the board.
   const openFromReminder = useCallback(async (id) => {
     const card = await db.cards.get(id);
-    if (!card) return;
+    if (!card || (card.deleted && !card.conflict)) return;
     const [projects, sections] = await Promise.all([db.projects.toArray(), db.sections.toArray()]);
     const live = sections.filter((s) => !s.deleted);
     const checked = live.filter(sectionCheckedByDefault).map((s) => s.id);

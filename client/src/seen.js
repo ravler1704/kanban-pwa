@@ -39,6 +39,6 @@ export function markSeen(thread, at) {
 
 export const threadOf = (comment) => (comment.cardId ? `card:${comment.cardId}` : `project:${comment.projectId}`);
 
-/** Whether `comment` is one the user (`me`) has not read yet. */
-export const isUnread = (seenMap, comment, me) => !comment.deleted && comment.authorId !== me
+/** Whether `comment` is one the user (`me`) has not read yet; notes of changes don't count. */
+export const isUnread = (seenMap, comment, me) => !comment.deleted && !comment.event && comment.authorId !== me
   && comment.createdAt > Math.max(since, seenMap[threadOf(comment)] ?? 0);

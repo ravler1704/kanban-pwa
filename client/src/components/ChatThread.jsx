@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { EventText, parseEvent } from '../chatEvents.jsx';
 import Avatar from './Avatar.jsx';
 
 const URL_RE = /(https?:\/\/[^\s<>"]+[^\s<>".,;:!?)\]}'»])/g;
@@ -98,9 +99,11 @@ function Composer({ editing, onSubmit, onCancelEdit, placeholder, disabled }) {
  * Messages as a chat. `messages`: [{ id, authorId, authorName, authorPicture, text, createdAt, editedAt,
  * pending }] oldest first; the user's own (`me`) are on the right. Without `onSend` there is no input;
  * `hint` explains why sending is off (`disabled`). `canDelete(message)` defaults to the user's own.
+ * Messages with `event` are notes of changes; their card opens with `onOpenCard(id)`.
  */
 export default function ChatThread({
-  messages, me, onSend, onEdit, onDelete, canDelete, disabled, hint, placeholder = 'Сообщение', empty, className = '',
+  messages, me, onSend, onEdit, onDelete, canDelete, onOpenCard, disabled, hint, placeholder = 'Сообщение', empty,
+  className = '',
 }) {
   const list = useRef(null);
   const atBottom = useRef(true);
@@ -126,7 +129,23 @@ export default function ChatThread({
         {messages.map((m, i) => {
           const prev = messages[i - 1];
           const newDay = !prev || new Date(prev.createdAt).toDateString() !== new Date(m.createdAt).toDateString();
-          const grouped = !newDay && prev.authorId === m.authorId && m.createdAt - prev.createdAt < GROUP_MS;
+          const event = m.event && parseEvent(m.event);
+          if (event) {
+            return (
+              <div key={m.id}>
+                {newDay && <div className="chat-day">{dayLabel(m.createdAt)}</div>}
+                <div className="chat-event">
+                  <Avatar user={{ name: m.authorName, picture: m.authorPicture }} size={18} />
+                  <span className="chat-event-text">
+                    {m.authorName && <span className="chat-event-author">{m.authorName}: </span>}
+                    <EventText event={event} onOpenCard={onOpenCard} />
+                  </span>
+                  <span className="chat-time" title={new Date(m.createdAt).toLocaleString('ru-RU')}>{time(m.createdAt)}</span>
+                </div>
+              </div>
+            );
+          }
+          const grouped = !newDay && !prev.event && prev.authorId === m.authorId && m.createdAt - prev.createdAt < GROUP_MS;
           const mine = m.authorId === me;
           const actions = selected === m.id && (mine && onEdit || mayDelete(m) && onDelete);
           return (

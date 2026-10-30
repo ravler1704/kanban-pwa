@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
-import { DB_DIR, findCardByFile, keptFileIds } from './db.js';
+import { DB_DIR, findCardByFile, keptFileIds, userProfile } from './db.js';
 import { broadcast } from './events.js';
 import { changeAttachments, visibleCard } from './sync.js';
 
@@ -31,6 +31,7 @@ function contentDisposition(kind, name) {
 }
 
 const canWrite = (access) => !access?.readOnly;
+const actorOf = (req) => (req.user == null ? null : userProfile(req.user));
 
 async function freeBytes() {
   const s = await fs.promises.statfs(FILES_DIR);
@@ -83,7 +84,7 @@ export function registerFileRoutes(app) {
       return res.status(404).json({ error: 'no card' });
     }
     const file = { id, name, size, type, addedAt: Date.now() };
-    const seq = changeAttachments(req.owner, card.id, (list) => [...list, file]);
+    const seq = changeAttachments(req.owner, card.id, (list) => [...list, file], actorOf(req), { k: 'card.file.add', name });
     broadcast(req.owner, { seq, from: null });
     res.json({ file });
   });
@@ -93,7 +94,9 @@ export function registerFileRoutes(app) {
     const { fileId } = req.params;
     if (!card || !card.attachments.some((f) => f.id === fileId)) return res.status(404).json({ error: 'not found' });
     if (!canWrite(req.access)) return res.status(403).json({ error: 'read only' });
-    const seq = changeAttachments(req.owner, card.id, (list) => list.filter((f) => f.id !== fileId));
+    const removed = card.attachments.find((f) => f.id === fileId);
+    const seq = changeAttachments(req.owner, card.id, (list) => list.filter((f) => f.id !== fileId),
+      actorOf(req), { k: 'card.file.remove', name: removed.name });
     removeFiles([fileId]);
     broadcast(req.owner, { seq, from: null });
     res.json({ ok: true });

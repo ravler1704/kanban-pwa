@@ -304,6 +304,7 @@ export async function addComment({ cardId = null, projectId }, text, author) {
     authorPicture: author?.picture ?? '',
     createdAt: Date.now(),
     editedAt: null,
+    event: '',
   });
   requestSync();
 }

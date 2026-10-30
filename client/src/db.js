@@ -150,10 +150,11 @@ export const TYPES = {
     fields: ['projectId', 'sectionId', 'columnId', 'title', 'description', 'position', 'deleted', 'remindAt', 'attachments'],
   },
   // A comment on a card, or (cardId null) a message of the project's chat. The server sets the
-  // author fields and editedAt.
+  // author fields and editedAt; `event` (JSON, see chatEvents.jsx) is the server's note of a change
+  // in the project.
   comment: {
     table: 'comments',
-    fields: ['cardId', 'projectId', 'text', 'authorId', 'authorName', 'authorPicture', 'createdAt', 'editedAt', 'deleted'],
+    fields: ['cardId', 'projectId', 'text', 'authorId', 'authorName', 'authorPicture', 'createdAt', 'editedAt', 'deleted', 'event'],
   },
 };
 

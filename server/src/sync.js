@@ -74,7 +74,8 @@ export const SCHEMAS = {
   },
   // A comment on a card, or (cardId null) a message in the project's chat. The server sets the
   // author and keeps projectId equal to the card's; only the author edits, the author or the
-  // board's owner deletes (see applyComment).
+  // board's owner deletes (see applyComment). `event` (JSON, see recordEvents) makes it a note of
+  // a change in the project, written by the server.
   comment: {
     fields: {
       cardId: optionalRef,
@@ -86,12 +87,14 @@ export const SCHEMAS = {
       createdAt: (v) => Number.isInteger(v) && v >= 0,
       editedAt: optionalTime,
       deleted: boolean,
+      event: string(4000),
     },
     defaults: {
       cardId: null, text: '', authorId: '', authorName: '', authorPicture: '', createdAt: 0, editedAt: null, deleted: false,
+      event: '',
     },
     textFields: [],
-    serverFields: ['authorId', 'authorName', 'authorPicture', 'editedAt'],
+    serverFields: ['authorId', 'authorName', 'authorPicture', 'editedAt', 'event'],
     deleteConflicts: false,
   },
 };
@@ -128,8 +131,10 @@ function validateChange(change) {
   if (!schema) throw new ValidationError('invalid type');
   if (!ref(id)) throw new ValidationError('invalid id');
   if (!Number.isInteger(baseVersion) || baseVersion < 0) throw new ValidationError('invalid baseVersion');
-  const fields = validateFields(schema, change.fields, { partial: true });
-  for (const f of schema.serverFields ?? []) delete fields[f];
+  // Fields only the server sets are ignored, whatever the client sends in them.
+  const sent = change.fields && typeof change.fields === 'object' ? { ...change.fields } : change.fields;
+  for (const f of schema.serverFields ?? []) if (sent) delete sent[f];
+  const fields = validateFields(schema, sent, { partial: true });
   return {
     type,
     id,
@@ -236,7 +241,7 @@ function applyComment(owner, deviceId, { id, fields }, access, actor) {
     return result('applied', record, { created: true });
   }
   if (current.type !== 'comment') throw new ValidationError(`record ${id} is not a comment`);
-  if (access && !visibleTo(access, current)) return reject();
+  if (current.event || (access && !visibleTo(access, current))) return reject();
 
   const own = current.authorId === actor.id;
   const next = { ...current };
@@ -252,6 +257,79 @@ function applyComment(owner, deviceId, { id, fields }, access, actor) {
   }
   if (next.text === current.text && next.deleted === current.deleted) return result('applied', current);
   return result('applied', save(next, current.version + 1));
+}
+
+// Who changed something through a public link.
+const GUEST = { id: '', name: 'Гость по ссылке', picture: null };
+// Notes of one change keep their order in the chat (sorted by time).
+let lastEventAt = 0;
+
+function addEvent(owner, projectId, actor, event) {
+  const who = actor ?? GUEST;
+  lastEventAt = Math.max(Date.now(), lastEventAt + 1);
+  saveRecord(owner, 'comment', crypto.randomUUID(), pickData(SCHEMAS.comment, {
+    ...SCHEMAS.comment.defaults,
+    projectId,
+    authorId: who.id,
+    authorName: who.name || who.email || '',
+    authorPicture: who.picture ?? '',
+    createdAt: lastEventAt,
+    event: JSON.stringify(event),
+  }), { version: 1, deviceId: 'server' });
+}
+
+const nameOf = (owner, id) => (id ? withDefaults(getRecord(owner, id))?.name ?? null : null);
+
+/**
+ * Notes in the project's chat of what `actor` changed in a card, section or project (`before` →
+ * `after`; `before` null for a new one): { k: kind, card: { id, title }, ... }. Reordering is not noted.
+ */
+function recordEvents(owner, actor, type, before, after) {
+  if (!after || after.type !== type || (before && after.version === before.version)) return;
+  const event = (projectId, e) => addEvent(owner, projectId, actor, e);
+  if (type === 'card') {
+    const card = { id: after.id, title: after.title };
+    const at = after.projectId;
+    if (!before) {
+      if (!after.deleted) event(at, { k: 'card.create', card, column: nameOf(owner, after.columnId) });
+      return;
+    }
+    if (after.deleted !== before.deleted) event(at, { k: after.deleted ? 'card.delete' : 'card.restore', card });
+    if (after.deleted) return;
+    if (after.projectId !== before.projectId) {
+      event(before.projectId, { k: 'card.out', card, project: nameOf(owner, after.projectId) });
+      event(at, { k: 'card.in', card, project: nameOf(owner, before.projectId) });
+    } else {
+      if (after.sectionId !== before.sectionId) {
+        event(at, { k: 'card.section', card, from: nameOf(owner, before.sectionId), to: nameOf(owner, after.sectionId) });
+      }
+      if (after.columnId !== before.columnId) {
+        event(at, { k: 'card.column', card, from: nameOf(owner, before.columnId), to: nameOf(owner, after.columnId) });
+      }
+    }
+    if (after.title !== before.title) event(at, { k: 'card.rename', card, from: before.title });
+    if (after.description !== before.description) event(at, { k: 'card.description', card });
+    if (after.remindAt !== before.remindAt) event(at, { k: 'card.remind', card, at: after.remindAt });
+  } else if (type === 'section') {
+    const at = after.projectId;
+    if (!before) {
+      if (!after.deleted) event(at, { k: 'section.create', name: after.name });
+    } else if (after.deleted !== before.deleted) {
+      event(at, { k: after.deleted ? 'section.delete' : 'section.restore', name: after.name });
+    } else if (!after.deleted && after.name !== before.name) {
+      event(at, { k: 'section.rename', name: after.name, from: before.name });
+    }
+  } else if (type === 'project') {
+    if (after.deleted) return;
+    if (!before) {
+      event(after.id, { k: 'project.create', name: after.name });
+      return;
+    }
+    if (after.name !== before.name) event(after.id, { k: 'project.rename', name: after.name, from: before.name });
+    if (after.columnSetId !== before.columnSetId) {
+      event(after.id, { k: 'project.columns', name: nameOf(owner, after.columnSetId) });
+    }
+  }
 }
 
 /** Comments follow their card into another project. */
@@ -336,19 +414,23 @@ export function visibleCard(owner, cardId, access) {
   return access && !access.projects.has(card.projectId) ? null : card;
 }
 
-/** Applies `change` (attachments → attachments) to the card as the server; returns the new seq. */
-export function changeAttachments(owner, cardId, change) {
+/**
+ * Applies `change` (attachments → attachments) to the card as the server, noting `event`
+ * ({ k, name }) by `actor` in the project's chat; returns the new seq.
+ */
+export function changeAttachments(owner, cardId, change, actor, event) {
   return transaction(() => {
     const card = withDefaults(getRecord(owner, cardId));
     const next = { ...card, attachments: change(card.attachments) };
     saveRecord(owner, 'card', cardId, pickData(SCHEMAS.card, next), { version: card.version + 1, deviceId: 'server' });
+    addEvent(owner, card.projectId, actor, { ...event, card: { id: card.id, title: card.title } });
     return getMaxSeq(owner);
   });
 }
 
 /**
  * `access` (see memberAccess) limits a member's changes; null for the board's owner. `actor`
- * ({ id, name, picture }) is who writes comments; null through a public link.
+ * ({ id, name, picture }) is who writes comments and changes; null through a public link.
  */
 export function push(owner, deviceId, rawChanges, access = null, actor = null) {
   if (!Array.isArray(rawChanges) || rawChanges.length > 1000) {
@@ -359,11 +441,12 @@ export function push(owner, deviceId, rawChanges, access = null, actor = null) {
     const before = getMaxSeq(owner);
     const results = changes.map((c) => {
       if (c.type === 'comment') return applyComment(owner, deviceId, c, access, actor);
-      const previous = c.type === 'card' ? getRecord(owner, c.id) : null;
+      const previous = withDefaults(getRecord(owner, c.id));
       const r = applyChange(owner, deviceId, c, access);
-      if (previous && r.record.projectId && r.record.projectId !== previous.projectId) {
+      if (c.type === 'card' && previous && r.record.projectId && r.record.projectId !== previous.projectId) {
         moveComments(owner, c.id, r.record.projectId);
       }
+      recordEvents(owner, actor, c.type, previous, r.record);
       return r;
     });
     const seq = getMaxSeq(owner);

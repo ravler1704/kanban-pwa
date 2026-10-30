@@ -34,7 +34,7 @@ export function useComments({ cardId, projectId }) {
  * The chat of a card (`card`) or of a project (`projectId`). Signed-in people write; through a public
  * link comments are only shown. The board's owner may delete anyone's.
  */
-export default function Comments({ card, projectId, title, className, placeholder }) {
+export default function Comments({ card, projectId, title, className, placeholder, onOpenCard }) {
   const { user } = useSyncExternalStore(authState.subscribe, authState.get);
   const where = card ? { cardId: card.id, projectId: card.projectId } : { cardId: null, projectId };
   const messages = useComments(where);
@@ -55,6 +55,7 @@ export default function Comments({ card, projectId, title, className, placeholde
       onEdit={canWrite ? (m, text) => editComment(m.id, text) : null}
       onDelete={canWrite ? (m) => deleteComment(m.id) : null}
       canDelete={(m) => m.authorId === me || isOwnBoard}
+      onOpenCard={onOpenCard}
     />
   );
   if (!title) return thread;
