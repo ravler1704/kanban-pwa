@@ -3,6 +3,7 @@ import { authState, deleteAccount, linkAccount, signOut, unlinkAccount } from '.
 import { disablePush, enablePush, PUSH_HINTS, pushState } from '../push.js';
 import { syncStatus } from '../sync.js';
 import { getTheme, setTheme } from '../theme.js';
+import Avatar from './Avatar.jsx';
 import Modal from './Modal.jsx';
 import { EmailCodeForm, GoogleButton, YandexButton } from './ProviderButtons.jsx';
 import MailSettings from './MailSettings.jsx';
@@ -48,6 +49,7 @@ function SignInTab() {
       <p className="muted account-hint">Вход через любой из них открывает вашу доску.</p>
       {identities.map((i) => (
         <div key={`${i.provider}:${i.subject}`} className="manage-row account-row">
+          <Avatar user={i} size={28} />
           <span className="account-provider">{PROVIDERS[i.provider] ?? i.provider}</span>
           <span className="account-email">{i.email || i.name || '—'}</span>
           {identities.length > 1 && (

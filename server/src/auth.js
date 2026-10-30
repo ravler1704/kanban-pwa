@@ -79,7 +79,7 @@ function currentSession(req) {
 }
 
 const publicIdentity = (i) => ({
-  provider: i.provider, subject: i.subject, email: i.email ?? null, name: i.name ?? null,
+  provider: i.provider, subject: i.subject, email: i.email ?? null, name: i.name ?? null, picture: i.picture ?? null,
 });
 
 function publicUser(session) {
