@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import {
-  addMember, boardSummary, countEmailCodeAttempt, createSession, deleteIdentity, deleteMember, deletePublicLink,
+  addMember, addSpaceMember, boardSummary, countEmailCodeAttempt, createSession, deleteIdentity, deleteMember, deletePublicLink,
   deleteSession, deleteUser, findUserByEmail, getEmailCode, getIdentityUser, getPublicLink, getRecord, getSession, isInvited,
   leaveBoard, listIdentities, listMembers, listPublicLinks, memberProjects, mergeUsers, ownerFileIds, pruneEmailCodes,
   saveEmailCode, saveIdentity, savePublicLink, sharedBoards, useEmailCode,
@@ -418,23 +418,28 @@ export function registerAuthRoutes(app) {
   app.post('/api/members', requireAuth, (req, res) => {
     if (!authEnabled) return res.status(404).json({ error: 'auth disabled' });
     const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
-    const { project } = req.body ?? {};
+    // To a project, or with `space` to every project of the space.
+    const { project, space } = req.body ?? {};
     if (email.length > 254 || !EMAIL.test(email)) return res.status(400).json({ error: 'invalid email' });
     if (listIdentities(req.user).some((i) => i.email === email)) return res.status(400).json({ error: 'own email' });
-    const record = typeof project === 'string' ? getRecord(req.user, project) : null;
-    if (record?.type !== 'project' || record.deleted) return res.status(404).json({ error: 'no project' });
-    addMember(req.user, project, email);
+    const type = space != null ? 'space' : 'project';
+    const id = type === 'space' ? space : project;
+    const record = typeof id === 'string' ? getRecord(req.user, id) : null;
+    if (record?.type !== type || record.deleted) return res.status(404).json({ error: `no ${type}` });
+    if (type === 'space') addSpaceMember(req.user, id, email);
+    else addMember(req.user, id, email);
     // Open streams of members belong to the old access; reconnecting picks up the new one.
     disconnect(req.user, { except: req.user });
     res.json({ members: listMembers(req.user) });
   });
 
-  /** `project` omitted: from every project. */
+  /** `project` and `space` omitted: from every project and space. */
   app.post('/api/members/remove', requireAuth, (req, res) => {
     if (!authEnabled) return res.status(404).json({ error: 'auth disabled' });
-    const { email, project } = req.body ?? {};
+    const { email, project, space } = req.body ?? {};
     if (typeof email !== 'string' || (project != null && typeof project !== 'string')
-      || !deleteMember(req.user, email, project)) {
+      || (space != null && typeof space !== 'string')
+      || !deleteMember(req.user, email, { project: project ?? undefined, space: space ?? undefined })) {
       return res.status(404).json({ error: 'not found' });
     }
     disconnect(req.user, { except: req.user });

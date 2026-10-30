@@ -317,18 +317,21 @@ export async function loadMembers() {
   setMembers((await res.json()).members);
 }
 
-export async function inviteMember(email, project) {
-  const res = await postJson('/api/members', { email, project });
+/** To a project ({ project }) or to every project of a space ({ space }). */
+export async function inviteMember(email, { project, space }) {
+  const res = await postJson('/api/members', { email, project, space });
   if (res.status === 400 && res.body.error === 'own email') throw new Error('Это адрес вашего аккаунта.');
   if (res.status === 400) throw new Error('Проверьте адрес почты.');
-  if (res.status === 404) throw new Error('Проект ещё не сохранён на сервере — подождите синхронизации.');
+  if (res.status === 404) {
+    throw new Error(`${space ? 'Пространство ещё не сохранено' : 'Проект ещё не сохранён'} на сервере — подождите синхронизации.`);
+  }
   if (res.status !== 200) throw new Error('Не удалось пригласить. Попробуйте ещё раз.');
   setMembers(res.body.members);
 }
 
-/** Without `project`, from every project. */
-export async function removeMember(email, project) {
-  const res = await postJson('/api/members/remove', { email, project });
+/** From a project ({ project }) or a space ({ space }); with neither, from everything. */
+export async function removeMember(email, { project, space } = {}) {
+  const res = await postJson('/api/members/remove', { email, project, space });
   if (res.status !== 200) throw new Error('Не удалось убрать участника. Попробуйте ещё раз.');
   setMembers(res.body.members);
 }

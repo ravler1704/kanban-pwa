@@ -531,6 +531,12 @@ body {
 .member-projects { display: flex; flex-wrap: wrap; gap: 0.3rem 0.9rem; font-size: 0.9rem; }
 .member-project { display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; }
 .member-project input { accent-color: var(--accent); margin: 0; }
+.member-space { display: flex; flex-direction: column; gap: 0.25rem; }
+.member-space-name { font-weight: 600; font-size: 0.9rem; }
+.member-space .member-space-name + .member-projects { padding-left: 1.4rem; }
+.member-via { font-size: 0.82rem; white-space: nowrap; }
+.manage-space { display: flex; flex-direction: column; gap: 0.4rem; }
+.manage-space .manage-sections { padding: 0 0 0.6rem 0.8rem; border-left: 2px solid var(--border); }
 .member-invite { flex-wrap: wrap; margin-top: 0.5rem; }
 .member-invite .field { flex: 1 1 10rem; }
 .mail-fields { border: none; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 0.5rem; }

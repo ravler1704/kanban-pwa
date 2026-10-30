@@ -12,7 +12,7 @@ import { matchColumn } from '../columnSets.js';
 import { db } from '../db.js';
 import Modal from './Modal.jsx';
 import PublicLinkSettings from './PublicLinkSettings.jsx';
-import { ProjectMembers, useCanShare } from './SharingSection.jsx';
+import { ProjectMembers, SpaceMembers, useCanShare } from './SharingSection.jsx';
 
 /** Text input that saves on Enter / blur and reverts on Escape. */
 function NameInput({ value, onSave, className = '', label, maxLength = 200 }) {
@@ -379,6 +379,8 @@ function ProjectsEditor({
 
 /** Spaces group projects; at least one remains, a deleted one hands its projects to another. */
 function SpacesEditor({ spaces, projects, synced, onDeleted }) {
+  const canShare = useCanShare();
+  const [sharingId, setSharingId] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [targetId, setTargetId] = useState('');
   const projectsOf = (id) => projects.filter((p) => spaceIdOf(p, spaces) === id);
@@ -406,16 +408,23 @@ function SpacesEditor({ spaces, projects, synced, onDeleted }) {
     <div className="manage">
       <p className="muted manage-hint">Пространства объединяют проекты; на доске их выбирают в списке «Пространства».</p>
       {spaces.map((s, i) => (
-        <div key={s.id} className="manage-row">
-          <NameInput value={s.name} label={`Название · проектов: ${projectsOf(s.id).length}`} maxLength={100}
-            onSave={(name) => renameSpace(s.id, name)} />
-          <button className="btn btn-small" title="Выше" aria-label="Выше" disabled={i === 0}
-            onClick={() => moveSpace(s.id, -1)}>↑</button>
-          <button className="btn btn-small" title="Ниже" aria-label="Ниже" disabled={i === spaces.length - 1}
-            onClick={() => moveSpace(s.id, 1)}>↓</button>
-          <button className="btn btn-small btn-danger" disabled={spaces.length < 2}
-            title={spaces.length < 2 ? 'Должно остаться хотя бы одно пространство' : undefined}
-            onClick={() => remove(s)}>Удалить</button>
+        <div key={s.id} className="manage-space">
+          <div className="manage-row">
+            <NameInput value={s.name} label={`Название · проектов: ${projectsOf(s.id).length}`} maxLength={100}
+              onSave={(name) => renameSpace(s.id, name)} />
+            <button className="btn btn-small" title="Выше" aria-label="Выше" disabled={i === 0}
+              onClick={() => moveSpace(s.id, -1)}>↑</button>
+            <button className="btn btn-small" title="Ниже" aria-label="Ниже" disabled={i === spaces.length - 1}
+              onClick={() => moveSpace(s.id, 1)}>↓</button>
+            {canShare && (
+              <button className={`btn btn-small ${sharingId === s.id ? 'btn-primary' : ''}`} aria-expanded={sharingId === s.id}
+                onClick={() => setSharingId(sharingId === s.id ? null : s.id)}>Доступ</button>
+            )}
+            <button className="btn btn-small btn-danger" disabled={spaces.length < 2}
+              title={spaces.length < 2 ? 'Должно остаться хотя бы одно пространство' : undefined}
+              onClick={() => remove(s)}>Удалить</button>
+          </div>
+          {canShare && sharingId === s.id && <SpaceMembers space={s} />}
         </div>
       ))}
       <AddForm label="Новое пространство" onAdd={(name) => createSpace(name)} />

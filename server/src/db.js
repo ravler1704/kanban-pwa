@@ -146,6 +146,26 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_project_members_email ON project_members(email);
   CREATE INDEX IF NOT EXISTS idx_identities_email ON identities(email);
 `);
+// People invited to a whole space: they get every project in it, also those added later.
+// member_access lists both kinds as (board, project, email, added_at); projects without spaceId
+// are in «Личное» ('personal').
+db.exec(`
+  CREATE TABLE IF NOT EXISTS space_members (
+    board       TEXT    NOT NULL,
+    space       TEXT    NOT NULL,
+    email       TEXT    NOT NULL,
+    added_at    INTEGER NOT NULL,
+    PRIMARY KEY (board, space, email)
+  );
+  CREATE INDEX IF NOT EXISTS idx_space_members_email ON space_members(email);
+  DROP VIEW IF EXISTS member_access;
+  CREATE VIEW member_access AS
+    SELECT board, project, email, added_at FROM project_members
+    UNION
+    SELECT s.board, r.id, s.email, s.added_at
+    FROM space_members s JOIN records r ON r.owner = s.board AND r.type = 'project'
+      AND COALESCE(json_extract(r.data, '$.spaceId'), 'personal') = s.space;
+`);
 // Public links: anyone with the link opens the project without signing in.
 // mode: 'view' (read only) or 'edit' (cards and sections, like a member).
 db.exec(`
@@ -432,6 +452,8 @@ export function mergeUsers(from, to) {
     db.prepare('UPDATE OR IGNORE reminders_sent SET owner = ? WHERE owner = ?').run(to, from);
     db.prepare('UPDATE OR IGNORE project_members SET board = ? WHERE board = ?').run(to, from);
     db.prepare('DELETE FROM project_members WHERE board = ?').run(from);
+    db.prepare('UPDATE OR IGNORE space_members SET board = ? WHERE board = ?').run(to, from);
+    db.prepare('DELETE FROM space_members WHERE board = ?').run(from);
     db.prepare('UPDATE OR IGNORE public_links SET board = ? WHERE board = ?').run(to, from);
     db.prepare('DELETE FROM public_links WHERE board = ?').run(from);
     db.prepare('UPDATE direct_messages SET sender = ? WHERE sender = ?').run(to, from);
@@ -459,6 +481,7 @@ export function deleteUser(userId) {
     db.prepare('DELETE FROM push_subscriptions WHERE owner = ?').run(userId);
     db.prepare('DELETE FROM reminders_sent WHERE owner = ?').run(userId);
     db.prepare('DELETE FROM project_members WHERE board = ?').run(userId);
+    db.prepare('DELETE FROM space_members WHERE board = ?').run(userId);
     db.prepare('DELETE FROM public_links WHERE board = ?').run(userId);
     db.prepare('DELETE FROM meta WHERE key IN (?, ?)').run(`columnsSeeded:${userId}`, `simpleSetSeeded:${userId}`);
     db.prepare('DELETE FROM direct_messages WHERE sender = ? OR recipient = ?').run(userId, userId);
@@ -466,7 +489,10 @@ export function deleteUser(userId) {
     const usedElsewhere = db.prepare('SELECT 1 FROM identities WHERE lower(email) = ?');
     for (const email of emails) {
       db.prepare('DELETE FROM email_codes WHERE email = ?').run(email);
-      if (!usedElsewhere.get(email)) db.prepare('DELETE FROM project_members WHERE email = ?').run(email);
+      if (!usedElsewhere.get(email)) {
+        db.prepare('DELETE FROM project_members WHERE email = ?').run(email);
+        db.prepare('DELETE FROM space_members WHERE email = ?').run(email);
+      }
     }
   });
 }
@@ -485,39 +511,62 @@ const insertMember = db.prepare(
 );
 const removeMember = db.prepare('DELETE FROM project_members WHERE board = ? AND email = ?');
 const removeProjectMember = db.prepare('DELETE FROM project_members WHERE board = ? AND email = ? AND project = ?');
+const selectSpaceMembers = db.prepare(`
+  SELECT m.email, m.space, m.added_at,
+    (SELECT i.name FROM identities i WHERE i.email = m.email ORDER BY i.linked_at LIMIT 1) AS name,
+    EXISTS (SELECT 1 FROM identities i WHERE i.email = m.email) AS joined
+  FROM space_members m
+  JOIN records r ON r.owner = m.board AND r.id = m.space AND json_extract(r.data, '$.deleted') = 0
+  WHERE m.board = ? ORDER BY m.added_at, m.email
+`);
+const insertSpaceMember = db.prepare(
+  'INSERT OR IGNORE INTO space_members (board, space, email, added_at) VALUES (?, ?, ?, ?)',
+);
+const removeSpaceMembers = db.prepare('DELETE FROM space_members WHERE board = ? AND email = ?');
+const removeSpaceMember = db.prepare('DELETE FROM space_members WHERE board = ? AND email = ? AND space = ?');
 const selectUserBoards = db.prepare(`
-  SELECT DISTINCT m.board FROM project_members m
+  SELECT DISTINCT m.board FROM member_access m
   JOIN identities i ON i.email = m.email ${LIVE_PROJECT}
   WHERE i.user_id = ? AND m.board != ?
 `);
 const selectUserProjects = db.prepare(`
-  SELECT DISTINCT m.project FROM project_members m JOIN identities i ON i.email = m.email ${LIVE_PROJECT}
+  SELECT DISTINCT m.project FROM member_access m JOIN identities i ON i.email = m.email ${LIVE_PROJECT}
   WHERE m.board = ? AND i.user_id = ? ORDER BY m.project
 `);
 const selectProjectUsers = db.prepare(`
-  SELECT DISTINCT i.user_id FROM project_members m JOIN identities i ON i.email = m.email
+  SELECT DISTINCT i.user_id FROM member_access m JOIN identities i ON i.email = m.email
   WHERE m.board = ? AND m.project = ?
 `);
-const selectInvited = db.prepare('SELECT 1 FROM project_members WHERE email = ? LIMIT 1');
+const selectInvited = db.prepare(`
+  SELECT 1 FROM project_members WHERE email = ? UNION ALL SELECT 1 FROM space_members WHERE email = ? LIMIT 1
+`);
 const selectOwnerProfile = db.prepare(
   'SELECT email, name, picture FROM identities WHERE user_id = ? ORDER BY linked_at LIMIT 1',
 );
 const removeUserMemberships = db.prepare(`
   DELETE FROM project_members WHERE board = ? AND email IN (SELECT email FROM identities WHERE user_id = ?)
 `);
+const removeUserSpaceMemberships = db.prepare(`
+  DELETE FROM space_members WHERE board = ? AND email IN (SELECT email FROM identities WHERE user_id = ?)
+`);
 
 /**
- * People invited to the board's projects: [{ email, name, joined, projects: [projectId] }];
- * `name` comes from the account with this e-mail once someone signed in with it.
+ * People invited to the board's projects or spaces: [{ email, name, joined, projects: [projectId],
+ * spaces: [spaceId] }] (`projects` are the direct invitations); `name` comes from the account with
+ * this e-mail once someone signed in with it.
  */
 export function listMembers(board) {
   const byEmail = new Map();
-  for (const row of selectMembers.all(board)) {
+  const member = (row) => {
     if (!byEmail.has(row.email)) {
-      byEmail.set(row.email, { email: row.email, name: row.name ?? null, joined: Boolean(row.joined), projects: [] });
+      byEmail.set(row.email, {
+        email: row.email, name: row.name ?? null, joined: Boolean(row.joined), projects: [], spaces: [],
+      });
     }
-    byEmail.get(row.email).projects.push(row.project);
-  }
+    return byEmail.get(row.email);
+  };
+  for (const row of selectMembers.all(board)) member(row).projects.push(row.project);
+  for (const row of selectSpaceMembers.all(board)) member(row).spaces.push(row.space);
   return [...byEmail.values()];
 }
 
@@ -525,10 +574,15 @@ export function addMember(board, project, email) {
   insertMember.run(board, project, email, Date.now());
 }
 
-/** Without `project`, from every project of the board. */
-export function deleteMember(board, email, project) {
-  const result = project ? removeProjectMember.run(board, email, project) : removeMember.run(board, email);
-  return result.changes > 0;
+export function addSpaceMember(board, space, email) {
+  insertSpaceMember.run(board, space, email, Date.now());
+}
+
+/** Without `project` / `space`, from every project and space of the board. */
+export function deleteMember(board, email, { project, space } = {}) {
+  if (project) return removeProjectMember.run(board, email, project).changes > 0;
+  if (space) return removeSpaceMember.run(board, email, space).changes > 0;
+  return removeMember.run(board, email).changes + removeSpaceMembers.run(board, email).changes > 0;
 }
 
 /** Other people's boards the user was invited to, with the owner's name, e-mail and photo. */
@@ -550,11 +604,11 @@ export function projectUsers(board, project) {
 }
 
 export function isInvited(email) {
-  return Boolean(email) && Boolean(selectInvited.get(email.toLowerCase()));
+  return Boolean(email) && Boolean(selectInvited.get(email.toLowerCase(), email.toLowerCase()));
 }
 
 export function leaveBoard(board, userId) {
-  return removeUserMemberships.run(board, userId).changes > 0;
+  return removeUserMemberships.run(board, userId).changes + removeUserSpaceMemberships.run(board, userId).changes > 0;
 }
 
 /** { id, name, email, picture } from the user's first linked account. */
@@ -589,13 +643,13 @@ export function commentIdsOfCard(owner, cardId) {
 // People sharing a live project with the user: whoever joined the user's projects, the owners of
 // boards the user joined, and others who joined the same projects there.
 const selectContactsOnOwnBoard = db.prepare(`
-  SELECT DISTINCT i.user_id AS id FROM project_members m JOIN identities i ON i.email = m.email ${LIVE_PROJECT}
+  SELECT DISTINCT i.user_id AS id FROM member_access m JOIN identities i ON i.email = m.email ${LIVE_PROJECT}
   WHERE m.board = ?
 `);
 const selectContactsOnOtherBoards = db.prepare(`
   SELECT DISTINCT m.board AS owner, i2.user_id AS member
-  FROM project_members m JOIN identities i ON i.email = m.email ${LIVE_PROJECT}
-  LEFT JOIN project_members m2 ON m2.board = m.board AND m2.project = m.project
+  FROM member_access m JOIN identities i ON i.email = m.email ${LIVE_PROJECT}
+  LEFT JOIN member_access m2 ON m2.board = m.board AND m2.project = m.project
   LEFT JOIN identities i2 ON i2.email = m2.email
   WHERE i.user_id = ?
 `);

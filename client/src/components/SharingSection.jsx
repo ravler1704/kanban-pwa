@@ -2,7 +2,8 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { authState, inviteMember, leaveCurrentBoard, loadMembers, membersState, removeMember } from '../auth.js';
 import { boardName, currentBoard, isOwnBoard } from '../board.js';
-import { db } from '../db.js';
+import { db, DEFAULT_SPACE_ID } from '../db.js';
+import { liveSpaces, spaceIdOf } from '../spaces.js';
 import { syncStatus } from '../sync.js';
 
 /** Projects of the own board can be shared: signed in and not on someone else's board. */
@@ -55,31 +56,60 @@ const OFFLINE = <p className="muted">Для управления доступо�
 
 /** «Участники» in the settings of a project of the own board. */
 export function ProjectMembers({ project }) {
+  const spaceId = project.spaceId ?? DEFAULT_SPACE_ID;
+  const space = useLiveQuery(() => db.spaces.get(spaceId), [spaceId]);
+  return (
+    <Members target={{ project: project.id }} spaceId={spaceId}
+      spaceName={space?.name ?? 'Личное'} what={`к проекту «${project.name}»`} alone="Проект видите только вы." />
+  );
+}
+
+/** «Участники» of a space of the own board: they get every project in it, also later ones. */
+export function SpaceMembers({ space }) {
+  return (
+    <Members target={{ space: space.id }} what={`ко всему пространству «${space.name}»`}
+      alone="Доступа ко всему пространству ни у кого нет." />
+  );
+}
+
+/**
+ * Invited to `target` ({ project } or { space }); for a project also those who get it through
+ * its space (`spaceId`), who are changed in the space's settings.
+ */
+function Members({ target, spaceId, spaceName, what, alone }) {
   const { online, members, error, busy, run } = useMembers();
   const [email, setEmail] = useState('');
-  const inProject = members?.filter((m) => m.projects.includes(project.id)) ?? [];
-  const others = members?.filter((m) => !m.projects.includes(project.id)) ?? [];
-  const listId = `members-${project.id}`;
+  const has = (m) => (target.space ? m.spaces.includes(target.space) : m.projects.includes(target.project));
+  const direct = members?.filter(has) ?? [];
+  const viaSpace = spaceId ? members?.filter((m) => !has(m) && m.spaces.includes(spaceId)) ?? [] : [];
+  const others = members?.filter((m) => !has(m)) ?? [];
+  const listId = `members-${target.space ?? target.project}`;
 
   async function invite(e) {
     e.preventDefault();
-    if (await run(() => inviteMember(email.trim(), project.id))) setEmail('');
+    if (await run(() => inviteMember(email.trim(), target))) setEmail('');
   }
 
   async function remove(member) {
-    if (!confirm(`Закрыть доступ к проекту «${project.name}» для ${member.email}?`)) return;
-    await run(() => removeMember(member.email, project.id));
+    if (!confirm(`Закрыть доступ ${what} для ${member.email}?`)) return;
+    await run(() => removeMember(member.email, target));
   }
 
   return (
     <div className="manage-sections">
       <h4 className="manage-heading">Участники</h4>
       {!online && OFFLINE}
-      {online && members && inProject.length === 0 && <p className="muted">Проект видите только вы.</p>}
-      {online && inProject.map((m) => (
+      {online && members && direct.length + viaSpace.length === 0 && <p className="muted">{alone}</p>}
+      {online && direct.map((m) => (
         <div key={m.email} className="manage-row account-row">
           <MemberName member={m} />
           <button className="btn btn-small" disabled={busy} onClick={() => remove(m)}>Убрать</button>
+        </div>
+      ))}
+      {online && viaSpace.map((m) => (
+        <div key={m.email} className="manage-row account-row">
+          <MemberName member={m} />
+          <span className="muted member-via">через пространство «{spaceName}»</span>
         </div>
       ))}
       {online && (
@@ -103,13 +133,13 @@ export function ProjectMembers({ project }) {
 /** The «Доступ» tab: who sees which projects of the own board; on someone else's board, leaving it. */
 export default function SharingSection() {
   const { user } = useSyncExternalStore(authState.subscribe, authState.get);
-  const projects = useLiveQuery(
-    async () => (await db.projects.toArray()).filter((p) => !p.deleted).sort((a, b) => a.position - b.position),
-    [],
-  );
+  const data = useLiveQuery(async () => ({
+    projects: (await db.projects.toArray()).filter((p) => !p.deleted).sort((a, b) => a.position - b.position),
+    spaces: liveSpaces(await db.spaces.toArray()),
+  }), []);
   return currentBoard
-    ? <SharedBoard board={user?.boards?.find((b) => b.id === currentBoard)} projects={projects} />
-    : <OwnBoard projects={projects ?? []} />;
+    ? <SharedBoard board={user?.boards?.find((b) => b.id === currentBoard)} projects={data?.projects} />
+    : <OwnBoard projects={data?.projects ?? []} spaces={data?.spaces ?? []} />;
 }
 
 function SharedBoard({ board, projects }) {
@@ -148,23 +178,30 @@ function SharedBoard({ board, projects }) {
   );
 }
 
-function OwnBoard({ projects }) {
+function OwnBoard({ projects, spaces }) {
   const { online, members, error, busy, run } = useMembers();
   const [email, setEmail] = useState('');
-  const [projectId, setProjectId] = useState('');
-  const project = projects.find((p) => p.id === projectId) ?? projects[0];
+  // 'space:<id>' or 'project:<id>'.
+  const [picked, setPicked] = useState('');
+  const groups = spaces.map((s) => ({ space: s, projects: projects.filter((p) => spaceIdOf(p, spaces) === s.id) }));
+  const choices = [...projects.map((p) => `project:${p.id}`), ...spaces.map((s) => `space:${s.id}`)];
+  const choice = choices.includes(picked) ? picked : choices[0];
+  const targetOf = (key) => {
+    const [kind, id] = [key.slice(0, key.indexOf(':')), key.slice(key.indexOf(':') + 1)];
+    return { [kind]: id };
+  };
 
   async function invite(e) {
     e.preventDefault();
-    if (await run(() => inviteMember(email.trim(), project.id))) setEmail('');
+    if (await run(() => inviteMember(email.trim(), targetOf(choice)))) setEmail('');
   }
 
-  function toggle(member, p, on) {
-    run(() => (on ? inviteMember(member.email, p.id) : removeMember(member.email, p.id)));
+  function toggle(member, target, on) {
+    run(() => (on ? inviteMember(member.email, target) : removeMember(member.email, target)));
   }
 
   async function removeAll(member) {
-    if (!confirm(`Закрыть ${member.email} доступ ко всем вашим проектам?`)) return;
+    if (!confirm(`Закрыть ${member.email} доступ ко всем вашим проектам и пространствам?`)) return;
     await run(() => removeMember(member.email));
   }
 
@@ -173,8 +210,9 @@ function OwnBoard({ projects }) {
       <h4 className="manage-heading">Доступ к моим проектам</h4>
       <p className="muted account-hint">
         Участник видит только отмеченные проекты и может менять в них карточки и разделы; сами проекты
-        и колонки меняете только вы. Пусть войдёт через Google или Яндекс с этим адресом почты — ваша доска
-        появится у него в списке вверху экрана. Участников проекта также видно в настройках доски.
+        и колонки меняете только вы. «Всё пространство» открывает все его проекты, в том числе те, что
+        появятся в нём позже. Пусть войдёт через Google или Яндекс с этим адресом почты — ваша доска
+        появится у него в списке вверху экрана. Участников также видно в настройках доски.
       </p>
       {!online && OFFLINE}
       {online && members?.map((m) => (
@@ -183,19 +221,32 @@ function OwnBoard({ projects }) {
             <MemberName member={m} />
             <button className="btn btn-small" disabled={busy} onClick={() => removeAll(m)}>Убрать</button>
           </div>
-          <div className="member-projects">
-            {projects.map((p) => (
-              <label key={p.id} className="member-project">
-                <input type="checkbox" checked={m.projects.includes(p.id)} disabled={busy}
-                  onChange={(e) => toggle(m, p, e.target.checked)} />
-                {p.name}
-              </label>
-            ))}
-          </div>
+          {groups.map(({ space, projects: own }) => {
+            const whole = m.spaces.includes(space.id);
+            return (
+              <div key={space.id} className="member-space">
+                {spaces.length > 1 || whole ? (
+                  <label className="member-project member-space-name">
+                    <input type="checkbox" checked={whole} disabled={busy}
+                      onChange={(e) => toggle(m, { space: space.id }, e.target.checked)} />
+                    Всё пространство «{space.name}»
+                  </label>
+                ) : null}
+                <div className="member-projects">
+                  {own.map((p) => (
+                    <label key={p.id} className="member-project" title={whole ? 'Открыт через пространство' : undefined}>
+                      <input type="checkbox" checked={whole || m.projects.includes(p.id)} disabled={busy || whole}
+                        onChange={(e) => toggle(m, { project: p.id }, e.target.checked)} />
+                      {p.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       ))}
-      {online && projects.length === 0 && <p className="muted">Сначала создайте проект — доступ выдаётся к проектам.</p>}
-      {online && projects.length > 0 && (
+      {online && choices.length > 0 && (
         <form className="manage-add member-invite" onSubmit={invite}>
           <label className="field manage-field">
             <span className="field-label">Почта участника</span>
@@ -203,9 +254,16 @@ function OwnBoard({ projects }) {
               onChange={(e) => setEmail(e.target.value)} />
           </label>
           <label className="field manage-field">
-            <span className="field-label">Проект</span>
-            <select className="select" value={project.id} onChange={(e) => setProjectId(e.target.value)}>
-              {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            <span className="field-label">Доступ к</span>
+            <select className="select" value={choice} onChange={(e) => setPicked(e.target.value)}>
+              {projects.length > 0 && (
+                <optgroup label="Проект">
+                  {projects.map((p) => <option key={p.id} value={`project:${p.id}`}>{p.name}</option>)}
+                </optgroup>
+              )}
+              <optgroup label="Всё пространство">
+                {spaces.map((s) => <option key={s.id} value={`space:${s.id}`}>{s.name}</option>)}
+              </optgroup>
             </select>
           </label>
           <button type="submit" className="btn btn-small" disabled={busy || !email.trim()}>Пригласить</button>
