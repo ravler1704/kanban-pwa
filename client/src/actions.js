@@ -1,4 +1,6 @@
-import { db, DEFAULT_COLUMNS, DEFAULT_SET_ID, isDirty, newId, pickFields, tableOf, TYPES } from './db.js';
+import {
+  db, DEFAULT_COLUMNS, DEFAULT_SET_ID, DEFAULT_SPACE_ID, isDirty, newId, pickFields, tableOf, TYPES,
+} from './db.js';
 import { requestSync } from './sync.js';
 
 const alive = (r) => !r.deleted;
@@ -163,11 +165,60 @@ export async function deleteColumn(id, targetId) {
   requestSync();
 }
 
+// ---- spaces ----
+
+export const spaceOfProject = (p) => p.spaceId ?? DEFAULT_SPACE_ID;
+
+export async function createSpace(name) {
+  const space = await insert('space', { name, position: maxPosition(await db.spaces.toArray()) + 1 });
+  requestSync();
+  return space.id;
+}
+
+export async function renameSpace(id, name) {
+  await update('space', id, { name });
+  requestSync();
+}
+
+/** Swaps the space with its neighbour; `direction` is -1 (up) or 1 (down). */
+export async function moveSpace(id, direction) {
+  await db.transaction('rw', db.spaces, async () => {
+    const spaces = (await db.spaces.toArray()).filter(alive)
+      .sort((a, b) => a.position - b.position || a.id.localeCompare(b.id));
+    const index = spaces.findIndex((s) => s.id === id);
+    const target = index + direction;
+    if (index < 0 || target < 0 || target >= spaces.length) return;
+    [spaces[index], spaces[target]] = [spaces[target], spaces[index]];
+    for (const [i, s] of spaces.entries()) {
+      if (s.position !== i + 1) await update('space', s.id, { position: i + 1 });
+    }
+  });
+  requestSync();
+}
+
+/** Deletes the space; its projects move to `targetId`. The last space can't be deleted. */
+export async function deleteSpace(id, targetId) {
+  await db.transaction('rw', db.spaces, db.projects, async () => {
+    const others = (await db.spaces.toArray()).filter((s) => alive(s) && s.id !== id);
+    if (!others.some((s) => s.id === targetId)) throw new Error('Нужно другое пространство для его проектов');
+    for (const p of await db.projects.toArray()) {
+      if (alive(p) && spaceOfProject(p) === id) await update('project', p.id, { spaceId: targetId });
+    }
+    await update('space', id, { deleted: true });
+  });
+  requestSync();
+}
+
+export async function setProjectSpace(projectId, spaceId) {
+  await update('project', projectId, { spaceId });
+  requestSync();
+}
+
 // ---- projects ----
 
-export async function createProject(name, columnSetId = DEFAULT_SET_ID) {
+export async function createProject(name, columnSetId = DEFAULT_SET_ID, spaceId = DEFAULT_SPACE_ID) {
   const project = await insert('project', {
-    name, columnSetId, hidden: false, position: maxPosition(await db.projects.toArray()) + 1,
+    name, spaceId, columnSetId, hidden: false, position: maxPosition(await db.projects.toArray()) + 1,
   });
   requestSync();
   return project.id;

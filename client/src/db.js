@@ -135,12 +135,32 @@ db.version(10).stores({
   meta: 'key',
 });
 
+// v11: spaces, the top level of the board. Projects synced before them are in «Личное».
+export const DEFAULT_SPACE_ID = 'personal';
+
+db.version(11)
+  .stores({
+    spaces: 'id, dirty',
+    columnSets: 'id, dirty',
+    columns: 'id, dirty',
+    projects: 'id, dirty',
+    sections: 'id, projectId, dirty',
+    cards: 'id, projectId, sectionId, dirty',
+    comments: 'id, cardId, projectId, dirty',
+    meta: 'key',
+  })
+  .upgrade((tx) => tx.table('projects').toCollection().modify((p) => {
+    p.spaceId ??= DEFAULT_SPACE_ID;
+    if (p.server) p.server.spaceId ??= DEFAULT_SPACE_ID;
+  }));
+
 // Push order matters: parents are created on the server before their children.
 export const TYPES = {
+  space: { table: 'spaces', fields: ['name', 'position', 'deleted'] },
   columnSet: { table: 'columnSets', fields: ['name', 'position', 'deleted'] },
   column: { table: 'columns', fields: ['setId', 'name', 'position', 'deleted', 'addToTop'] },
   // hidden (projects, sections): unchecked by default in the board's project / section filter.
-  project: { table: 'projects', fields: ['columnSetId', 'name', 'position', 'deleted', 'hidden'] },
+  project: { table: 'projects', fields: ['spaceId', 'columnSetId', 'name', 'position', 'deleted', 'hidden'] },
   section: { table: 'sections', fields: ['projectId', 'name', 'position', 'deleted', 'hidden'] },
   card: {
     table: 'cards',
@@ -160,7 +180,7 @@ export const TYPES = {
 };
 
 export async function clearLocalData() {
-  const tables = [db.columnSets, db.columns, db.projects, db.sections, db.cards, db.comments, db.meta];
+  const tables = [db.spaces, db.columnSets, db.columns, db.projects, db.sections, db.cards, db.comments, db.meta];
   await db.transaction('rw', tables, () => Promise.all(tables.map((t) => t.clear())));
 }
 

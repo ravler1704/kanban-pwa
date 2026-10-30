@@ -17,11 +17,13 @@ import CalendarView from './components/CalendarView.jsx';
 import ChatDialog from './components/ChatDialog.jsx';
 import PeopleBar from './components/People.jsx';
 import { splitTags, tagKey, tagsOf } from './tags.js';
+import { liveSpaces, spaceIdOf } from './spaces.js';
 
 const VIEW_KEY = 'view';
 const ALL_SET_KEY = 'allProjectsColumnSet';
 const TAG_FILTER_KEY = 'tagFilter';
 const CARD_FILTER_KEY = `cardFilter:${dbName}`;
+const SPACES_OFF_KEY = `spacesOff:${dbName}`;
 const byPosition = (a, b) => a.position - b.position || a.id.localeCompare(b.id);
 const groupKey = (card) => `${card.projectId}|${card.sectionId ?? ''}`;
 
@@ -166,6 +168,13 @@ export default function App() {
     changeTagFilter(tagFilter.includes(key) ? tagFilter.filter((k) => k !== key) : [...tagFilter, key]);
   };
 
+  // Spaces unchecked in the filter: their projects are not shown (new spaces are checked).
+  const [spacesOff, setSpacesOff] = useState(() => readList(SPACES_OFF_KEY));
+  const changeSpacesOff = useCallback((next) => {
+    setSpacesOff(next);
+    localStorage.setItem(SPACES_OFF_KEY, JSON.stringify(next));
+  }, []);
+
   // Card ids: only these cards are shown.
   const [cardFilter, setCardFilter] = useState(() => readList(CARD_FILTER_KEY));
   const changeCardFilter = (next) => {
@@ -175,16 +184,20 @@ export default function App() {
 
   // A tapped reminder opens its card: `?card=` when the app starts from the notification,
   // a message from the service worker when the app is already open.
-  // Opens a card, first showing its project if it is not on the board.
+  // Opens a card, first showing its project (and space) if it is not on the board.
   const openFromReminder = useCallback(async (id) => {
     const card = await db.cards.get(id);
     if (!card || (card.deleted && !card.conflict)) return;
-    const [projects, sections] = await Promise.all([db.projects.toArray(), db.sections.toArray()]);
+    const [projects, sections, spaces] = await Promise.all([db.projects.toArray(), db.sections.toArray(), db.spaces.toArray()]);
     const live = sections.filter((s) => !s.deleted);
     const checked = live.filter(sectionCheckedByDefault).map((s) => s.id);
     select(toggles(projects.filter((p) => !p.deleted), live, ...focusOn(live, checked, card.projectId, null)));
+    const project = projects.find((p) => p.id === card.projectId);
+    const spaceId = project && spaceIdOf(project, liveSpaces(spaces));
+    const off = readList(SPACES_OFF_KEY);
+    if (off.includes(spaceId)) changeSpacesOff(off.filter((s) => s !== spaceId));
     setOpenCardId(id);
-  }, [select]);
+  }, [select, changeSpacesOff]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -217,8 +230,9 @@ export default function App() {
   }, [openFromReminder]);
 
   const data = useLiveQuery(async () => {
-    const tables = [db.columnSets, db.columns, db.projects, db.sections, db.cards];
-    const [columnSets, columns, projects, sections, pending] = await Promise.all([
+    const tables = [db.spaces, db.columnSets, db.columns, db.projects, db.sections, db.cards];
+    const [spaces, columnSets, columns, projects, sections, pending] = await Promise.all([
+      db.spaces.toArray(),
       db.columnSets.toArray(),
       db.columns.toArray(),
       db.projects.toArray(),
@@ -226,11 +240,15 @@ export default function App() {
       Promise.all(tables.map((t) => t.where('dirty').equals(1).count())),
     ]);
     const conflicted = await db.cards.filter((c) => !!c.conflict).toArray();
-    return { columnSets, columns, projects, sections, conflicted, pending: pending.reduce((a, b) => a + b, 0) };
+    return { spaces, columnSets, columns, projects, sections, conflicted, pending: pending.reduce((a, b) => a + b, 0) };
   }, []);
 
   // ---- resolve the selection against live data ----
   const projects = data?.projects.filter((p) => !p.deleted).sort(byPosition) ?? [];
+  const spaces = liveSpaces(data?.spaces ?? []);
+  const spaceOn = (id) => !spacesOff.includes(id);
+  // Projects of the checked spaces: the «Проекты» list and the board show only them.
+  const spaceProjects = projects.filter((p) => spaceOn(spaceIdOf(p, spaces)));
   const model = columnModel(data?.columnSets ?? [], data?.columns ?? [], projects);
   const projectById = new Map(projects.map((p) => [p.id, p]));
   const allSections = (data?.sections ?? [])
@@ -248,7 +266,7 @@ export default function App() {
   const isSectionChecked = (s) => (legacy?.sections.some((id) => sectionById.get(id)?.projectId === s.projectId)
     ? legacy.sections.includes(s.id)
     : sectionCheckedByDefault(s) !== selection.sectionToggles.includes(s.id));
-  const shownProjects = projects.filter(isChecked);
+  const shownProjects = spaceProjects.filter(isChecked);
   const sectionGroups = shownProjects
     .map((p) => ({ project: p, sections: sectionsOf(p.id) }))
     .filter((g) => g.sections.length > 0);
@@ -358,22 +376,36 @@ export default function App() {
   const boardGroups = shownGroups.filter((g) => model.setIdOf(g.project) === boardSetId);
   const boardCards = visible.filter((c) => model.setIdOf(projectById.get(c.projectId)) === boardSetId);
 
-  // Changes are saved as differences from the defaults (see readSelection).
+  // Changes are saved as differences from the defaults (see readSelection). Projects of unchecked
+  // spaces keep their checkboxes.
   const checkedProjects = shownProjects.map((p) => p.id);
+  const checkedElsewhere = projects.filter((p) => !spaceProjects.includes(p) && isChecked(p)).map((p) => p.id);
   const checkedSections = [...checkedSectionIds];
   const save = (projectIds, sectionIds) => select(toggles(projects, allSections, projectIds, sectionIds));
+  const saveProjects = (ids) => save([...checkedElsewhere, ...ids], checkedSections);
   const toggle = (list, id) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
   const pickableIds = pickableSections.map((s) => s.id);
   const otherSections = checkedSections.filter((id) => !pickableIds.includes(id));
-  const projectsAsDefault = projects.every((p) => isChecked(p) === projectCheckedByDefault(p));
+  const projectsAsDefault = spaceProjects.every((p) => isChecked(p) === projectCheckedByDefault(p));
   const sectionsAsDefault = pickableSections.every((s) => checkedSectionIds.has(s.id) === sectionCheckedByDefault(s));
   const projectFilter = {
     selected: checkedProjects,
-    onToggle: (id) => save(toggle(checkedProjects, id), checkedSections),
-    onSetAll: (on) => save(on ? projects.map((p) => p.id) : [], checkedSections),
+    onToggle: (id) => saveProjects(toggle(checkedProjects, id)),
+    onSetAll: (on) => saveProjects(on ? spaceProjects.map((p) => p.id) : []),
     onClear: projectsAsDefault ? null
-      : () => save(projects.filter(projectCheckedByDefault).map((p) => p.id), checkedSections),
-    summary: checkedProjects.length === projects.length ? 'Все проекты' : null,
+      : () => saveProjects(spaceProjects.filter(projectCheckedByDefault).map((p) => p.id)),
+    summary: checkedProjects.length === spaceProjects.length ? 'Все проекты' : null,
+  };
+  const checkedSpaces = spaces.filter((s) => spaceOn(s.id)).map((s) => s.id);
+  const spaceFilter = {
+    items: spaces.map((s) => ({
+      key: s.id, name: s.name, count: projects.filter((p) => spaceIdOf(p, spaces) === s.id).length,
+    })),
+    selected: checkedSpaces,
+    onToggle: (id) => changeSpacesOff(toggle(spacesOff.filter((x) => spaces.some((s) => s.id === x)), id)),
+    onSetAll: (on) => changeSpacesOff(on ? [] : spaces.map((s) => s.id)),
+    onClear: checkedSpaces.length === spaces.length ? null : () => changeSpacesOff([]),
+    summary: checkedSpaces.length === spaces.length && spaces.length > 1 ? 'Все пространства' : null,
   };
   const sectionFilter = {
     selected: pickableIds.filter((id) => checkedSectionIds.has(id)),
@@ -405,8 +437,9 @@ export default function App() {
       ) : (
         <>
           <ProjectBar
-            projects={projects}
+            projects={spaceProjects}
             sectionGroups={sectionGroups}
+            spaceFilter={publicToken ? null : spaceFilter}
             projectFilter={projectFilter}
             sectionFilter={sectionFilter}
             conflictsBySection={conflictsBySection}
@@ -439,7 +472,11 @@ export default function App() {
           </ProjectBar>
           {shownProjects.length === 0 ? (
             <div className="empty">
-              <p>Не отмечен ни один проект — отметьте нужные в списке «Проекты».</p>
+              <p>
+                {!checkedSpaces.length ? 'Не отмечено ни одно пространство — отметьте нужные в списке «Пространства».'
+                  : !spaceProjects.length ? 'В отмеченных пространствах пока нет проектов.'
+                    : 'Не отмечен ни один проект — отметьте нужные в списке «Проекты».'}
+              </p>
             </div>
           ) : view === 'calendar' ? (
             <CalendarView cards={visible} columns={model.columns} cardLabel={cardLabel} onOpen={setOpenCardId} />
@@ -491,6 +528,13 @@ export default function App() {
           initialSetId={boardSetId}
           initialProjectId={shownProjects[0]?.id ?? null}
           projects={projects}
+          spaces={spaces}
+          spacesSynced={data.spaces.some((s) => !s.deleted)}
+          newProjectSpaceId={checkedSpaces[0] ?? spaces[0].id}
+          onSpaceDeleted={(id, targetId) => {
+            // Its projects stay in view in the space they moved to.
+            if (spaceOn(id)) changeSpacesOff(spacesOff.filter((s) => s !== targetId && s !== id));
+          }}
           sections={allSections}
           onClose={() => setManaging(false)}
         />

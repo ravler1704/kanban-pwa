@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import {
   changeProjectColumnSet, countCards, countColumnCards, countProjectCards, createColumn, createColumnSet, createProject, createSection,
-  deleteColumn, deleteColumnSet, deleteProject, deleteSection, moveColumn, moveProject, renameColumn, renameColumnSet,
-  renameProject, renameSection, setCheckedByDefault, setColumnAddToTop,
+  createSpace, deleteColumn, deleteColumnSet, deleteProject, deleteSection, deleteSpace, moveColumn, moveProject, moveSpace,
+  renameColumn, renameColumnSet, renameProject, renameSection, renameSpace, setCheckedByDefault, setColumnAddToTop,
+  setProjectSpace,
 } from '../actions.js';
+import { spaceIdOf } from '../spaces.js';
 import { isOwnBoard } from '../board.js';
 import { matchColumn } from '../columnSets.js';
 import { db } from '../db.js';
@@ -276,10 +278,12 @@ function Chevron() {
   );
 }
 
-function ProjectItem({ model, project, sections, columnsSynced, expanded, onToggle, canMoveUp, canMoveDown,
-  onChangeSet, onRemove }) {
+function ProjectItem({ model, project, sections, spaces, spacesSynced, columnsSynced, expanded, onToggle, canMoveUp,
+  canMoveDown, onChangeSet, onRemove }) {
   const setName = model.sets.find((s) => s.id === model.setIdOf(project))?.name;
+  const spaceId = spaceIdOf(project, spaces);
   const meta = [
+    spaces.length > 1 && spaces.find((s) => s.id === spaceId)?.name,
     project.hidden && 'не отмечен по умолчанию',
     sections.length ? `${sections.length} ${plural(sections.length, 'раздел', 'раздела', 'разделов')}` : 'без разделов',
     columnsSynced && setName && `набор «${setName}»`,
@@ -312,6 +316,14 @@ function ProjectItem({ model, project, sections, columnsSynced, expanded, onTogg
             <button className="btn btn-small btn-danger" onClick={onRemove}>Удалить</button>
           </div>
           <DefaultCheck type="project" record={project} label="Отмечен по умолчанию в списке «Проекты»" />
+          {spacesSynced && (
+            <label className="field">
+              <span className="field-label">Пространство</span>
+              <select className="select" value={spaceId} onChange={(e) => setProjectSpace(project.id, e.target.value)}>
+                {spaces.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </label>
+          )}
           {columnsSynced && (
             <label className="field">
               <span className="field-label">Набор колонок</span>
@@ -327,7 +339,9 @@ function ProjectItem({ model, project, sections, columnsSynced, expanded, onTogg
 }
 
 /** The own board's projects: adding, order, hiding; a project expands to its name and column set. */
-function ProjectsEditor({ model, projects, sections, columnsSynced, onChangeSet, onRemove, onAdded }) {
+function ProjectsEditor({
+  model, projects, sections, spaces, spacesSynced, newProjectSpaceId, columnsSynced, onChangeSet, onRemove, onAdded,
+}) {
   const [expandedId, setExpandedId] = useState(() => (projects.length === 1 ? projects[0].id : null));
   const [query, setQuery] = useState('');
   const sectionsOf = (id) => sections.filter((s) => s.projectId === id);
@@ -336,7 +350,7 @@ function ProjectsEditor({ model, projects, sections, columnsSynced, onChangeSet,
   const visible = needle ? projects.filter((p) => p.name.toLowerCase().includes(needle)) : projects;
 
   async function add(name) {
-    const id = await createProject(name, model.newProjectSetId);
+    const id = await createProject(name, model.newProjectSetId, newProjectSpaceId);
     setExpandedId(id);
     onAdded(id);
   }
@@ -354,12 +368,75 @@ function ProjectsEditor({ model, projects, sections, columnsSynced, onChangeSet,
       {projects.length > 0 && visible.length === 0 && <p className="muted">Ничего не найдено.</p>}
       <div className="manage-projects">
         {visible.map((p, i) => (
-          <ProjectItem key={p.id} model={model} project={p} sections={sectionsOf(p.id)} columnsSynced={columnsSynced}
+          <ProjectItem key={p.id} model={model} project={p} sections={sectionsOf(p.id)} spaces={spaces}
+            spacesSynced={spacesSynced} columnsSynced={columnsSynced}
             expanded={expandedId === p.id} onToggle={() => setExpandedId(expandedId === p.id ? null : p.id)}
             canMoveUp={needle ? null : i > 0} canMoveDown={i < visible.length - 1}
             onChangeSet={(setId) => onChangeSet(p, setId)} onRemove={() => onRemove(p)} />
         ))}
       </div>
+    </div>
+  );
+}
+
+/** Spaces group projects; at least one remains, a deleted one hands its projects to another. */
+function SpacesEditor({ spaces, projects, synced, onDeleted }) {
+  const [deleting, setDeleting] = useState(null);
+  const [targetId, setTargetId] = useState('');
+  const projectsOf = (id) => projects.filter((p) => spaceIdOf(p, spaces) === id);
+  const others = deleting ? spaces.filter((s) => s.id !== deleting.id) : [];
+
+  async function remove(space) {
+    const target = spaces.find((s) => s.id !== space.id);
+    if (projectsOf(space.id).length) {
+      setTargetId(target.id);
+      setDeleting(space);
+    } else if (confirm(`Удалить пространство «${space.name}»?`)) {
+      await deleteSpace(space.id, target.id);
+      onDeleted(space.id, target.id);
+    }
+  }
+
+  async function finishDelete() {
+    await deleteSpace(deleting.id, targetId);
+    onDeleted(deleting.id, targetId);
+    setDeleting(null);
+  }
+
+  if (!synced) return <p className="muted">Пространства появятся после синхронизации.</p>;
+  return (
+    <div className="manage">
+      <p className="muted manage-hint">Пространства объединяют проекты; на доске их выбирают в списке «Пространства».</p>
+      {spaces.map((s, i) => (
+        <div key={s.id} className="manage-row">
+          <NameInput value={s.name} label={`Название · проектов: ${projectsOf(s.id).length}`} maxLength={100}
+            onSave={(name) => renameSpace(s.id, name)} />
+          <button className="btn btn-small" title="Выше" aria-label="Выше" disabled={i === 0}
+            onClick={() => moveSpace(s.id, -1)}>↑</button>
+          <button className="btn btn-small" title="Ниже" aria-label="Ниже" disabled={i === spaces.length - 1}
+            onClick={() => moveSpace(s.id, 1)}>↓</button>
+          <button className="btn btn-small btn-danger" disabled={spaces.length < 2}
+            title={spaces.length < 2 ? 'Должно остаться хотя бы одно пространство' : undefined}
+            onClick={() => remove(s)}>Удалить</button>
+        </div>
+      ))}
+      <AddForm label="Новое пространство" onAdd={(name) => createSpace(name)} />
+
+      {deleting && (
+        <Modal title="Удалить пространство" onClose={() => setDeleting(null)}>
+          <p>В пространстве «{deleting.name}» проектов: {projectsOf(deleting.id).length}. Куда их перенести?</p>
+          <label className="field">
+            <span className="field-label">Пространство</span>
+            <select className="select" value={targetId} onChange={(e) => setTargetId(e.target.value)}>
+              {others.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </label>
+          <div className="actions">
+            <button className="btn" onClick={() => setDeleting(null)}>Отмена</button>
+            <button className="btn btn-danger" onClick={finishDelete}>Удалить и перенести</button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -424,11 +501,12 @@ const TAB_KEY = 'manageDialogTab';
  * of the «Разделы» and «Доступ» tabs (those of the current board; null with all projects shown).
  */
 export default function ManageDialog({
-  model, columnsSynced, initialSetId, initialProjectId, projects, sections, onClose,
+  model, columnsSynced, initialSetId, initialProjectId, projects, spaces, spacesSynced, newProjectSpaceId, sections, onSpaceDeleted,
+  onClose,
 }) {
   const canShare = useCanShare();
   const tabs = [
-    ...(isOwnBoard ? [{ id: 'projects', label: 'Проекты' }] : []),
+    ...(isOwnBoard ? [{ id: 'spaces', label: 'Пространства' }, { id: 'projects', label: 'Проекты' }] : []),
     { id: 'sections', label: 'Разделы' },
     ...(canShare ? [{ id: 'access', label: 'Доступ' }] : []),
     ...(isOwnBoard ? [{ id: 'columns', label: 'Колонки' }] : []),
@@ -482,9 +560,15 @@ export default function ManageDialog({
           ))}
         </div>
       </div>}
+      {tab === 'spaces' && (
+        <div role="tabpanel">
+          <SpacesEditor spaces={spaces} projects={projects} synced={spacesSynced} onDeleted={onSpaceDeleted} />
+        </div>
+      )}
       {tab === 'projects' && (
         <div role="tabpanel">
-          <ProjectsEditor model={model} projects={projects} sections={sections} columnsSynced={columnsSynced}
+          <ProjectsEditor model={model} projects={projects} sections={sections} spaces={spaces}
+            spacesSynced={spacesSynced} newProjectSpaceId={newProjectSpaceId} columnsSynced={columnsSynced}
             onChangeSet={changeSet}
             onRemove={removeProject} onAdded={setProjectId} />
         </div>

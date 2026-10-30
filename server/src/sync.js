@@ -20,6 +20,8 @@ const attachments = (v) => Array.isArray(v) && v.length <= 1000 && v.every(attac
  *   deletion wins.
  */
 export const DEFAULT_SET_ID = 'default';
+// Projects from before spaces are in this one («Личное»).
+export const DEFAULT_SPACE_ID = 'personal';
 
 export const SCHEMAS = {
   // A named list of columns; every project (board) uses one set.
@@ -36,10 +38,21 @@ export const SCHEMAS = {
     textFields: [],
     deleteConflicts: false,
   },
+  // The top level of the board: projects are grouped into spaces.
+  space: {
+    fields: { name: string(100), position: number, deleted: boolean },
+    defaults: { name: '', position: 0, deleted: false },
+    textFields: [],
+    deleteConflicts: false,
+  },
   // hidden (projects, sections): unchecked by default in the board's project / section filter.
   project: {
-    fields: { columnSetId: ref, name: string(200), position: number, deleted: boolean, hidden: boolean },
-    defaults: { columnSetId: DEFAULT_SET_ID, name: '', position: 0, deleted: false, hidden: false },
+    fields: {
+      spaceId: ref, columnSetId: ref, name: string(200), position: number, deleted: boolean, hidden: boolean,
+    },
+    defaults: {
+      spaceId: DEFAULT_SPACE_ID, columnSetId: DEFAULT_SET_ID, name: '', position: 0, deleted: false, hidden: false,
+    },
     textFields: [],
     deleteConflicts: false,
   },
@@ -134,15 +147,19 @@ function validateChange(change) {
   if (!ref(id)) throw new ValidationError('invalid id');
   if (!Number.isInteger(baseVersion) || baseVersion < 0) throw new ValidationError('invalid baseVersion');
   // Fields only the server sets are ignored, whatever the client sends in them.
-  const sent = change.fields && typeof change.fields === 'object' ? { ...change.fields } : change.fields;
-  for (const f of schema.serverFields ?? []) if (sent) delete sent[f];
-  const fields = validateFields(schema, sent, { partial: true });
+  const withoutServerFields = (values) => {
+    if (!values || typeof values !== 'object') return values;
+    const out = { ...values };
+    for (const f of schema.serverFields ?? []) delete out[f];
+    return out;
+  };
+  const fields = validateFields(schema, withoutServerFields(change.fields), { partial: true });
   return {
     type,
     id,
     baseVersion,
     fields,
-    base: change.base == null ? null : validateFields(schema, change.base, { partial: false }),
+    base: change.base == null ? null : validateFields(schema, withoutServerFields(change.base), { partial: false }),
   };
 }
 
@@ -158,22 +175,30 @@ const withDefaults = (record) => (record && SCHEMAS[record.type] ? { ...SCHEMAS[
 // ---- members: access to some projects of someone else's board ----
 
 /**
- * What a member of the board may see: `projects` (ids the member was invited to) and `sets`,
- * the column sets these projects use. `key` changes whenever either changes; it is part of the
- * member's epoch, so their devices then download the board again (records of newly opened
- * projects are older than what the device already has). With `readOnly` (a public link for
- * viewing) nothing may be changed.
+ * What a member of the board may see: `projects` (ids the member was invited to), `sets` and
+ * `spaces`, the column sets and spaces these projects use. `key` changes whenever any of them
+ * changes; it is part of the member's epoch, so their devices then download the board again
+ * (records of newly opened projects are older than what the device already has). With `readOnly`
+ * (a public link for viewing) nothing may be changed.
  */
 export function memberAccess(owner, projectIds, { readOnly = false } = {}) {
   const projects = new Set(projectIds);
   const sets = new Set();
-  for (const id of projectIds) sets.add(withDefaults(getRecord(owner, id))?.columnSetId ?? DEFAULT_SET_ID);
-  const key = crypto.createHash('sha256').update(JSON.stringify([projectIds, [...sets].sort()])).digest('hex').slice(0, 16);
-  return { projects, sets, key, readOnly };
+  const spaces = new Set();
+  for (const id of projectIds) {
+    const project = withDefaults(getRecord(owner, id));
+    sets.add(project?.columnSetId ?? DEFAULT_SET_ID);
+    spaces.add(project?.spaceId ?? DEFAULT_SPACE_ID);
+  }
+  const key = crypto.createHash('sha256')
+    .update(JSON.stringify([projectIds, [...sets].sort(), [...spaces].sort()]))
+    .digest('hex').slice(0, 16);
+  return { projects, sets, spaces, key, readOnly };
 }
 
 function visibleTo(access, record) {
   switch (record.type) {
+    case 'space': return access.spaces.has(record.id);
     case 'project': return access.projects.has(record.id);
     case 'section':
     case 'card':
@@ -331,6 +356,9 @@ function recordEvents(owner, actor, type, before, after) {
     if (after.name !== before.name) event(after.id, { k: 'project.rename', name: after.name, from: before.name });
     if (after.columnSetId !== before.columnSetId) {
       event(after.id, { k: 'project.columns', name: nameOf(owner, after.columnSetId) });
+    }
+    if (after.spaceId !== before.spaceId) {
+      event(after.id, { k: 'project.space', name: nameOf(owner, after.spaceId) });
     }
   }
 }
@@ -507,8 +535,9 @@ const SIMPLE_COLUMNS = [
 const seeded = new Set();
 
 /**
- * Creates the column set templates once per board: «3 колонки» and the default set with five columns.
- * Columns and projects from before column sets belong to the default set (see the schema defaults).
+ * Creates the space «Личное» and the column set templates once per board: «3 колонки» and the default
+ * set with five columns. Columns and projects from before column sets belong to the default set,
+ * projects from before spaces to «Личное» (see the schema defaults).
  */
 export function seedColumns(owner) {
   if (seeded.has(owner)) return;
@@ -522,6 +551,9 @@ export function seedColumns(owner) {
     }
   });
   transaction(() => {
+    if (!getRecord(owner, DEFAULT_SPACE_ID)) {
+      saveRecord(owner, 'space', DEFAULT_SPACE_ID, { name: 'Личное', position: 1, deleted: false }, server);
+    }
     if (!getRecord(owner, DEFAULT_SET_ID)) {
       // Boards from before the templates keep the name their set always had.
       const name = getMeta(flag) ? 'Основной' : '5 колонок';

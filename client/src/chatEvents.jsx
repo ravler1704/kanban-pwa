@@ -54,6 +54,7 @@ function parts(e) {
     case 'project.create': return [`Создан проект ${q(e.name)}`];
     case 'project.rename': return [`Проект ${q(e.from)} переименован в ${q(e.name)}`];
     case 'project.columns': return [`Проекту назначен набор колонок ${q(e.name)}`];
+    case 'project.space': return [`Проект перенесён в пространство ${q(e.name)}`];
     default: return ['Изменения в проекте'];
   }
 }
