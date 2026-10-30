@@ -778,6 +778,8 @@ a.btn { display: inline-block; text-decoration: none; }
 .field input, .field .select { height: 2.9rem; }
 .field .select { width: 100%; }
 .field textarea { min-height: 2.9rem; }
+.field .title-input { height: 2.9rem; resize: none; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.field .title-input-editing { white-space: pre-wrap; }
 .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; justify-content: flex-end; }
 .notice {
   margin: 0;

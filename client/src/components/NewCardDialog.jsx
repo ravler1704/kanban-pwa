@@ -3,6 +3,7 @@ import { createCard } from '../actions.js';
 import CardExtraFields from './CardExtraFields.jsx';
 import Modal from './Modal.jsx';
 import { fromInputValue } from './ReminderField.jsx';
+import TitleField from './TitleField.jsx';
 
 const LAST_KEY = 'lastTargetForNewCard';
 
@@ -74,10 +75,7 @@ export default function NewCardDialog({ groups, columnsOfProject, target, onClos
   return (
     <Modal title="Новая карточка" onClose={onClose}>
       <form className="editor" onSubmit={submit}>
-        <label className="field">
-          <span className="field-label">Название</span>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={500} autoFocus />
-        </label>
+        <TitleField value={title} onChange={setTitle} autoFocus />
         <CardExtraFields
           description={description}
           onDescription={setDescription}

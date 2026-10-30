@@ -6,6 +6,7 @@ import Modal from './Modal.jsx';
 import { GroupSelect } from './NewCardDialog.jsx';
 import { matchColumn } from '../columnSets.js';
 import { fromInputValue, toInputValue } from './ReminderField.jsx';
+import TitleField from './TitleField.jsx';
 
 /** The card without editing: a view-only public link. */
 function CardView({ card, columnsOfProject, groups, onClose }) {
@@ -91,10 +92,7 @@ function CardForm({ card, columnsOfProject, groups, onClose }) {
             пересекающиеся правки попадут в окно разрешения конфликта.
           </p>
         )}
-        <label className="field">
-          <span className="field-label">Название</span>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={500} />
-        </label>
+        <TitleField value={title} onChange={setTitle} />
         <label className="field">
           <span className="field-label">Статус</span>
           <select className="select" value={columnId} onChange={(e) => setColumnId(e.target.value)}>
