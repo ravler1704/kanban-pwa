@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
@@ -15,6 +15,24 @@ function monthDays(month) {
   const days = [];
   for (const d = new Date(start); d <= last || days.length % 7; d.setDate(d.getDate() + 1)) days.push(new Date(d));
   return days;
+}
+
+/** Current time, refreshed every minute and when the app comes back to the foreground. */
+function useNow() {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const tick = () => setNow(Date.now());
+    const timer = setInterval(tick, 60_000);
+    const onVisible = () => { if (document.visibilityState === 'visible') tick(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', tick);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', tick);
+    };
+  }, []);
+  return now;
 }
 
 function ChevronIcon({ left }) {
@@ -49,8 +67,8 @@ export default function CalendarView({ cards, columns, cardLabel, onOpen }) {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
-  const now = Date.now();
-  const todayKey = dayKey(new Date());
+  const now = useNow();
+  const todayKey = dayKey(new Date(now));
   const columnName = new Map(columns.map((c) => [c.id, c.name]));
 
   const byDay = new Map();
