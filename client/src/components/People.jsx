@@ -4,7 +4,7 @@ import { dmStore, dmUnread, refreshDm } from '../dm.js';
 import { peopleStore, personName } from '../people.js';
 import Avatar from './Avatar.jsx';
 import { CommentIcon } from './Card.jsx';
-import { useProjectChats } from './ChatDialog.jsx';
+import { useChats } from './ChatDialog.jsx';
 import Modal from './Modal.jsx';
 
 const STACK = 4;
@@ -51,14 +51,17 @@ function PeopleDialog({ people, projects, allProjects, me, onChat, onClose }) {
 export function ChatButton({ projects, onChat }) {
   const all = useSyncExternalStore(peopleStore.subscribe, peopleStore.get);
   const { contacts } = useSyncExternalStore(dmStore.subscribe, dmStore.get);
-  const chats = useProjectChats();
+  const chats = useChats();
 
   useEffect(() => {
     refreshDm();
   }, []);
 
   if (all.length < 2 && contacts.length === 0) return null;
-  const unread = dmUnread(contacts) + projects.reduce((sum, p) => sum + (chats[p.id]?.unread ?? 0), 0);
+  const shown = new Set(projects.map((p) => p.id));
+  const unread = dmUnread(contacts)
+    + projects.reduce((sum, p) => sum + (chats.projects[p.id]?.unread ?? 0), 0)
+    + chats.cards.reduce((sum, c) => sum + (shown.has(c.card.projectId) ? c.unread : 0), 0);
   return (
     <button type="button" className="btn btn-small btn-icon-only chat-button" onClick={() => onChat('')}
       title={unread ? `Чаты: непрочитанных ${unread}` : 'Чаты'} aria-label="Чаты">

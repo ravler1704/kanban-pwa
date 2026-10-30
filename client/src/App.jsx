@@ -167,16 +167,18 @@ export default function App() {
 
   // A tapped reminder opens its card: `?card=` when the app starts from the notification,
   // a message from the service worker when the app is already open.
+  // Opens a card, first showing its project if it is not on the board.
+  const openFromReminder = useCallback(async (id) => {
+    const card = await db.cards.get(id);
+    if (!card) return;
+    const [projects, sections] = await Promise.all([db.projects.toArray(), db.sections.toArray()]);
+    const live = sections.filter((s) => !s.deleted);
+    const checked = live.filter(sectionCheckedByDefault).map((s) => s.id);
+    select(toggles(projects.filter((p) => !p.deleted), live, ...focusOn(live, checked, card.projectId, null)));
+    setOpenCardId(id);
+  }, [select]);
+
   useEffect(() => {
-    async function openFromReminder(id) {
-      const card = await db.cards.get(id);
-      if (!card) return;
-      const [projects, sections] = await Promise.all([db.projects.toArray(), db.sections.toArray()]);
-      const live = sections.filter((s) => !s.deleted);
-      const checked = live.filter(sectionCheckedByDefault).map((s) => s.id);
-      select(toggles(projects.filter((p) => !p.deleted), live, ...focusOn(live, checked, card.projectId, null)));
-      setOpenCardId(id);
-    }
     const params = new URLSearchParams(location.search);
     if (params.has('card') || params.has('chat')) {
       if (params.has('card')) openFromReminder(params.get('card'));
@@ -204,7 +206,7 @@ export default function App() {
     };
     navigator.serviceWorker?.addEventListener('message', onMessage);
     return () => navigator.serviceWorker?.removeEventListener('message', onMessage);
-  }, [select]);
+  }, [openFromReminder]);
 
   const data = useLiveQuery(async () => {
     const tables = [db.columnSets, db.columns, db.projects, db.sections, db.cards];
@@ -444,7 +446,11 @@ export default function App() {
           readOnly={readOnly} onClose={() => setOpenCardId(null)} />)}
 
       {chat !== null && !publicToken && (
-        <ChatDialog key={chat} projects={projects} thread={chat} onClose={() => setChat(null)} />
+        <ChatDialog key={chat} projects={projects} thread={chat} onClose={() => setChat(null)}
+          onOpenCard={(id) => {
+            setChat(null);
+            openFromReminder(id);
+          }} />
       )}
 
       {addingCard && (

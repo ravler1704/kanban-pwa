@@ -22,18 +22,29 @@ function shortTime(ts) {
     : d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 }
 
-/** Latest message and unread count of each project chat of the board: { [projectId]: { last, unread } }. */
-export function useProjectChats() {
+/**
+ * Latest message and unread count of the board's chats: `projects` — { [projectId]: { last, unread } },
+ * `cards` — [{ card, last, unread }] of the cards that have comments, the latest first.
+ */
+export function useChats() {
   const { user } = useSyncExternalStore(authState.subscribe, authState.get);
   const seen = useSyncExternalStore(seenStore.subscribe, seenStore.get);
-  const messages = useLiveQuery(() => db.comments.filter((c) => !c.cardId && !c.deleted).toArray(), []);
-  const chats = {};
-  for (const m of messages ?? []) {
-    const chat = chats[m.projectId] ?? (chats[m.projectId] = { last: null, unread: 0 });
+  const data = useLiveQuery(async () => {
+    const messages = await db.comments.filter((c) => !c.deleted).toArray();
+    const cardIds = [...new Set(messages.filter((m) => m.cardId).map((m) => m.cardId))];
+    const cards = (await db.cards.bulkGet(cardIds)).filter((c) => c && !c.deleted);
+    return { messages, cards };
+  }, []);
+  const projects = {};
+  const byCard = new Map((data?.cards ?? []).map((card) => [card.id, { card, last: null, unread: 0 }]));
+  for (const m of data?.messages ?? []) {
+    const chat = m.cardId ? byCard.get(m.cardId) : (projects[m.projectId] ??= { last: null, unread: 0 });
+    if (!chat) continue;
     if (!chat.last || m.createdAt > chat.last.createdAt) chat.last = m;
     if (isUnread(seen, m, user?.id ?? '')) chat.unread += 1;
   }
-  return chats;
+  const cards = [...byCard.values()].sort((a, b) => b.last.createdAt - a.last.createdAt);
+  return { projects, cards };
 }
 
 function DmThread({ peer }) {
@@ -89,7 +100,7 @@ function DmThread({ peer }) {
   );
 }
 
-function ChatListItem({ avatar, title, last, unread, active, onClick }) {
+function ChatListItem({ avatar, title, subtitle, last, unread, active, onClick }) {
   return (
     <button type="button" className={`chat-list-item ${active ? 'active' : ''}`} onClick={onClick}>
       {avatar}
@@ -98,6 +109,7 @@ function ChatListItem({ avatar, title, last, unread, active, onClick }) {
           <span className="chat-list-name">{title}</span>
           {last && <span className="chat-list-time muted">{shortTime(last.createdAt)}</span>}
         </span>
+        {subtitle && <span className="chat-list-subtitle muted">{subtitle}</span>}
         <span className="chat-list-preview muted">{last ? preview(last.text) : 'Нет сообщений'}</span>
       </span>
       {unread > 0 && <span className="chat-unread">{unread}</span>}
@@ -109,15 +121,30 @@ function ProjectAvatar() {
   return <span className="avatar avatar-letter avatar-project" aria-hidden="true">#</span>;
 }
 
+function CardAvatar() {
+  return (
+    <span className="avatar avatar-letter avatar-project" aria-hidden="true">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+        strokeLinecap="round" strokeLinejoin="round">
+        <rect x="4" y="4" width="16" height="16" rx="2" />
+        <path d="M8 9h8M8 13h5" />
+      </svg>
+    </span>
+  );
+}
+
+const cardTitle = (card) => card.title.trim() || 'Без названия';
+
 /**
- * Chats: one per project of the board (`projects`) and direct messages with the people the user
- * shares projects with. `thread` is the open one: 'project:<id>' or 'dm:<user id>', '' for none.
+ * Chats: one per project of the board (`projects`), those of the cards with comments and direct
+ * messages with the people the user shares projects with. `thread` is the open one: 'project:<id>',
+ * 'card:<id>' or 'dm:<user id>', '' for none. `onOpenCard(id)` opens a card's editor.
  */
-export default function ChatDialog({ projects, thread: initialThread, onClose }) {
+export default function ChatDialog({ projects, thread: initialThread, onOpenCard, onClose }) {
   const [thread, setThread] = useState(initialThread || '');
   const { contacts, loaded, error } = useSyncExternalStore(dmStore.subscribe, dmStore.get);
   const { online } = useSyncExternalStore(syncStatus.subscribe, syncStatus.get);
-  const chats = useProjectChats();
+  const chats = useChats();
 
   useEffect(() => {
     refreshDm();
@@ -125,8 +152,13 @@ export default function ChatDialog({ projects, thread: initialThread, onClose })
 
   const [kind, id] = thread ? [thread.slice(0, thread.indexOf(':')), thread.slice(thread.indexOf(':') + 1)] : [];
   const project = kind === 'project' ? projects.find((p) => p.id === id) : null;
+  const threadCard = useLiveQuery(() => (kind === 'card' ? db.cards.get(id) : null), [kind, id]);
+  const card = threadCard && !threadCard.deleted && projects.some((p) => p.id === threadCard.projectId)
+    ? threadCard : null;
   const peer = kind === 'dm' ? contacts.find((c) => c.id === id) ?? (loaded ? null : { id }) : null;
-  const open = Boolean(project || peer);
+  const open = Boolean(project || card || peer);
+  const projectName = new Map(projects.map((p) => [p.id, p.name]));
+  const cardChats = chats.cards.filter((c) => projectName.has(c.card.projectId));
 
   const sortedContacts = [...contacts].sort((a, b) => (b.last?.createdAt ?? 0) - (a.last?.createdAt ?? 0)
     || personName(a).localeCompare(personName(b), 'ru'));
@@ -138,8 +170,18 @@ export default function ChatDialog({ projects, thread: initialThread, onClose })
           <h4>Чаты проектов</h4>
           {projects.map((p) => (
             <ChatListItem key={p.id} avatar={<ProjectAvatar />} title={p.name}
-              last={chats[p.id]?.last} unread={chats[p.id]?.unread ?? 0}
+              last={chats.projects[p.id]?.last} unread={chats.projects[p.id]?.unread ?? 0}
               active={project?.id === p.id} onClick={() => setThread(`project:${p.id}`)} />
+          ))}
+          <h4>Чаты карточек</h4>
+          {cardChats.length === 0 && (
+            <p className="muted chat-list-note">Комментариев к карточкам пока нет.</p>
+          )}
+          {cardChats.map((c) => (
+            <ChatListItem key={c.card.id} avatar={<CardAvatar />} title={cardTitle(c.card)}
+              subtitle={projects.length > 1 ? projectName.get(c.card.projectId) : null}
+              last={c.last} unread={c.unread}
+              active={card?.id === c.card.id} onClick={() => setThread(`card:${c.card.id}`)} />
           ))}
           <h4>Личные сообщения</h4>
           {!online && <p className="muted chat-list-note">Нет подключения к интернету.</p>}
@@ -159,13 +201,21 @@ export default function ChatDialog({ projects, thread: initialThread, onClose })
               <header className="chat-pane-head">
                 <button type="button" className="btn btn-small chat-back" onClick={() => setThread('')}
                   aria-label="К списку чатов">←</button>
-                {project
-                  ? <><ProjectAvatar /><strong>{project.name}</strong></>
-                  : <><Avatar user={peer} size={28} /><strong>{personName(peer)}</strong></>}
+                {project && <><ProjectAvatar /><strong>{project.name}</strong></>}
+                {card && (
+                  <>
+                    <CardAvatar />
+                    <strong className="chat-pane-title">{cardTitle(card)}</strong>
+                    <button type="button" className="btn btn-small chat-open-card" onClick={() => onOpenCard(card.id)}>
+                      Открыть карточку
+                    </button>
+                  </>
+                )}
+                {peer && <><Avatar user={peer} size={28} /><strong>{personName(peer)}</strong></>}
               </header>
-              {project
-                ? <Comments key={project.id} projectId={project.id} className="chat-full" placeholder="Сообщение" />
-                : <DmThread key={peer.id} peer={peer} />}
+              {project && <Comments key={project.id} projectId={project.id} className="chat-full" placeholder="Сообщение" />}
+              {card && <Comments key={card.id} card={card} className="chat-full" />}
+              {peer && <DmThread key={peer.id} peer={peer} />}
             </>
           ) : (
             <p className="muted chat-pane-empty">Выберите чат слева.</p>

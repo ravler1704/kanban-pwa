@@ -1036,6 +1036,9 @@ a.btn { display: inline-block; text-decoration: none; }
 .chat-pane { display: flex; flex-direction: column; gap: 0.5rem; min-height: 0; min-width: 0; }
 .chat-pane-head { display: flex; align-items: center; gap: 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
 .chat-pane-head .avatar-project { width: 28px; height: 28px; font-size: 0.85rem; }
+.chat-pane-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-open-card { margin-left: auto; flex: none; }
+.chat-list-subtitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.75rem; }
 .chat-pane-empty { margin: auto; }
 .chat-back { display: none; }
 
