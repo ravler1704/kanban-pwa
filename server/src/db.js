@@ -575,6 +575,13 @@ const selectCommentsOfCard = db.prepare(`
   SELECT id FROM records WHERE owner = ? AND type = 'comment' AND json_extract(data, '$.cardId') = ?
 `);
 
+const selectCardIds = db.prepare("SELECT id FROM records WHERE owner = ? AND type = 'card' ORDER BY rowid");
+
+/** The board's cards (deleted too) in the order they were created. */
+export function cardIdsInOrder(owner) {
+  return selectCardIds.all(owner).map((r) => r.id);
+}
+
 export function commentIdsOfCard(owner, cardId) {
   return selectCommentsOfCard.all(owner, cardId).map((r) => r.id);
 }

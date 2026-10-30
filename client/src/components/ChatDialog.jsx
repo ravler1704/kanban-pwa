@@ -134,7 +134,7 @@ function CardAvatar() {
   );
 }
 
-const cardTitle = (card) => card.title.trim() || 'Без названия';
+const cardTitle = (card) => `${card.number ? `#${card.number} ` : ''}${card.title.trim() || 'Без названия'}`;
 
 /**
  * Chats: one per project of the board (`projects`), those of the cards with comments and direct

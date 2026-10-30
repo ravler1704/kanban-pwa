@@ -2,6 +2,7 @@
 // { k: kind, card: { id, title }, ... } (see recordEvents in server/src/sync.js).
 
 const q = (name) => `«${name?.trim() || 'Без названия'}»`;
+const cardName = (card) => `${card.number ? `#${card.number} ` : ''}${q(card.title)}`;
 
 const remindTime = (at) => new Date(at).toLocaleString('ru-RU', {
   day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
@@ -51,7 +52,7 @@ export function parseEvent(json) {
 export function messageText(m) {
   const e = m.event && parseEvent(m.event);
   if (!e) return m.text;
-  return parts(e).map((p) => (typeof p === 'string' ? p : q(p.card?.title))).join('');
+  return parts(e).map((p) => (typeof p === 'string' ? p : cardName(p.card ?? {}))).join('');
 }
 
 /** The note `event` (parsed); the card's title opens it with `onOpenCard(id)`. */
@@ -60,7 +61,7 @@ export function EventText({ event, onOpenCard }) {
     if (typeof p === 'string') return p;
     if (!p.card) return null;
     return onOpenCard
-      ? <button key={i} type="button" className="chat-event-card" onClick={() => onOpenCard(p.card.id)}>{q(p.card.title)}</button>
-      : <strong key={i}>{q(p.card.title)}</strong>;
+      ? <button key={i} type="button" className="chat-event-card" onClick={() => onOpenCard(p.card.id)}>{cardName(p.card)}</button>
+      : <strong key={i}>{cardName(p.card)}</strong>;
   });
 }

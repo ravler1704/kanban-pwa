@@ -147,7 +147,8 @@ export const TYPES = {
     // sectionId is null for cards that belong to the project directly.
     // remindAt: Unix time in ms of the push reminder, or null.
     // attachments: [{ id, name, size, type, addedAt }], changed by the server only (files.js).
-    fields: ['projectId', 'sectionId', 'columnId', 'title', 'description', 'position', 'deleted', 'remindAt', 'attachments'],
+    // number: #1, #2, … within the board, given by the server (null until the card is synced).
+    fields: ['projectId', 'sectionId', 'columnId', 'title', 'description', 'position', 'deleted', 'remindAt', 'attachments', 'number'],
   },
   // A comment on a card, or (cardId null) a message of the project's chat. The server sets the
   // author fields and editedAt; `event` (JSON, see chatEvents.jsx) is the server's note of a change

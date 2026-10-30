@@ -4,8 +4,13 @@ import { requestSync } from './sync.js';
 const alive = (r) => !r.deleted;
 const maxPosition = (records) => records.filter(alive).reduce((max, r) => Math.max(max, r.position), 0);
 
+let lastCreated = 0;
+
 async function insert(type, fields) {
-  const record = { id: newId(), ...fields, deleted: false, server: null, conflict: null };
+  // createdLocally (not synced): new records go to the server in the order they were made,
+  // which is the order cards get their numbers in.
+  lastCreated = Math.max(Date.now(), lastCreated + 1);
+  const record = { id: newId(), ...fields, deleted: false, server: null, conflict: null, createdLocally: lastCreated };
   record.dirty = isDirty(type, record);
   await tableOf(type).add(record);
   return record;

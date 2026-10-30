@@ -56,7 +56,7 @@ const VIEWS = [
  */
 export default function ProjectBar({
   projects, sectionGroups, projectFilter, sectionFilter, conflictsBySection,
-  columnSets, columnSetId, onSelectColumnSet, tagFilter, view, onView, onManage, onAddCard, children,
+  columnSets, columnSetId, onSelectColumnSet, tagFilter, cardFilter, view, onView, onManage, onAddCard, children,
 }) {
   const allKeys = Object.keys(conflictsBySection);
   const projectConflicts = (p) => allKeys
@@ -94,6 +94,11 @@ export default function ProjectBar({
         )}
 
         {tagFilter && <TagFilter {...tagFilter} />}
+
+        {cardFilter && (
+          <CheckPicker label="Карточки" emptyLabel="Все" clearLabel="Показать все карточки" className="card-filter"
+            searchPlaceholder="Номер или название" notFound="Карточек не найдено" {...cardFilter} />
+        )}
       </div>
 
       <div className="projectbar-row projectbar-actions">

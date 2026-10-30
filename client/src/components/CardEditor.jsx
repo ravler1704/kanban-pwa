@@ -19,7 +19,7 @@ function CardView({ card, columnsOfProject, groups, onClose }) {
   const column = columnsOfProject(card.projectId).find((c) => c.id === card.columnId);
   const section = groups.find((g) => g.project.id === card.projectId)?.sections.find((s) => s.id === card.sectionId);
   return (
-    <Modal title="Карточка" onClose={onClose}>
+    <Modal title={card.number ? `Карточка #${card.number}` : 'Карточка'} onClose={onClose}>
       <div className="editor card-view">
         <h3 className="card-view-title">{card.title || <em className="muted">Без названия</em>}</h3>
         <p className="muted">
@@ -91,7 +91,7 @@ function CardForm({ card, columnsOfProject, groups, onClose }) {
   }
 
   return (
-    <Modal title="Карточка" onClose={onClose}>
+    <Modal title={card.number ? `Карточка #${card.number}` : 'Карточка'} onClose={onClose}>
       <form className="editor" onSubmit={save}>
         {changedRemotely && (
           <p className="notice">

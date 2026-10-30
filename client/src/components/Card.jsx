@@ -122,6 +122,7 @@ export default function Card({
       )}
       <div className="card-footer">
         <div className="card-badges">
+          {card.number && <span className="card-number" title="Номер карточки">#{card.number}</span>}
           {card.remindAt && (
             <span className={`card-reminder${card.remindAt <= Date.now() ? ' card-reminder-past' : ''}`}
               title="Напоминание">

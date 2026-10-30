@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import {
-  commentIdsOfCard, getMaxSeq, getMeta, getRecord, getRecordsSince, saveRecord, setMeta, transaction,
+  cardIdsInOrder, commentIdsOfCard, getMaxSeq, getMeta, getRecord, getRecordsSince, saveRecord, setMeta, transaction,
 } from './db.js';
 
 const string = (max) => (v) => typeof v === 'string' && v.length <= max;
@@ -63,13 +63,15 @@ export const SCHEMAS = {
       remindAt: optionalTime,
       // Files ({ id, name, size, type, addedAt }); only the server changes them (see files.js).
       attachments,
+      // #1, #2, … within the board in order of creation; set by the server (see nextCardNumber).
+      number: (v) => v === null || (Number.isInteger(v) && v > 0),
     },
     defaults: {
       sectionId: null, columnId: 'todo', title: '', description: '', position: 0, deleted: false, remindAt: null,
-      attachments: [],
+      attachments: [], number: null,
     },
     textFields: ['title', 'description'],
-    serverFields: ['attachments'],
+    serverFields: ['attachments', 'number'],
     deleteConflicts: true,
   },
   // A comment on a card, or (cardId null) a message in the project's chat. The server sets the
@@ -282,13 +284,14 @@ const nameOf = (owner, id) => (id ? withDefaults(getRecord(owner, id))?.name ?? 
 
 /**
  * Notes in the project's chat of what `actor` changed in a card, section or project (`before` →
- * `after`; `before` null for a new one): { k: kind, card: { id, title }, ... }. Reordering is not noted.
+ * `after`; `before` null for a new one): { k: kind, card: { id, title, number }, ... }. Reordering is
+ * not noted.
  */
 function recordEvents(owner, actor, type, before, after) {
   if (!after || after.type !== type || (before && after.version === before.version)) return;
   const event = (projectId, e) => addEvent(owner, projectId, actor, e);
   if (type === 'card') {
-    const card = { id: after.id, title: after.title };
+    const card = { id: after.id, title: after.title, number: after.number };
     const at = after.projectId;
     if (!before) {
       if (!after.deleted) event(at, { k: 'card.create', card, column: nameOf(owner, after.columnId) });
@@ -343,6 +346,34 @@ function moveComments(owner, cardId, projectId) {
   }
 }
 
+function nextCardNumber(owner) {
+  const key = `cardNumber:${owner}`;
+  const number = Number(getMeta(key) ?? 0) + 1;
+  setMeta(key, String(number));
+  return number;
+}
+
+const numbered = new Set();
+
+/** Once per board: numbers for the cards from before numbers existed, in order of creation. */
+function numberCards(owner) {
+  if (numbered.has(owner)) return;
+  const flag = `cardsNumbered:${owner}`;
+  if (!getMeta(flag)) {
+    transaction(() => {
+      for (const id of cardIdsInOrder(owner)) {
+        const card = withDefaults(getRecord(owner, id));
+        if (card.number) continue;
+        saveRecord(owner, 'card', id, pickData(SCHEMAS.card, { ...card, number: nextCardNumber(owner) }), {
+          version: card.version + 1, deviceId: 'server',
+        });
+      }
+      setMeta(flag, '1');
+    });
+  }
+  numbered.add(owner);
+}
+
 function applyChange(owner, deviceId, { type, id, baseVersion, fields, base }, access) {
   const schema = SCHEMAS[type];
   const current = withDefaults(getRecord(owner, id));
@@ -359,6 +390,7 @@ function applyChange(owner, deviceId, { type, id, baseVersion, fields, base }, a
     for (const f of Object.keys(schema.fields)) {
       if (!(f in data)) throw new ValidationError(`missing field "${f}" for new ${type}`);
     }
+    if (type === 'card') data.number = nextCardNumber(owner);
     return result('applied', save(data, 1));
   }
   if (current.type !== type) throw new ValidationError(`record ${id} is not a ${type}`);
@@ -423,7 +455,7 @@ export function changeAttachments(owner, cardId, change, actor, event) {
     const card = withDefaults(getRecord(owner, cardId));
     const next = { ...card, attachments: change(card.attachments) };
     saveRecord(owner, 'card', cardId, pickData(SCHEMAS.card, next), { version: card.version + 1, deviceId: 'server' });
-    addEvent(owner, card.projectId, actor, { ...event, card: { id: card.id, title: card.title } });
+    addEvent(owner, card.projectId, actor, { ...event, card: { id: card.id, title: card.title, number: card.number } });
     return getMaxSeq(owner);
   });
 }
@@ -437,6 +469,7 @@ export function push(owner, deviceId, rawChanges, access = null, actor = null) {
     throw new ValidationError('changes must be an array of at most 1000 items');
   }
   const changes = rawChanges.map(validateChange);
+  numberCards(owner);
   return transaction(() => {
     const before = getMaxSeq(owner);
     const results = changes.map((c) => {
@@ -513,6 +546,7 @@ export function seedColumns(owner) {
 /** `access` (see memberAccess) limits what a member gets; null for the board's owner. */
 export function pull(owner, since, limit = 500, access = null) {
   seedColumns(owner);
+  numberCards(owner);
   let records = getRecordsSince(owner, since, limit + 1).map(withDefaults);
   const hasMore = records.length > limit;
   if (hasMore) records.pop();

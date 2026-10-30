@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { authState } from './auth.js';
 import { isUnread, seenStore } from './seen.js';
-import { isCurrentBoard, isOwnBoard, publicToken, switchBoard } from './board.js';
+import { dbName, isCurrentBoard, isOwnBoard, publicToken, switchBoard } from './board.js';
 import { useReadOnly } from './public.js';
 import { db } from './db.js';
 import { columnModel } from './columnSets.js';
@@ -21,6 +21,7 @@ import { splitTags, tagKey, tagsOf } from './tags.js';
 const VIEW_KEY = 'view';
 const ALL_SET_KEY = 'allProjectsColumnSet';
 const TAG_FILTER_KEY = 'tagFilter';
+const CARD_FILTER_KEY = `cardFilter:${dbName}`;
 const byPosition = (a, b) => a.position - b.position || a.id.localeCompare(b.id);
 const groupKey = (card) => `${card.projectId}|${card.sectionId ?? ''}`;
 
@@ -97,9 +98,9 @@ function focusOn(sections, checkedSections, projectId, sectionId) {
   ]];
 }
 
-function readTagFilter() {
+function readList(key) {
   try {
-    const keys = JSON.parse(localStorage.getItem(TAG_FILTER_KEY));
+    const keys = JSON.parse(localStorage.getItem(key));
     return Array.isArray(keys) ? keys.filter((k) => typeof k === 'string') : [];
   } catch {
     return [];
@@ -155,7 +156,7 @@ export default function App() {
   };
 
   // Tag keys: only cards with any of them are shown.
-  const [tagFilter, setTagFilter] = useState(readTagFilter);
+  const [tagFilter, setTagFilter] = useState(() => readList(TAG_FILTER_KEY));
   const changeTagFilter = (next) => {
     setTagFilter(next);
     localStorage.setItem(TAG_FILTER_KEY, JSON.stringify(next));
@@ -163,6 +164,13 @@ export default function App() {
   const toggleTag = (name) => {
     const key = tagKey(name);
     changeTagFilter(tagFilter.includes(key) ? tagFilter.filter((k) => k !== key) : [...tagFilter, key]);
+  };
+
+  // Card ids: only these cards are shown.
+  const [cardFilter, setCardFilter] = useState(() => readList(CARD_FILTER_KEY));
+  const changeCardFilter = (next) => {
+    setCardFilter(next);
+    localStorage.setItem(CARD_FILTER_KEY, JSON.stringify(next));
   };
 
   // A tapped reminder opens its card: `?card=` when the app starts from the notification,
@@ -318,10 +326,18 @@ export default function App() {
     .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
   const activeTags = new Set(tagFilter);
 
-  const visible = (tagFilter.length
-    ? inScope.filter((c) => [...tagsOf(c)].some((key) => activeTags.has(key)))
-    : inScope
-  ).sort(byPosition);
+  // Cards to pick: those in view and the picked ones even if their section is not shown now.
+  const liveCards = new Map(cards.filter((c) => !c.deleted || c.conflict).map((c) => [c.id, c]));
+  const pickedCards = cardFilter.filter((id) => liveCards.has(id));
+  const picked = new Set(pickedCards);
+  const cardItems = [...new Set([...inScope, ...pickedCards.map((id) => liveCards.get(id))])]
+    .sort((a, b) => (a.number ?? Infinity) - (b.number ?? Infinity) || byPosition(a, b))
+    .map((c) => ({ key: c.id, name: `${c.number ? `#${c.number} ` : ''}${c.title.trim() || 'Без названия'}` }));
+
+  const visible = inScope
+    .filter((c) => !tagFilter.length || [...tagsOf(c)].some((key) => activeTags.has(key)))
+    .filter((c) => !picked.size || picked.has(c.id))
+    .sort(byPosition);
   const openCard = cards.find((c) => c.id === openCardId);
 
   // What the current view does not already say about where a card belongs.
@@ -403,6 +419,16 @@ export default function App() {
               onToggle: toggleTag,
               onSetAll: (on) => changeTagFilter(on ? tags.map((t) => t.key) : []),
               onClear: () => changeTagFilter([]),
+            } : null}
+            cardFilter={cardItems.length ? {
+              items: cardItems,
+              selected: pickedCards,
+              summary: pickedCards.length
+                ? pickedCards.map((id) => liveCards.get(id)).map((c) => (c.number ? `#${c.number}` : c.title)).join(', ')
+                : undefined,
+              onToggle: (id) => changeCardFilter(picked.has(id) ? pickedCards.filter((k) => k !== id) : [...pickedCards, id]),
+              onSetAll: (on) => changeCardFilter(on ? cardItems.map((i) => i.key) : []),
+              onClear: pickedCards.length ? () => changeCardFilter([]) : null,
             } : null}
             view={view}
             onView={changeView}

@@ -70,6 +70,7 @@ async function push() {
 
   for (const type of typeNames) {
     const dirty = await tableOf(type).where('dirty').equals(1).toArray();
+    dirty.sort((a, b) => (a.createdLocally ?? 0) - (b.createdLocally ?? 0));
     for (const rec of dirty) {
       sent.set(rec.id, rec);
       const fields = {};
