@@ -82,6 +82,20 @@ export function messageText(m, numbers) {
   return parts(e).map((p) => (typeof p === 'string' ? p : cardName(p.card ?? {}, numbers))).join('');
 }
 
+/** What the change of a text was (`event.diff`: [[op, text], ...], op -1 removed, 1 added, 0 kept). */
+export function EventDiff({ diff }) {
+  if (!Array.isArray(diff)) return null;
+  return (
+    <div className="chat-event-diff">
+      {diff.map(([op, text], i) => {
+        if (op === -1) return <del key={i}>{text}</del>;
+        if (op === 1) return <ins key={i}>{text}</ins>;
+        return <span key={i}>{text}</span>;
+      })}
+    </div>
+  );
+}
+
 /** The note `event` (parsed); the card's title opens it with `onOpenCard(id)`. */
 export function EventText({ event, numbers, onOpenCard }) {
   return parts(event).map((p, i) => {

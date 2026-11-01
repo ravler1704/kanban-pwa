@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { EventText, parseEvent, useCardNumbers } from '../chatEvents.jsx';
+import { EventDiff, EventText, parseEvent, useCardNumbers } from '../chatEvents.jsx';
 import { pasteAsLink } from '../links.js';
 import Avatar from './Avatar.jsx';
 import { useLinkMenu } from './LinkMenu.jsx';
@@ -152,6 +152,7 @@ export default function ChatThread({
                   <span className="chat-event-text">
                     {m.authorName && <span className="chat-event-author">{m.authorName}: </span>}
                     <EventText event={event} numbers={cardNumbers} onOpenCard={onOpenCard} />
+                    <EventDiff diff={event.diff} />
                   </span>
                   <span className="chat-time" title={new Date(m.createdAt).toLocaleString('ru-RU')}>{time(m.createdAt)}</span>
                 </div>

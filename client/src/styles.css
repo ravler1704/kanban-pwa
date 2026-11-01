@@ -1136,6 +1136,20 @@ a.btn { display: inline-block; text-decoration: none; }
 }
 .chat-event-card:hover { text-decoration: underline; }
 .chat-event .chat-time { flex: none; float: none; margin: 0.1rem 0 0; }
+.chat-event-diff {
+  max-height: 10rem;
+  margin-top: 0.25rem;
+  padding: 0.3rem 0.45rem;
+  overflow-y: auto;
+  border-left: 2px solid var(--border);
+  white-space: pre-wrap;
+}
+.chat-event-diff del { color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+.chat-event-diff ins {
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 12%, transparent);
+  text-decoration: none;
+}
 .chat-pane-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chat-pane-actions { margin-left: auto; flex: none; display: flex; gap: 0.35rem; }
 .history-toggle { color: var(--muted); }

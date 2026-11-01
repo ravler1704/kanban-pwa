@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import {
   cardIdsInOrder, commentIdsOfCard, getMaxSeq, getMeta, getRecord, getRecordsSince, saveRecord, setMeta, transaction,
 } from './db.js';
+import { textDiff } from './textDiff.js';
 
 const string = (max) => (v) => typeof v === 'string' && v.length <= max;
 const ref = (v) => typeof v === 'string' && v.length > 0 && v.length <= 64;
@@ -347,7 +348,11 @@ function recordEvents(owner, actor, type, before, after) {
       }
     }
     if (after.title !== before.title) event(at, { k: 'card.rename', card, from: before.title });
-    if (after.description !== before.description) event(at, { k: 'card.description', card });
+    if (after.description !== before.description) {
+      // The note must fit the comment's `event` field with the card's title beside it.
+      const diff = textDiff(before.description, after.description, 3000 - JSON.stringify(card).length);
+      event(at, { k: 'card.description', card, ...(diff && { diff }) });
+    }
     if (after.remindAt !== before.remindAt) event(at, { k: 'card.remind', card, at: after.remindAt });
   } else if (type === 'section') {
     const at = after.projectId;
