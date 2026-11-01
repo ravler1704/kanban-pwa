@@ -1010,7 +1010,7 @@ a.btn { display: inline-block; text-decoration: none; }
 }
 
 .modal.modal-chat { width: min(900px, 100%); height: min(720px, 90vh); display: flex; flex-direction: column; overflow: hidden; }
-.chat-dialog { flex: 1; min-height: 0; display: grid; grid-template-columns: 260px 1fr; gap: 1rem; }
+.chat-dialog { flex: 1; min-height: 0; display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 1rem; }
 .chat-side { display: flex; flex-direction: column; min-height: 0; }
 .chat-search { flex: none; margin-bottom: 0.5rem; }
 .chat-list { display: flex; flex-direction: column; gap: 0.15rem; overflow-y: auto; min-height: 0; }
@@ -1115,7 +1115,7 @@ a.btn { display: inline-block; text-decoration: none; }
 
 @media (max-width: 700px) {
   .modal.modal-chat { height: 90vh; padding: 0.9rem; }
-  .chat-dialog { grid-template-columns: 1fr; }
+  .chat-dialog { grid-template-columns: minmax(0, 1fr); }
   .chat-dialog-open .chat-side { display: none; }
   .chat-dialog:not(.chat-dialog-open) .chat-pane { display: none; }
   .chat-back { display: inline-block; }
