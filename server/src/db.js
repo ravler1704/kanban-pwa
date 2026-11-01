@@ -603,6 +603,16 @@ export function projectUsers(board, project) {
   return [...new Set([board, ...selectProjectUsers.all(board, project).map((r) => r.user_id)])];
 }
 
+const selectSpaceUsers = db.prepare(`
+  SELECT DISTINCT i.user_id AS user, m.space FROM space_members m JOIN identities i ON i.email = m.email
+  WHERE m.board = ?
+`);
+
+/** Users invited to whole spaces of the board: [{ user, space }]. */
+export function spaceUsers(board) {
+  return selectSpaceUsers.all(board);
+}
+
 export function isInvited(email) {
   return Boolean(email) && Boolean(selectInvited.get(email.toLowerCase(), email.toLowerCase()));
 }

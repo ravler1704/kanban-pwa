@@ -6,7 +6,7 @@ import { db } from '../db.js';
 import {
   deleteDm, dmStore, editDm, loadThread, markDmRead, onDmThreadChange, refreshDm, sendDm,
 } from '../dm.js';
-import { personName } from '../people.js';
+import { peopleStore, personName, refreshPeople } from '../people.js';
 import { isUnread, seenStore } from '../seen.js';
 import { syncStatus } from '../sync.js';
 import Avatar from './Avatar.jsx';
@@ -149,6 +149,39 @@ function CardAvatar() {
   );
 }
 
+const MEMBERS_STACK = 3;
+
+/** Avatars of the chat's members in its header; pressing them shows or hides the list. */
+function MembersButton({ people, open, onToggle }) {
+  return (
+    <button type="button" className={`avatar-stack chat-members-button ${open ? 'active' : ''}`} onClick={onToggle}
+      aria-expanded={open} title={`Участники: ${people.map(personName).join(', ')}`}>
+      {people.slice(0, MEMBERS_STACK).map((p) => <Avatar key={p.id} user={p} size={24} />)}
+      {people.length > MEMBERS_STACK && <span className="avatar avatar-letter avatar-more">+{people.length - MEMBERS_STACK}</span>}
+      <span className="chat-members-count">{people.length}</span>
+    </button>
+  );
+}
+
+function MembersList({ people, me, onWrite }) {
+  return (
+    <ul className="people-list chat-members">
+      {people.map((p) => (
+        <li key={p.id} className="people-item">
+          <Avatar user={p} size={36} />
+          <div className="people-info">
+            <div className="people-name">{personName(p)}{p.id === me && <span className="muted"> (вы)</span>}</div>
+            <div className="muted people-role">{p.owner ? 'Владелец доски' : p.email}</div>
+          </div>
+          {p.id !== me && <button type="button" className="btn btn-small" onClick={() => onWrite(p)}>Написать</button>}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+const byRole = (a, b) => Number(b.owner) - Number(a.owner) || personName(a).localeCompare(personName(b), 'ru');
+
 const cardTitle = (card) => `${card.number ? `#${card.number} ` : ''}${card.title.trim() || 'Без названия'}`;
 
 /**
@@ -163,9 +196,13 @@ export default function ChatDialog({ spaces, projects, thread: initialThread, on
   const { contacts, loaded } = useSyncExternalStore(dmStore.subscribe, dmStore.get);
   const chats = useChats();
   const numbers = useCardNumbers();
+  const { user } = useSyncExternalStore(authState.subscribe, authState.get);
+  const everyone = useSyncExternalStore(peopleStore.subscribe, peopleStore.get);
+  const [showMembers, setShowMembers] = useState(false);
 
   useEffect(() => {
     refreshDm();
+    refreshPeople();
   }, []);
 
   const [kind, id] = thread ? [thread.slice(0, thread.indexOf(':')), thread.slice(thread.indexOf(':') + 1)] : [];
@@ -176,6 +213,15 @@ export default function ChatDialog({ spaces, projects, thread: initialThread, on
     ? threadCard : null;
   const peer = kind === 'dm' ? contacts.find((c) => c.id === id) ?? (loaded ? null : { id }) : null;
   const open = Boolean(space || project || card || peer);
+  // Who is in a space's or project's chat: the owner and those with access to it.
+  const members = space || project
+    ? everyone.filter((p) => p.owner || (space ? p.spaces?.includes(space.id) : p.projects.includes(project.id))).sort(byRole)
+    : [];
+  const membersShown = showMembers && members.length > 0;
+  const openThread = (next) => {
+    setThread(next);
+    setShowMembers(false);
+  };
   const projectName = new Map(projects.map((p) => [p.id, p.name]));
 
   // All chats in one list: the latest message first, those without messages after them.
@@ -214,7 +260,7 @@ export default function ChatDialog({ spaces, projects, thread: initialThread, on
             {found.map((i) => (
               <ChatListItem key={i.thread} avatar={i.avatar} title={i.title} subtitle={i.subtitle}
                 text={i.last && messageText(i.last, numbers)}
-                last={i.last} unread={i.unread} active={thread === i.thread} onClick={() => setThread(i.thread)} />
+                last={i.last} unread={i.unread} active={thread === i.thread} onClick={() => openThread(i.thread)} />
             ))}
             {query && found.length === 0 && <p className="muted chat-list-note">Ничего не найдено.</p>}
           </div>
@@ -223,10 +269,13 @@ export default function ChatDialog({ spaces, projects, thread: initialThread, on
           {open ? (
             <>
               <header className="chat-pane-head">
-                <button type="button" className="btn btn-small chat-back" onClick={() => setThread('')}
+                <button type="button" className="btn btn-small chat-back" onClick={() => openThread('')}
                   aria-label="К списку чатов">←</button>
                 {space && <><SpaceAvatar /><strong className="chat-pane-title">{space.name}</strong></>}
-                {project && <><ProjectAvatar /><strong>{project.name}</strong></>}
+                {project && <><ProjectAvatar /><strong className="chat-pane-title">{project.name}</strong></>}
+                {members.length > 0 && (
+                  <MembersButton people={members} open={membersShown} onToggle={() => setShowMembers(!showMembers)} />
+                )}
                 {card && (
                   <>
                     <CardAvatar />
@@ -238,10 +287,13 @@ export default function ChatDialog({ spaces, projects, thread: initialThread, on
                 )}
                 {peer && <><Avatar user={peer} size={28} /><strong>{personName(peer)}</strong></>}
               </header>
-              {space && (
+              {membersShown && (
+                <MembersList people={members} me={user?.id ?? ''} onWrite={(p) => openThread(`dm:${p.id}`)} />
+              )}
+              {space && !membersShown && (
                 <Comments key={space.id} spaceId={space.id} className="chat-full" placeholder="Сообщение" />
               )}
-              {project && (
+              {project && !membersShown && (
                 <Comments key={project.id} projectId={project.id} className="chat-full" placeholder="Сообщение"
                   onOpenCard={onOpenCard} />
               )}

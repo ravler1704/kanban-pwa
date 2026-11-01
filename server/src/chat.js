@@ -1,5 +1,5 @@
 import {
-  addDm, changeDm, contactIds, dmConversations, dmThread, getDm, getRecord, liveProjectIds, markDmRead,
+  addDm, changeDm, contactIds, dmConversations, dmThread, getDm, getRecord, liveProjectIds, markDmRead, spaceUsers,
   projectUsers, userProfile,
 } from './db.js';
 import { notifyUser } from './events.js';
@@ -17,12 +17,16 @@ function boardPeople(owner, access) {
   const projects = access ? [...access.projects] : liveProjectIds(owner);
   const people = new Map();
   const add = (id) => {
-    if (!people.has(id)) people.set(id, { ...userProfile(id), owner: id === owner, projects: [] });
+    if (!people.has(id)) people.set(id, { ...userProfile(id), owner: id === owner, projects: [], spaces: [] });
     return people.get(id);
   };
   add(owner);
   for (const project of projects) {
     for (const id of projectUsers(owner, project)) add(id).projects.push(project);
+  }
+  // Whole spaces, for the owner's space chats (members don't see those).
+  if (!access) {
+    for (const { user, space } of spaceUsers(owner)) add(user).spaces.push(space);
   }
   return [...people.values()];
 }
