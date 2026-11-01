@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { withoutLinks } from '../links.js';
 
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
@@ -46,11 +47,12 @@ function ChevronIcon({ left }) {
 
 function Reminder({ card, label, columnName, now, onOpen, detailed }) {
   const past = card.remindAt < now;
+  const title = withoutLinks(card.title);
   return (
     <button type="button" className={`cal-card ${past ? 'cal-card-past' : ''}`} onClick={() => onOpen(card.id)}
-      title={[label, card.title, columnName].filter(Boolean).join(' · ')}>
+      title={[label, title, columnName].filter(Boolean).join(' · ')}>
       <span className="cal-card-time">{formatTime(card.remindAt)}</span>
-      <span className="cal-card-title">{card.title || 'Без названия'}</span>
+      <span className="cal-card-title">{title || 'Без названия'}</span>
       {detailed && (label || columnName) && (
         <span className="cal-card-meta">{[label, columnName].filter(Boolean).join(' · ')}</span>
       )}

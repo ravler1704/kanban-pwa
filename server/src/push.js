@@ -11,6 +11,9 @@ const CHECK_INTERVAL_MS = 15_000;
 // A reminder whose time passed more than this long ago (server was down) is not sent.
 const MAX_LATE_MS = 6 * 60 * 60 * 1000;
 
+/** Markdown links [text](address) shown as their text: notifications have no links. */
+export const withoutLinks = (text) => (text ?? '').replace(/\[([^\]\n]+)\]\(([^)\s]+)\)/g, '$1');
+
 let publicKey = getMeta('vapidPublicKey');
 let privateKey = getMeta('vapidPrivateKey');
 if (!publicKey || !privateKey) {
@@ -81,9 +84,10 @@ function reminderPayload(owner, { id, card }) {
     return record && !record.deleted ? record.name : null;
   };
   const where = [name(card.projectId), name(card.sectionId)].filter(Boolean).join(' / ');
+  const title = withoutLinks(card.title);
   return {
-    title: where || card.title,
-    body: where ? card.title : '',
+    title: where || title,
+    body: where ? title : '',
     tag: `card-${id}`,
     url: `/?${new URLSearchParams({ ...(owner && { board: owner }), card: id })}`,
   };

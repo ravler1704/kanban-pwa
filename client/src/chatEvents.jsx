@@ -1,11 +1,12 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db.js';
+import { withoutLinks } from './links.js';
 
 // Notes of changes the server writes into a project's or space's chat: a comment whose `event` is JSON
 // { k: kind, card: { id, title, number }, ... } (see recordEvents in server/src/sync.js).
 // Notes from before card numbers existed have none; `numbers` (card id → number) fills it in.
 
-const q = (name) => `«${name?.trim() || 'Без названия'}»`;
+const q = (name) => `«${withoutLinks(name).trim() || 'Без названия'}»`;
 
 function cardName(card, numbers) {
   const number = card.number ?? numbers?.get(card.id);

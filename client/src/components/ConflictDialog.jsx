@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { resolveConflict } from '../actions.js';
+import { withoutLinks } from '../links.js';
 import Modal from './Modal.jsx';
 
 const LABELS = { title: 'Название', description: 'Описание' };
@@ -15,7 +16,7 @@ function DeletedConflict({ card, onClose }) {
   if (mine) {
     return (
       <Modal title="Конфликт удаления" onClose={onClose}>
-        <p>Вы удалили карточку «{card.title}», но на другом устройстве её успели изменить.</p>
+        <p>Вы удалили карточку «{withoutLinks(card.title)}», но на другом устройстве её успели изменить.</p>
         <div className="actions">
           <button className="btn" onClick={() => resolve({})}>Оставить карточку</button>
           <button className="btn btn-danger" onClick={() => resolve({ deleted: true })}>Всё равно удалить</button>
@@ -27,7 +28,7 @@ function DeletedConflict({ card, onClose }) {
   return (
     <Modal title="Конфликт удаления" onClose={onClose}>
       <p>
-        Вы изменили карточку «{card.conflict.local.title}», но на другом устройстве её удалили.
+        Вы изменили карточку «{withoutLinks(card.conflict.local.title)}», но на другом устройстве её удалили.
       </p>
       <div className="actions">
         <button className="btn" onClick={() => resolve({})}>Согласиться с удалением</button>

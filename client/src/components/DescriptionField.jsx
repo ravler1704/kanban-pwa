@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { addressToLink, linksOf, pasteAsLink } from '../links.js';
+import { addressToLink, pasteAsLink } from '../links.js';
+import FieldLinks from './FieldLinks.jsx';
 import Markdown from './Markdown.jsx';
 
 const MARKDOWN_HELP = 'Markdown: **жирный**, *курсив*, ~~зачёркнутый~~, `код`, [текст](адрес), '
@@ -11,7 +12,6 @@ export default function DescriptionField({ value, onChange, onCollapse, rows = 6
   const input = useRef(null);
   // Selection to set once the changed text is rendered: [start, end].
   const [select, setSelect] = useState(null);
-  const links = linksOf(value);
 
   useLayoutEffect(() => {
     if (!select || !input.current) return;
@@ -66,23 +66,7 @@ export default function DescriptionField({ value, onChange, onCollapse, rows = 6
           </button>
         )}
       </div>
-      {!preview && links.length > 0 && (
-        <div className="field-links">
-          {links.map((link) => (
-            <span key={link.href} className="field-link">
-              <a className="link" href={link.href} target="_blank" rel="noopener noreferrer" title={link.href}>
-                {link.url}
-              </a>
-              {link.bare && (
-                <button type="button" className="field-link-word" onClick={() => makeWord(link.url)}
-                  title="Показывать вместо адреса слово">
-                  сделать словом
-                </button>
-              )}
-            </span>
-          ))}
-        </div>
-      )}
+      {!preview && <FieldLinks text={value} onMakeWord={makeWord} />}
     </div>
   );
 }

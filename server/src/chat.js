@@ -3,14 +3,17 @@ import {
   projectUsers, userProfile,
 } from './db.js';
 import { notifyUser } from './events.js';
-import { sendToUsers } from './push.js';
+import { sendToUsers, withoutLinks } from './push.js';
 
 // People of a board, direct messages between them, and notifications about comments.
 
 const MAX_TEXT = 4000;
 const validId = (v) => typeof v === 'string' && v.length > 0 && v.length <= 64;
 const validText = (v) => typeof v === 'string' && v.trim().length > 0 && v.length <= MAX_TEXT;
-const preview = (text) => (text.length > 200 ? `${text.slice(0, 199)}…` : text);
+const preview = (text) => {
+  const plain = withoutLinks(text);
+  return plain.length > 200 ? `${plain.slice(0, 199)}…` : plain;
+};
 
 /** Who sees the projects of the board the request works with: [{ id, name, email, picture, owner, projects }]. */
 function boardPeople(owner, access) {
@@ -144,7 +147,7 @@ export function notifyComments(owner, comments) {
     if (c.cardId) {
       const card = getRecord(owner, c.cardId);
       payload = {
-        title: `${author} · ${card?.title || 'Карточка'}`,
+        title: `${author} · ${withoutLinks(card?.title) || 'Карточка'}`,
         tag: `comment-${c.cardId}`,
         url: `/?${new URLSearchParams({ ...board, card: c.cardId })}`,
       };

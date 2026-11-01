@@ -11,6 +11,9 @@ export function safeHref(url) {
   return /^www\./i.test(url) ? hrefOf(url) : null;
 }
 
+/** Markdown links shown as their text, for places without links (chat headers, calendar, notices). */
+export const withoutLinks = (text) => (text ?? '').replace(MD_LINK_RE, '$1');
+
 /** Text split into plain strings and { url, href } parts, in order. */
 export function splitLinks(text) {
   return (text ?? '').split(new RegExp(URL_RE.source, 'gi'))

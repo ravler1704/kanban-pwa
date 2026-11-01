@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { authState } from '../auth.js';
 import { messageText, useCardNumbers } from '../chatEvents.jsx';
 import { db } from '../db.js';
+import { withoutLinks } from '../links.js';
 import {
   deleteDm, dmStore, editDm, loadThread, markDmRead, onDmThreadChange, refreshDm, sendDm,
 } from '../dm.js';
@@ -182,7 +183,7 @@ function MembersList({ people, me, onWrite }) {
 
 const byRole = (a, b) => Number(b.owner) - Number(a.owner) || personName(a).localeCompare(personName(b), 'ru');
 
-const cardTitle = (card) => `${card.number ? `#${card.number} ` : ''}${card.title.trim() || 'Без названия'}`;
+const cardTitle = (card) => `${card.number ? `#${card.number} ` : ''}${withoutLinks(card.title).trim() || 'Без названия'}`;
 
 /**
  * Chats: one per space (`spaces`, the board owner's only) and per project of the board (`projects`),
