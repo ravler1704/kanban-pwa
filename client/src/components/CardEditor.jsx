@@ -10,9 +10,9 @@ import { matchColumn } from '../columnSets.js';
 import { fromInputValue, toInputValue } from './ReminderField.jsx';
 import TitleField from './TitleField.jsx';
 
-/** Comments sent right away, apart from the card's «Сохранить». */
+/** Comments sent right away, apart from the card's «Сохранить», among the notes of what was done with it. */
 function CardComments({ card }) {
-  return <Comments card={card} title="Комментарии" className="chat-embedded" />;
+  return <Comments card={card} title="Комментарии и история" className="chat-embedded" />;
 }
 
 /** The card without editing: a view-only public link. */
