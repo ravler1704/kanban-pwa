@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { publicToken } from '../board.js';
 import CheckPicker from './CheckPicker.jsx';
 import TagFilter from './TagFilter.jsx';
@@ -43,6 +44,17 @@ function CalendarIcon() {
   );
 }
 
+function FilterIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 5h18l-7 8.5V19l-4 2v-7.5Z" />
+    </svg>
+  );
+}
+
+const FILTERS_HIDDEN_KEY = 'filtersHidden';
+
 const VIEWS = [
   { id: 'board', label: 'Доска', Icon: BoardIcon },
   { id: 'calendar', label: 'Календарь', Icon: CalendarIcon },
@@ -58,6 +70,11 @@ export default function ProjectBar({
   projects, sectionGroups, spaceFilter, projectFilter, sectionFilter, conflictsBySection,
   columnSets, columnSetId, onSelectColumnSet, tagFilter, cardFilter, view, onView, onManage, onAddCard, children,
 }) {
+  const [filtersHidden, setFiltersHidden] = useState(() => localStorage.getItem(FILTERS_HIDDEN_KEY) === '1');
+  const toggleFilters = () => {
+    localStorage.setItem(FILTERS_HIDDEN_KEY, filtersHidden ? '0' : '1');
+    setFiltersHidden(!filtersHidden);
+  };
   const allKeys = Object.keys(conflictsBySection);
   const projectConflicts = (p) => allKeys
     .filter((key) => key.startsWith(`${p.id}|`))
@@ -69,9 +86,13 @@ export default function ProjectBar({
     group: sectionGroups.length > 1 ? project.name : undefined,
   })));
 
+  // A filter that narrows the board: shown on the toggle while the filters are hidden.
+  const filtered = Boolean(spaceFilter?.onClear || projectFilter.onClear || (sectionItems.length && sectionFilter.onClear)
+    || tagFilter?.selected.length || cardFilter?.selected.length);
+
   return (
     <nav className="projectbar">
-      <div className="projectbar-row">
+      {!filtersHidden && <div className="projectbar-row">
         {spaceFilter && (
           <CheckPicker label="Пространства" emptyLabel="Не выбраны" clearLabel="Показать все"
             searchPlaceholder="Поиск пространства" notFound="Пространств не найдено" {...spaceFilter} />
@@ -104,9 +125,17 @@ export default function ProjectBar({
           <CheckPicker label="Карточки" emptyLabel="Все" clearLabel="Показать все карточки" className="card-filter"
             searchPlaceholder="Номер или название" notFound="Карточек не найдено" {...cardFilter} />
         )}
-      </div>
+      </div>}
 
       <div className="projectbar-row projectbar-actions">
+        <button type="button" className={`btn btn-small btn-icon-only filters-toggle ${filtersHidden ? '' : 'active'}`}
+          aria-pressed={!filtersHidden} onClick={toggleFilters}
+          title={filtersHidden ? `Показать фильтры${filtered ? ' (доска отфильтрована)' : ''}` : 'Скрыть фильтры'}
+          aria-label={filtersHidden ? 'Показать фильтры' : 'Скрыть фильтры'}>
+          <FilterIcon />
+          {filtersHidden && filtered && <span className="filters-dot" aria-hidden="true" />}
+        </button>
+
         {children}
 
         <div className="view-switch" role="group" aria-label="Вид">

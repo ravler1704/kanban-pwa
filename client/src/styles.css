@@ -248,6 +248,12 @@ body {
 .view-switch-btn:hover { color: var(--text); }
 .view-switch-btn.active { background: var(--card); color: var(--text); }
 .projectbar-row > .btn-add-card { margin-left: auto; }
+.filters-toggle { position: relative; color: var(--muted); }
+.filters-toggle.active { color: var(--text); }
+.filters-dot {
+  position: absolute; top: 4px; right: 4px; width: 8px; height: 8px;
+  border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--bg);
+}
 .btn-clear {
   background: none;
   border: none;
