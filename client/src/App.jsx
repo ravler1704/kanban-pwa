@@ -377,14 +377,18 @@ export default function App() {
     return s ? `${p.name} / ${s.name}` : p.name;
   };
 
-  // Where new cards go: the project itself is always in view.
-  const target = project ? { projectId: project.id, sectionId: null } : null;
   const pickerGroups = projects.map((p) => ({ project: p, sections: sectionsOf(p.id) }));
   const shownGroups = shownProjects.map((p) => ({
     project: p,
     sections: sectionsOf(p.id).filter((s) => checkedSectionIds.has(s.id)),
   }));
   const boardGroups = shownGroups.filter((g) => model.setIdOf(g.project) === boardSetId);
+  // Where new cards go: the only checked section, else the single project in view (always shown itself).
+  const shownSections = shownGroups.flatMap((g) => g.sections.map((s) => ({ projectId: g.project.id, sectionId: s.id })));
+  const target = shownSections.length === 1 ? shownSections[0]
+    : project ? { projectId: project.id, sectionId: null } : null;
+  const boardTarget = target && boardGroups.some((g) => g.project.id === target.projectId)
+    ? target : defaultTarget(boardGroups);
   const boardCards = visible.filter((c) => model.setIdOf(projectById.get(c.projectId)) === boardSetId);
 
   // The last choice is kept (see readSelection). Projects of unchecked spaces keep their checkboxes.
@@ -492,7 +496,7 @@ export default function App() {
               {columns.map((col, index) => (
                 <Column
                   key={col.id}
-                  target={target ?? defaultTarget(boardGroups)}
+                  target={boardTarget}
                   column={col}
                   prevColumn={columns[index - 1]}
                   nextColumn={columns[index + 1]}
