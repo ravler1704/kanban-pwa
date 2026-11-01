@@ -119,6 +119,7 @@ body {
   color: var(--muted);
   font-size: 0.7rem;
   line-height: 1;
+  white-space: nowrap;
   pointer-events: none;
 }
 .picker .select {
@@ -155,11 +156,17 @@ body {
 }
 .projectbar-row > .btn-icon-only { align-self: stretch; padding: 0 0.8rem; }
 .check-picker .select {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   min-width: 120px;
+  padding-top: 0.3rem;
   overflow: hidden;
   text-align: left;
   white-space: nowrap;
 }
+.check-picker .picker-label { position: static; margin-bottom: 0.15rem; font-weight: normal; }
+.check-picker .picker-value { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .check-picker .select.select-empty { padding-right: 2.4rem; }
 .check-menu {
   position: absolute;
@@ -412,6 +419,8 @@ body {
 .manage-field .manage-input:focus { border-color: var(--accent); }
 .manage-row > .btn, .manage-add > .btn { align-self: stretch; }
 .manage-row > .manage-place { flex: none; width: auto; }
+.manage-row { flex-wrap: wrap; }
+.manage-row > .manage-field { flex: 1 1 10rem; }
 @media (max-width: 520px) {
   .manage-columns .manage-row { flex-wrap: wrap; }
   .manage-columns .manage-row > .manage-field { flex-basis: 100%; }
@@ -793,11 +802,16 @@ a.btn { display: inline-block; text-decoration: none; }
   z-index: 1;
   left: calc(0.7rem + 1px);
   top: calc(0.3rem + 1px);
+  max-width: calc(100% - 1.4rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--muted);
   font-size: 0.7rem;
   line-height: 1;
   pointer-events: none;
 }
+.field:has(select, .select) .field-label { max-width: calc(100% - 3.2rem); }
 .field input, .field textarea, .field .select {
   padding-top: 1.15rem;
   padding-bottom: 0.35rem;

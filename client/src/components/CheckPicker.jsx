@@ -54,10 +54,10 @@ export default function CheckPicker({
 
   return (
     <div className={`picker check-picker ${className}`} ref={root}>
-      <span className="picker-label">{label}</span>
       <button type="button" className={`select ${onClear ? '' : 'select-empty'}`} aria-expanded={open}
         onClick={toggleOpen}>
-        {summary ?? (active ? selected.map(nameOf).join(', ') : emptyLabel)}
+        <span className="picker-label">{label}</span>
+        <span className="picker-value">{summary ?? (active ? selected.map(nameOf).join(', ') : emptyLabel)}</span>
       </button>
       {onClear && (
         <button className="btn-clear" title={clearLabel} aria-label={clearLabel} onClick={onClear}>
