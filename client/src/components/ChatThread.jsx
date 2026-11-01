@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { EventText, parseEvent, useCardNumbers } from '../chatEvents.jsx';
 import Avatar from './Avatar.jsx';
+import { pasteAsLink } from '../links.js';
 import Markdown from './Markdown.jsx';
 
 // Phones put a line break on Enter; elsewhere Enter sends and Shift+Enter breaks the line.
@@ -24,6 +25,8 @@ function Composer({ editing, onSubmit, onCancelEdit, placeholder, disabled }) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const input = useRef(null);
+  // Where the caret goes once the text changed by a paste is rendered.
+  const caret = useRef(null);
 
   useEffect(() => {
     if (!editing) return;
@@ -35,6 +38,10 @@ function Composer({ editing, onSubmit, onCancelEdit, placeholder, disabled }) {
     const el = input.current;
     el.style.height = 'auto';
     el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`;
+    if (caret.current != null) {
+      el.setSelectionRange(caret.current, caret.current);
+      caret.current = null;
+    }
   }, [text]);
 
   async function submit() {
@@ -67,6 +74,13 @@ function Composer({ editing, onSubmit, onCancelEdit, placeholder, disabled }) {
         <textarea ref={input} rows={1} value={text} placeholder={placeholder} maxLength={4000}
           disabled={disabled} aria-label={placeholder}
           onChange={(e) => setText(e.target.value)}
+          onPaste={(e) => {
+            const next = pasteAsLink(e.currentTarget, e.clipboardData.getData('text/plain'));
+            if (!next) return;
+            e.preventDefault();
+            caret.current = next.caret;
+            setText(next.value);
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Escape' && editing) {
               e.stopPropagation();
