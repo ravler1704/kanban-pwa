@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { createCard, moveCard, moveCardToColumn } from '../actions.js';
+import { createCard, moveCard, moveCardsToColumn, moveCardToColumn } from '../actions.js';
 import Card, { draggedCardId } from './Card.jsx';
 
 function positionBefore(cards, targetId) {
@@ -63,6 +63,15 @@ export default function Column({
     return null;
   };
 
+  // Cards with an unresolved conflict wait for the user's choice and stay put.
+  const movable = cards.filter((c) => !c.deleted && !c.conflict);
+
+  function moveAll(to) {
+    const what = movable.length === 1 ? '1 карточку' : `все карточки (${movable.length})`;
+    if (!confirm(`Перенести ${what} из «${column.name}» в «${to.name}»?`)) return;
+    moveCardsToColumn(movable.map((c) => c.id), to.id);
+  }
+
   function handleAdd(e) {
     e.preventDefault();
     const value = title.trim();
@@ -80,9 +89,23 @@ export default function Column({
       }}
       onDrop={readOnly ? undefined : handleDrop}
     >
-      <h2>
-        {column.name} <span className="count">{cards.filter((c) => !c.deleted).length}</span>
-      </h2>
+      <div className="column-head">
+        <h2>
+          {column.name} <span className="count">{cards.filter((c) => !c.deleted).length}</span>
+        </h2>
+        {!readOnly && movable.length > 0 && (
+          <div className="column-moves">
+            {prevColumn && (
+              <button type="button" className="btn btn-icon" onClick={() => moveAll(prevColumn)}
+                title={`Перенести все карточки в «${prevColumn.name}»`}>«</button>
+            )}
+            {nextColumn && (
+              <button type="button" className="btn btn-icon" onClick={() => moveAll(nextColumn)}
+                title={`Перенести все карточки в «${nextColumn.name}»`}>»</button>
+            )}
+          </div>
+        )}
+      </div>
       <div className="cards" ref={list}>
         {cards.map((card, i) => (
           <Card

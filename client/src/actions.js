@@ -331,6 +331,16 @@ export async function moveCardToColumn(id, columnId) {
   return moveCard(id, columnId, await arrivalPosition(columnId, id));
 }
 
+/** Moves the cards (`ids`, in their order) to another column, keeping that order. */
+export async function moveCardsToColumn(ids, columnId) {
+  await db.transaction('rw', db.cards, db.columns, async () => {
+    const column = await db.columns.get(columnId) ?? DEFAULT_COLUMNS.find((c) => c.id === columnId);
+    const order = column?.addToTop ? [...ids].reverse() : ids;
+    for (const id of order) await update('card', id, { columnId, position: await arrivalPosition(columnId, id) });
+  });
+  requestSync();
+}
+
 /** Moves the card to another project and/or section (`sectionId` null for the project itself). */
 export async function moveCardToGroup(id, { projectId, sectionId }) {
   const card = await db.cards.get(id);
