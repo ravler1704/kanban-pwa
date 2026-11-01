@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { addressToLink, pasteAsLink } from '../links.js';
+import { pasteAsLink } from '../links.js';
 import FieldLinks from './FieldLinks.jsx';
+import { useLinkMenu } from './LinkMenu.jsx';
 import Markdown from './Markdown.jsx';
 
 const MARKDOWN_HELP = 'Markdown: **жирный**, *курсив*, ~~зачёркнутый~~, `код`, [текст](адрес), '
@@ -10,23 +11,15 @@ const MARKDOWN_HELP = 'Markdown: **жирный**, *курсив*, ~~зачёр�
 export default function DescriptionField({ value, onChange, onCollapse, rows = 6 }) {
   const [preview, setPreview] = useState(false);
   const input = useRef(null);
-  // Selection to set once the changed text is rendered: [start, end].
-  const [select, setSelect] = useState(null);
+  // Caret to set once the pasted text is rendered.
+  const [caret, setCaret] = useState(null);
+  const linkMenu = useLinkMenu();
 
   useLayoutEffect(() => {
-    if (!select || !input.current) return;
-    input.current.focus();
-    input.current.setSelectionRange(...select);
-    setSelect(null);
-  }, [select]);
-
-  function makeWord(url) {
-    const next = addressToLink(value, url);
-    if (!next) return;
-    setPreview(false);
-    onChange(next.value);
-    setSelect(next.select);
-  }
+    if (caret == null || !input.current) return;
+    input.current.setSelectionRange(caret, caret);
+    setCaret(null);
+  }, [caret]);
 
   return (
     <div className="description-field">
@@ -47,8 +40,9 @@ export default function DescriptionField({ value, onChange, onCollapse, rows = 6
               if (!next) return;
               e.preventDefault();
               onChange(next.value);
-              setSelect([next.caret, next.caret]);
+              setCaret(next.caret);
             }}
+            onContextMenu={linkMenu.onContextMenu}
             onBlur={() => !value && onCollapse()}
             rows={rows}
             maxLength={10000}
@@ -56,17 +50,15 @@ export default function DescriptionField({ value, onChange, onCollapse, rows = 6
           />
         </label>
       )}
-      <div className="description-tools">
-        <span className="muted description-hint" title={MARKDOWN_HELP}>
-          Выделите слово и вставьте адрес — слово станет ссылкой
-        </span>
-        {value && (
-          <button type="button" className="btn btn-small" onClick={() => setPreview(!preview)}>
+      {linkMenu.menu}
+      {value && (
+        <div className="description-tools">
+          <button type="button" className="btn btn-small" title={MARKDOWN_HELP} onClick={() => setPreview(!preview)}>
             {preview ? 'Редактировать' : 'Просмотр'}
           </button>
-        )}
-      </div>
-      {!preview && <FieldLinks text={value} onMakeWord={makeWord} />}
+        </div>
+      )}
+      {!preview && <FieldLinks text={value} />}
     </div>
   );
 }

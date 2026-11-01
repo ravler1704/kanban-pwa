@@ -734,24 +734,35 @@ body {
 .attachment-remove:disabled { opacity: 0.4; cursor: default; }
 .reminder-input { display: flex; gap: 0.5rem; align-items: center; }
 .description-field { display: flex; flex-direction: column; gap: 0.35rem; }
-.description-tools { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
-.description-hint { font-size: 0.75rem; cursor: help; }
+.description-tools { display: flex; justify-content: flex-end; }
 .description-preview { min-height: 6rem; padding: 1.15rem 0.7rem 0.5rem; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); overflow-wrap: anywhere; }
 .field-links { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; font-size: 0.85rem; }
 .field-links .link { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.field-link { display: inline-flex; align-items: baseline; gap: 0.35rem; min-width: 0; max-width: 100%; }
-.field-link-word {
-  flex: none;
-  padding: 0;
+.context-menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 200px;
+  padding: 0.3rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
+}
+.context-menu-item {
+  display: block;
+  width: 100%;
+  padding: 0.4rem 0.6rem;
   border: none;
+  border-radius: 6px;
   background: none;
-  color: var(--muted);
+  color: var(--text);
   font: inherit;
-  font-size: 0.75rem;
-  text-decoration: underline dotted;
+  font-size: 0.9rem;
+  text-align: left;
   cursor: pointer;
 }
-.field-link-word:hover { color: var(--text); }
+.context-menu-item:hover, .context-menu-item:focus-visible { background: var(--card); outline: none; }
+.context-menu-sep { margin: 0.25rem 0; border: none; border-top: 1px solid var(--border); }
 a.link { color: var(--accent); overflow-wrap: anywhere; }
 .field-adds { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .btn.field-add { border-style: dashed; background: none; color: var(--muted); font-size: 0.85rem; }

@@ -53,18 +53,39 @@ export function pasteAsLink(el, pasted) {
   return { value: value.slice(0, start) + link + value.slice(end), caret: start + link.length };
 }
 
-export const LINK_WORD = 'ссылка';
+// A caret touching a link from outside is not in it; a selection may cover it whole.
+const covers = (from, to, start, end) => (start === end ? from < start && start < to : from <= start && end <= to);
 
 /**
- * The bare address `url` in `text` made a Markdown link with a placeholder word:
- * { value, select: [start, end] of the word }, or null if it isn't there.
+ * The link the selection [start, end] of the text is in: { from, to, label, url, href } for a Markdown
+ * link, { from, to, url, href, bare: true } for an address, or null.
  */
-export function addressToLink(text, url) {
-  let at = text.indexOf(url);
-  while (at > 0 && text.slice(at - 2, at) === '](') at = text.indexOf(url, at + 1);
-  if (at < 0) return null;
-  return {
-    value: `${text.slice(0, at)}[${LINK_WORD}](${url})${text.slice(at + url.length)}`,
-    select: [at + 1, at + 1 + LINK_WORD.length],
-  };
+export function linkAt(text, start, end) {
+  for (const m of text.matchAll(MD_LINK_RE)) {
+    const from = m.index;
+    const to = from + m[0].length;
+    if (covers(from, to, start, end)) {
+      const href = safeHref(m[2]);
+      return href ? { from, to, label: m[1], url: m[2], href } : null;
+    }
+  }
+  // Markdown links blanked out with the same length, so that positions stay.
+  const rest = text.replace(MD_LINK_RE, (whole) => ' '.repeat(whole.length));
+  let from = 0;
+  for (const part of splitLinks(rest)) {
+    const length = typeof part === 'string' ? part.length : part.url.length;
+    if (typeof part !== 'string' && covers(from, from + length, start, end)) {
+      return { from, to: from + length, url: part.url, href: part.href, bare: true };
+    }
+    from += length;
+  }
+  return null;
+}
+
+/** An address typed by hand: `example.com` gets `https://`; null if it can't be a link. */
+export function normalizeAddress(input) {
+  const url = input.trim();
+  if (!url || /\s/.test(url)) return null;
+  if (safeHref(url)) return url;
+  return /^[^\s/:]+\.[^\s/:]+/.test(url) ? `https://${url}` : null;
 }
