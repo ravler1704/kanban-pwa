@@ -418,7 +418,7 @@ body {
 .manage-field .manage-input { width: 100%; padding-left: 0.7rem; padding-right: 0.7rem; border-color: var(--border); }
 .manage-field .manage-input:focus { border-color: var(--accent); }
 .manage-row > .btn, .manage-add > .btn { align-self: stretch; }
-.manage-row > .manage-place { flex: none; width: auto; }
+.manage-row > .manage-place { flex: none; width: auto; min-width: 10rem; }
 .manage-row { flex-wrap: wrap; }
 .manage-row > .manage-field { flex: 1 1 10rem; }
 @media (max-width: 520px) {

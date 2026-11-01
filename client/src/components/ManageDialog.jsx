@@ -190,12 +190,15 @@ function ColumnsEditor({ setId, columns }) {
         <div key={c.id} className="manage-row">
           <NameInput value={c.name} label="Название колонки" maxLength={100}
             onSave={(name) => renameColumn(c.id, name)} />
-          <select className="select manage-place" value={c.addToTop ? 'top' : 'bottom'}
-            title="Куда ставить новые и перенесённые карточки" aria-label="Куда ставить карточки"
-            onChange={(e) => setColumnAddToTop(c.id, e.target.value === 'top')}>
-            <option value="bottom">В конец</option>
-            <option value="top">В начало</option>
-          </select>
+          <label className="field manage-place">
+            <span className="field-label">Новые карточки</span>
+            <select className="select" value={c.addToTop ? 'top' : 'bottom'}
+              title="Куда ставить новые и перенесённые карточки"
+              onChange={(e) => setColumnAddToTop(c.id, e.target.value === 'top')}>
+              <option value="bottom">В конец</option>
+              <option value="top">В начало</option>
+            </select>
+          </label>
           <button className="btn btn-small" title="Выше" aria-label="Выше" disabled={i === 0}
             onClick={() => moveColumn(c.id, -1)}>↑</button>
           <button className="btn btn-small" title="Ниже" aria-label="Ниже" disabled={i === columns.length - 1}
