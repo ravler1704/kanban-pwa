@@ -1,17 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { EventText, parseEvent, useCardNumbers } from '../chatEvents.jsx';
 import Avatar from './Avatar.jsx';
+import Linkified from './Linkified.jsx';
 
-const URL_RE = /(https?:\/\/[^\s<>"]+[^\s<>".,;:!?)\]}'»])/g;
 // Phones put a line break on Enter; elsewhere Enter sends and Shift+Enter breaks the line.
 const coarsePointer = () => window.matchMedia?.('(pointer: coarse)').matches;
 const GROUP_MS = 5 * 60 * 1000;
-
-function Linkified({ text }) {
-  return text.split(URL_RE).map((part, i) => (i % 2
-    ? <a key={i} href={part} target="_blank" rel="noopener noreferrer">{part}</a>
-    : part));
-}
 
 const time = (ts) => new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 

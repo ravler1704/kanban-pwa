@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { uploadStore } from '../files.js';
 import { splitTags, tagKey } from '../tags.js';
+import Linkified from './Linkified.jsx';
 
 function formatReminder(ts) {
   const d = new Date(ts);
@@ -59,8 +60,15 @@ function UploadBadge({ cardId }) {
   );
 }
 
-/** Text with its #tags as buttons that toggle the tag filter; `activeTags` are the filtered tag keys. */
+/**
+ * Text with its links and its #tags as buttons that toggle the tag filter; `activeTags` are the
+ * filtered tag keys.
+ */
 function TaggedText({ text, activeTags, onTag }) {
+  return <Linkified text={text} renderText={(part) => <Tags text={part} activeTags={activeTags} onTag={onTag} />} />;
+}
+
+function Tags({ text, activeTags, onTag }) {
   return splitTags(text).map((part, i) => {
     if (typeof part === 'string') return part;
     const active = activeTags.has(tagKey(part.tag));

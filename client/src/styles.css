@@ -714,6 +714,10 @@ body {
 .attachment-remove:hover:not(:disabled) { color: var(--danger); }
 .attachment-remove:disabled { opacity: 0.4; cursor: default; }
 .reminder-input { display: flex; gap: 0.5rem; align-items: center; }
+.description-field { display: flex; flex-direction: column; gap: 0.35rem; }
+.field-links { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; font-size: 0.85rem; }
+.field-links .link { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+a.link { color: var(--accent); overflow-wrap: anywhere; }
 .field-adds { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .btn.field-add { border-style: dashed; background: none; color: var(--muted); font-size: 0.85rem; }
 .reminder-input input { flex: 1; min-width: 0; }

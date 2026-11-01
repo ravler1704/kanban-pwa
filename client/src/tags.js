@@ -1,3 +1,5 @@
+import { splitLinks } from './links.js';
+
 // #tag: letters, digits, _ and -, after the start of the text or a non-word character.
 // Only digits (#2, «задача #15») is a number, not a tag.
 const TAG_RE = /(^|[^\p{L}\p{N}_])#([\p{L}\p{N}_][\p{L}\p{N}_-]*)/gu;
@@ -22,11 +24,17 @@ export function splitTags(text) {
   return parts;
 }
 
+/** Tag names of the text, in order; a link's #fragment is not a tag. */
+export function tagNames(text) {
+  return splitLinks(text).filter((piece) => typeof piece === 'string')
+    .flatMap((piece) => splitTags(piece).filter((part) => typeof part !== 'string').map((part) => part.tag));
+}
+
 /** Keys of the card's tags from its title and description. */
 export function tagsOf(card) {
   const keys = new Set();
   for (const text of [card.title, card.description]) {
-    for (const part of splitTags(text)) if (typeof part !== 'string') keys.add(tagKey(part.tag));
+    for (const name of tagNames(text)) keys.add(tagKey(name));
   }
   return keys;
 }

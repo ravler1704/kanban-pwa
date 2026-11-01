@@ -3,6 +3,7 @@ import { deleteCard, moveCardToColumn, moveCardToGroup, updateCard } from '../ac
 import Attachments from './Attachments.jsx';
 import CardExtraFields from './CardExtraFields.jsx';
 import Comments from './Comments.jsx';
+import Linkified from './Linkified.jsx';
 import Modal from './Modal.jsx';
 import { GroupSelect } from './NewCardDialog.jsx';
 import { matchColumn } from '../columnSets.js';
@@ -21,14 +22,16 @@ function CardView({ card, columnsOfProject, groups, onClose }) {
   return (
     <Modal title={card.number ? `Карточка #${card.number}` : 'Карточка'} onClose={onClose}>
       <div className="editor card-view">
-        <h3 className="card-view-title">{card.title || <em className="muted">Без названия</em>}</h3>
+        <h3 className="card-view-title">
+          {card.title ? <Linkified text={card.title} /> : <em className="muted">Без названия</em>}
+        </h3>
         <p className="muted">
           {[column?.name, section?.name].filter(Boolean).join(' · ')}
           {card.remindAt && ` · напоминание ${new Date(card.remindAt).toLocaleString('ru-RU', {
             day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
           })}`}
         </p>
-        {card.description && <p className="card-view-desc">{card.description}</p>}
+        {card.description && <p className="card-view-desc"><Linkified text={card.description} /></p>}
         <Attachments card={card} readOnly />
         <CardComments card={card} />
         <div className="actions">

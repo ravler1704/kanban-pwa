@@ -16,7 +16,7 @@ import NewCardDialog, { defaultTarget } from './components/NewCardDialog.jsx';
 import CalendarView from './components/CalendarView.jsx';
 import ChatDialog from './components/ChatDialog.jsx';
 import PeopleBar from './components/People.jsx';
-import { splitTags, tagKey, tagsOf } from './tags.js';
+import { tagKey, tagNames, tagsOf } from './tags.js';
 import { liveSpaces, spaceIdOf } from './spaces.js';
 
 const VIEW_KEY = 'view';
@@ -342,10 +342,9 @@ export default function App() {
   const tagStats = new Map();
   for (const card of inScope) {
     for (const text of [card.title, card.description]) {
-      for (const part of splitTags(text)) {
-        if (typeof part === 'string') continue;
-        const key = tagKey(part.tag);
-        if (!tagStats.has(key)) tagStats.set(key, { key, name: part.tag, cards: new Set() });
+      for (const name of tagNames(text)) {
+        const key = tagKey(name);
+        if (!tagStats.has(key)) tagStats.set(key, { key, name, cards: new Set() });
         tagStats.get(key).cards.add(card.id);
       }
     }
