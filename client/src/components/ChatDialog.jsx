@@ -11,7 +11,7 @@ import { isUnread, seenStore } from '../seen.js';
 import { syncStatus } from '../sync.js';
 import Avatar from './Avatar.jsx';
 import ChatThread from './ChatThread.jsx';
-import Comments from './Comments.jsx';
+import Comments, { HistoryToggle } from './Comments.jsx';
 import Modal from './Modal.jsx';
 
 const preview = (text) => (text.length > 80 ? `${text.slice(0, 79)}…` : text);
@@ -280,9 +280,12 @@ export default function ChatDialog({ spaces, projects, thread: initialThread, on
                   <>
                     <CardAvatar />
                     <strong className="chat-pane-title">{cardTitle(card)}</strong>
-                    <button type="button" className="btn btn-small chat-open-card" onClick={() => onOpenCard(card.id)}>
-                      Открыть карточку
-                    </button>
+                    <span className="chat-pane-actions">
+                      <HistoryToggle />
+                      <button type="button" className="btn btn-small" onClick={() => onOpenCard(card.id)}>
+                        Открыть карточку
+                      </button>
+                    </span>
                   </>
                 )}
                 {peer && <><Avatar user={peer} size={28} /><strong>{personName(peer)}</strong></>}

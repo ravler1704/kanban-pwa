@@ -12,7 +12,7 @@ import TitleField from './TitleField.jsx';
 
 /** Comments sent right away, apart from the card's «Сохранить», among the notes of what was done with it. */
 function CardComments({ card }) {
-  return <Comments card={card} title="Комментарии и история" className="chat-embedded" />;
+  return <Comments card={card} title="Комментарии" className="chat-embedded" />;
 }
 
 /** The card without editing: a view-only public link. */

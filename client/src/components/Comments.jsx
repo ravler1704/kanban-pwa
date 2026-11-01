@@ -43,6 +43,35 @@ export function useComments({ cardId, projectId, spaceId }) {
   return comments ? live.map(toMessage) : null;
 }
 
+const HISTORY_HIDDEN_KEY = 'cardHistoryHidden';
+const historyListeners = new Set();
+const historyStore = {
+  subscribe(listener) {
+    historyListeners.add(listener);
+    return () => historyListeners.delete(listener);
+  },
+  hidden: () => localStorage.getItem(HISTORY_HIDDEN_KEY) === '1',
+  toggle() {
+    localStorage.setItem(HISTORY_HIDDEN_KEY, historyStore.hidden() ? '0' : '1');
+    historyListeners.forEach((l) => l());
+  },
+};
+
+/** Whether the notes of what was done with a card are hidden in its chat, on this device. */
+const useHistoryHidden = () => useSyncExternalStore(historyStore.subscribe, historyStore.hidden);
+
+/** Shows or hides the notes in card chats. */
+export function HistoryToggle() {
+  const hidden = useHistoryHidden();
+  return (
+    <button type="button" className={`btn btn-small history-toggle ${hidden ? '' : 'active'}`}
+      aria-pressed={!hidden} onClick={historyStore.toggle}
+      title={hidden ? 'Показать действия с карточкой' : 'Скрыть действия с карточкой'}>
+      История
+    </button>
+  );
+}
+
 /**
  * The chat of a card (`card`), a project (`projectId`) or a space (`spaceId`). Signed-in people write;
  * through a public link comments are only shown. The board's owner may delete anyone's.
@@ -51,11 +80,13 @@ export default function Comments({ card, projectId, spaceId, title, className, p
   const { user } = useSyncExternalStore(authState.subscribe, authState.get);
   const where = card ? { cardId: card.id, projectId: card.projectId }
     : spaceId ? { cardId: null, projectId: null, spaceId } : { cardId: null, projectId };
-  const messages = useComments(where);
+  const all = useComments(where);
+  const historyHidden = useHistoryHidden();
   const me = user?.id ?? '';
   const canWrite = !publicToken;
 
-  if (!messages) return null;
+  if (!all) return null;
+  const messages = card && historyHidden ? all.filter((m) => !m.event) : all;
   if (!canWrite && messages.length === 0) return null;
 
   const thread = (
@@ -76,7 +107,10 @@ export default function Comments({ card, projectId, spaceId, title, className, p
   const count = messages.filter((m) => !m.event).length;
   return (
     <section className="comments">
-      <h4>{title}{count > 0 && <span className="muted"> · {count}</span>}</h4>
+      <div className="comments-head">
+        <h4>{title}{count > 0 && <span className="muted"> · {count}</span>}</h4>
+        {card && <HistoryToggle />}
+      </div>
       {thread}
     </section>
   );

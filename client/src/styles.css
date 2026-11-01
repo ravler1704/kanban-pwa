@@ -939,7 +939,8 @@ a.btn { display: inline-block; text-decoration: none; }
 .card-comments-unread { color: var(--accent); font-weight: 600; }
 
 .comments { margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
-.comments h4 { margin: 0 0 0.5rem; }
+.comments h4 { margin: 0; }
+.comments-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.5rem; }
 
 .chat { display: flex; flex-direction: column; gap: 0.5rem; min-height: 0; }
 .chat-messages {
@@ -1085,7 +1086,9 @@ a.btn { display: inline-block; text-decoration: none; }
 .chat-event-card:hover { text-decoration: underline; }
 .chat-event .chat-time { flex: none; float: none; margin: 0.1rem 0 0; }
 .chat-pane-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.chat-open-card { margin-left: auto; flex: none; }
+.chat-pane-actions { margin-left: auto; flex: none; display: flex; gap: 0.35rem; }
+.history-toggle { color: var(--muted); }
+.history-toggle.active { color: var(--text); border-color: var(--accent); }
 .chat-list-subtitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.75rem; }
 .chat-pane-empty { margin: auto; }
 .chat-back { display: none; }
