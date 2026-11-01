@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { uploadStore } from '../files.js';
 import { splitTags, tagKey } from '../tags.js';
-import Linkified from './Linkified.jsx';
+import Markdown from './Markdown.jsx';
 
 function formatReminder(ts) {
   const d = new Date(ts);
@@ -61,11 +61,14 @@ function UploadBadge({ cardId }) {
 }
 
 /**
- * Text with its links and its #tags as buttons that toggle the tag filter; `activeTags` are the
- * filtered tag keys.
+ * Text with Markdown and its #tags as buttons that toggle the tag filter; `activeTags` are the
+ * filtered tag keys. `inline`: one line (the title).
  */
-function TaggedText({ text, activeTags, onTag }) {
-  return <Linkified text={text} renderText={(part) => <Tags text={part} activeTags={activeTags} onTag={onTag} />} />;
+function TaggedText({ text, inline, activeTags, onTag }) {
+  return (
+    <Markdown text={text} inline={inline}
+      renderText={(part) => <Tags text={part} activeTags={activeTags} onTag={onTag} />} />
+  );
 }
 
 function Tags({ text, activeTags, onTag }) {
@@ -122,7 +125,7 @@ export default function Card({
       )}
       <div className="card-title">
         {card.title
-          ? <TaggedText text={card.title} activeTags={activeTags} onTag={onTag} />
+          ? <TaggedText text={card.title} inline activeTags={activeTags} onTag={onTag} />
           : <em className="muted">Без названия</em>}
       </div>
       {card.description && (

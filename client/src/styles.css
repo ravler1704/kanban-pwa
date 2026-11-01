@@ -655,6 +655,14 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+.md > * { margin: 0; }
+.md > * + * { margin-top: 0.35em; }
+.md ul, .md ol { padding-left: 1.3em; }
+.md blockquote { padding-left: 0.6em; border-left: 3px solid var(--border); color: var(--muted); }
+.md-heading { font-weight: 700; }
+.md-code, .md-pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; background: color-mix(in srgb, var(--text) 10%, transparent); border-radius: 4px; }
+.md-code { padding: 0.05em 0.3em; }
+.md-pre { padding: 0.4em 0.6em; white-space: pre-wrap; overflow-x: auto; }
 .card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 0.4rem; min-height: 1.6rem; }
 .card-badges { display: flex; gap: 0.3rem; flex-wrap: wrap; align-items: center; }
 .card-moves { display: flex; gap: 0.25rem; }
@@ -726,6 +734,9 @@ body {
 .attachment-remove:disabled { opacity: 0.4; cursor: default; }
 .reminder-input { display: flex; gap: 0.5rem; align-items: center; }
 .description-field { display: flex; flex-direction: column; gap: 0.35rem; }
+.description-tools { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.description-hint { font-size: 0.75rem; }
+.description-preview { min-height: 6rem; padding: 1.15rem 0.7rem 0.5rem; border: 1px solid var(--border); border-radius: 8px; background: var(--panel); overflow-wrap: anywhere; }
 .field-links { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; font-size: 0.85rem; }
 .field-links .link { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 a.link { color: var(--accent); overflow-wrap: anywhere; }

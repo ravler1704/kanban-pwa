@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { EventText, parseEvent, useCardNumbers } from '../chatEvents.jsx';
 import Avatar from './Avatar.jsx';
-import Linkified from './Linkified.jsx';
+import Markdown from './Markdown.jsx';
 
 // Phones put a line break on Enter; elsewhere Enter sends and Shift+Enter breaks the line.
 const coarsePointer = () => window.matchMedia?.('(pointer: coarse)').matches;
@@ -157,7 +157,7 @@ export default function ChatThread({
                       if (e.target.closest('a')) return;
                       setSelected(selected === m.id ? null : m.id);
                     }}>
-                    <span className="chat-text"><Linkified text={m.text} /></span>
+                    <div className="chat-text"><Markdown text={m.text} /></div>
                     <span className="chat-time" title={new Date(m.createdAt).toLocaleString('ru-RU')}>
                       {m.editedAt ? 'изм. ' : ''}{time(m.createdAt)}{m.pending ? ' · не отправлено' : ''}
                     </span>
