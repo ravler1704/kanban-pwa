@@ -1263,3 +1263,16 @@ a.btn { display: inline-block; text-decoration: none; }
 .check-menu-fold svg { transition: transform 0.15s; }
 .check-menu-fold[aria-expanded="true"] svg { transform: rotate(90deg); }
 .check-menu-fold-space { flex: none; width: calc(14px + 0.3rem); }
+.check-menu-folds { display: flex; justify-content: flex-end; gap: 0.25rem; padding: 0.2rem 0.2rem 0; }
+.check-menu-fold-all {
+  padding: 0.15rem 0.45rem;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.check-menu-fold-all:hover:not(:disabled) { background: var(--card); }
+.check-menu-fold-all:disabled { color: var(--muted); opacity: 0.5; cursor: default; }

@@ -33,12 +33,16 @@ export default function CheckPicker({
   });
   const root = useRef(null);
 
+  function saveCollapsed(next) {
+    setCollapsed(next);
+    if (collapseKey) localStorage.setItem(collapseKey, JSON.stringify([...next]));
+  }
+
   function toggleCollapsed(key) {
     const next = new Set(collapsed);
     if (next.has(key)) next.delete(key);
     else next.add(key);
-    setCollapsed(next);
-    if (collapseKey) localStorage.setItem(collapseKey, JSON.stringify([...next]));
+    saveCollapsed(next);
   }
 
   useEffect(() => {
@@ -73,6 +77,7 @@ export default function CheckPicker({
     unfolded.push({ ...item, nested: hasNested(i) });
     if (hasNested(i) && collapsed.has(item.key)) foldedAt = depth;
   });
+  const foldable = items.filter((_, i) => hasNested(i)).map((i) => i.key);
   const found = query
     ? items.filter((i) => [i.name, i.group ?? ''].some((text) => text.toLowerCase().includes(query)))
     : unfolded;
@@ -104,6 +109,14 @@ export default function CheckPicker({
               onToggle(found[0].key);
               setSearch('');
             }} />
+          {tree && !query && foldable.length > 0 && (
+            <div className="check-menu-folds">
+              <button type="button" className="check-menu-fold-all" disabled={!foldable.some((k) => collapsed.has(k))}
+                onClick={() => saveCollapsed(new Set())}>Развернуть все</button>
+              <button type="button" className="check-menu-fold-all" disabled={foldable.every((k) => collapsed.has(k))}
+                onClick={() => saveCollapsed(new Set(foldable))}>Свернуть все</button>
+            </div>
+          )}
           {onSetAll && !query && items.length > 1 && (
             <label className="check-menu-item check-menu-all">
               <input type="checkbox" checked={allChecked}
