@@ -17,21 +17,26 @@ const CheckIcon = () => svg(<path d="m5 12 5 5 9-10" />);
 const SearchIcon = () => svg(<><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>, 16);
 const BackIcon = () => svg(<path d="m15 18-6-6 6-6" />);
 
-/** One line of the picker: picks on click; `onOpen` adds an arrow that opens the folder. */
-function PickerRow({ icon, name, meta, selected, disabled, onPick, onOpen, openLabel, accent = false }) {
+/**
+ * One line of the picker. With `onOpen` a click on the line opens the folder and `onPick` moves to a
+ * separate «Выбрать» button; without it the click picks.
+ */
+function PickerRow({ icon, name, meta, selected, disabled, onPick, onOpen, accent = false }) {
   return (
     <li className={`fp-row ${selected ? 'fp-row-selected' : ''} ${accent ? 'fp-row-accent' : ''}`}>
-      <button type="button" className="fp-pick" disabled={disabled} onClick={onPick}>
+      <button type="button" className="fp-pick" disabled={!onOpen && disabled} onClick={onOpen ?? onPick}
+        title={onOpen ? 'Открыть папку' : undefined}>
         <span className="fp-icon">{icon}</span>
         <span className="fp-text">
           <span className="fp-name">{name}</span>
           {meta && <span className="fp-meta">{meta}</span>}
         </span>
         {selected && <span className="fp-check"><CheckIcon /></span>}
+        {onOpen && <span className="fp-chevron"><Chevron /></span>}
       </button>
-      {onOpen && (
-        <button type="button" className="fp-open" title="Открыть папку" aria-label={openLabel} onClick={onOpen}>
-          <Chevron />
+      {onOpen && !disabled && (
+        <button type="button" className="fp-select" aria-label={`Выбрать «${name}»`} onClick={onPick}>
+          Выбрать
         </button>
       )}
     </li>
@@ -41,8 +46,9 @@ function PickerRow({ icon, name, meta, selected, disabled, onPick, onOpen, openL
 const countLabel = (n) => `${n} ${plural(n, 'папка', 'папки', 'папок')}`;
 
 /**
- * The folders one level at a time, like in the board settings: a row picks the folder, its arrow opens it;
- * inside a folder the first row picks the folder itself. Folders in `exclude` can't be picked but can be
+ * The folders one level at a time, like in the board settings: a row with subfolders opens on click and is
+ * picked with its «Выбрать» button, a row without them is picked on click; inside a folder the first row
+ * picks the folder itself. Folders in `exclude` can't be picked but can be
  * opened when something inside them can.
  */
 function FolderPickerDialog({ title, folders, value, exclude, topLabel, onPick, onClose }) {
@@ -112,7 +118,7 @@ function FolderPickerDialog({ title, folders, value, exclude, topLabel, onPick, 
             <PickerRow key={f.id} icon={<FolderIcon />} name={f.name}
               meta={where || (kids ? countLabel(kids) : null)}
               selected={f.id === value} disabled={!pickable(f)} onPick={() => pick(f.id)}
-              onOpen={!needle && openable(f) ? () => open(f.id) : null} openLabel={`Открыть «${f.name}»`} />
+              onOpen={!needle && openable(f) ? () => open(f.id) : null} />
           );
         })}
         {list.length === 0 && (
