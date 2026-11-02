@@ -23,7 +23,7 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const url = new URL(event.notification.data?.url || '/', self.location.origin);
   const cardId = url.searchParams.get('card');
-  // A project's chat ('project:<id>') or direct messages ('dm:<user id>').
+  // A folder's chat ('folder:<id>') or direct messages ('dm:<user id>').
   const chat = url.searchParams.get('chat');
   // The board the card or chat is on (the owner's id); the app switches to it if needed.
   const board = url.searchParams.get('board');

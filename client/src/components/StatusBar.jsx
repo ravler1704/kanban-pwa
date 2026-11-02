@@ -33,7 +33,7 @@ function formatTime(ts) {
   return ts ? new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '—';
 }
 
-/** On a public link: whose project it is and what the visitor may do. */
+/** On a public link: whose folder it is and what the visitor may do. */
 function PublicTitle() {
   const { info } = usePublicLink();
   const owner = info?.owner?.name;
@@ -41,14 +41,14 @@ function PublicTitle() {
     <div className="statusbar-user">
       {info?.owner && <Avatar user={info.owner} />}
       <h1 className="statusbar-title" title={owner ? `Владелец: ${owner}` : undefined}>
-        {info?.project.name ?? 'Проект'}
+        {info?.project.name ?? 'Папка'}
       </h1>
       {info && <span className="badge public-mode">{info.mode === 'edit' ? 'Можно редактировать' : 'Только просмотр'}</span>}
     </div>
   );
 }
 
-export default function StatusBar({ pending, conflicts, spaces, projects, onChat }) {
+export default function StatusBar({ pending, conflicts, folders, onChat }) {
   const s = useSyncExternalStore(syncStatus.subscribe, syncStatus.get);
   const { user } = useSyncExternalStore(authState.subscribe, authState.get);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -102,7 +102,7 @@ export default function StatusBar({ pending, conflicts, spaces, projects, onChat
             <AccountIcon />
           </button>
         )}
-        {user && !publicToken && <ChatButton spaces={spaces} projects={projects} onChat={onChat} />}
+        {user && !publicToken && <ChatButton folders={folders} onChat={onChat} />}
       </div>
       {accountOpen && <AccountDialog onClose={() => setAccountOpen(false)} />}
     </header>

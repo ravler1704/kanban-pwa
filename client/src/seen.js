@@ -1,7 +1,7 @@
 import { dbName } from './board.js';
 
-// Until when this device has read each thread of comments: `card:<id>` (a card's comments),
-// `project:<id>` and `space:<id>` (a project's or space's chat). Comments from before the first start of this build count as
+// Until when this device has read each thread of comments: `card:<id>` (a card's comments) and
+// `folder:<id>` (a folder's chat). Comments from before the first start of this build count as
 // read, so an existing board does not light up everywhere at once.
 
 const KEY = `seen:${dbName}`;
@@ -13,7 +13,15 @@ const since = Number(localStorage.getItem(SINCE_KEY)) || 0;
 function read() {
   try {
     const map = JSON.parse(localStorage.getItem(KEY));
-    return map && typeof map === 'object' ? map : {};
+    if (!map || typeof map !== 'object') return {};
+    // Projects and spaces became folders with the same ids.
+    for (const key of Object.keys(map)) {
+      const legacy = key.match(/^(?:project|space):(.+)$/);
+      if (!legacy) continue;
+      map[`folder:${legacy[1]}`] = Math.max(map[`folder:${legacy[1]}`] ?? 0, map[key]);
+      delete map[key];
+    }
+    return map;
   } catch {
     return {};
   }
@@ -37,10 +45,7 @@ export function markSeen(thread, at) {
   for (const l of listeners) l();
 }
 
-export const threadOf = (comment) => {
-  if (comment.cardId) return `card:${comment.cardId}`;
-  return comment.spaceId ? `space:${comment.spaceId}` : `project:${comment.projectId}`;
-};
+export const threadOf = (comment) => (comment.cardId ? `card:${comment.cardId}` : `folder:${comment.folderId}`);
 
 /** Whether `comment` is one the user (`me`) has not read yet; notes of changes don't count. */
 export const isUnread = (seenMap, comment, me) => !comment.deleted && !comment.event && comment.authorId !== me

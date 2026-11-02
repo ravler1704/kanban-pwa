@@ -2,7 +2,7 @@ import Dexie from 'dexie';
 import { dbName } from './board.js';
 
 /**
- * Every synced record (project, section, card) stores:
+ * Every synced record (folder, card, comment, column set, column) stores:
  *   ...fields   — current local values
  *   server      — last state confirmed by the server (null if never synced)
  *   dirty       — 1 when local values differ from `server` (IndexedDB can't index booleans)
@@ -136,7 +136,7 @@ db.version(10).stores({
 });
 
 // v11: spaces, the top level of the board. Projects synced before them are in «Личное».
-export const DEFAULT_SPACE_ID = 'personal';
+export const DEFAULT_FOLDER_ID = 'personal';
 
 db.version(11)
   .stores({
@@ -150,41 +150,128 @@ db.version(11)
     meta: 'key',
   })
   .upgrade((tx) => tx.table('projects').toCollection().modify((p) => {
-    p.spaceId ??= DEFAULT_SPACE_ID;
-    if (p.server) p.server.spaceId ??= DEFAULT_SPACE_ID;
+    p.spaceId ??= DEFAULT_FOLDER_ID;
+    if (p.server) p.server.spaceId ??= DEFAULT_FOLDER_ID;
   }));
 
-// Push order matters: parents are created on the server before their children.
+/**
+ * The folder record made of an old space (parent null), project (parent: its space, keeps the column set)
+ * or section (parent: its project). Ids stay the same as on the server, which converted the same way.
+ */
+function toFolder(record, parentOf, columnSetOf) {
+  const fields = (r) => ({
+    parentId: parentOf(r), columnSetId: columnSetOf(r), name: r.name ?? '', position: r.position ?? 0,
+    deleted: !!r.deleted, hidden: !!r.hidden,
+  });
+  const { spaceId, projectId, ...rest } = record;
+  const folder = { ...rest, ...fields(record) };
+  if (record.server) {
+    const { spaceId: s, projectId: p, ...server } = record.server;
+    folder.server = { ...server, ...fields(record.server) };
+  }
+  return folder;
+}
+
+// v12: nested folders replace spaces, projects and sections; cards and comments point at a folder.
+// The old tables stay in this version so the upgrade can read them and are dropped in v13.
+db.version(12)
+  .stores({
+    folders: 'id, parentId, dirty',
+    spaces: 'id, dirty',
+    columnSets: 'id, dirty',
+    columns: 'id, dirty',
+    projects: 'id, dirty',
+    sections: 'id, projectId, dirty',
+    cards: 'id, folderId, dirty',
+    comments: 'id, cardId, folderId, dirty',
+    meta: 'key',
+  })
+  .upgrade(async (tx) => {
+    const folders = [];
+    for (const s of await tx.table('spaces').toArray()) folders.push(toFolder(s, () => null, () => null));
+    for (const p of await tx.table('projects').toArray()) {
+      folders.push(toFolder(p, (r) => r.spaceId ?? DEFAULT_FOLDER_ID, (r) => r.columnSetId ?? DEFAULT_SET_ID));
+    }
+    for (const s of await tx.table('sections').toArray()) folders.push(toFolder(s, (r) => r.projectId, () => null));
+    for (const f of folders) {
+      const server = f.server ?? null;
+      f.dirty = !server || FOLDER_FIELDS.some((k) => !sameValue(f[k], server[k])) ? 1 : 0;
+    }
+    await tx.table('folders').bulkPut(folders);
+
+    // A card of a section lives in that folder, otherwise in the project's.
+    await tx.table('cards').toCollection().modify((c) => {
+      const folderOf = (r) => r.sectionId || r.projectId;
+      c.folderId ??= folderOf(c);
+      if (c.server) c.server.folderId ??= folderOf(c.server);
+      for (const r of [c, c.server]) {
+        if (r) {
+          delete r.projectId;
+          delete r.sectionId;
+        }
+      }
+      if (c.server) c.dirty = CARD_FIELDS.some((k) => !sameValue(c[k], c.server[k])) ? 1 : 0;
+    });
+    await tx.table('comments').toCollection().modify((c) => {
+      const folderOf = (r) => r.spaceId || r.projectId || null;
+      c.folderId ??= folderOf(c);
+      if (c.server) c.server.folderId ??= folderOf(c.server);
+      for (const r of [c, c.server]) {
+        if (r) {
+          delete r.projectId;
+          delete r.spaceId;
+        }
+      }
+    });
+    // The schema changed: the next pull starts over and brings the server's folders.
+    await tx.table('meta').delete('schema');
+  });
+
+// v13: the old tables are gone.
+db.version(13).stores({
+  folders: 'id, parentId, dirty',
+  spaces: null,
+  columnSets: 'id, dirty',
+  columns: 'id, dirty',
+  projects: null,
+  sections: null,
+  cards: 'id, folderId, dirty',
+  comments: 'id, cardId, folderId, dirty',
+  meta: 'key',
+});
+
+const FOLDER_FIELDS = ['parentId', 'columnSetId', 'name', 'position', 'deleted', 'hidden'];
+const CARD_FIELDS = ['folderId', 'columnId', 'title', 'description', 'position', 'deleted', 'remindAt', 'attachments', 'number'];
+
+// Push order matters: columns and sets before the folders that use them, folders before their cards.
+// Folders among themselves go parents first (see sortFolders in sync.js).
 export const TYPES = {
-  space: { table: 'spaces', fields: ['name', 'position', 'deleted'] },
   columnSet: { table: 'columnSets', fields: ['name', 'position', 'deleted'] },
   column: { table: 'columns', fields: ['setId', 'name', 'position', 'deleted', 'addToTop'] },
-  // hidden (projects, sections): no longer set; read once to convert an older selection.
-  project: { table: 'projects', fields: ['spaceId', 'columnSetId', 'name', 'position', 'deleted', 'hidden'] },
-  section: { table: 'sections', fields: ['projectId', 'name', 'position', 'deleted', 'hidden'] },
+  // Folders nest to any depth: parentId null is a root. columnSetId null: the set of the nearest
+  // ancestor that has one (see folders.js). hidden: no longer set; read once to convert an older selection.
+  folder: { table: 'folders', fields: FOLDER_FIELDS },
   card: {
     table: 'cards',
-    // sectionId is null for cards that belong to the project directly.
     // remindAt: Unix time in ms of the push reminder, or null.
     // attachments: [{ id, name, size, type, addedAt }], changed by the server only (files.js).
     // number: #1, #2, … within the board, given by the server (null until the card is synced).
-    fields: ['projectId', 'sectionId', 'columnId', 'title', 'description', 'position', 'deleted', 'remindAt', 'attachments', 'number'],
+    fields: CARD_FIELDS,
   },
-  // A comment on a card, or (cardId null) a message of the project's chat, or (spaceId set, projectId
-  // null) of the space's chat. The server sets the author fields and editedAt; `event` (JSON, see
-  // chatEvents.jsx) is the server's note of a change in the project or space.
+  // A comment on a card, or (cardId null) a message of the folder's chat. The server sets the author
+  // fields and editedAt; `event` (JSON, see chatEvents.jsx) is the server's note of a change in the folder.
   comment: {
     table: 'comments',
-    fields: ['cardId', 'projectId', 'spaceId', 'text', 'authorId', 'authorName', 'authorPicture', 'createdAt', 'editedAt', 'deleted', 'event'],
+    fields: ['cardId', 'folderId', 'text', 'authorId', 'authorName', 'authorPicture', 'createdAt', 'editedAt', 'deleted', 'event'],
   },
 };
 
 export async function clearLocalData() {
-  const tables = [db.spaces, db.columnSets, db.columns, db.projects, db.sections, db.cards, db.comments, db.meta];
+  const tables = [db.folders, db.columnSets, db.columns, db.cards, db.comments, db.meta];
   await db.transaction('rw', tables, () => Promise.all(tables.map((t) => t.clear())));
 }
 
-// New projects get this set while it exists.
+// New root folders get this set while it exists.
 export const SIMPLE_SET_ID = 'simple';
 
 // Same ids as the sets and columns the server creates, so cards added before the first sync land in them.

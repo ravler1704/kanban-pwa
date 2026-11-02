@@ -133,41 +133,21 @@ db.exec(`
   );
 `);
 
-// People invited to projects of a board. Access follows the e-mail: whoever signs in with an
-// account that has this address (or links one) gets these projects.
+// People invited to folders of a board (the folder and its descendants). Access follows the e-mail.
 db.exec(`
-  CREATE TABLE IF NOT EXISTS project_members (
+  CREATE TABLE IF NOT EXISTS folder_members (
     board       TEXT    NOT NULL,
-    project     TEXT    NOT NULL,
+    folder      TEXT    NOT NULL,
     email       TEXT    NOT NULL,
     added_at    INTEGER NOT NULL,
-    PRIMARY KEY (board, project, email)
+    PRIMARY KEY (board, folder, email)
   );
-  CREATE INDEX IF NOT EXISTS idx_project_members_email ON project_members(email);
+  CREATE INDEX IF NOT EXISTS idx_folder_members_email ON folder_members(email);
   CREATE INDEX IF NOT EXISTS idx_identities_email ON identities(email);
 `);
-// People invited to a whole space: they get every project in it, also those added later.
-// member_access lists both kinds as (board, project, email, added_at); projects without spaceId
-// are in «Личное» ('personal').
-db.exec(`
-  CREATE TABLE IF NOT EXISTS space_members (
-    board       TEXT    NOT NULL,
-    space       TEXT    NOT NULL,
-    email       TEXT    NOT NULL,
-    added_at    INTEGER NOT NULL,
-    PRIMARY KEY (board, space, email)
-  );
-  CREATE INDEX IF NOT EXISTS idx_space_members_email ON space_members(email);
-  DROP VIEW IF EXISTS member_access;
-  CREATE VIEW member_access AS
-    SELECT board, project, email, added_at FROM project_members
-    UNION
-    SELECT s.board, r.id, s.email, s.added_at
-    FROM space_members s JOIN records r ON r.owner = s.board AND r.type = 'project'
-      AND COALESCE(json_extract(r.data, '$.spaceId'), 'personal') = s.space;
-`);
-// Public links: anyone with the link opens the project without signing in.
-// mode: 'view' (read only) or 'edit' (cards and sections, like a member).
+// Public links: anyone with the link opens the folder without signing in.
+// mode: 'view' (read only) or 'edit' (cards and folders, like a member).
+// Column name `project` is historical; the value is a folder id.
 db.exec(`
   CREATE TABLE IF NOT EXISTS public_links (
     token       TEXT    PRIMARY KEY,
@@ -178,13 +158,13 @@ db.exec(`
     UNIQUE (board, project)
   );
 `);
-// Members of whole boards (before access per project) keep every project the board had.
+// Members of whole boards (before access per folder) keep every folder the board had.
 if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'board_members'").get()) {
   db.exec(`
     BEGIN;
-    INSERT OR IGNORE INTO project_members (board, project, email, added_at)
+    INSERT OR IGNORE INTO folder_members (board, folder, email, added_at)
       SELECT m.board, r.id, m.email, m.added_at
-      FROM board_members m JOIN records r ON r.owner = m.board AND r.type = 'project'
+      FROM board_members m JOIN records r ON r.owner = m.board AND r.type IN ('folder', 'project')
       WHERE json_extract(r.data, '$.deleted') = 0;
     DROP TABLE board_members;
     COMMIT;
@@ -425,7 +405,7 @@ export function boardSummary(owner) {
   const summary = { projects: 0, cards: 0 };
   for (const row of selectLiveRecords.all(owner)) {
     if (JSON.parse(row.data).deleted) continue;
-    if (row.type === 'project') summary.projects += 1;
+    if (row.type === 'folder' || row.type === 'project') summary.projects += 1;
     if (row.type === 'card') summary.cards += 1;
   }
   return summary;
@@ -450,10 +430,8 @@ export function mergeUsers(from, to) {
     db.prepare('UPDATE sessions SET user_id = ? WHERE user_id = ?').run(to, from);
     db.prepare('UPDATE push_subscriptions SET owner = ? WHERE owner = ?').run(to, from);
     db.prepare('UPDATE OR IGNORE reminders_sent SET owner = ? WHERE owner = ?').run(to, from);
-    db.prepare('UPDATE OR IGNORE project_members SET board = ? WHERE board = ?').run(to, from);
-    db.prepare('DELETE FROM project_members WHERE board = ?').run(from);
-    db.prepare('UPDATE OR IGNORE space_members SET board = ? WHERE board = ?').run(to, from);
-    db.prepare('DELETE FROM space_members WHERE board = ?').run(from);
+    db.prepare('UPDATE OR IGNORE folder_members SET board = ? WHERE board = ?').run(to, from);
+    db.prepare('DELETE FROM folder_members WHERE board = ?').run(from);
     db.prepare('UPDATE OR IGNORE public_links SET board = ? WHERE board = ?').run(to, from);
     db.prepare('DELETE FROM public_links WHERE board = ?').run(from);
     db.prepare('UPDATE direct_messages SET sender = ? WHERE sender = ?').run(to, from);
@@ -480,8 +458,7 @@ export function deleteUser(userId) {
     db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
     db.prepare('DELETE FROM push_subscriptions WHERE owner = ?').run(userId);
     db.prepare('DELETE FROM reminders_sent WHERE owner = ?').run(userId);
-    db.prepare('DELETE FROM project_members WHERE board = ?').run(userId);
-    db.prepare('DELETE FROM space_members WHERE board = ?').run(userId);
+    db.prepare('DELETE FROM folder_members WHERE board = ?').run(userId);
     db.prepare('DELETE FROM public_links WHERE board = ?').run(userId);
     db.prepare('DELETE FROM meta WHERE key IN (?, ?)').run(`columnsSeeded:${userId}`, `simpleSetSeeded:${userId}`);
     db.prepare('DELETE FROM direct_messages WHERE sender = ? OR recipient = ?').run(userId, userId);
@@ -490,99 +467,96 @@ export function deleteUser(userId) {
     for (const email of emails) {
       db.prepare('DELETE FROM email_codes WHERE email = ?').run(email);
       if (!usedElsewhere.get(email)) {
-        db.prepare('DELETE FROM project_members WHERE email = ?').run(email);
-        db.prepare('DELETE FROM space_members WHERE email = ?').run(email);
+        db.prepare('DELETE FROM folder_members WHERE email = ?').run(email);
       }
     }
   });
 }
 
-// Invitations to deleted projects stay in the table but give no access.
-const LIVE_PROJECT = `JOIN records r ON r.owner = m.board AND r.id = m.project AND json_extract(r.data, '$.deleted') = 0`;
+// Invitations to deleted folders stay in the table but give no access (member_access filters them).
+db.exec(`
+  DROP VIEW IF EXISTS member_access;
+  CREATE VIEW member_access AS
+  WITH RECURSIVE tree AS (
+    SELECT m.board, m.folder AS folder, m.email, m.added_at FROM folder_members m
+    UNION ALL
+    SELECT t.board, r.id, t.email, t.added_at
+    FROM tree t
+    JOIN records r ON r.owner = t.board AND r.type = 'folder'
+      AND json_extract(r.data, '$.parentId') = t.folder
+      AND json_extract(r.data, '$.deleted') = 0
+  )
+  SELECT t.board, t.folder, t.email, t.added_at
+  FROM tree t
+  JOIN records r ON r.owner = t.board AND r.id = t.folder AND r.type = 'folder'
+    AND json_extract(r.data, '$.deleted') = 0;
+`);
+
+const LIVE_FOLDER = `JOIN records r ON r.owner = m.board AND r.id = m.folder AND r.type = 'folder' AND json_extract(r.data, '$.deleted') = 0`;
 const selectMembers = db.prepare(`
-  SELECT m.email, m.project, MIN(m.added_at) OVER (PARTITION BY m.email) AS first_added,
+  SELECT m.email, m.folder, MIN(m.added_at) OVER (PARTITION BY m.email) AS first_added,
     (SELECT i.name FROM identities i WHERE i.email = m.email ORDER BY i.linked_at LIMIT 1) AS name,
     EXISTS (SELECT 1 FROM identities i WHERE i.email = m.email) AS joined
-  FROM project_members m ${LIVE_PROJECT}
+  FROM folder_members m ${LIVE_FOLDER}
   WHERE m.board = ? ORDER BY first_added, m.email
 `);
 const insertMember = db.prepare(
-  'INSERT OR IGNORE INTO project_members (board, project, email, added_at) VALUES (?, ?, ?, ?)',
+  'INSERT OR IGNORE INTO folder_members (board, folder, email, added_at) VALUES (?, ?, ?, ?)',
 );
-const removeMember = db.prepare('DELETE FROM project_members WHERE board = ? AND email = ?');
-const removeProjectMember = db.prepare('DELETE FROM project_members WHERE board = ? AND email = ? AND project = ?');
-const selectSpaceMembers = db.prepare(`
-  SELECT m.email, m.space, m.added_at,
-    (SELECT i.name FROM identities i WHERE i.email = m.email ORDER BY i.linked_at LIMIT 1) AS name,
-    EXISTS (SELECT 1 FROM identities i WHERE i.email = m.email) AS joined
-  FROM space_members m
-  JOIN records r ON r.owner = m.board AND r.id = m.space AND json_extract(r.data, '$.deleted') = 0
-  WHERE m.board = ? ORDER BY m.added_at, m.email
-`);
-const insertSpaceMember = db.prepare(
-  'INSERT OR IGNORE INTO space_members (board, space, email, added_at) VALUES (?, ?, ?, ?)',
-);
-const removeSpaceMembers = db.prepare('DELETE FROM space_members WHERE board = ? AND email = ?');
-const removeSpaceMember = db.prepare('DELETE FROM space_members WHERE board = ? AND email = ? AND space = ?');
+const removeMember = db.prepare('DELETE FROM folder_members WHERE board = ? AND email = ?');
+const removeFolderMember = db.prepare('DELETE FROM folder_members WHERE board = ? AND email = ? AND folder = ?');
 const selectUserBoards = db.prepare(`
   SELECT DISTINCT m.board FROM member_access m
-  JOIN identities i ON i.email = m.email ${LIVE_PROJECT}
+  JOIN identities i ON i.email = m.email ${LIVE_FOLDER}
   WHERE i.user_id = ? AND m.board != ?
 `);
-const selectUserProjects = db.prepare(`
-  SELECT DISTINCT m.project FROM member_access m JOIN identities i ON i.email = m.email ${LIVE_PROJECT}
-  WHERE m.board = ? AND i.user_id = ? ORDER BY m.project
+const selectUserFolders = db.prepare(`
+  SELECT DISTINCT m.folder FROM member_access m JOIN identities i ON i.email = m.email ${LIVE_FOLDER}
+  WHERE m.board = ? AND i.user_id = ? ORDER BY m.folder
 `);
-const selectProjectUsers = db.prepare(`
+const selectFolderUsers = db.prepare(`
   SELECT DISTINCT i.user_id FROM member_access m JOIN identities i ON i.email = m.email
-  WHERE m.board = ? AND m.project = ?
+  WHERE m.board = ? AND m.folder = ?
 `);
-const selectInvited = db.prepare(`
-  SELECT 1 FROM project_members WHERE email = ? UNION ALL SELECT 1 FROM space_members WHERE email = ? LIMIT 1
-`);
+const selectInvited = db.prepare('SELECT 1 FROM folder_members WHERE email = ? LIMIT 1');
 const selectOwnerProfile = db.prepare(
   'SELECT email, name, picture FROM identities WHERE user_id = ? ORDER BY linked_at LIMIT 1',
 );
 const removeUserMemberships = db.prepare(`
-  DELETE FROM project_members WHERE board = ? AND email IN (SELECT email FROM identities WHERE user_id = ?)
-`);
-const removeUserSpaceMemberships = db.prepare(`
-  DELETE FROM space_members WHERE board = ? AND email IN (SELECT email FROM identities WHERE user_id = ?)
+  DELETE FROM folder_members WHERE board = ? AND email IN (SELECT email FROM identities WHERE user_id = ?)
 `);
 
 /**
- * People invited to the board's projects or spaces: [{ email, name, joined, projects: [projectId],
- * spaces: [spaceId] }] (`projects` are the direct invitations); `name` comes from the account with
- * this e-mail once someone signed in with it.
+ * People invited to the board's folders: [{ email, name, joined, folders: [folderId] }].
+ * `folders` are the direct invitations (not expanded descendants).
  */
 export function listMembers(board) {
   const byEmail = new Map();
-  const member = (row) => {
+  for (const row of selectMembers.all(board)) {
     if (!byEmail.has(row.email)) {
       byEmail.set(row.email, {
-        email: row.email, name: row.name ?? null, joined: Boolean(row.joined), projects: [], spaces: [],
+        email: row.email, name: row.name ?? null, joined: Boolean(row.joined), folders: [],
       });
     }
-    return byEmail.get(row.email);
-  };
-  for (const row of selectMembers.all(board)) member(row).projects.push(row.project);
-  for (const row of selectSpaceMembers.all(board)) member(row).spaces.push(row.space);
+    byEmail.get(row.email).folders.push(row.folder);
+  }
   return [...byEmail.values()];
 }
 
-export function addMember(board, project, email) {
-  insertMember.run(board, project, email, Date.now());
+export function addMember(board, folder, email) {
+  insertMember.run(board, folder, email, Date.now());
 }
 
-export function addSpaceMember(board, space, email) {
-  insertSpaceMember.run(board, space, email, Date.now());
+/** @deprecated alias */
+export function addSpaceMember(board, folder, email) {
+  addMember(board, folder, email);
 }
 
-/** Without `project` / `space`, from every project and space of the board. */
-export function deleteMember(board, email, { project, space } = {}) {
-  if (project) return removeProjectMember.run(board, email, project).changes > 0;
-  if (space) return removeSpaceMember.run(board, email, space).changes > 0;
-  return removeMember.run(board, email).changes + removeSpaceMembers.run(board, email).changes > 0;
+/** Without `folder`, from every folder of the board. `project` / `space` accepted as aliases. */
+export function deleteMember(board, email, { folder, project, space } = {}) {
+  const id = folder ?? project ?? space;
+  if (id) return removeFolderMember.run(board, email, id).changes > 0;
+  return removeMember.run(board, email).changes > 0;
 }
 
 /** Other people's boards the user was invited to, with the owner's name, e-mail and photo. */
@@ -593,32 +567,45 @@ export function sharedBoards(userId) {
   });
 }
 
-/** Ids of the board's projects the user was invited to (sorted). */
+/** Ids of the board's folders the user may see (invited + descendants, sorted). */
+export function memberFolders(board, userId) {
+  return selectUserFolders.all(board, userId).map((r) => r.folder);
+}
+
+/** @deprecated use memberFolders */
 export function memberProjects(board, userId) {
-  return selectUserProjects.all(board, userId).map((r) => r.project);
+  return memberFolders(board, userId);
 }
 
-/** Users who see the project: the board's owner and everyone who signed in with an invited e-mail. */
-export function projectUsers(board, project) {
-  return [...new Set([board, ...selectProjectUsers.all(board, project).map((r) => r.user_id)])];
+/** Users who see the folder: the board's owner and everyone invited (via this folder or an ancestor). */
+export function folderUsers(board, folder) {
+  return [...new Set([board, ...selectFolderUsers.all(board, folder).map((r) => r.user_id)])];
 }
 
-const selectSpaceUsers = db.prepare(`
-  SELECT DISTINCT i.user_id AS user, m.space FROM space_members m JOIN identities i ON i.email = m.email
-  WHERE m.board = ?
-`);
+/** @deprecated use folderUsers */
+export function projectUsers(board, folder) {
+  return folderUsers(board, folder);
+}
 
-/** Users invited to whole spaces of the board: [{ user, space }]. */
+/** Users with a direct invitation to a folder of the board: [{ user, folder }]. */
+export function folderInvitees(board) {
+  return db.prepare(`
+    SELECT DISTINCT i.user_id AS user, m.folder FROM folder_members m JOIN identities i ON i.email = m.email
+    WHERE m.board = ?
+  `).all(board);
+}
+
+/** @deprecated */
 export function spaceUsers(board) {
-  return selectSpaceUsers.all(board);
+  return folderInvitees(board).map(({ user, folder }) => ({ user, space: folder }));
 }
 
 export function isInvited(email) {
-  return Boolean(email) && Boolean(selectInvited.get(email.toLowerCase(), email.toLowerCase()));
+  return Boolean(email) && Boolean(selectInvited.get(email.toLowerCase()));
 }
 
 export function leaveBoard(board, userId) {
-  return removeUserMemberships.run(board, userId).changes + removeUserSpaceMemberships.run(board, userId).changes > 0;
+  return removeUserMemberships.run(board, userId).changes > 0;
 }
 
 /** { id, name, email, picture } from the user's first linked account. */
@@ -627,12 +614,17 @@ export function userProfile(userId) {
   return { id: userId, name: p?.name ?? null, email: p?.email ?? null, picture: p?.picture ?? null };
 }
 
-const selectLiveProjects = db.prepare(`
-  SELECT id FROM records WHERE owner = ? AND type = 'project' AND json_extract(data, '$.deleted') = 0
+const selectLiveFolders = db.prepare(`
+  SELECT id FROM records WHERE owner = ? AND type = 'folder' AND json_extract(data, '$.deleted') = 0
 `);
 
+export function liveFolderIds(owner) {
+  return selectLiveFolders.all(owner).map((r) => r.id);
+}
+
+/** @deprecated use liveFolderIds */
 export function liveProjectIds(owner) {
-  return selectLiveProjects.all(owner).map((r) => r.id);
+  return liveFolderIds(owner);
 }
 
 const selectCommentsOfCard = db.prepare(`
@@ -650,16 +642,15 @@ export function commentIdsOfCard(owner, cardId) {
   return selectCommentsOfCard.all(owner, cardId).map((r) => r.id);
 }
 
-// People sharing a live project with the user: whoever joined the user's projects, the owners of
-// boards the user joined, and others who joined the same projects there.
+// People sharing a live folder with the user.
 const selectContactsOnOwnBoard = db.prepare(`
-  SELECT DISTINCT i.user_id AS id FROM member_access m JOIN identities i ON i.email = m.email ${LIVE_PROJECT}
+  SELECT DISTINCT i.user_id AS id FROM member_access m JOIN identities i ON i.email = m.email ${LIVE_FOLDER}
   WHERE m.board = ?
 `);
 const selectContactsOnOtherBoards = db.prepare(`
   SELECT DISTINCT m.board AS owner, i2.user_id AS member
-  FROM member_access m JOIN identities i ON i.email = m.email ${LIVE_PROJECT}
-  LEFT JOIN member_access m2 ON m2.board = m.board AND m2.project = m.project
+  FROM member_access m JOIN identities i ON i.email = m.email ${LIVE_FOLDER}
+  LEFT JOIN member_access m2 ON m2.board = m.board AND m2.folder = m.folder
   LEFT JOIN identities i2 ON i2.email = m2.email
   WHERE i.user_id = ?
 `);
@@ -751,13 +742,15 @@ export function markDmRead(userId, peer, at) {
   upsertDmRead.run(userId, peer, at);
 }
 
-// Links to deleted projects stay in the table but open nothing.
+// Links to deleted folders stay in the table but open nothing.
+// `project` column holds the folder id.
+const LIVE_LINK = `JOIN records r ON r.owner = m.board AND r.id = m.project AND r.type = 'folder' AND json_extract(r.data, '$.deleted') = 0`;
 const selectPublicLink = db.prepare(`
   SELECT m.token, m.board, m.project, m.mode, json_extract(r.data, '$.name') AS name
-  FROM public_links m ${LIVE_PROJECT} WHERE m.token = ?
+  FROM public_links m ${LIVE_LINK} WHERE m.token = ?
 `);
 const selectPublicLinks = db.prepare(`
-  SELECT m.token, m.project, m.mode FROM public_links m ${LIVE_PROJECT} WHERE m.board = ? ORDER BY m.created_at
+  SELECT m.token, m.project, m.mode FROM public_links m ${LIVE_LINK} WHERE m.board = ? ORDER BY m.created_at
 `);
 const upsertPublicLink = db.prepare(`
   INSERT INTO public_links (token, board, project, mode, created_at) VALUES (?, ?, ?, ?, ?)

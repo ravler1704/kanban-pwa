@@ -418,16 +418,13 @@ export function registerAuthRoutes(app) {
   app.post('/api/members', requireAuth, (req, res) => {
     if (!authEnabled) return res.status(404).json({ error: 'auth disabled' });
     const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
-    // To a project, or with `space` to every project of the space.
-    const { project, space } = req.body ?? {};
+    // To a folder (and its descendants). `project` / `space` accepted as aliases for `folder`.
+    const id = req.body?.folder ?? req.body?.project ?? req.body?.space;
     if (email.length > 254 || !EMAIL.test(email)) return res.status(400).json({ error: 'invalid email' });
     if (listIdentities(req.user).some((i) => i.email === email)) return res.status(400).json({ error: 'own email' });
-    const type = space != null ? 'space' : 'project';
-    const id = type === 'space' ? space : project;
     const record = typeof id === 'string' ? getRecord(req.user, id) : null;
-    if (record?.type !== type || record.deleted) return res.status(404).json({ error: `no ${type}` });
-    if (type === 'space') addSpaceMember(req.user, id, email);
-    else addMember(req.user, id, email);
+    if (record?.type !== 'folder' || record.deleted) return res.status(404).json({ error: 'no folder' });
+    addMember(req.user, id, email);
     // Open streams of members belong to the old access; reconnecting picks up the new one.
     disconnect(req.user, { except: req.user });
     res.json({ members: listMembers(req.user) });
@@ -436,10 +433,12 @@ export function registerAuthRoutes(app) {
   /** `project` and `space` omitted: from every project and space. */
   app.post('/api/members/remove', requireAuth, (req, res) => {
     if (!authEnabled) return res.status(404).json({ error: 'auth disabled' });
-    const { email, project, space } = req.body ?? {};
-    if (typeof email !== 'string' || (project != null && typeof project !== 'string')
-      || (space != null && typeof space !== 'string')
-      || !deleteMember(req.user, email, { project: project ?? undefined, space: space ?? undefined })) {
+    const { email, folder, project, space } = req.body ?? {};
+    if (typeof email !== 'string'
+      || ([folder, project, space].some((v) => v != null && typeof v !== 'string'))
+      || !deleteMember(req.user, email, {
+        folder: folder ?? project ?? space ?? undefined,
+      })) {
       return res.status(404).json({ error: 'not found' });
     }
     disconnect(req.user, { except: req.user });
@@ -455,7 +454,7 @@ export function registerAuthRoutes(app) {
     const { project, mode } = req.body ?? {};
     if (mode !== 'view' && mode !== 'edit') return res.status(400).json({ error: 'invalid mode' });
     const record = typeof project === 'string' ? getRecord(req.user, project) : null;
-    if (record?.type !== 'project' || record.deleted) return res.status(404).json({ error: 'no project' });
+    if (record?.type !== 'folder' || record.deleted) return res.status(404).json({ error: 'no folder' });
     savePublicLink(req.user, project, mode);
     // Open streams of visitors belong to the old mode; reconnecting picks up the new one.
     disconnect(req.user, { except: req.user });

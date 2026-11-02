@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { deleteCard, moveCardToColumn, moveCardToGroup, updateCard } from '../actions.js';
+import { deleteCard, moveCardToColumn, moveCardToFolder, updateCard } from '../actions.js';
 import Attachments from './Attachments.jsx';
 import CardExtraFields from './CardExtraFields.jsx';
 import Comments from './Comments.jsx';
 import Markdown from './Markdown.jsx';
 import Modal from './Modal.jsx';
-import { GroupSelect } from './NewCardDialog.jsx';
+import FolderSelect from './FolderSelect.jsx';
 import { matchColumn } from '../columnSets.js';
+import { folderPathName } from '../folders.js';
 import { fromInputValue, toInputValue } from './ReminderField.jsx';
 import TitleField from './TitleField.jsx';
 
@@ -16,9 +17,9 @@ function CardComments({ card }) {
 }
 
 /** The card without editing: a view-only public link. */
-function CardView({ card, columnsOfProject, groups, onClose }) {
-  const column = columnsOfProject(card.projectId).find((c) => c.id === card.columnId);
-  const section = groups.find((g) => g.project.id === card.projectId)?.sections.find((s) => s.id === card.sectionId);
+function CardView({ card, columnsOfFolder, folders, onClose }) {
+  const column = columnsOfFolder(card.folderId).find((c) => c.id === card.columnId);
+  const folder = folders.find((f) => f.id === card.folderId);
   return (
     <Modal title={card.number ? `Карточка #${card.number}` : 'Карточка'} onClose={onClose}>
       <div className="editor card-view">
@@ -26,7 +27,7 @@ function CardView({ card, columnsOfProject, groups, onClose }) {
           {card.title ? <Markdown text={card.title} inline /> : <em className="muted">Без названия</em>}
         </h3>
         <p className="muted">
-          {[column?.name, section?.name].filter(Boolean).join(' · ')}
+          {[column?.name, folder && folderPathName(folder, folders)].filter(Boolean).join(' · ')}
           {card.remindAt && ` · напоминание ${new Date(card.remindAt).toLocaleString('ru-RU', {
             day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
           })}`}
@@ -44,33 +45,33 @@ function CardView({ card, columnsOfProject, groups, onClose }) {
 }
 
 /**
- * `groups` are the projects with their sections ({ project, sections }) the card can be moved to.
+ * `folders` are the folders the card can be moved to.
  * `readOnly`: the card is only shown.
  */
 export default function CardEditor({ readOnly, ...props }) {
   return readOnly ? <CardView {...props} /> : <CardForm {...props} />;
 }
 
-function CardForm({ card, columnsOfProject, groups, onClose }) {
+function CardForm({ card, columnsOfFolder, folders, onClose }) {
   // Snapshot of the card when the editor opened, used to detect concurrent remote edits.
   const [base] = useState(() => ({ title: card.title, description: card.description }));
   const [title, setTitle] = useState(card.title);
   const [description, setDescription] = useState(card.description);
-  const [group, setGroup] = useState({ projectId: card.projectId, sectionId: card.sectionId ?? null });
+  const [folderId, setFolderId] = useState(card.folderId);
   const [columnId, setColumnId] = useState(card.columnId);
   const [remindAt, setRemindAt] = useState(() => toInputValue(card.remindAt));
 
-  // Another project may use another column set: the status then is one of its columns.
-  const columns = columnsOfProject(group.projectId);
-  const ownColumns = columnsOfProject(card.projectId);
+  // Another folder may use another column set: the status then is one of its columns.
+  const columns = columnsOfFolder(folderId);
+  const ownColumns = columnsOfFolder(card.folderId);
   const otherSet = columns.map((c) => c.id).join() !== ownColumns.map((c) => c.id).join();
 
-  function changeGroup(next) {
-    const nextColumns = columnsOfProject(next.projectId);
+  function changeFolder(next) {
+    const nextColumns = columnsOfFolder(next);
     if (!nextColumns.some((c) => c.id === columnId)) {
       setColumnId(matchColumn(ownColumns.find((c) => c.id === columnId), nextColumns)?.id ?? columnId);
     }
-    setGroup(next);
+    setFolderId(next);
   }
 
   const changedRemotely = card.title !== base.title || card.description !== base.description;
@@ -82,7 +83,7 @@ function CardForm({ card, columnsOfProject, groups, onClose }) {
     if (description !== base.description) patch.description = description;
     if (remindAt !== toInputValue(card.remindAt)) patch.remindAt = fromInputValue(remindAt);
     if (Object.keys(patch).length) await updateCard(card.id, patch, base);
-    await moveCardToGroup(card.id, group);
+    await moveCardToFolder(card.id, folderId);
     if (columnId !== card.columnId) await moveCardToColumn(card.id, columnId);
     onClose();
   }
@@ -116,10 +117,10 @@ function CardForm({ card, columnsOfProject, groups, onClose }) {
           onRemindAt={setRemindAt}
           card={card}
         />
-        <GroupSelect groups={groups} value={group} onChange={changeGroup} />
+        <FolderSelect folders={folders} value={folderId} onChange={changeFolder} />
         {otherSet && (
           <p className="notice">
-            У этого проекта другой набор колонок — проверьте статус, в который попадёт карточка.
+            У этой папки другой набор колонок — проверьте статус, в который попадёт карточка.
           </p>
         )}
         <div className="actions">

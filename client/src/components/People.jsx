@@ -1,7 +1,8 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { authState } from '../auth.js';
 import { dmStore, dmUnread, refreshDm } from '../dm.js';
-import { peopleStore, personName } from '../people.js';
+import { folderIdsOf, peopleStore, personName } from '../people.js';
+import { topFolderIds } from '../folders.js';
 import Avatar from './Avatar.jsx';
 import { CommentIcon } from './Card.jsx';
 import { useChats } from './ChatDialog.jsx';
@@ -9,14 +10,22 @@ import Modal from './Modal.jsx';
 
 const STACK = 4;
 
-function PeopleDialog({ people, projects, allProjects, me, onChat, onClose }) {
-  const projectName = new Map(allProjects.map((p) => [p.id, p.name]));
+/** The shown folders whose parent is not shown: their chats stand for the whole selection. */
+const topFolders = (folders, allFolders) => {
+  const tops = new Set(topFolderIds(folders.map((f) => f.id), allFolders));
+  return folders.filter((f) => tops.has(f.id));
+};
+
+function PeopleDialog({ people, folders, allFolders, me, onChat, onClose }) {
+  const folderName = new Map(allFolders.map((f) => [f.id, f.name]));
+  // Where a person has access: the top folders of their access, as the rest follows from them.
+  const accessOf = (p) => topFolderIds(folderIdsOf(p), allFolders).map((id) => folderName.get(id)).filter(Boolean);
   return (
     <Modal title="Участники" onClose={onClose}>
       <div className="people-chats">
-        {projects.map((p) => (
-          <button key={p.id} type="button" className="btn btn-small" onClick={() => onChat(`project:${p.id}`)}>
-            <CommentIcon size={14} /> Чат проекта «{p.name}»
+        {folders.map((f) => (
+          <button key={f.id} type="button" className="btn btn-small" onClick={() => onChat(`folder:${f.id}`)}>
+            <CommentIcon size={14} /> Чат папки «{f.name}»
           </button>
         ))}
       </div>
@@ -28,7 +37,7 @@ function PeopleDialog({ people, projects, allProjects, me, onChat, onClose }) {
               <div className="people-name">{personName(p)}{p.id === me && <span className="muted"> (вы)</span>}</div>
               {p.email && p.name && <div className="muted people-email">{p.email}</div>}
               <div className="muted people-role">
-                {p.owner ? 'Владелец доски' : p.projects.map((id) => projectName.get(id)).filter(Boolean).join(', ')}
+                {p.owner ? 'Владелец доски' : accessOf(p).join(', ')}
               </div>
             </div>
             {p.id !== me && (
@@ -45,10 +54,10 @@ function PeopleDialog({ people, projects, allProjects, me, onChat, onClose }) {
 }
 
 /**
- * The chats button with the number of unread messages (direct ones and the chats of `spaces` and
- * `projects`).
+ * The chats button with the number of unread messages (direct ones and the chats of `folders`
+ * and of the cards in them).
  */
-export function ChatButton({ spaces, projects, onChat }) {
+export function ChatButton({ folders, onChat }) {
   const { contacts } = useSyncExternalStore(dmStore.subscribe, dmStore.get);
   const chats = useChats();
 
@@ -56,11 +65,10 @@ export function ChatButton({ spaces, projects, onChat }) {
     refreshDm();
   }, []);
 
-  const shown = new Set(projects.map((p) => p.id));
+  const shown = new Set(folders.map((f) => f.id));
   const unread = dmUnread(contacts)
-    + spaces.reduce((sum, s) => sum + (chats.spaces[s.id]?.unread ?? 0), 0)
-    + projects.reduce((sum, p) => sum + (chats.projects[p.id]?.unread ?? 0), 0)
-    + chats.cards.reduce((sum, c) => sum + (shown.has(c.card.projectId) ? c.unread : 0), 0);
+    + folders.reduce((sum, f) => sum + (chats.folders[f.id]?.unread ?? 0), 0)
+    + chats.cards.reduce((sum, c) => sum + (shown.has(c.card.folderId) ? c.unread : 0), 0);
   return (
     <button type="button" className="btn btn-small btn-icon-only chat-button" onClick={() => onChat('')}
       title={unread ? `Чаты: непрочитанных ${unread}` : 'Чаты'} aria-label="Чаты">
@@ -71,18 +79,18 @@ export function ChatButton({ spaces, projects, onChat }) {
 }
 
 /**
- * Avatars of the people who see the shown `projects` (the board's owner sees all of them).
- * `onChat(thread)` opens the chats.
+ * Avatars of the people who see the shown `folders` (the board's owner sees all of them);
+ * `allFolders` are all the folders of the board. `onChat(thread)` opens the chats.
  */
-export default function PeopleBar({ projects, allProjects, onChat }) {
+export default function PeopleBar({ folders, allFolders, onChat }) {
   const { user } = useSyncExternalStore(authState.subscribe, authState.get);
   const all = useSyncExternalStore(peopleStore.subscribe, peopleStore.get);
   const [open, setOpen] = useState(false);
   const me = user?.id ?? '';
 
-  const shown = new Set(projects.map((p) => p.id));
+  const shown = new Set(folders.map((f) => f.id));
   const people = all
-    .filter((p) => p.owner || p.projects.some((id) => shown.has(id)))
+    .filter((p) => p.owner || folderIdsOf(p).some((id) => shown.has(id)))
     .sort((a, b) => Number(b.owner) - Number(a.owner) || personName(a).localeCompare(personName(b), 'ru'));
   if (people.length < 2) return null;
 
@@ -94,7 +102,7 @@ export default function PeopleBar({ projects, allProjects, onChat }) {
         {people.length > STACK && <span className="avatar avatar-letter avatar-more">+{people.length - STACK}</span>}
       </button>
       {open && (
-        <PeopleDialog people={people} projects={projects} allProjects={allProjects} me={me}
+        <PeopleDialog people={people} folders={topFolders(folders, allFolders)} allFolders={allFolders} me={me}
           onClose={() => setOpen(false)}
           onChat={(thread) => {
             setOpen(false);

@@ -10,8 +10,8 @@ function ClearIcon() {
 }
 
 /**
- * A picker button with a popover of checkboxes. `items` are { key, name, count?, group? }; items
- * sharing a `group` follow its heading (keep them together). The button shows `summary`, or the
+ * A picker button with a popover of checkboxes. `items` are { key, name, count?, group?, depth? }; items
+ * sharing a `group` follow its heading (keep them together); `depth` indents an item (a tree), unless searching. The button shows `summary`, or the
  * selected names, or `emptyLabel` when nothing is selected; the clear button shows with `onClear`.
  * With `onSetAll(checked)` the list starts with an «all» checkbox. The search matches names and groups.
  */
@@ -88,7 +88,7 @@ export default function CheckPicker({
               {item.group && item.group !== found[i - 1]?.group && (
                 <div className="check-menu-group">{item.group}</div>
               )}
-              <label className="check-menu-item">
+              <label className="check-menu-item" style={item.depth && !query ? { paddingLeft: `${0.5 + item.depth * 1.1}rem` } : undefined}>
                 <input type="checkbox" checked={selected.includes(item.key)} onChange={() => onToggle(item.key)} />
                 <span className="check-menu-name">{item.name}</span>
                 {item.count != null && <span className="count">{item.count}</span>}

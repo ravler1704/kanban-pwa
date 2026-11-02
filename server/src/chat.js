@@ -1,6 +1,6 @@
 import {
-  addDm, changeDm, contactIds, dmConversations, dmThread, getDm, getRecord, liveProjectIds, markDmRead, spaceUsers,
-  projectUsers, userProfile,
+  addDm, changeDm, contactIds, dmConversations, dmThread, folderInvitees, folderUsers, getDm, getRecord,
+  liveFolderIds, markDmRead, userProfile,
 } from './db.js';
 import { notifyUser } from './events.js';
 import { sendToUsers, withoutLinks } from './push.js';
@@ -15,21 +15,23 @@ const preview = (text) => {
   return plain.length > 200 ? `${plain.slice(0, 199)}…` : plain;
 };
 
-/** Who sees the projects of the board the request works with: [{ id, name, email, picture, owner, projects }]. */
+/** Who sees the folders of the board: [{ id, name, email, picture, owner, folders }]. */
 function boardPeople(owner, access) {
-  const projects = access ? [...access.projects] : liveProjectIds(owner);
+  const folders = access ? [...access.folders] : liveFolderIds(owner);
   const people = new Map();
   const add = (id) => {
-    if (!people.has(id)) people.set(id, { ...userProfile(id), owner: id === owner, projects: [], spaces: [] });
+    if (!people.has(id)) people.set(id, { ...userProfile(id), owner: id === owner, folders: [] });
     return people.get(id);
   };
   add(owner);
-  for (const project of projects) {
-    for (const id of projectUsers(owner, project)) add(id).projects.push(project);
+  for (const folder of folders) {
+    for (const id of folderUsers(owner, folder)) add(id).folders.push(folder);
   }
-  // Whole spaces, for the owner's space chats (members don't see those).
+  // Direct folder invites (for chat headers), even when the invitee is already listed.
   if (!access) {
-    for (const { user, space } of spaceUsers(owner)) add(user).spaces.push(space);
+    for (const { user, folder } of folderInvitees(owner)) {
+      if (!add(user).folders.includes(folder)) add(user).folders.push(folder);
+    }
   }
   return [...people.values()];
 }
@@ -135,11 +137,11 @@ export function registerChatRoutes(app) {
   });
 }
 
-/** Push to the others who see the project: comments just added on the board (records from push). */
+/** Push to the others who see the folder: comments just added on the board (records from push). */
 export function notifyComments(owner, comments) {
   for (const c of comments) {
-    if (!c.projectId) continue;
-    const recipients = projectUsers(owner, c.projectId).filter((id) => id !== c.authorId);
+    if (!c.folderId) continue;
+    const recipients = folderUsers(owner, c.folderId).filter((id) => id !== c.authorId);
     if (recipients.length === 0) continue;
     const board = owner ? { board: owner } : {};
     const author = c.authorName || 'Комментарий';
@@ -152,11 +154,11 @@ export function notifyComments(owner, comments) {
         url: `/?${new URLSearchParams({ ...board, card: c.cardId })}`,
       };
     } else {
-      const project = getRecord(owner, c.projectId);
+      const folder = getRecord(owner, c.folderId);
       payload = {
-        title: `${author} · Чат «${project?.name || 'Проект'}»`,
-        tag: `chat-${c.projectId}`,
-        url: `/?${new URLSearchParams({ ...board, chat: `project:${c.projectId}` })}`,
+        title: `${author} · Чат «${folder?.name || 'Папка'}»`,
+        tag: `chat-${c.folderId}`,
+        url: `/?${new URLSearchParams({ ...board, chat: `folder:${c.folderId}` })}`,
       };
     }
     sendToUsers(recipients, { ...payload, body: preview(c.text) })

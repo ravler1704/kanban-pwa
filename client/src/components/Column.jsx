@@ -14,8 +14,8 @@ function positionAtEnd(cards) {
 }
 
 /**
- * `target` ({ projectId, sectionId }) is where new cards go.
- * `cardLabel(card)` returns the project/section shown on the card, or null for none.
+ * `target` (a folder id) is where new cards go.
+ * `cardLabel(card)` returns the folder shown on the card, or null for none.
  */
 export default function Column({
   target, column, prevColumn, nextColumn, cards, cardLabel, activeTags, onTag, readOnly, onOpen, onOpenGroup,
@@ -76,7 +76,7 @@ export default function Column({
     e.preventDefault();
     const value = title.trim();
     if (!value || !target) return;
-    createCard(target, column.id, value);
+    createCard({ folderId: target }, column.id, value);
     setTitle('');
   }
 

@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { authState } from '../auth.js';
 import { messageText, useCardNumbers } from '../chatEvents.jsx';
 import { db } from '../db.js';
+import { folderPath } from '../folders.js';
 import { withoutLinks } from '../links.js';
 import {
   deleteDm, dmStore, editDm, loadThread, markDmRead, onDmThreadChange, refreshDm, sendDm,
@@ -24,8 +25,11 @@ function shortTime(ts) {
     : d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 }
 
+/** Chats of folders keep their ids from when they were projects and spaces: 'project:<id>' is 'folder:<id>'. */
+export const normalizeThread = (thread) => (thread ? thread.replace(/^(?:project|space):/, 'folder:') : '');
+
 /**
- * Latest message and unread count of the board's chats: `projects` and `spaces` — { [id]: { last, unread } },
+ * Latest message and unread count of the board's chats: `folders` — { [id]: { last, unread } },
  * `cards` — [{ card, last, unread }] of the cards that have comments, the latest first.
  */
 export function useChats() {
@@ -37,19 +41,16 @@ export function useChats() {
     const cards = (await db.cards.bulkGet(cardIds)).filter((c) => c && !c.deleted);
     return { messages, cards };
   }, []);
-  const projects = {};
-  const spaces = {};
+  const folders = {};
   const byCard = new Map((data?.cards ?? []).map((card) => [card.id, { card, last: null, unread: 0 }]));
   for (const m of data?.messages ?? []) {
-    const chat = m.cardId ? byCard.get(m.cardId)
-      : m.spaceId ? (spaces[m.spaceId] ??= { last: null, unread: 0 })
-        : (projects[m.projectId] ??= { last: null, unread: 0 });
+    const chat = m.cardId ? byCard.get(m.cardId) : (folders[m.folderId] ??= { last: null, unread: 0 });
     if (!chat) continue;
     if (!chat.last || m.createdAt > chat.last.createdAt) chat.last = m;
     if (isUnread(seen, m, user?.id ?? '')) chat.unread += 1;
   }
   const cards = [...byCard.values()].sort((a, b) => b.last.createdAt - a.last.createdAt);
-  return { projects, spaces, cards };
+  return { folders, cards };
 }
 
 function DmThread({ peer }) {
@@ -122,17 +123,12 @@ function ChatListItem({ avatar, title, subtitle, last, text, unread, active, onC
   );
 }
 
-function ProjectAvatar() {
-  return <span className="avatar avatar-letter avatar-project" aria-hidden="true">#</span>;
-}
-
-function SpaceAvatar() {
+function FolderAvatar() {
   return (
     <span className="avatar avatar-letter avatar-project" aria-hidden="true">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
         strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 3 3 8l9 5 9-5-9-5Z" />
-        <path d="m3 13 9 5 9-5" />
+        <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
       </svg>
     </span>
   );
@@ -186,13 +182,12 @@ const byRole = (a, b) => Number(b.owner) - Number(a.owner) || personName(a).loca
 const cardTitle = (card) => `${card.number ? `#${card.number} ` : ''}${withoutLinks(card.title).trim() || 'Без названия'}`;
 
 /**
- * Chats: one per space (`spaces`, the board owner's only) and per project of the board (`projects`),
- * those of the cards with comments and direct messages with the people the user shares projects
- * with. `thread` is the open one: 'space:<id>', 'project:<id>', 'card:<id>' or 'dm:<user id>', ''
- * for none. `onOpenCard(id)` opens a card's editor.
+ * Chats: one per folder of the board (`folders`), those of the cards with comments and direct messages
+ * with the people the user shares folders with. `thread` is the open one: 'folder:<id>', 'card:<id>' or
+ * 'dm:<user id>', '' for none. `onOpenCard(id)` opens a card's editor.
  */
-export default function ChatDialog({ spaces, projects, thread: initialThread, onOpenCard, onClose }) {
-  const [thread, setThread] = useState(initialThread || '');
+export default function ChatDialog({ folders, thread: initialThread, onOpenCard, onClose }) {
+  const [thread, setThread] = useState(normalizeThread(initialThread));
   const [search, setSearch] = useState('');
   const { contacts, loaded } = useSyncExternalStore(dmStore.subscribe, dmStore.get);
   const chats = useChats();
@@ -207,37 +202,37 @@ export default function ChatDialog({ spaces, projects, thread: initialThread, on
   }, []);
 
   const [kind, id] = thread ? [thread.slice(0, thread.indexOf(':')), thread.slice(thread.indexOf(':') + 1)] : [];
-  const space = kind === 'space' ? spaces.find((s) => s.id === id) : null;
-  const project = kind === 'project' ? projects.find((p) => p.id === id) : null;
+  const folder = kind === 'folder' ? folders.find((f) => f.id === id) : null;
   const threadCard = useLiveQuery(() => (kind === 'card' ? db.cards.get(id) : null), [kind, id]);
-  const card = threadCard && !threadCard.deleted && projects.some((p) => p.id === threadCard.projectId)
+  const card = threadCard && !threadCard.deleted && folders.some((f) => f.id === threadCard.folderId)
     ? threadCard : null;
   const peer = kind === 'dm' ? contacts.find((c) => c.id === id) ?? (loaded ? null : { id }) : null;
-  const open = Boolean(space || project || card || peer);
-  // Who is in a space's or project's chat: the owner and those with access to it.
-  const members = space || project
-    ? everyone.filter((p) => p.owner || (space ? p.spaces?.includes(space.id) : p.projects.includes(project.id))).sort(byRole)
+  const open = Boolean(folder || card || peer);
+  // Who is in a folder's chat: the owner and those with access to it.
+  const members = folder
+    ? everyone.filter((p) => p.owner || (p.folders ?? [...(p.projects ?? []), ...(p.spaces ?? [])]).includes(folder.id)).sort(byRole)
     : [];
   const membersShown = showMembers && members.length > 0;
   const openThread = (next) => {
     setThread(next);
     setShowMembers(false);
   };
-  const projectName = new Map(projects.map((p) => [p.id, p.name]));
+  const folderName = new Map(folders.map((f) => [f.id, f.name]));
+  // «Работа / Проект» for a folder below the top level.
+  const parentName = (f) => {
+    const path = folderPath(f, folders);
+    return path.length > 1 ? path.slice(0, -1).map((p) => p.name).join(' / ') : null;
+  };
 
   // All chats in one list: the latest message first, those without messages after them.
   const items = [
-    ...spaces.map((s) => ({
-      thread: `space:${s.id}`, avatar: <SpaceAvatar />, title: s.name, subtitle: 'Пространство',
-      last: chats.spaces[s.id]?.last ?? null, unread: chats.spaces[s.id]?.unread ?? 0,
+    ...folders.map((f) => ({
+      thread: `folder:${f.id}`, avatar: <FolderAvatar />, title: f.name, subtitle: parentName(f),
+      last: chats.folders[f.id]?.last ?? null, unread: chats.folders[f.id]?.unread ?? 0,
     })),
-    ...projects.map((p) => ({
-      thread: `project:${p.id}`, avatar: <ProjectAvatar />, title: p.name,
-      last: chats.projects[p.id]?.last ?? null, unread: chats.projects[p.id]?.unread ?? 0,
-    })),
-    ...chats.cards.filter((c) => projectName.has(c.card.projectId)).map((c) => ({
+    ...chats.cards.filter((c) => folderName.has(c.card.folderId)).map((c) => ({
       thread: `card:${c.card.id}`, avatar: <CardAvatar />, title: cardTitle(c.card),
-      subtitle: projects.length > 1 ? projectName.get(c.card.projectId) : null,
+      subtitle: folders.length > 1 ? folderName.get(c.card.folderId) : null,
       last: c.last, unread: c.unread,
     })),
     ...contacts.map((c) => ({
@@ -272,8 +267,7 @@ export default function ChatDialog({ spaces, projects, thread: initialThread, on
               <header className="chat-pane-head">
                 <button type="button" className="btn btn-small chat-back" onClick={() => openThread('')}
                   aria-label="К списку чатов">←</button>
-                {space && <><SpaceAvatar /><strong className="chat-pane-title">{space.name}</strong></>}
-                {project && <><ProjectAvatar /><strong className="chat-pane-title">{project.name}</strong></>}
+                {folder && <><FolderAvatar /><strong className="chat-pane-title">{folder.name}</strong></>}
                 {members.length > 0 && (
                   <MembersButton people={members} open={membersShown} onToggle={() => setShowMembers(!showMembers)} />
                 )}
@@ -294,11 +288,8 @@ export default function ChatDialog({ spaces, projects, thread: initialThread, on
               {membersShown && (
                 <MembersList people={members} me={user?.id ?? ''} onWrite={(p) => openThread(`dm:${p.id}`)} />
               )}
-              {space && !membersShown && (
-                <Comments key={space.id} spaceId={space.id} className="chat-full" placeholder="Сообщение" />
-              )}
-              {project && !membersShown && (
-                <Comments key={project.id} projectId={project.id} className="chat-full" placeholder="Сообщение"
+              {folder && !membersShown && (
+                <Comments key={folder.id} folderId={folder.id} className="chat-full" placeholder="Сообщение"
                   onOpenCard={onOpenCard} />
               )}
               {card && <Comments key={card.id} card={card} className="chat-full" />}

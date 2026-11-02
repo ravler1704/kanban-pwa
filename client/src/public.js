@@ -1,8 +1,8 @@
 import { useSyncExternalStore } from 'react';
 import { publicToken } from './board.js';
 
-// What the public link this page was opened with gives: { project: { id, name }, mode, owner }.
-// mode: 'view' (read only) or 'edit' (cards and sections). Cached so the page opens offline.
+// What the public link this page was opened with gives: { project: { id, name }, mode, owner }; `project`
+// is the folder (the wire name is historical). mode: 'view' (read only) or 'edit' (cards and folders). Cached so the page opens offline.
 //   status: 'loading' (never fetched) | 'ready' | 'gone' (the owner removed the link)
 
 const CACHE_KEY = publicToken ? `publicLink:${publicToken}` : null;
@@ -50,7 +50,7 @@ export function markLinkGone() {
   setState({ status: 'gone', info: null });
 }
 
-// ---- the owner's links: [{ token, project, mode }], null until loaded ----
+// ---- the owner's links: [{ token, project, mode }] (`project` is the folder's id), null until loaded ----
 
 let links = null;
 const linkListeners = new Set();
@@ -91,10 +91,10 @@ async function postLinks(url, body) {
   setLinks((await res.json()).links);
 }
 
-/** Creates the project's link or changes what it allows (`mode`: 'view' | 'edit'). */
-export const savePublicLink = (project, mode) => postLinks('/api/public-links', { project, mode });
+/** Creates the folder's link or changes what it allows (`mode`: 'view' | 'edit'). */
+export const savePublicLink = (folderId, mode) => postLinks('/api/public-links', { project: folderId, mode });
 
-export const removePublicLink = (project) => postLinks('/api/public-links/remove', { project });
+export const removePublicLink = (folderId) => postLinks('/api/public-links/remove', { project: folderId });
 
 /** Asks the server what the link opens; keeps the cached answer when it is unreachable. */
 export async function loadPublicLink() {

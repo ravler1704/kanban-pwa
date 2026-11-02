@@ -6,8 +6,11 @@ import { notifyComments, registerChatRoutes } from './chat.js';
 import { EPOCH, userProfile } from './db.js';
 import { broadcast, registerEvents } from './events.js';
 import { registerFileRoutes, startFileCleanup } from './files.js';
+import { migrateFolders } from './migrateFolders.js';
 import { registerPushRoutes, startReminders } from './push.js';
 import { push, pull, ValidationError } from './sync.js';
+
+migrateFolders();
 
 const PORT = Number(process.env.PORT) || 3001;
 const HOST = process.env.HOST || undefined;

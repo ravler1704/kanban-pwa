@@ -12,8 +12,8 @@ import ChatThread from './ChatThread.jsx';
 const toMessage = (c) => ({ ...c, pending: Boolean(c.dirty && !c.server) });
 
 /**
- * Notes about the card from its projects' chats. A move between projects is noted in both; the
- * note in the new project is dropped when the one in the old project is here too.
+ * Notes about the card from its folders' chats. A move between folders is noted in both; the
+ * note in the new folder is dropped when the one in the old folder is here too.
  */
 async function cardEvents(cardId) {
   const notes = await db.comments
@@ -26,17 +26,16 @@ async function cardEvents(cardId) {
 
 /**
  * Live comments of a thread: the card `cardId` (with the notes of what was done with it), or with
- * cardId null the chat of `projectId` or `spaceId`. Reading them marks the thread read on this device.
+ * cardId null the chat of the folder `folderId`. Reading them marks the thread read on this device.
  */
-export function useComments({ cardId, projectId, spaceId }) {
+export function useComments({ cardId, folderId }) {
   const comments = useLiveQuery(async () => {
     if (cardId) return [...await db.comments.where('cardId').equals(cardId).toArray(), ...await cardEvents(cardId)];
-    if (spaceId) return db.comments.filter((c) => c.spaceId === spaceId).toArray();
-    return db.comments.where('projectId').equals(projectId).filter((c) => !c.cardId).toArray();
-  }, [cardId, projectId, spaceId]);
+    return db.comments.where('folderId').equals(folderId).filter((c) => !c.cardId).toArray();
+  }, [cardId, folderId]);
   const live = (comments ?? []).filter((c) => !c.deleted).sort((a, b) => a.createdAt - b.createdAt);
   const latest = live[live.length - 1]?.createdAt ?? 0;
-  const thread = threadOf({ cardId, projectId, spaceId });
+  const thread = threadOf({ cardId, folderId });
   useEffect(() => {
     if (latest) markSeen(thread, latest);
   }, [thread, latest]);
@@ -73,13 +72,12 @@ export function HistoryToggle() {
 }
 
 /**
- * The chat of a card (`card`), a project (`projectId`) or a space (`spaceId`). Signed-in people write;
+ * The chat of a card (`card`) or a folder (`folderId`). Signed-in people write;
  * through a public link comments are only shown. The board's owner may delete anyone's.
  */
-export default function Comments({ card, projectId, spaceId, title, className, placeholder, onOpenCard }) {
+export default function Comments({ card, folderId, title, className, placeholder, onOpenCard }) {
   const { user } = useSyncExternalStore(authState.subscribe, authState.get);
-  const where = card ? { cardId: card.id, projectId: card.projectId }
-    : spaceId ? { cardId: null, projectId: null, spaceId } : { cardId: null, projectId };
+  const where = card ? { cardId: card.id, folderId: card.folderId } : { cardId: null, folderId };
   const all = useComments(where);
   const historyHidden = useHistoryHidden();
   const me = user?.id ?? '';

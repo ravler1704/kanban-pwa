@@ -1,89 +1,40 @@
 import { useState } from 'react';
-import {
-  createProject, createSection, createSpace, deleteSpace, moveProject, moveSpace, renameProject, renameSection,
-  renameSpace, restructure,
-} from '../actions.js';
-import { spaceIdOf } from '../spaces.js';
+import { createFolder, moveFolder, renameFolder, reorderFolder } from '../actions.js';
+import { isOwnBoard } from '../board.js';
+import { childrenOf, descendants, folderColumnSetId, folderTree } from '../folders.js';
+import FolderSelect from './FolderSelect.jsx';
 import { AddButton, Chevron, NameInput, plural } from './ManageFields.jsx';
 import Modal from './Modal.jsx';
-import { SpaceMembers, useCanShare } from './SharingSection.jsx';
+import { FolderMembers, useCanShare } from './SharingSection.jsx';
 
-const KIND_NAMES = { space: 'пространство', project: 'проект', section: 'раздел' };
 const SEARCH_FROM = 7;
+const TOP = '';
 
-/** Where a space, project or section can go, and what becomes of it there. */
-function MoveDialog({ node, model, spaces, projects, sections, onMoved, onClose }) {
-  const { kind, item } = node;
-  const spaceOf = (p) => spaceIdOf(p, spaces);
-  const spaceName = (id) => spaces.find((s) => s.id === id)?.name;
-  const ownSections = kind === 'project' ? sections.filter((s) => s.projectId === item.id) : [];
-
-  const groups = [];
-  if (kind !== 'space') {
-    groups.push({ label: 'Сделать пространством', options: [{ value: 'top', label: 'Новое пространство' }] });
-  }
-  const spaceTargets = spaces.filter((s) => (kind === 'space' ? s.id !== item.id : kind !== 'project' || s.id !== spaceOf(item)));
-  if (spaceTargets.length) {
-    groups.push({
-      label: { space: 'Объединить с пространством', project: 'Перенести в пространство', section: 'Сделать проектом в пространстве' }[kind],
-      options: spaceTargets.map((s) => ({ value: `space:${s.id}`, label: s.name })),
-    });
-  }
-  const projectTargets = projects.filter((p) => {
-    if (kind === 'project') return p.id !== item.id;
-    if (kind === 'section') return p.id !== item.projectId;
-    return spaceOf(p) !== item.id;
-  });
-  if (projectTargets.length) {
-    groups.push({
-      label: kind === 'section' ? 'Перенести в проект' : 'Сделать разделом проекта',
-      options: projectTargets.map((p) => ({
-        value: `project:${p.id}`, label: spaces.length > 1 ? `${spaceName(spaceOf(p))} / ${p.name}` : p.name,
-      })),
-    });
-  }
-  const [value, setValue] = useState(groups[0]?.options[0].value ?? '');
+/** Where a folder can go: the top level or under another folder (not itself or what is inside it). */
+function MoveDialog({ folder, folders, model, writable, onClose }) {
+  const tree = folderTree(folders);
+  const inside = new Set([folder.id, ...descendants(folders, folder.id).map((f) => f.id)]);
+  // Members move folders only where they have access.
+  const exclude = new Set([...inside, ...folders.filter((f) => writable && !writable.has(f.id)).map((f) => f.id)]);
+  const current = tree.parentOf(folder) ?? TOP;
+  const [value, setValue] = useState(current);
+  const [keepColumns, setKeepColumns] = useState(true);
   const [busy, setBusy] = useState(false);
 
-  const [targetKind, targetId] = value === 'top' ? ['top', null] : value.split(':');
-  const target = targetKind === 'space' ? spaceName(targetId) : projects.find((p) => p.id === targetId)?.name;
-  const name = `«${item.name}»`;
-
-  // Sets of the projects whose cards move, to warn about columns matched by name.
-  const sourceProjects = kind === 'space' ? projects.filter((p) => spaceOf(p) === item.id)
-    : [projects.find((p) => p.id === (kind === 'project' ? item.id : item.projectId))].filter(Boolean);
-  const otherColumns = targetKind === 'project'
-    && sourceProjects.some((p) => model.setIdOf(p) !== model.setIdOf(projects.find((t) => t.id === targetId)));
-
-  function describe() {
-    if (kind === 'section') {
-      if (targetKind === 'top') return `Появится пространство ${name} с проектом ${name}, в который перейдут карточки раздела.`;
-      if (targetKind === 'space') return `В пространстве «${target}» появится проект ${name} с карточками раздела, а раздел исчезнет.`;
-      return `Раздел со всеми карточками перейдёт в проект «${target}».`;
-    }
-    if (kind === 'project') {
-      const asProjects = ownSections.length ? ', а его разделы станут проектами рядом с ним' : '';
-      if (targetKind === 'top') return `Появится пространство ${name}, проект перейдёт в него${asProjects}.`;
-      if (targetKind === 'space') return `Проект со всеми разделами и карточками перейдёт в пространство «${target}».`;
-      const asSections = ownSections.length ? `, его разделы — разделами «${item.name} / …»` : '';
-      return `Карточки проекта станут разделом ${name} проекта «${target}»${asSections}. `
-        + `Проект ${name} будет удалён вместе с его чатом и доступом участников.`;
-    }
-    if (targetKind === 'space') {
-      return `Все проекты перейдут в пространство «${target}», а пространство ${name} будет удалено вместе с его чатом и доступом участников.`;
-    }
-    return `Каждый проект пространства станет разделом проекта «${target}», `
-      + `а пространство ${name} и его проекты будут удалены вместе с чатами и доступом участников.`;
-  }
+  // A folder with a set of its own keeps it; one that takes it from its ancestors may get another set.
+  const target = value || null;
+  const moved = folders.map((f) => (f.id === folder.id ? { ...f, parentId: target } : f));
+  const before = folderColumnSetId(folder, folders);
+  const after = folderColumnSetId(moved.find((f) => f.id === folder.id), moved);
+  const setName = (id) => model.sets.find((s) => s.id === id)?.name ?? '';
+  const otherSet = !folder.columnSetId && before !== after;
 
   async function submit(e) {
     e.preventDefault();
-    if (!value || busy) return;
+    if (value === current || busy) return;
     setBusy(true);
     try {
-      await restructure(kind, item.id, targetKind === 'top' ? { top: true }
-        : targetKind === 'space' ? { spaceId: targetId } : { projectId: targetId });
-      onMoved?.(kind, item.id, targetKind === 'space' ? targetId : null);
+      await moveFolder(folder.id, target, { keepColumns });
       onClose();
     } catch (err) {
       alert(err.message);
@@ -92,31 +43,28 @@ function MoveDialog({ node, model, spaces, projects, sections, onMoved, onClose 
   }
 
   return (
-    <Modal title={`Перенести ${KIND_NAMES[kind]} ${name}`} onClose={onClose}>
+    <Modal title={`Перенести папку «${folder.name}»`} onClose={onClose}>
       <form className="editor" onSubmit={submit}>
-        {groups.length === 0 ? <p className="muted">Переносить некуда.</p> : (
-          <>
-            <label className="field">
-              <span className="field-label">Куда</span>
-              <select className="select" value={value} onChange={(e) => setValue(e.target.value)}>
-                {groups.map((g) => (
-                  <optgroup key={g.label} label={g.label}>
-                    {g.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </optgroup>
-                ))}
-              </select>
+        <FolderSelect label="Куда" folders={folders} exclude={exclude} value={value} onChange={setValue}>
+          {isOwnBoard && <option value={TOP}>Верхний уровень</option>}
+        </FolderSelect>
+        <p className="move-result">Папка перейдёт со всеми вложенными папками и карточками.</p>
+        {otherSet && (
+          <div className="field">
+            <span className="field-label">У новой папки другой набор колонок</span>
+            <label className="member-project">
+              <input type="radio" name="keep-columns" checked={keepColumns} onChange={() => setKeepColumns(true)} />
+              Оставить набор «{setName(before)}»
             </label>
-            <p className="move-result">{describe()}</p>
-            {otherColumns && (
-              <p className="muted move-note">
-                У проекта «{target}» другой набор колонок: карточки встанут в колонки с теми же названиями, остальные — в первую.
-              </p>
-            )}
-          </>
+            <label className="member-project">
+              <input type="radio" name="keep-columns" checked={!keepColumns} onChange={() => setKeepColumns(false)} />
+              Взять набор «{setName(after)}»: карточки встанут в колонки с теми же названиями, остальные — в первую
+            </label>
+          </div>
         )}
         <div className="actions">
           <button type="button" className="btn" onClick={onClose}>Отмена</button>
-          <button type="submit" className="btn btn-primary" disabled={!value || busy}>Перенести</button>
+          <button type="submit" className="btn btn-primary" disabled={value === current || busy}>Перенести</button>
         </div>
       </form>
     </Modal>
@@ -132,194 +80,129 @@ function OrderButtons({ onMove, canUp, canDown }) {
   );
 }
 
-function NodeHead({ kind, name, meta, open, onToggle, children }) {
-  return (
-    <div className="tree-head">
-      <button type="button" className="tree-toggle" aria-expanded={open} onClick={onToggle}>
-        <Chevron />
-        <span className="tree-title">
-          <span className="tree-label"><span className={`tree-kind tree-kind-${kind}`}>{KIND_NAMES[kind]}</span>{name}</span>
-          {meta && <span className="tree-meta">{meta}</span>}
-        </span>
-      </button>
-      {children}
-    </div>
-  );
-}
-
-function SectionNode({ section, onMove, onRemove }) {
-  return (
-    <div className="manage-row tree-section">
-      <NameInput value={section.name} label="Раздел" onSave={(name) => renameSection(section.id, name)} />
-      <button className="btn btn-small" onClick={onMove}>Перенести…</button>
-      <button className="btn btn-small btn-danger" onClick={onRemove}>Удалить</button>
-    </div>
-  );
-}
-
-function ProjectNode({ model, project, sections, columnsSynced, open, onToggle, order, onMove, onMoveSection,
-  onChangeSet, onRemove, onRemoveSection }) {
-  const setName = model.sets.find((s) => s.id === model.setIdOf(project))?.name;
+/** One folder with its settings (when open) and, below, the folders inside it. */
+function FolderNode({ folder, index, count, ctx }) {
+  const { model, folders, columnsSynced, canShare, needle, matches, openId, setOpenId, sharingId, setSharingId } = ctx;
+  const tree = folderTree(folders);
+  const kids = childrenOf(folders, folder.id);
+  const shownKids = kids.filter(matches);
+  const open = openId === folder.id;
+  const isRoot = !tree.parentOf(folder);
+  const parent = tree.byId.get(tree.parentOf(folder));
+  const own = Boolean(folder.columnSetId);
+  const setId = folderColumnSetId(folder, folders);
+  const setName = model.sets.find((s) => s.id === model.setIdOf(folder))?.name;
+  const parentSetName = parent && model.sets.find((s) => s.id === model.setIdOf(parent))?.name;
   const meta = [
-    sections.length ? `${sections.length} ${plural(sections.length, 'раздел', 'раздела', 'разделов')}` : 'без разделов',
-    columnsSynced && setName && `набор «${setName}»`,
+    kids.length ? `${kids.length} ${plural(kids.length, 'вложенная папка', 'вложенные папки', 'вложенных папок')}` : 'без вложенных',
+    columnsSynced && setName && `набор «${setName}»${own || isRoot ? '' : ' (как у родителя)'}`,
   ].filter(Boolean).join(' · ');
 
   return (
-    <section className={`tree-node tree-project ${open ? 'tree-node-open' : ''}`}>
-      <NodeHead kind="project" name={project.name} meta={meta} open={open} onToggle={onToggle}>
-        {order}
-      </NodeHead>
+    <section className={`tree-node tree-folder ${open ? 'tree-node-open' : ''}`}>
+      <div className="tree-head">
+        <button type="button" className="tree-toggle" aria-expanded={open} onClick={() => setOpenId(open ? null : folder.id)}>
+          <Chevron />
+          <span className="tree-title">
+            <span className="tree-label">{folder.name}</span>
+            <span className="tree-meta">{meta}</span>
+          </span>
+        </button>
+        {!needle && (
+          <OrderButtons canUp={index > 0} canDown={index < count - 1} onMove={(d) => reorderFolder(folder.id, d)} />
+        )}
+      </div>
       {open && (
         <div className="tree-body">
           <div className="manage-row">
-            <NameInput value={project.name} className="manage-project-name" label="Название проекта"
-              onSave={(name) => renameProject(project.id, name)} />
-            <button className="btn btn-small" onClick={onMove}>Перенести…</button>
-            <button className="btn btn-small btn-danger" onClick={onRemove}>Удалить</button>
+            <NameInput value={folder.name} className="manage-project-name" label="Название папки"
+              onSave={(name) => renameFolder(folder.id, name)} />
+            {canShare && (
+              <button className={`btn btn-small ${sharingId === folder.id ? 'btn-primary' : ''}`}
+                aria-expanded={sharingId === folder.id}
+                onClick={() => setSharingId(sharingId === folder.id ? null : folder.id)}>Доступ</button>
+            )}
+            <button className="btn btn-small" onClick={() => ctx.onMove(folder)}>Перенести…</button>
+            <button className="btn btn-small btn-danger" onClick={() => ctx.onRemove(folder)}>Удалить</button>
           </div>
-          {columnsSynced && (
+          {canShare && sharingId === folder.id && <FolderMembers folder={folder} folders={folders} />}
+          {columnsSynced && isOwnBoard && (
             <label className="field">
               <span className="field-label">Набор колонок</span>
-              <select className="select" value={model.setIdOf(project)} onChange={(e) => onChangeSet(e.target.value)}>
+              <select className="select" value={own || isRoot ? setId : TOP}
+                onChange={(e) => ctx.onChangeSet(folder, e.target.value || null)}>
+                {!isRoot && <option value={TOP}>Как у родителя{parentSetName ? ` («${parentSetName}»)` : ''}</option>}
                 {model.sets.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             </label>
           )}
-          <div className="tree-children">
-            {sections.map((s) => (
-              <SectionNode key={s.id} section={s} onMove={() => onMoveSection(s)} onRemove={() => onRemoveSection(s)} />
-            ))}
-            <AddButton label="Новый раздел" onAdd={(name) => createSection(project.id, name)} />
-          </div>
+          <p className="muted account-hint">
+            Колонки набора общие для папки и вложенных в неё папок, у которых нет своего набора.
+          </p>
         </div>
       )}
+      <div className="tree-children">
+        {shownKids.map((child) => (
+          <FolderNode key={child.id} folder={child} index={kids.indexOf(child)} count={kids.length} ctx={ctx} />
+        ))}
+        {!needle && (
+          <AddButton label="Новая вложенная папка" onAdd={async (name) => {
+            const id = await createFolder(name, { parentId: folder.id });
+            setOpenId(id);
+          }} />
+        )}
+      </div>
     </section>
   );
 }
 
 /**
- * Spaces → projects → sections of the own board in one tree: names, order, access and column sets;
- * any of them can be moved to another place, becoming a space, project or section there.
+ * The folders of the board in one tree of any depth: names, order, access and column sets; a folder moves
+ * to another place with everything in it. `writable` (a set of ids, or null for all) are the folders a
+ * member may touch.
  */
 export default function StructureEditor({
-  model, spaces, projects, sections, synced, columnsSynced, onChangeSet, onRemoveProject, onRemoveSection, onSpaceDeleted,
+  model, folders, synced, columnsSynced, writable, onChangeSet, onRemoveFolder,
 }) {
   const canShare = useCanShare();
-  const [openId, setOpenId] = useState(() => (projects.length === 1 ? `project:${projects[0].id}` : null));
+  const roots = childrenOf(folders, null);
+  const [openId, setOpenId] = useState(() => (folders.length === 1 ? folders[0].id : null));
   const [sharingId, setSharingId] = useState(null);
   const [moving, setMoving] = useState(null);
-  const [deleting, setDeleting] = useState(null);
-  const [targetId, setTargetId] = useState('');
   const [query, setQuery] = useState('');
 
-  const toggle = (key) => setOpenId(openId === key ? null : key);
-  const sectionsOf = (id) => sections.filter((s) => s.projectId === id);
-  const projectsOf = (id) => projects.filter((p) => spaceIdOf(p, spaces) === id);
   const needle = query.trim().toLowerCase();
-  const matches = (p) => !needle || p.name.toLowerCase().includes(needle)
-    || sectionsOf(p.id).some((s) => s.name.toLowerCase().includes(needle));
+  const matchesSelf = (f) => f.name.toLowerCase().includes(needle);
+  const matches = (f) => !needle || matchesSelf(f) || descendants(folders, f.id).some(matchesSelf);
 
-  async function removeSpace(space) {
-    const target = spaces.find((s) => s.id !== space.id);
-    if (projectsOf(space.id).length) {
-      setTargetId(target.id);
-      setDeleting(space);
-    } else if (confirm(`Удалить пространство «${space.name}»?`)) {
-      await deleteSpace(space.id, target.id);
-      onSpaceDeleted(space.id, target.id);
-    }
-  }
+  if (!synced) return <p className="muted">Папки появятся после синхронизации.</p>;
 
-  async function finishDelete() {
-    await deleteSpace(deleting.id, targetId);
-    onSpaceDeleted(deleting.id, targetId);
-    setDeleting(null);
-  }
-
-  if (!synced) return <p className="muted">Пространства и проекты появятся после синхронизации.</p>;
+  const ctx = {
+    model, folders, columnsSynced, canShare, needle, matches, openId, setOpenId, sharingId, setSharingId,
+    onMove: setMoving, onChangeSet, onRemove: onRemoveFolder,
+  };
   return (
     <div className="manage tree">
-      {projects.length >= SEARCH_FROM && (
+      {!isOwnBoard && <p className="muted">Колонки настраивает владелец доски, здесь можно менять папки внутри открытых вам.</p>}
+      {folders.length >= SEARCH_FROM && (
         <label className="field">
-          <span className="field-label">Поиск проекта или раздела</span>
+          <span className="field-label">Поиск папки</span>
           <input type="search" className="manage-search" value={query} onChange={(e) => setQuery(e.target.value)} />
         </label>
       )}
-      {spaces.map((space, i) => {
-        const own = projectsOf(space.id);
-        const shown = own.filter(matches);
-        if (needle && shown.length === 0) return null;
-        const key = `space:${space.id}`;
-        const open = openId === key;
-        return (
-          <section key={space.id} className={`tree-node tree-space ${open ? 'tree-node-open' : ''}`}>
-            <NodeHead kind="space" name={space.name} open={open} onToggle={() => toggle(key)}
-              meta={own.length ? `${own.length} ${plural(own.length, 'проект', 'проекта', 'проектов')}` : 'без проектов'}>
-              {!needle && <OrderButtons canUp={i > 0} canDown={i < spaces.length - 1} onMove={(d) => moveSpace(space.id, d)} />}
-            </NodeHead>
-            {open && (
-              <div className="tree-body">
-                <div className="manage-row">
-                  <NameInput value={space.name} label="Название пространства" maxLength={100}
-                    onSave={(name) => renameSpace(space.id, name)} />
-                  {canShare && (
-                    <button className={`btn btn-small ${sharingId === space.id ? 'btn-primary' : ''}`}
-                      aria-expanded={sharingId === space.id}
-                      onClick={() => setSharingId(sharingId === space.id ? null : space.id)}>Доступ</button>
-                  )}
-                  <button className="btn btn-small" onClick={() => setMoving({ kind: 'space', item: space })}>Перенести…</button>
-                  <button className="btn btn-small btn-danger" disabled={spaces.length < 2}
-                    title={spaces.length < 2 ? 'Должно остаться хотя бы одно пространство' : undefined}
-                    onClick={() => removeSpace(space)}>Удалить</button>
-                </div>
-                {canShare && sharingId === space.id && <SpaceMembers space={space} />}
-              </div>
-            )}
-            <div className="tree-children">
-              {shown.map((p, j) => (
-                <ProjectNode key={p.id} model={model} project={p} sections={sectionsOf(p.id)} columnsSynced={columnsSynced}
-                  open={openId === `project:${p.id}`} onToggle={() => toggle(`project:${p.id}`)}
-                  order={!needle && (
-                    <OrderButtons canUp={j > 0} canDown={j < shown.length - 1}
-                      onMove={(d) => moveProject(p.id, d, own.map((o) => o.id))} />
-                  )}
-                  onMove={() => setMoving({ kind: 'project', item: p })}
-                  onMoveSection={(s) => setMoving({ kind: 'section', item: s })}
-                  onChangeSet={(setId) => onChangeSet(p, setId)}
-                  onRemove={() => onRemoveProject(p)} onRemoveSection={onRemoveSection} />
-              ))}
-              {!needle && (
-                <AddButton label="Новый проект" onAdd={async (name) => {
-                  const id = await createProject(name, model.newProjectSetId, space.id);
-                  setOpenId(`project:${id}`);
-                }} />
-              )}
-            </div>
-          </section>
-        );
-      })}
-      {!needle && <AddButton label="Новое пространство" onAdd={(name) => createSpace(name)} />}
+      {roots.filter(matches).map((root) => (
+        <FolderNode key={root.id} folder={root} index={roots.indexOf(root)} count={roots.length} ctx={ctx} />
+      ))}
+      {needle && !roots.some(matches) && <p className="muted">Ничего не найдено.</p>}
+      {!needle && isOwnBoard && (
+        <AddButton label="Новая папка верхнего уровня" onAdd={async (name) => {
+          const id = await createFolder(name, { columnSetId: model.newFolderSetId });
+          setOpenId(id);
+        }} />
+      )}
 
       {moving && (
-        <MoveDialog node={moving} model={model} spaces={spaces} projects={projects} sections={sections}
-          onMoved={(kind, id, spaceId) => kind === 'space' && onSpaceDeleted(id, spaceId)}
-          onClose={() => setMoving(null)} />
-      )}
-      {deleting && (
-        <Modal title="Удалить пространство" onClose={() => setDeleting(null)}>
-          <p>В пространстве «{deleting.name}» проектов: {projectsOf(deleting.id).length}. Куда их перенести?</p>
-          <label className="field">
-            <span className="field-label">Пространство</span>
-            <select className="select" value={targetId} onChange={(e) => setTargetId(e.target.value)}>
-              {spaces.filter((s) => s.id !== deleting.id).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </label>
-          <div className="actions">
-            <button className="btn" onClick={() => setDeleting(null)}>Отмена</button>
-            <button className="btn btn-danger" onClick={finishDelete}>Удалить и перенести</button>
-          </div>
-        </Modal>
+        <MoveDialog folder={moving} folders={folders} model={model} writable={writable} onClose={() => setMoving(null)} />
       )}
     </div>
   );

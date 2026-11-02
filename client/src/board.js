@@ -34,7 +34,7 @@ function initialBoard() {
   return localStorage.getItem(BOARD_KEY) || null;
 }
 
-// A public link `/p/<token>` opens one project without signing in, apart from the own board.
+// A public link `/p/<token>` opens one folder without signing in, apart from the own board.
 const PUBLIC_DB_PREFIX = 'kanban-public:';
 export const publicToken = location.pathname.match(/^\/p\/([\w-]{8,64})\/?$/)?.[1] ?? null;
 
@@ -64,8 +64,8 @@ export function boardQuery() {
 /** Opens another board (null: the own one); `search` is the query of the page to open. */
 export function switchBoard(board, search = '') {
   store(normalize(board));
-  // Project and section ids belong to the board that is being left.
-  for (const key of ['projectToggles', 'sectionToggles', 'projectsOff', 'sectionsOff', 'toggled', 'selectedProjects', 'selectedSections', 'selectedProject', 'selectedSection']) {
+  // Folder ids belong to the board that is being left.
+  for (const key of ['folderToggles', 'projectToggles', 'sectionToggles', 'projectsOff', 'sectionsOff', 'toggled', 'selectedProjects', 'selectedSections', 'selectedProject', 'selectedSection']) {
     localStorage.removeItem(key);
   }
   location.assign(`/${search}`);

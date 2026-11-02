@@ -1,8 +1,9 @@
 import webpush from 'web-push';
 import {
-  deletePushSubscription, getDueReminders, getMeta, getPushSubscriptions, getRecord, markReminderSent,
-  projectUsers, pruneRemindersSent, savePushSubscription, setMeta,
+  deletePushSubscription, folderUsers, getDueReminders, getMeta, getPushSubscriptions, getRecord, markReminderSent,
+  pruneRemindersSent, savePushSubscription, setMeta,
 } from './db.js';
+import { folderAncestors } from './folders.js';
 
 // Card reminders delivered with Web Push. The VAPID key pair identifies this server to the
 // browsers' push services; it is generated once and kept in the database, because
@@ -54,9 +55,9 @@ export function registerPushRoutes(app) {
   });
 }
 
-/** Sends to every device of everyone who sees the project. */
-function send(board, project, payload) {
-  return sendToUsers(projectUsers(board, project), payload);
+/** Sends to every device of everyone who sees the folder. */
+function send(board, folder, payload) {
+  return sendToUsers(folderUsers(board, folder), payload);
 }
 
 /** Sends to every device of the users. */
@@ -77,17 +78,18 @@ export async function sendToUsers(users, payload) {
   }));
 }
 
-/** Title is "Project / Section", body is the card title. */
+/** Title is the folder path, body is the card title. */
 function reminderPayload(owner, { id, card }) {
   const name = (recordId) => {
     const record = recordId ? getRecord(owner, recordId) : null;
     return record && !record.deleted ? record.name : null;
   };
-  const where = [name(card.projectId), name(card.sectionId)].filter(Boolean).join(' / ');
+  const path = [...folderAncestors(owner, card.folderId).reverse(), card.folderId]
+    .map(name).filter(Boolean).join(' / ');
   const title = withoutLinks(card.title);
   return {
-    title: where || title,
-    body: where ? title : '',
+    title: path || title,
+    body: path ? title : '',
     tag: `card-${id}`,
     url: `/?${new URLSearchParams({ ...(owner && { board: owner }), card: id })}`,
   };
@@ -102,7 +104,7 @@ async function checkReminders() {
     const now = Date.now();
     for (const reminder of getDueReminders(now, MAX_LATE_MS)) {
       if (!markReminderSent(reminder.owner, reminder.id, reminder.remindAt)) continue;
-      await send(reminder.owner, reminder.card.projectId, reminderPayload(reminder.owner, reminder));
+      await send(reminder.owner, reminder.card.folderId, reminderPayload(reminder.owner, reminder));
     }
     pruneRemindersSent(now - 30 * 24 * 60 * 60 * 1000);
   } catch (err) {

@@ -2,7 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db.js';
 import { withoutLinks } from './links.js';
 
-// Notes of changes the server writes into a project's or space's chat: a comment whose `event` is JSON
+// Notes of changes the server writes into a folder's chat: a comment whose `event` is JSON
 // { k: kind, card: { id, title, number }, ... } (see recordEvents in server/src/sync.js).
 // Notes from before card numbers existed have none; `numbers` (card id → number) fills it in.
 
@@ -40,14 +40,27 @@ function parts(e) {
     case 'card.section': return e.to
       ? ['Карточка ', card, ` перенесена в раздел ${q(e.to)}`]
       : ['Карточка ', card, ` вынесена из раздела ${q(e.from)}`];
-    case 'card.out': return ['Карточка ', card, ` перенесена в проект ${q(e.project)}`];
-    case 'card.in': return ['Карточка ', card, ` перенесена из проекта ${q(e.project)}`];
+    case 'card.out': return ['Карточка ', card, ` перенесена в папку ${q(e.folder ?? e.project)}`];
+    case 'card.in': return ['Карточка ', card, ` перенесена из папки ${q(e.folder ?? e.project)}`];
     case 'card.description': return ['Изменено описание карточки ', card];
     case 'card.remind': return e.at
       ? ['Напоминание по карточке ', card, `: ${remindTime(e.at)}`]
       : ['Убрано напоминание по карточке ', card];
     case 'card.file.add': return [`Прикреплён файл ${q(e.name)} к карточке `, card];
     case 'card.file.remove': return [`Удалён файл ${q(e.name)} из карточки `, card];
+    case 'folder.create': return [`Создана папка ${q(e.name)}`];
+    case 'folder.child': return [`Внутри создана папка ${q(e.name)}`];
+    case 'folder.rename': return [`Папка ${q(e.from)} переименована в ${q(e.name)}`];
+    case 'folder.delete': return [`Удалена папка ${q(e.name)}`];
+    case 'folder.restore': return [`Восстановлена папка ${q(e.name)}`];
+    case 'folder.columns': return [e.name ? `Папке назначен набор колонок ${q(e.name)}` : 'Папка берёт набор колонок у родителя'];
+    case 'folder.out': return [e.folder
+      ? `Папка ${q(e.name)} перенесена в папку ${q(e.folder)}`
+      : `Папка ${q(e.name)} перенесена на верхний уровень`];
+    case 'folder.in': return [e.folder
+      ? `Папка ${q(e.name)} перенесена сюда из папки ${q(e.folder)}`
+      : `Папка ${q(e.name)} перенесена сюда с верхнего уровня`];
+    // Notes written before folders replaced sections, projects and spaces.
     case 'section.create': return [`Создан раздел ${q(e.name)}`];
     case 'section.delete': return [`Удалён раздел ${q(e.name)}`];
     case 'section.restore': return [`Восстановлен раздел ${q(e.name)}`];
@@ -62,7 +75,7 @@ function parts(e) {
     case 'project.in': return [`Проект ${q(e.name)} перенесён сюда из пространства ${q(e.space)}`];
     case 'space.create': return [`Создано пространство ${q(e.name)}`];
     case 'space.rename': return [`Пространство ${q(e.from)} переименовано в ${q(e.name)}`];
-    default: return ['Изменения в проекте'];
+    default: return ['Изменения в папке'];
   }
 }
 

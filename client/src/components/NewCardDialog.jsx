@@ -1,58 +1,33 @@
 import { useState } from 'react';
 import { createCard } from '../actions.js';
 import CardExtraFields from './CardExtraFields.jsx';
+import FolderSelect from './FolderSelect.jsx';
 import Modal from './Modal.jsx';
 import { fromInputValue } from './ReminderField.jsx';
 import TitleField from './TitleField.jsx';
 
 const LAST_KEY = 'lastTargetForNewCard';
 
-const encode = (projectId, sectionId) => `${projectId}|${sectionId ?? ''}`;
-const decode = (value) => {
-  const [projectId, sectionId] = value.split('|');
-  return { projectId, sectionId: sectionId || null };
-};
-
-/** "Project / section" select; `value` and `onChange` use { projectId, sectionId }. */
-export function GroupSelect({ groups, value, onChange }) {
-  return (
-    <label className="field">
-      <span className="field-label">Проект / раздел</span>
-      <select className="select" value={encode(value.projectId, value.sectionId)} onChange={(e) => onChange(decode(e.target.value))}>
-        {groups.flatMap((g) => [
-          <option key={g.project.id} value={encode(g.project.id, null)}>{g.project.name}</option>,
-          ...g.sections.map((s) => (
-            <option key={s.id} value={encode(g.project.id, s.id)}>{g.project.name} / {s.name}</option>
-          )),
-        ])}
-      </select>
-    </label>
-  );
-}
-
-const encodeAll = (groups) =>
-  groups.flatMap((g) => [encode(g.project.id, null), ...g.sections.map((s) => encode(g.project.id, s.id))]);
-
-/** Where a new card goes when several projects are shown: the last used destination, or the first one. */
-export function defaultTarget(groups) {
-  const values = encodeAll(groups);
-  const last = localStorage.getItem(LAST_KEY);
-  const value = values.includes(last) ? last : values[0];
-  return value ? decode(value) : null;
+/**
+ * Where a new card goes when several folders are shown: the last used folder, or the first one.
+ * `folders` are the folders to choose from; returns an id (null if there are none).
+ */
+export function defaultTarget(folders) {
+  // An older build stored 'projectId|sectionId'; the section (else the project) is a folder now.
+  const [project, section] = (localStorage.getItem(LAST_KEY) ?? '').split('|');
+  const last = section || project;
+  return folders.some((f) => f.id === last) ? last : folders[0]?.id ?? null;
 }
 
 /**
- * `target` ({ projectId, sectionId }) is the current selection; when null (all projects
- * are shown) the last used destination is preselected.
+ * `folders` are the folders a card can be added to and `target` the one preselected (an id; when null
+ * the last used folder is preselected).
  */
-export default function NewCardDialog({ groups, columnsOfProject, target, onClose }) {
-  const [where, setWhere] = useState(() => {
-    const preferred = target ?? defaultTarget(groups);
-    return preferred ? encode(preferred.projectId, preferred.sectionId) : '';
-  });
-  // The project's column set decides the choice. New cards land in «Входящие» (the default
+export default function NewCardDialog({ folders, columnsOfFolder, target, onClose }) {
+  const [folderId, setFolderId] = useState(() => (folders.some((f) => f.id === target) ? target : defaultTarget(folders)) ?? '');
+  // The folder's column set decides the choice. New cards land in «Входящие» (the default
   // backlog column) or the first column; a picked column is kept by name across sets.
-  const columns = where ? columnsOfProject(decode(where).projectId) : [];
+  const columns = folderId ? columnsOfFolder(folderId) : [];
   const [picked, setPicked] = useState(null);
   const column = columns.find((c) => c.id === picked?.id)
     ?? (picked && columns.find((c) => c.name === picked.name))
@@ -66,9 +41,9 @@ export default function NewCardDialog({ groups, columnsOfProject, target, onClos
 
   async function submit(e) {
     e.preventDefault();
-    if (!title.trim() || !where || !columnId) return;
-    localStorage.setItem(LAST_KEY, where);
-    await createCard(decode(where), columnId, title.trim(), description, fromInputValue(remindAt));
+    if (!title.trim() || !folderId || !columnId) return;
+    localStorage.setItem(LAST_KEY, folderId);
+    await createCard({ folderId }, columnId, title.trim(), description, fromInputValue(remindAt));
     onClose();
   }
 
@@ -83,7 +58,7 @@ export default function NewCardDialog({ groups, columnsOfProject, target, onClos
           onRemindAt={setRemindAt}
           descriptionRows={4}
         />
-        <GroupSelect groups={groups} value={decode(where)} onChange={(v) => setWhere(encode(v.projectId, v.sectionId))} />
+        <FolderSelect folders={folders} value={folderId} onChange={setFolderId} />
         <label className="field">
           <span className="field-label">Колонка</span>
           <select className="select" value={columnId} onChange={(e) => setColumnId(e.target.value)}>

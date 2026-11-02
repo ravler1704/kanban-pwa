@@ -1,6 +1,6 @@
 import { boardHeaders, dbName, publicToken } from './board.js';
 
-// Who sees the projects of the board on this device: [{ id, name, email, picture, owner, projects }].
+// Who sees the folders of the board on this device: [{ id, name, email, picture, owner, folders }].
 // Kept per board so the avatars and comment authors show offline too.
 
 const KEY = `people:${dbName}`;
@@ -43,3 +43,6 @@ export async function refreshPeople({ force = false } = {}) {
 }
 
 export const personName = (p) => p?.name || p?.email || 'Без имени';
+
+/** Ids of the folders the person sees (older servers sent `projects` and `spaces`). */
+export const folderIdsOf = (p) => p?.folders ?? [...(p?.projects ?? []), ...(p?.spaces ?? [])];

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { publicToken } from '../board.js';
+import { flattenFolders } from '../folders.js';
 import CheckPicker from './CheckPicker.jsx';
 import TagFilter from './TagFilter.jsx';
 
@@ -61,57 +62,38 @@ const VIEWS = [
 ];
 
 /**
- * `projectFilter` / `sectionFilter` are CheckPicker props ({ selected, onToggle, onSetAll, onClear,
- * summary }) over project / section ids; `spaceFilter` (also with `items`) over space ids. `sectionGroups` ({ project, sections }) are the projects
- * whose sections can be picked. `conflictsBySection` is keyed by
- * `${projectId}|${sectionId ?? ''}`. Without `onManage` / `onAddCard` (read only) their buttons are not shown.
+ * `folderFilter` is the CheckPicker props ({ selected, onToggle, onSetAll, onClear, summary }) over the ids
+ * of `folders` (all live folders, shown as a tree). `conflictsByFolder` is { [folderId]: number of cards
+ * with a conflict }. Without `onManage` / `onAddCard` (read only) their buttons are not shown.
  */
-export default function ProjectBar({
-  projects, sectionGroups, spaceFilter, projectFilter, sectionFilter, conflictsBySection,
-  columnSets, columnSetId, onSelectColumnSet, tagFilter, cardFilter, view, onView, onManage, onAddCard, children,
+export default function FolderBar({
+  folders, folderFilter, conflictsByFolder, columnSets, columnSetId, onSelectColumnSet, tagFilter, cardFilter,
+  view, onView, onManage, onAddCard, children,
 }) {
   const [filtersHidden, setFiltersHidden] = useState(() => localStorage.getItem(FILTERS_HIDDEN_KEY) === '1');
   const toggleFilters = () => {
     localStorage.setItem(FILTERS_HIDDEN_KEY, filtersHidden ? '0' : '1');
     setFiltersHidden(!filtersHidden);
   };
-  const allKeys = Object.keys(conflictsBySection);
-  const projectConflicts = (p) => allKeys
-    .filter((key) => key.startsWith(`${p.id}|`))
-    .reduce((sum, key) => sum + conflictsBySection[key], 0);
-  const projectItems = projects.map((p) => ({ key: p.id, name: withConflicts(p.name, projectConflicts(p)) }));
-  const sectionItems = sectionGroups.flatMap(({ project, sections }) => sections.map((s) => ({
-    key: s.id,
-    name: withConflicts(s.name, conflictsBySection[`${project.id}|${s.id}`]),
-    group: sectionGroups.length > 1 ? project.name : undefined,
-  })));
+  const folderItems = flattenFolders(folders).map(({ folder, depth }) => ({
+    key: folder.id, name: withConflicts(folder.name, conflictsByFolder[folder.id]), depth,
+  }));
 
   // A filter that narrows the board: shown on the toggle while the filters are hidden.
-  const filtered = Boolean(spaceFilter?.onClear || projectFilter.onClear || (sectionItems.length && sectionFilter.onClear)
-    || tagFilter?.selected.length || cardFilter?.selected.length);
+  const filtered = Boolean(folderFilter.onClear || tagFilter?.selected.length || cardFilter?.selected.length);
 
   const filters = !filtersHidden && (
     <div className="projectbar-row">
-      {spaceFilter && (
-        <CheckPicker label="Пространства" emptyLabel="Не выбраны" clearLabel="Показать все"
-          searchPlaceholder="Поиск пространства" notFound="Пространств не найдено" {...spaceFilter} />
-      )}
-
       {!publicToken && (
-        <CheckPicker label="Проекты" emptyLabel="Не выбраны" clearLabel="Показать все"
-          searchPlaceholder="Поиск проекта" notFound="Проектов не найдено" items={projectItems} {...projectFilter} />
-      )}
-
-      {sectionItems.length > 0 && (
-        <CheckPicker label="Разделы" emptyLabel="Не выбраны" clearLabel="Показать все"
-          searchPlaceholder="Поиск раздела" notFound="Разделов не найдено" items={sectionItems} {...sectionFilter} />
+        <CheckPicker label="Папки" emptyLabel="Не выбраны" clearLabel="Показать все"
+          searchPlaceholder="Поиск папки" notFound="Папок не найдено" items={folderItems} {...folderFilter} />
       )}
 
       {columnSets && (
         <div className="picker">
           <label className="picker-label" htmlFor="column-set-select">Колонки</label>
           <select id="column-set-select" className="select" value={columnSetId}
-            title="Доски с разными наборами колонок показываются по отдельности"
+            title="Папки с разными наборами колонок показываются по отдельности"
             onChange={(e) => onSelectColumnSet(e.target.value)}>
             {columnSets.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>

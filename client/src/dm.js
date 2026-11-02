@@ -1,7 +1,7 @@
 import { newId } from './db.js';
 
 // Direct messages: kept on the server only (the people may be on different boards), so they need
-// the network. `contacts` are everyone the user shares a project with or wrote with before:
+// the network. `contacts` are everyone the user shares a folder with or wrote with before:
 // [{ id, name, email, picture, canWrite, last, unread }].
 
 let state = { contacts: [], loaded: false, error: null };
@@ -32,7 +32,7 @@ async function request(url, body) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const err = new Error(data.error === 'no shared project'
-      ? 'У вас больше нет общих проектов — написать нельзя.'
+      ? 'У вас больше нет общих папок — написать нельзя.'
       : 'Не удалось связаться с сервером.');
     err.status = res.status;
     throw err;

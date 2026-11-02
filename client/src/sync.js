@@ -62,6 +62,26 @@ function serverSnapshot(type, record) {
 const typeNames = Object.keys(TYPES);
 const allTables = () => typeNames.map(tableOf);
 
+/**
+ * Orders folders so that a folder comes after the dirty folder that is its parent: the server needs
+ * the parent first (a new parent, or one a folder was just moved under). Others keep their order.
+ */
+function sortFolders(folders) {
+  const byId = new Map(folders.map((f) => [f.id, f]));
+  const done = new Set();
+  const out = [];
+  const visit = (folder, path) => {
+    if (done.has(folder.id) || path.has(folder.id)) return;
+    path.add(folder.id);
+    const parent = byId.get(folder.parentId);
+    if (parent) visit(parent, path);
+    done.add(folder.id);
+    out.push(folder);
+  };
+  for (const f of folders) visit(f, new Set());
+  folders.splice(0, folders.length, ...out);
+}
+
 // ---- push: send every dirty record as a diff against the last known server state ----
 
 async function push() {
@@ -71,6 +91,7 @@ async function push() {
   for (const type of typeNames) {
     const dirty = await tableOf(type).where('dirty').equals(1).toArray();
     dirty.sort((a, b) => (a.createdLocally ?? 0) - (b.createdLocally ?? 0));
+    if (type === 'folder') sortFolders(dirty);
     for (const rec of dirty) {
       sent.set(rec.id, rec);
       const fields = {};

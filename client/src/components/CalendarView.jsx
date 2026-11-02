@@ -62,7 +62,7 @@ function Reminder({ card, label, columnName, now, onOpen, detailed }) {
 
 /**
  * Cards with a reminder, by day: a month grid on wide screens, a list of days on narrow ones.
- * `cards` are the cards of the current project/section; `cardLabel` and `columns` describe them.
+ * `cards` are the cards of the folders in view; `cardLabel` and `columns` describe them.
  */
 export default function CalendarView({ cards, columns, cardLabel, onOpen }) {
   const [month, setMonth] = useState(() => {

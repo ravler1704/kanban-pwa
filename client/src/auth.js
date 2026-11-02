@@ -167,12 +167,12 @@ const plural = (n, one, few, many) =>
 export async function linkAccount(provider, payload) {
   let res = await postAuth(provider, { ...payload, link: true });
   if (res.status === 409 && res.body.error === 'has board') {
-    const { projects, cards } = res.body.board;
+    const { projects = 0, folders = projects, cards } = res.body.board;
     const who = res.body.email ? `Аккаунт ${res.body.email}` : 'Этот аккаунт';
     const ok = confirm(
-      `${who} уже входит в другую доску (${plural(projects, 'проект', 'проекта', 'проектов')}, `
+      `${who} уже входит в другую доску (${plural(folders, 'папка', 'папки', 'папок')}, `
       + `${plural(cards, 'карточка', 'карточки', 'карточек')}). Объединить её с текущей? `
-      + 'Её проекты и карточки перейдут сюда, а вход через любой из аккаунтов будет открывать эту доску.',
+      + 'Её папки и карточки перейдут сюда, а вход через любой из аккаунтов будет открывать эту доску.',
     );
     if (!ok) return false;
     res = await postAuth(provider, { ...payload, link: true, merge: true });
@@ -246,7 +246,7 @@ export async function completeYandexAuth() {
 /** Signs out and removes the board from this device. Returns false if the user cancelled. */
 export async function signOut() {
   const pending = (await Promise.all(
-    [db.columnSets, db.columns, db.projects, db.sections, db.cards].map((t) => t.where('dirty').equals(1).count()),
+    [db.columnSets, db.columns, db.folders, db.cards].map((t) => t.where('dirty').equals(1).count()),
   )).reduce((a, b) => a + b, 0);
   if (pending > 0 && !confirm(`Есть несинхронизированные изменения (${pending}). При выходе они пропадут. Выйти?`)) {
     return false;
@@ -293,8 +293,9 @@ async function postJson(url, body) {
   return { status: res.status, body: await res.json().catch(() => ({})) };
 }
 
-// People invited to projects of the own board: [{ email, name, joined, projects: [projectId] }],
-// null until loaded. Shared by the «Доступ» tab and the project settings.
+// People invited to folders of the own board: [{ email, name, joined, folders: [folderId] }] (the folders
+// they were invited to directly; those below them follow), null until loaded. Shared by the «Доступ» tab
+// and the folder settings. An older server sent `projects` and `spaces`, see folderIdsOf in people.js.
 let members = null;
 const memberListeners = new Set();
 
@@ -317,21 +318,19 @@ export async function loadMembers() {
   setMembers((await res.json()).members);
 }
 
-/** To a project ({ project }) or to every project of a space ({ space }). */
-export async function inviteMember(email, { project, space }) {
-  const res = await postJson('/api/members', { email, project, space });
+/** To a folder and everything in it, also what is added later: `{ folder }` (the folder's id). */
+export async function inviteMember(email, { folder }) {
+  const res = await postJson('/api/members', { email, folder });
   if (res.status === 400 && res.body.error === 'own email') throw new Error('Это адрес вашего аккаунта.');
   if (res.status === 400) throw new Error('Проверьте адрес почты.');
-  if (res.status === 404) {
-    throw new Error(`${space ? 'Пространство ещё не сохранено' : 'Проект ещё не сохранён'} на сервере — подождите синхронизации.`);
-  }
+  if (res.status === 404) throw new Error('Папка ещё не сохранена на сервере — подождите синхронизации.');
   if (res.status !== 200) throw new Error('Не удалось пригласить. Попробуйте ещё раз.');
   setMembers(res.body.members);
 }
 
-/** From a project ({ project }) or a space ({ space }); with neither, from everything. */
-export async function removeMember(email, { project, space } = {}) {
-  const res = await postJson('/api/members/remove', { email, project, space });
+/** From a folder (`{ folder }`); with none, from everything. */
+export async function removeMember(email, { folder } = {}) {
+  const res = await postJson('/api/members/remove', { email, folder });
   if (res.status !== 200) throw new Error('Не удалось убрать участника. Попробуйте ещё раз.');
   setMembers(res.body.members);
 }

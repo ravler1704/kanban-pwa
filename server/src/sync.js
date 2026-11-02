@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import {
   cardIdsInOrder, commentIdsOfCard, getMaxSeq, getMeta, getRecord, getRecordsSince, saveRecord, setMeta, transaction,
 } from './db.js';
+import { folderAncestors, folderColumnSet } from './folders.js';
 import { textDiff } from './textDiff.js';
 
 const string = (max) => (v) => typeof v === 'string' && v.length <= max;
@@ -21,11 +22,13 @@ const attachments = (v) => Array.isArray(v) && v.length <= 1000 && v.every(attac
  *   deletion wins.
  */
 export const DEFAULT_SET_ID = 'default';
-// Projects from before spaces are in this one («Личное»).
-export const DEFAULT_SPACE_ID = 'personal';
+// Root folder «Личное» (and the former default space id).
+export const DEFAULT_FOLDER_ID = 'personal';
+/** @deprecated use DEFAULT_FOLDER_ID */
+export const DEFAULT_SPACE_ID = DEFAULT_FOLDER_ID;
 
 export const SCHEMAS = {
-  // A named list of columns; every project (board) uses one set.
+  // A named list of columns; a folder may point at one (or inherit from an ancestor).
   columnSet: {
     fields: { name: string(100), position: number, deleted: boolean },
     defaults: { name: '', position: 0, deleted: false },
@@ -39,65 +42,50 @@ export const SCHEMAS = {
     textFields: [],
     deleteConflicts: false,
   },
-  // The top level of the board: projects are grouped into spaces.
-  space: {
-    fields: { name: string(100), position: number, deleted: boolean },
-    defaults: { name: '', position: 0, deleted: false },
-    textFields: [],
-    deleteConflicts: false,
-  },
-  // hidden (projects, sections): unchecked by default in the board's project / section filter.
-  project: {
+  // Nested folders of any depth; parentId null is a root. columnSetId null → inherit.
+  // hidden: unchecked by default in the board's folder filter.
+  folder: {
     fields: {
-      spaceId: ref, columnSetId: ref, name: string(200), position: number, deleted: boolean, hidden: boolean,
+      parentId: optionalRef,
+      columnSetId: optionalRef,
+      name: string(200),
+      position: number,
+      deleted: boolean,
+      hidden: boolean,
     },
     defaults: {
-      spaceId: DEFAULT_SPACE_ID, columnSetId: DEFAULT_SET_ID, name: '', position: 0, deleted: false, hidden: false,
+      parentId: null, columnSetId: null, name: '', position: 0, deleted: false, hidden: false,
     },
-    textFields: [],
-    deleteConflicts: false,
-  },
-  section: {
-    fields: { projectId: ref, name: string(200), position: number, deleted: boolean, hidden: boolean },
-    defaults: { name: '', position: 0, deleted: false, hidden: false },
     textFields: [],
     deleteConflicts: false,
   },
   card: {
-    // sectionId is null for cards that belong to the project directly.
     fields: {
-      projectId: ref,
-      sectionId: optionalRef,
+      folderId: ref,
       columnId: ref,
       title: string(500),
       description: string(10_000),
       position: number,
       deleted: boolean,
-      // Unix time in ms when a push reminder is sent to the owner's devices.
       remindAt: optionalTime,
-      // Files ({ id, name, size, type, addedAt }); only the server changes them (see files.js).
       attachments,
-      // #1, #2, … within the board in order of creation; set by the server (see nextCardNumber).
       number: (v) => v === null || (Number.isInteger(v) && v > 0),
     },
     defaults: {
-      sectionId: null, columnId: 'todo', title: '', description: '', position: 0, deleted: false, remindAt: null,
+      columnId: 'todo', title: '', description: '', position: 0, deleted: false, remindAt: null,
       attachments: [], number: null,
     },
     textFields: ['title', 'description'],
     serverFields: ['attachments', 'number'],
     deleteConflicts: true,
   },
-  // A comment on a card, or (cardId null) a message in the project's chat, or (spaceId set,
-  // projectId null) in the space's chat, which only the board's owner sees. The server sets the
-  // author and keeps projectId equal to the card's; only the author edits, the author or the
-  // board's owner deletes (see applyComment). `event` (JSON, see recordEvents) makes it a note of
-  // a change in the project or space, written by the server.
+  // A comment on a card, or (cardId null) a message in the folder's chat. The server sets the
+  // author and keeps folderId equal to the card's; only the author edits, the author or the
+  // board's owner deletes. `event` (JSON) is a note of a change, written by the server.
   comment: {
     fields: {
       cardId: optionalRef,
-      projectId: optionalRef,
-      spaceId: optionalRef,
+      folderId: optionalRef,
       text: string(4000),
       authorId: string(200),
       authorName: string(200),
@@ -108,8 +96,8 @@ export const SCHEMAS = {
       event: string(4000),
     },
     defaults: {
-      cardId: null, spaceId: null, text: '', authorId: '', authorName: '', authorPicture: '', createdAt: 0, editedAt: null, deleted: false,
-      event: '',
+      cardId: null, folderId: null, text: '', authorId: '', authorName: '', authorPicture: '',
+      createdAt: 0, editedAt: null, deleted: false, event: '',
     },
     textFields: [],
     serverFields: ['authorId', 'authorName', 'authorPicture', 'editedAt', 'event'],
@@ -175,37 +163,35 @@ function pickData(schema, record) {
 /** Records stored before a field existed get its default. */
 const withDefaults = (record) => (record && SCHEMAS[record.type] ? { ...SCHEMAS[record.type].defaults, ...record } : record);
 
-// ---- members: access to some projects of someone else's board ----
+// ---- members: access to some folders of someone else's board ----
 
 /**
- * What a member of the board may see: `projects` (ids the member was invited to), `sets` and
- * `spaces`, the column sets and spaces these projects use. `key` changes whenever any of them
- * changes; it is part of the member's epoch, so their devices then download the board again
- * (records of newly opened projects are older than what the device already has). With `readOnly`
- * (a public link for viewing) nothing may be changed.
+ * What a member may see: `folders` (invited folder + descendants), `ancestors` (parents of those,
+ * shown in the tree without their cards), `sets` (column sets in use). `key` changes whenever any
+ * of them changes (member epoch). With `readOnly` nothing may be changed.
  */
-export function memberAccess(owner, projectIds, { readOnly = false } = {}) {
-  const projects = new Set(projectIds);
+export function memberAccess(owner, folderIds, { readOnly = false } = {}) {
+  const folders = new Set(folderIds);
+  const ancestors = new Set();
   const sets = new Set();
-  const spaces = new Set();
-  for (const id of projectIds) {
-    const project = withDefaults(getRecord(owner, id));
-    sets.add(project?.columnSetId ?? DEFAULT_SET_ID);
-    spaces.add(project?.spaceId ?? DEFAULT_SPACE_ID);
+  for (const id of folderIds) {
+    sets.add(folderColumnSet(owner, id));
+    for (const a of folderAncestors(owner, id)) {
+      if (!folders.has(a)) ancestors.add(a);
+    }
   }
   const key = crypto.createHash('sha256')
-    .update(JSON.stringify([projectIds, [...sets].sort(), [...spaces].sort()]))
+    .update(JSON.stringify([[...folders].sort(), [...ancestors].sort(), [...sets].sort()]))
     .digest('hex').slice(0, 16);
-  return { projects, sets, spaces, key, readOnly };
+  // `projects` alias kept for older call sites during the switch.
+  return { folders, ancestors, sets, projects: folders, key, readOnly };
 }
 
 function visibleTo(access, record) {
   switch (record.type) {
-    case 'space': return access.spaces.has(record.id);
-    case 'project': return access.projects.has(record.id);
-    case 'section':
-    case 'card': return access.projects.has(record.projectId);
-    case 'comment': return !record.spaceId && access.projects.has(record.projectId);
+    case 'folder': return access.folders.has(record.id) || access.ancestors.has(record.id);
+    case 'card': return access.folders.has(record.folderId);
+    case 'comment': return access.folders.has(record.folderId);
     case 'columnSet': return access.sets.has(record.id);
     case 'column': return access.sets.has(record.setId);
     default: return false;
@@ -226,11 +212,26 @@ function tombstone(type, id, record) {
   };
 }
 
-/** Members edit cards and sections of their projects; projects and columns are the owner's. */
+/** Members edit cards and folders inside their access; column sets stay the owner's. */
 function memberMayChange(access, type, current, fields) {
-  if (access.readOnly || (type !== 'card' && type !== 'section')) return false;
-  if (current && !access.projects.has(current.projectId)) return false;
-  return access.projects.has(fields.projectId ?? current?.projectId);
+  if (access.readOnly || (type !== 'card' && type !== 'folder')) return false;
+  if (type === 'card') {
+    if (current && !access.folders.has(current.folderId)) return false;
+    return access.folders.has(fields.folderId ?? current?.folderId);
+  }
+  // New folder: parent must be accessible; root folders are the owner's.
+  const parentId = fields.parentId !== undefined ? fields.parentId : current?.parentId;
+  if (current) {
+    if (!access.folders.has(current.id) && !access.folders.has(current.parentId)) return false;
+  } else if (!parentId || !access.folders.has(parentId)) return false;
+  // Members may not reassign column sets or reparent outside their tree.
+  if (fields.columnSetId != null && fields.columnSetId !== (current?.columnSetId ?? null)) return false;
+  if (fields.parentId !== undefined) {
+    const nextParent = fields.parentId;
+    if (nextParent && !access.folders.has(nextParent)) return false;
+    if (!nextParent) return false;
+  }
+  return true;
 }
 
 /**
@@ -249,25 +250,19 @@ function applyComment(owner, deviceId, { id, fields }, access, actor) {
   if (!current) {
     const data = { ...schema.defaults, ...fields };
     if (!data.text.trim() || data.deleted) return reject();
-    let projectId = data.projectId;
-    const spaceId = data.cardId ? null : data.spaceId;
+    let folderId = data.folderId;
     if (data.cardId) {
       const card = getRecord(owner, data.cardId);
       if (card?.type !== 'card') return reject();
-      projectId = card.projectId;
-    } else if (spaceId) {
-      const space = withDefaults(getRecord(owner, spaceId));
-      if (access || space?.type !== 'space' || space.deleted) return reject();
-      projectId = null;
-    } else if (!ref(projectId) || getRecord(owner, projectId)?.type !== 'project') {
+      folderId = card.folderId;
+    } else if (!ref(folderId) || getRecord(owner, folderId)?.type !== 'folder') {
       return reject();
     }
-    if (access && !access.projects.has(projectId)) return reject();
+    if (access && !access.folders.has(folderId)) return reject();
     const now = Date.now();
     const record = save({
       ...data,
-      projectId,
-      spaceId,
+      folderId,
       authorId: actor.id,
       authorName: actor.name ?? '',
       authorPicture: actor.picture ?? '',
@@ -300,14 +295,13 @@ const GUEST = { id: '', name: 'Гость по ссылке', picture: null };
 // Notes of one change keep their order in the chat (sorted by time).
 let lastEventAt = 0;
 
-/** A note in the chat of a project ({ projectId }) or of a space ({ spaceId }). */
-function addEvent(owner, chat, actor, event) {
+/** A note in the chat of a folder ({ folderId }). */
+function addEvent(owner, folderId, actor, event) {
   const who = actor ?? GUEST;
   lastEventAt = Math.max(Date.now(), lastEventAt + 1);
   saveRecord(owner, 'comment', crypto.randomUUID(), pickData(SCHEMAS.comment, {
     ...SCHEMAS.comment.defaults,
-    projectId: chat.projectId ?? null,
-    spaceId: chat.spaceId ?? null,
+    folderId,
     authorId: who.id,
     authorName: who.name || who.email || '',
     authorPicture: who.picture ?? '',
@@ -319,89 +313,62 @@ function addEvent(owner, chat, actor, event) {
 const nameOf = (owner, id) => (id ? withDefaults(getRecord(owner, id))?.name ?? null : null);
 
 /**
- * Notes in the project's chat of what `actor` changed in a card, section or project (`before` →
- * `after`; `before` null for a new one): { k: kind, card: { id, title, number }, ... }. Reordering is
- * not noted.
+ * Notes in the folder's chat of what `actor` changed (`before` → `after`). Reordering is not noted.
  */
 function recordEvents(owner, actor, type, before, after) {
   if (!after || after.type !== type || (before && after.version === before.version)) return;
-  const event = (projectId, e) => addEvent(owner, { projectId }, actor, e);
-  const spaceEvent = (spaceId, e) => addEvent(owner, { spaceId }, actor, e);
+  const note = (folderId, e) => folderId && addEvent(owner, folderId, actor, e);
   if (type === 'card') {
     const card = { id: after.id, title: after.title, number: after.number };
-    const at = after.projectId;
+    const at = after.folderId;
     if (!before) {
-      if (!after.deleted) event(at, { k: 'card.create', card, column: nameOf(owner, after.columnId) });
+      if (!after.deleted) note(at, { k: 'card.create', card, column: nameOf(owner, after.columnId) });
       return;
     }
-    if (after.deleted !== before.deleted) event(at, { k: after.deleted ? 'card.delete' : 'card.restore', card });
+    if (after.deleted !== before.deleted) note(at, { k: after.deleted ? 'card.delete' : 'card.restore', card });
     if (after.deleted) return;
-    if (after.projectId !== before.projectId) {
-      event(before.projectId, { k: 'card.out', card, project: nameOf(owner, after.projectId) });
-      event(at, { k: 'card.in', card, project: nameOf(owner, before.projectId) });
-    } else {
-      if (after.sectionId !== before.sectionId) {
-        event(at, { k: 'card.section', card, from: nameOf(owner, before.sectionId), to: nameOf(owner, after.sectionId) });
-      }
-      if (after.columnId !== before.columnId) {
-        event(at, { k: 'card.column', card, from: nameOf(owner, before.columnId), to: nameOf(owner, after.columnId) });
-      }
+    if (after.folderId !== before.folderId) {
+      note(before.folderId, { k: 'card.out', card, folder: nameOf(owner, after.folderId) });
+      note(at, { k: 'card.in', card, folder: nameOf(owner, before.folderId) });
+    } else if (after.columnId !== before.columnId) {
+      note(at, { k: 'card.column', card, from: nameOf(owner, before.columnId), to: nameOf(owner, after.columnId) });
     }
-    if (after.title !== before.title) event(at, { k: 'card.rename', card, from: before.title });
+    if (after.title !== before.title) note(at, { k: 'card.rename', card, from: before.title });
     if (after.description !== before.description) {
-      // The note must fit the comment's `event` field with the card's title beside it.
       const diff = textDiff(before.description, after.description, 3000 - JSON.stringify(card).length);
-      event(at, { k: 'card.description', card, ...(diff && { diff }) });
+      note(at, { k: 'card.description', card, ...(diff && { diff }) });
     }
-    if (after.remindAt !== before.remindAt) event(at, { k: 'card.remind', card, at: after.remindAt });
-  } else if (type === 'section') {
-    const at = after.projectId;
+    if (after.remindAt !== before.remindAt) note(at, { k: 'card.remind', card, at: after.remindAt });
+  } else if (type === 'folder') {
+    const parent = after.parentId;
     if (!before) {
-      if (!after.deleted) event(at, { k: 'section.create', name: after.name });
-    } else if (after.deleted !== before.deleted) {
-      event(at, { k: after.deleted ? 'section.delete' : 'section.restore', name: after.name });
-    } else if (!after.deleted && after.name !== before.name) {
-      event(at, { k: 'section.rename', name: after.name, from: before.name });
-    }
-  } else if (type === 'project') {
-    // The project's own chat, and that of its space for what concerns the space.
-    if (!before) {
-      if (after.deleted) return;
-      event(after.id, { k: 'project.create', name: after.name });
-      spaceEvent(after.spaceId, { k: 'project.create', name: after.name });
+      if (!after.deleted) {
+        note(after.id, { k: 'folder.create', name: after.name });
+        if (parent) note(parent, { k: 'folder.child', name: after.name });
+      }
       return;
     }
     if (after.deleted !== before.deleted) {
-      spaceEvent(after.spaceId, { k: after.deleted ? 'project.delete' : 'project.restore', name: after.name });
+      note(parent ?? after.id, { k: after.deleted ? 'folder.delete' : 'folder.restore', name: after.name });
     }
     if (after.deleted) return;
-    if (after.name !== before.name) {
-      event(after.id, { k: 'project.rename', name: after.name, from: before.name });
-      spaceEvent(after.spaceId, { k: 'project.rename', name: after.name, from: before.name });
-    }
+    if (after.name !== before.name) note(after.id, { k: 'folder.rename', name: after.name, from: before.name });
     if (after.columnSetId !== before.columnSetId) {
-      event(after.id, { k: 'project.columns', name: nameOf(owner, after.columnSetId) });
+      note(after.id, { k: 'folder.columns', name: nameOf(owner, after.columnSetId) });
     }
-    if (after.spaceId !== before.spaceId) {
-      event(after.id, { k: 'project.space', name: nameOf(owner, after.spaceId) });
-      spaceEvent(before.spaceId, { k: 'project.out', name: after.name, space: nameOf(owner, after.spaceId) });
-      spaceEvent(after.spaceId, { k: 'project.in', name: after.name, space: nameOf(owner, before.spaceId) });
-    }
-  } else if (type === 'space') {
-    if (!before) {
-      if (!after.deleted) spaceEvent(after.id, { k: 'space.create', name: after.name });
-    } else if (!after.deleted && after.name !== before.name) {
-      spaceEvent(after.id, { k: 'space.rename', name: after.name, from: before.name });
+    if (after.parentId !== before.parentId) {
+      note(before.parentId ?? before.id, { k: 'folder.out', name: after.name, folder: nameOf(owner, after.parentId) });
+      note(after.parentId ?? after.id, { k: 'folder.in', name: after.name, folder: nameOf(owner, before.parentId) });
     }
   }
 }
 
-/** Comments follow their card into another project. */
-function moveComments(owner, cardId, projectId) {
+/** Comments follow their card into another folder. */
+function moveComments(owner, cardId, folderId) {
   for (const commentId of commentIdsOfCard(owner, cardId)) {
     const comment = withDefaults(getRecord(owner, commentId));
-    if (comment.projectId === projectId) continue;
-    saveRecord(owner, 'comment', commentId, pickData(SCHEMAS.comment, { ...comment, projectId }), {
+    if (comment.folderId === folderId) continue;
+    saveRecord(owner, 'comment', commentId, pickData(SCHEMAS.comment, { ...comment, folderId }), {
       version: comment.version + 1, deviceId: 'server',
     });
   }
@@ -500,23 +467,23 @@ function applyChange(owner, deviceId, { type, id, baseVersion, fields, base }, a
     : result('merged', record);
 }
 
-/** The live card, or null; with `access` (a member or a public link) only one of its projects. */
+/** The live card, or null; with `access` only one of its folders. */
 export function visibleCard(owner, cardId, access) {
   const card = withDefaults(getRecord(owner, cardId));
   if (card?.type !== 'card' || card.deleted) return null;
-  return access && !access.projects.has(card.projectId) ? null : card;
+  return access && !access.folders.has(card.folderId) ? null : card;
 }
 
 /**
  * Applies `change` (attachments → attachments) to the card as the server, noting `event`
- * ({ k, name }) by `actor` in the project's chat; returns the new seq.
+ * ({ k, name }) by `actor` in the folder's chat; returns the new seq.
  */
 export function changeAttachments(owner, cardId, change, actor, event) {
   return transaction(() => {
     const card = withDefaults(getRecord(owner, cardId));
     const next = { ...card, attachments: change(card.attachments) };
     saveRecord(owner, 'card', cardId, pickData(SCHEMAS.card, next), { version: card.version + 1, deviceId: 'server' });
-    addEvent(owner, { projectId: card.projectId }, actor, { ...event, card: { id: card.id, title: card.title, number: card.number } });
+    addEvent(owner, card.folderId, actor, { ...event, card: { id: card.id, title: card.title, number: card.number } });
     return getMaxSeq(owner);
   });
 }
@@ -537,8 +504,8 @@ export function push(owner, deviceId, rawChanges, access = null, actor = null) {
       if (c.type === 'comment') return applyComment(owner, deviceId, c, access, actor);
       const previous = withDefaults(getRecord(owner, c.id));
       const r = applyChange(owner, deviceId, c, access);
-      if (c.type === 'card' && previous && r.record.projectId && r.record.projectId !== previous.projectId) {
-        moveComments(owner, c.id, r.record.projectId);
+      if (c.type === 'card' && previous && r.record.folderId && r.record.folderId !== previous.folderId) {
+        moveComments(owner, c.id, r.record.folderId);
       }
       recordEvents(owner, actor, c.type, previous, r.record);
       return r;
@@ -568,13 +535,10 @@ const SIMPLE_COLUMNS = [
 const seeded = new Set();
 
 /**
- * Creates the space «Личное» and the column set templates once per board: «3 колонки» and the default
- * set with five columns. Columns and projects from before column sets belong to the default set,
- * projects from before spaces to «Личное» (see the schema defaults).
+ * Creates the root folder «Личное» and the column set templates once per board.
  */
 export function seedColumns(owner) {
   if (seeded.has(owner)) return;
-  // '' is the board from before per-user boards; it keeps its original flags.
   const flag = owner ? `columnsSeeded:${owner}` : 'columnsSeeded';
   const simpleFlag = `simpleSetSeeded:${owner}`;
   const server = { version: 1, deviceId: 'server' };
@@ -584,11 +548,12 @@ export function seedColumns(owner) {
     }
   });
   transaction(() => {
-    if (!getRecord(owner, DEFAULT_SPACE_ID)) {
-      saveRecord(owner, 'space', DEFAULT_SPACE_ID, { name: 'Личное', position: 1, deleted: false }, server);
+    if (!getRecord(owner, DEFAULT_FOLDER_ID)) {
+      saveRecord(owner, 'folder', DEFAULT_FOLDER_ID, {
+        parentId: null, columnSetId: DEFAULT_SET_ID, name: 'Личное', position: 1, deleted: false, hidden: false,
+      }, server);
     }
     if (!getRecord(owner, DEFAULT_SET_ID)) {
-      // Boards from before the templates keep the name their set always had.
       const name = getMeta(flag) ? 'Основной' : '5 колонок';
       saveRecord(owner, 'columnSet', DEFAULT_SET_ID, { name, position: 2, deleted: false }, server);
     }
@@ -596,7 +561,6 @@ export function seedColumns(owner) {
       addColumns(DEFAULT_SET_ID, DEFAULT_COLUMNS);
       setMeta(flag, '1');
     }
-    // Once: a set the user deleted stays deleted.
     if (!getMeta(simpleFlag)) {
       if (!getRecord(owner, SIMPLE_SET_ID)) {
         saveRecord(owner, 'columnSet', SIMPLE_SET_ID, { name: '3 колонки', position: 1, deleted: false }, server);
@@ -620,7 +584,7 @@ export function pull(owner, since, limit = 500, access = null) {
     // A device downloading from scratch has nothing to hide yet.
     records = records.flatMap((r) => {
       if (visibleTo(access, r)) return [r];
-      return since > 0 && ['card', 'section', 'comment'].includes(r.type) ? [tombstone(r.type, r.id, r)] : [];
+      return since > 0 && ['card', 'folder', 'comment'].includes(r.type) ? [tombstone(r.type, r.id, r)] : [];
     });
   }
   return { records, seq, hasMore };

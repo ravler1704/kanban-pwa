@@ -1,7 +1,8 @@
 import {
-  db, DEFAULT_COLUMNS, DEFAULT_SET_ID, DEFAULT_SPACE_ID, isDirty, newId, pickFields, tableOf, TYPES,
+  db, DEFAULT_COLUMNS, DEFAULT_SET_ID, isDirty, newId, pickFields, tableOf, TYPES,
 } from './db.js';
 import { columnModel, matchColumn } from './columnSets.js';
+import { descendants, folderColumnSetId, folderTree, inheritingFolders } from './folders.js';
 import { requestSync } from './sync.js';
 
 const alive = (r) => !r.deleted;
@@ -51,16 +52,16 @@ async function update(type, id, patch, base = null) {
   await table.put(next);
 }
 
-/** Live cards of a project that are in `sectionId` (null = cards without a section). */
-async function cardsIn(projectId, sectionId) {
-  const cards = await db.cards.where('projectId').equals(projectId).toArray();
-  return cards.filter((c) => alive(c) && c.sectionId === sectionId);
+/** Live cards in the folder itself (not in its subfolders). */
+async function cardsIn(folderId) {
+  return (await db.cards.where('folderId').equals(folderId).toArray()).filter(alive);
 }
+
+const liveFolderList = async () => (await db.folders.toArray()).filter(alive);
 
 // ---- column sets ----
 
 const setOfColumn = (c) => c.setId ?? DEFAULT_SET_ID;
-const setOfProject = (p) => p.columnSetId ?? DEFAULT_SET_ID;
 
 const liveColumns = async (setId) => (await db.columns.toArray())
   .filter((c) => alive(c) && setOfColumn(c) === setId)
@@ -85,37 +86,55 @@ export async function renameColumnSet(id, name) {
   requestSync();
 }
 
-/** Only sets no project uses can be deleted; their columns go with them. */
+/** Only sets no folder uses can be deleted; their columns go with them. */
 export async function deleteColumnSet(id) {
-  await db.transaction('rw', db.columnSets, db.columns, db.projects, async () => {
-    const used = (await db.projects.toArray()).some((p) => alive(p) && setOfProject(p) === id);
-    if (used) throw new Error('Набор используется досками');
+  await db.transaction('rw', db.columnSets, db.columns, db.folders, async () => {
+    const folders = await liveFolderList();
+    if (folders.some((f) => folderColumnSetId(f, folders) === id)) throw new Error('Набор используется папками');
     for (const c of await liveColumns(id)) await update('column', c.id, { deleted: true });
     await update('columnSet', id, { deleted: true });
   });
   requestSync();
 }
 
+/** Live cards of the folders (the first one and the rest that take its column set). */
+async function cardsOfGroup(group) {
+  const cards = [];
+  for (const f of group) cards.push(...await cardsIn(f.id));
+  return cards;
+}
+
 /**
- * Switches the project to another column set. `mapping` maps each old column id to a
- * column of the new set; cards in columns missing from it go to the first new column.
+ * Gives the folder another column set (`setId`; null: take the nearest ancestor's). `mapping` maps each
+ * old column id to a column of the new set; cards in columns missing from it go to the first new column.
+ * The cards of the folder's subfolders that take their set from it follow.
  */
-export async function changeProjectColumnSet(projectId, setId, mapping) {
-  await db.transaction('rw', db.projects, db.columns, db.cards, async () => {
-    const target = await liveColumns(setId);
-    if (!target.length) throw new Error('В наборе нет колонок');
-    const cards = (await db.cards.where('projectId').equals(projectId).toArray()).filter(alive);
-    for (const c of cards) {
-      const columnId = mapping[c.columnId] ?? target[0].id;
-      if (columnId !== c.columnId) await update('card', c.id, { columnId });
+export async function changeFolderColumnSet(folderId, setId, mapping = {}) {
+  await db.transaction('rw', db.folders, db.columns, db.cards, async () => {
+    const folders = await liveFolderList();
+    const folder = folders.find((f) => f.id === folderId);
+    if (!folder) return;
+    const before = folderColumnSetId(folder, folders);
+    const changed = folders.map((f) => (f.id === folderId ? { ...f, columnSetId: setId } : f));
+    const after = folderColumnSetId(changed.find((f) => f.id === folderId), changed);
+    if (after !== before) {
+      const target = await liveColumns(after);
+      if (!target.length) throw new Error('В наборе нет колонок');
+      for (const c of await cardsOfGroup(inheritingFolders(folder, folders))) {
+        const columnId = mapping[c.columnId] ?? target[0].id;
+        if (columnId !== c.columnId) await update('card', c.id, { columnId });
+      }
     }
-    await update('project', projectId, { columnSetId: setId });
+    await update('folder', folderId, { columnSetId: setId });
   });
   requestSync();
 }
 
-export async function countProjectCards(projectId) {
-  return (await db.cards.where('projectId').equals(projectId).toArray()).filter(alive).length;
+/** Live cards of the folder and the subfolders that take its column set. */
+export async function countInheritingCards(folderId) {
+  const folders = await liveFolderList();
+  const folder = folders.find((f) => f.id === folderId);
+  return folder ? (await cardsOfGroup(inheritingFolders(folder, folders))).length : 0;
 }
 
 // ---- columns ----
@@ -166,133 +185,169 @@ export async function deleteColumn(id, targetId) {
   requestSync();
 }
 
-// ---- spaces ----
+// ---- folders ----
 
-export const spaceOfProject = (p) => p.spaceId ?? DEFAULT_SPACE_ID;
+const siblingsOf = (folders, parentId) => folders.filter((f) => (f.parentId ?? null) === parentId);
 
-export async function createSpace(name) {
-  const space = await insert('space', { name, position: maxPosition(await db.spaces.toArray()) + 1 });
+/**
+ * New folder under `parentId` (null: a root, which needs its own `columnSetId`; a child without one takes
+ * its ancestor's). Returns its id.
+ */
+export async function createFolder(name, { parentId = null, columnSetId = null } = {}) {
+  const siblings = siblingsOf(await db.folders.toArray(), parentId);
+  const folder = await insert('folder', {
+    parentId,
+    columnSetId: parentId ? columnSetId : columnSetId ?? DEFAULT_SET_ID,
+    name,
+    hidden: false,
+    position: maxPosition(siblings) + 1,
+  });
   requestSync();
-  return space.id;
+  return folder.id;
 }
 
-export async function renameSpace(id, name) {
-  await update('space', id, { name });
+export async function renameFolder(id, name) {
+  await update('folder', id, { name });
   requestSync();
 }
 
-/** Swaps the space with its neighbour; `direction` is -1 (up) or 1 (down). */
-export async function moveSpace(id, direction) {
-  await db.transaction('rw', db.spaces, async () => {
-    const spaces = (await db.spaces.toArray()).filter(alive)
+/** Swaps the folder with its neighbour among the folders of the same parent; `direction` is -1 (up) or 1 (down). */
+export async function reorderFolder(id, direction) {
+  await db.transaction('rw', db.folders, async () => {
+    const folders = await liveFolderList();
+    const folder = folders.find((f) => f.id === id);
+    if (!folder) return;
+    const siblings = siblingsOf(folders, folder.parentId ?? null)
       .sort((a, b) => a.position - b.position || a.id.localeCompare(b.id));
-    const index = spaces.findIndex((s) => s.id === id);
+    const index = siblings.findIndex((f) => f.id === id);
     const target = index + direction;
-    if (index < 0 || target < 0 || target >= spaces.length) return;
-    [spaces[index], spaces[target]] = [spaces[target], spaces[index]];
-    for (const [i, s] of spaces.entries()) {
-      if (s.position !== i + 1) await update('space', s.id, { position: i + 1 });
+    if (index < 0 || target < 0 || target >= siblings.length) return;
+    [siblings[index], siblings[target]] = [siblings[target], siblings[index]];
+    // Renumbered rather than swapped: older folders may share a position.
+    for (const [i, f] of siblings.entries()) {
+      if (f.position !== i + 1) await update('folder', f.id, { position: i + 1 });
     }
   });
-  requestSync();
-}
-
-/** Deletes the space; its projects move to `targetId`. The last space can't be deleted. */
-export async function deleteSpace(id, targetId) {
-  await db.transaction('rw', db.spaces, db.projects, async () => {
-    const others = (await db.spaces.toArray()).filter((s) => alive(s) && s.id !== id);
-    if (!others.some((s) => s.id === targetId)) throw new Error('Нужно другое пространство для его проектов');
-    for (const p of await db.projects.toArray()) {
-      if (alive(p) && spaceOfProject(p) === id) await update('project', p.id, { spaceId: targetId });
-    }
-    await update('space', id, { deleted: true });
-  });
-  requestSync();
-}
-
-// ---- projects ----
-
-export async function createProject(name, columnSetId = DEFAULT_SET_ID, spaceId = DEFAULT_SPACE_ID) {
-  const project = await insert('project', {
-    name, spaceId, columnSetId, hidden: false, position: maxPosition(await db.projects.toArray()) + 1,
-  });
-  requestSync();
-  return project.id;
-}
-
-export async function renameProject(id, name) {
-  await update('project', id, { name });
   requestSync();
 }
 
 /**
- * Swaps the project with its neighbour; `direction` is -1 (up) or 1 (down). With `siblings` (ids) the
- * neighbour is the nearest of them, e.g. of the same space.
+ * Moves the folder with everything in it under `parentId` (null: to the top level). A folder that takes
+ * its column set from its ancestors may get another one there: with `keepColumns` it keeps the old set,
+ * otherwise its cards (and those of the subfolders taking the set from it) move to the columns of the
+ * new set with the same names.
  */
-export async function moveProject(id, direction, siblings = null) {
-  await db.transaction('rw', db.projects, async () => {
-    const projects = (await db.projects.toArray()).filter(alive)
-      .sort((a, b) => a.position - b.position || a.id.localeCompare(b.id));
-    const index = projects.findIndex((p) => p.id === id);
-    let target = index + direction;
-    while (siblings && target >= 0 && target < projects.length && !siblings.includes(projects[target].id)) {
-      target += direction;
+export async function moveFolder(id, parentId, { keepColumns = true } = {}) {
+  await db.transaction('rw', db.folders, db.cards, db.columns, db.columnSets, async () => {
+    const folders = await liveFolderList();
+    const folder = folders.find((f) => f.id === id);
+    if (!folder || (folder.parentId ?? null) === parentId) return;
+    if (parentId && (!folders.some((f) => f.id === parentId) || parentId === id
+      || descendants(folders, id).some((f) => f.id === parentId))) {
+      throw new Error('Папку нельзя перенести в неё саму или во вложенную в неё');
     }
-    if (index < 0 || target < 0 || target >= projects.length) return;
-    [projects[index], projects[target]] = [projects[target], projects[index]];
-    // Renumbered rather than swapped: older projects may share a position.
-    for (const [i, p] of projects.entries()) {
-      if (p.position !== i + 1) await update('project', p.id, { position: i + 1 });
+    const patch = { parentId, position: maxPosition(siblingsOf(folders, parentId)) + 1 };
+    if (!folder.columnSetId) {
+      const before = folderColumnSetId(folder, folders);
+      const moved = folders.map((f) => (f.id === id ? { ...f, parentId } : f));
+      const after = folderColumnSetId(moved.find((f) => f.id === id), moved);
+      if (after !== before) {
+        if (keepColumns) {
+          patch.columnSetId = before;
+        } else {
+          const columnFor = await columnMatcher();
+          for (const c of await cardsOfGroup(inheritingFolders(folder, folders))) {
+            const columnId = columnFor(c.columnId, after);
+            if (columnId !== c.columnId) await update('card', c.id, { columnId, position: await arrivalPosition(columnId, c.id) });
+          }
+        }
+      }
     }
+    await update('folder', id, patch);
   });
   requestSync();
 }
 
-export async function deleteProject(id) {
-  await db.transaction('rw', db.projects, db.sections, db.cards, async () => {
-    const cards = await db.cards.where('projectId').equals(id).toArray();
-    for (const c of cards) if (alive(c)) await update('card', c.id, { deleted: true });
-    const sections = await db.sections.where('projectId').equals(id).toArray();
-    for (const s of sections) if (alive(s)) await update('section', s.id, { deleted: true });
-    await update('project', id, { deleted: true });
+/** What deleting the folder touches: its own cards, the cards below it and the number of subfolders. */
+export async function folderStats(id) {
+  const folders = await liveFolderList();
+  const folder = folders.find((f) => f.id === id);
+  const below = folder ? descendants(folders, id) : [];
+  return {
+    cards: (await cardsIn(id)).length,
+    subCards: (await cardsOfGroup(below)).length,
+    folders: below.length,
+  };
+}
+
+/**
+ * Deletes the folder. By default its subfolders and all the cards in them are deleted too. With
+ * `keepCards` the subfolders move to the folder's parent and the folder's own cards to the folder
+ * `targetId` (required if it has cards).
+ */
+export async function deleteFolder(id, { keepCards = false, targetId = null } = {}) {
+  await db.transaction('rw', db.folders, db.cards, db.columns, db.columnSets, async () => {
+    const folders = await liveFolderList();
+    const folder = folders.find((f) => f.id === id);
+    if (!folder) return;
+    const below = descendants(folders, id);
+
+    if (!keepCards) {
+      for (const f of [folder, ...below]) {
+        for (const c of await cardsIn(f.id)) await update('card', c.id, { deleted: true });
+        await update('folder', f.id, { deleted: true });
+      }
+      return;
+    }
+
+    const own = await cardsIn(id);
+    const target = folders.find((f) => f.id === targetId && f.id !== id);
+    if (own.length && !target) throw new Error('Выберите папку для карточек');
+
+    // Subfolders go up a level; those taking their column set from the folder keep the one they have.
+    const tree = folderTree(folders);
+    const parentId = tree.parentOf(folder);
+    const children = tree.children.get(id) ?? [];
+    const after = folders.filter((f) => f.id !== id).map((f) => (children.includes(f) ? { ...f, parentId } : f));
+    let position = maxPosition(siblingsOf(folders, parentId));
+    for (const child of children) {
+      const patch = { parentId, position: ++position };
+      if (!child.columnSetId) {
+        const before = folderColumnSetId(child, folders);
+        if (folderColumnSetId(after.find((f) => f.id === child.id), after) !== before) patch.columnSetId = before;
+      }
+      await update('folder', child.id, patch);
+    }
+
+    if (own.length) {
+      const columnFor = await columnMatcher();
+      const setId = folderColumnSetId(after.find((f) => f.id === target.id), after);
+      for (const c of own) {
+        const columnId = columnFor(c.columnId, setId);
+        await update('card', c.id, {
+          folderId: target.id,
+          ...(columnId !== c.columnId && { columnId, position: await arrivalPosition(columnId, c.id) }),
+        });
+      }
+    }
+    await update('folder', id, { deleted: true });
   });
   requestSync();
 }
 
-// ---- sections ----
-
-export function countCards(projectId, sectionId) {
-  return cardsIn(projectId, sectionId).then((cards) => cards.length);
-}
-
-export async function createSection(projectId, name) {
-  const siblings = await db.sections.where('projectId').equals(projectId).toArray();
-  const section = await insert('section', { projectId, name, hidden: false, position: maxPosition(siblings) + 1 });
-  requestSync();
-  return section.id;
-}
-
-export async function renameSection(id, name) {
-  await update('section', id, { name });
-  requestSync();
-}
-
-/** `keepCards` moves the section's cards to the project itself instead of deleting them. */
-export async function deleteSection(id, { keepCards }) {
-  await db.transaction('rw', db.sections, db.cards, async () => {
-    const section = await db.sections.get(id);
-    if (!section) return;
-    const patch = keepCards ? { sectionId: null } : { deleted: true };
-    for (const c of await cardsIn(section.projectId, id)) await update('card', c.id, patch);
-    await update('section', id, { deleted: true });
-  });
-  requestSync();
+/** Maps a card's column to the best match in the column set `setId` (same id, same name, or the first). */
+async function columnMatcher() {
+  const model = columnModel(await db.columnSets.toArray(), await db.columns.toArray(), []);
+  return (columnId, setId) => {
+    const from = model.columns.find((c) => c.id === columnId);
+    return matchColumn(from, model.columnsOf(setId))?.id ?? columnId;
+  };
 }
 
 // ---- cards ----
 
-// Card order is one per column across all projects and sections, so filtered views
-// (a project, a section) show the same relative order as the combined one.
+// Card order is one per column across all folders, so filtered views show the same
+// relative order as the combined one.
 /** Where a card added to the column goes: first or last, as the column is set up. */
 async function arrivalPosition(columnId, cardId = null) {
   const cards = (await db.cards.filter((c) => c.columnId === columnId && c.id !== cardId).toArray()).filter(alive);
@@ -301,10 +356,9 @@ async function arrivalPosition(columnId, cardId = null) {
   return cards.reduce((min, c) => Math.min(min, c.position), 1) - 1;
 }
 
-export async function createCard({ projectId, sectionId }, columnId, title, description = '', remindAt = null) {
+export async function createCard({ folderId }, columnId, title, description = '', remindAt = null) {
   await insert('card', {
-    projectId,
-    sectionId,
+    folderId,
     columnId,
     title,
     description,
@@ -343,138 +397,24 @@ export async function moveCardsToColumn(ids, columnId) {
   requestSync();
 }
 
-/** Moves the card to another project and/or section (`sectionId` null for the project itself). */
-export async function moveCardToGroup(id, { projectId, sectionId }) {
+/** Moves the card to another folder; the caller picks the column when that folder uses another set. */
+export async function moveCardToFolder(id, folderId) {
   const card = await db.cards.get(id);
-  if (!card || (card.projectId === projectId && card.sectionId === sectionId)) return;
-  return updateCard(id, { projectId, sectionId });
+  if (!card || card.folderId === folderId) return;
+  return updateCard(id, { folderId });
 }
 
-// ---- restructuring: spaces, projects and sections moved to another level ----
-
-const RESTRUCTURE_TABLES = [db.spaces, db.projects, db.sections, db.cards, db.columns, db.columnSets];
-const liveIn = async (table, index, value) => (await table.where(index).equals(value).toArray()).filter(alive);
-
-/** Maps a card's column to the best match in the column set `setId` (same id, same name, or the first). */
-async function columnMatcher() {
-  const model = columnModel(await db.columnSets.toArray(), await db.columns.toArray(), []);
-  return (columnId, setId) => {
-    const from = model.columns.find((c) => c.id === columnId);
-    return matchColumn(from, model.columnsOf(setId))?.id ?? columnId;
-  };
-}
-
-/** Moves the cards into the project `projectId` (column set `setId`) and `sectionId`. */
-async function moveCardsInto(cards, { projectId, sectionId }, setId, columnFor) {
-  for (const c of cards) {
-    const columnId = columnFor(c.columnId, setId);
-    await update('card', c.id, {
-      projectId,
-      sectionId,
-      ...(columnId !== c.columnId && { columnId, position: await arrivalPosition(columnId, c.id) }),
-    });
-  }
-}
-
-const setOfProjectId = async (projectId) => setOfProject(await db.projects.get(projectId));
-
-async function newSpace(name) {
-  return (await insert('space', { name, position: maxPosition(await db.spaces.toArray()) + 1 })).id;
-}
-
-async function newProject(name, spaceId, columnSetId) {
-  const position = maxPosition(await db.projects.toArray()) + 1;
-  return (await insert('project', { name, spaceId, columnSetId, hidden: false, position })).id;
-}
-
-async function newSection(projectId, name) {
-  const position = maxPosition(await db.sections.where('projectId').equals(projectId).toArray()) + 1;
-  return (await insert('section', { projectId, name, hidden: false, position })).id;
-}
-
-/** The section moves to another project with its cards. */
-async function sectionIntoProject(sectionId, projectId, columnFor, name) {
-  const section = await db.sections.get(sectionId);
-  if (!section || section.projectId === projectId) return;
-  const cards = await cardsIn(section.projectId, sectionId);
-  const position = maxPosition(await db.sections.where('projectId').equals(projectId).toArray()) + 1;
-  await update('section', sectionId, { projectId, position, ...(name && { name }) });
-  await moveCardsInto(cards, { projectId, sectionId }, await setOfProjectId(projectId), columnFor);
-}
-
-/** The section becomes a project of the space; its cards go to the project itself. */
-async function sectionIntoSpace(sectionId, spaceId, columnFor) {
-  const section = await db.sections.get(sectionId);
-  if (!section) return;
-  const setId = await setOfProjectId(section.projectId);
-  const projectId = await newProject(section.name, spaceId, setId);
-  await moveCardsInto(await cardsIn(section.projectId, sectionId), { projectId, sectionId: null }, setId, columnFor);
-  await update('section', sectionId, { deleted: true });
-}
+// ---- comments and folder chats ----
 
 /**
- * The project becomes a section of another one: its own cards go to a section named after it,
- * its sections follow as «Project / Section».
- */
-async function projectIntoProject(projectId, targetId, columnFor) {
-  const project = await db.projects.get(projectId);
-  if (!project || projectId === targetId) return;
-  const setId = await setOfProjectId(targetId);
-  const own = await cardsIn(projectId, null);
-  if (own.length) {
-    const sectionId = await newSection(targetId, project.name);
-    await moveCardsInto(own, { projectId: targetId, sectionId }, setId, columnFor);
-  }
-  for (const s of await liveIn(db.sections, 'projectId', projectId)) {
-    await sectionIntoProject(s.id, targetId, columnFor, `${project.name} / ${s.name}`);
-  }
-  await update('project', projectId, { deleted: true });
-}
-
-/** Moves the section (`kind` 'section'), project or space: `to` is { top: true }, { spaceId } or { projectId }. */
-export async function restructure(kind, id, to) {
-  await db.transaction('rw', RESTRUCTURE_TABLES, async () => {
-    const columnFor = await columnMatcher();
-    if (kind === 'section') {
-      if (to.projectId) await sectionIntoProject(id, to.projectId, columnFor);
-      else {
-        const section = await db.sections.get(id);
-        await sectionIntoSpace(id, to.spaceId ?? await newSpace(section.name), columnFor);
-      }
-    } else if (kind === 'project') {
-      if (to.projectId) await projectIntoProject(id, to.projectId, columnFor);
-      else if (to.spaceId) await update('project', id, { spaceId: to.spaceId });
-      else {
-        // A space named after the project: the project goes there and its sections become projects beside it.
-        const project = await db.projects.get(id);
-        const spaceId = await newSpace(project.name);
-        await update('project', id, { spaceId });
-        for (const s of await liveIn(db.sections, 'projectId', id)) await sectionIntoSpace(s.id, spaceId, columnFor);
-      }
-    } else if (kind === 'space') {
-      const projects = (await db.projects.toArray()).filter((p) => alive(p) && spaceOfProject(p) === id);
-      for (const p of projects) {
-        if (to.projectId) await projectIntoProject(p.id, to.projectId, columnFor);
-        else await update('project', p.id, { spaceId: to.spaceId });
-      }
-      await update('space', id, { deleted: true });
-    }
-  });
-  requestSync();
-}
-
-// ---- comments and project chats ----
-
-/**
- * A comment on the card `cardId`, or with cardId null a message of the chat of `projectId` or
- * `spaceId`. `author` is the signed-in user; the server sets the author fields itself, these show
+ * A comment on the card `cardId`, or with cardId null a message of the chat of the folder `folderId`.
+ * `author` is the signed-in user; the server sets the author fields itself, these show
  * until it answers.
  */
-export async function addComment({ cardId = null, projectId = null, spaceId = null }, text, author) {
+export async function addComment({ cardId = null, folderId = null }, text, author) {
   await insert('comment', {
     cardId,
-    projectId,
-    spaceId,
+    folderId,
     text,
     authorId: author?.id ?? '',
     authorName: author?.name || author?.email || '',

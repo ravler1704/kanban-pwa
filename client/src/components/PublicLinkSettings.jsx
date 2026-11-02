@@ -2,14 +2,14 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { loadPublicLinks, publicUrl, removePublicLink, savePublicLink, usePublicLinks } from '../public.js';
 import { syncStatus } from '../sync.js';
 
-/** «Публичная ссылка» in the settings of a project of the own board. */
-export default function PublicLinkSettings({ project }) {
+/** «Публичная ссылка» in the settings of a folder of the own board. */
+export default function PublicLinkSettings({ folder }) {
   const { online } = useSyncExternalStore(syncStatus.subscribe, syncStatus.get);
   const links = usePublicLinks();
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
-  const link = links?.find((l) => l.project === project.id);
+  const link = links?.find((l) => l.project === folder.id);
 
   useEffect(() => {
     if (!online) return;
@@ -23,7 +23,7 @@ export default function PublicLinkSettings({ project }) {
     setBusy(true);
     setError(null);
     try {
-      await (mode === 'off' ? removePublicLink(project.id) : savePublicLink(project.id, mode));
+      await (mode === 'off' ? removePublicLink(folder.id) : savePublicLink(folder.id, mode));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -63,8 +63,8 @@ export default function PublicLinkSettings({ project }) {
                 <button type="button" className="btn btn-small" onClick={copy}>{copied ? 'Скопировано' : 'Копировать'}</button>
               </div>
               <p className="muted account-hint">
-                Любой, у кого есть ссылка, откроет этот проект без входа
-                {link.mode === 'edit' ? ' и сможет менять карточки и разделы.' : ', но ничего не сможет изменить.'}
+                Любой, у кого есть ссылка, откроет эту папку со всем, что в ней, без входа
+                {link.mode === 'edit' ? ' и сможет менять карточки и вложенные папки.' : ', но ничего не сможет изменить.'}
               </p>
             </>
           )}
