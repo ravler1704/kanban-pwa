@@ -3,7 +3,7 @@ import { createFolder, moveFolder, renameFolder, reorderFolder } from '../action
 import { isOwnBoard } from '../board.js';
 import { childrenOf, descendants, folderColumnSetId, folderTree } from '../folders.js';
 import FolderSelect from './FolderSelect.jsx';
-import { AddButton, Chevron, NameInput, plural } from './ManageFields.jsx';
+import { AddButton, Chevron, plural } from './ManageFields.jsx';
 import Modal from './Modal.jsx';
 import { FolderMembers, useCanShare } from './SharingSection.jsx';
 
@@ -71,22 +71,64 @@ function MoveDialog({ folder, folders, model, writable, onClose }) {
   );
 }
 
-function OrderButtons({ onMove, canUp, canDown }) {
+const icon = (d) => function Icon() {
   return (
-    <>
-      <button className="btn btn-small" title="Выше" aria-label="Выше" disabled={!canUp} onClick={() => onMove(-1)}>↑</button>
-      <button className="btn btn-small" title="Ниже" aria-label="Ниже" disabled={!canDown} onClick={() => onMove(1)}>↓</button>
-    </>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {d.map((path) => <path key={path} d={path} />)}
+    </svg>
+  );
+};
+const EditIcon = icon(['M12 20h9', 'M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z']);
+const PeopleIcon = icon(['M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2', 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z',
+  'M22 21v-2a4 4 0 0 0-3-3.87', 'M16 3.13a4 4 0 0 1 0 7.75']);
+const ColumnsIcon = icon(['M3 4h18v16H3Z', 'M9 4v16', 'M15 4v16']);
+const MoveIcon = icon(['M5 9l-3 3 3 3', 'M9 5l3-3 3 3', 'M15 19l-3 3-3-3', 'M19 9l3 3-3 3', 'M2 12h20', 'M12 2v20']);
+const TrashIcon = icon(['M3 6h18', 'M8 6V4h8v2', 'M19 6l-1 14H6L5 6']);
+const UpIcon = icon(['M12 19V5', 'm5 12 7-7 7 7']);
+const DownIcon = icon(['M12 5v14', 'm19 12-7 7-7-7']);
+
+function IconButton({ label, onClick, active = false, danger = false, disabled = false, children }) {
+  return (
+    <button type="button" className={`btn btn-small btn-icon-only tree-action ${active ? 'btn-primary' : ''} ${danger ? 'btn-danger' : ''}`}
+      title={label} aria-label={label} aria-pressed={active || undefined} disabled={disabled} onClick={onClick}>
+      {children}
+    </button>
   );
 }
 
-/** One folder with its settings (when open) and, below, the folders inside it. */
+/** The folder's name edited in place: Enter or leaving the field saves, Escape cancels. */
+function InlineName({ value, onSave, onDone }) {
+  const [draft, setDraft] = useState(value);
+  const finish = (save) => {
+    const name = draft.trim();
+    if (save && name && name !== value) onSave(name);
+    onDone();
+  };
+  return (
+    <input className="manage-input tree-rename" value={draft} maxLength={200} autoFocus aria-label="Название папки"
+      onFocus={(e) => e.currentTarget.select()}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => finish(true)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') finish(true);
+        if (e.key === 'Escape') {
+          e.stopPropagation();
+          finish(false);
+        }
+      }} />
+  );
+}
+
+/** One folder: a row with its name and actions; when expanded, the folders inside it. */
 function FolderNode({ folder, index, count, ctx }) {
-  const { model, folders, columnsSynced, canShare, needle, matches, isOpen, toggle, expand, sharingId, setSharingId } = ctx;
+  const { model, folders, columnsSynced, canShare, needle, matches, isOpen, toggle } = ctx;
   const tree = folderTree(folders);
   const kids = childrenOf(folders, folder.id);
   const shownKids = kids.filter(matches);
   const open = Boolean(needle) || isOpen(folder.id);
+  const [panel, setPanel] = useState(null);
+  const [renaming, setRenaming] = useState(false);
   const isRoot = !tree.parentOf(folder);
   const parent = tree.byId.get(tree.parentOf(folder));
   const own = Boolean(folder.columnSetId);
@@ -94,48 +136,59 @@ function FolderNode({ folder, index, count, ctx }) {
   const setName = model.sets.find((s) => s.id === model.setIdOf(folder))?.name;
   const parentSetName = parent && model.sets.find((s) => s.id === model.setIdOf(parent))?.name;
   const meta = [
-    kids.length ? `${kids.length} ${plural(kids.length, 'вложенная папка', 'вложенные папки', 'вложенных папок')}` : 'без вложенных',
-    columnsSynced && setName && `набор «${setName}»${own || isRoot ? '' : ' (как у родителя)'}`,
+    kids.length ? `${kids.length} ${plural(kids.length, 'вложенная папка', 'вложенные папки', 'вложенных папок')}` : null,
+    columnsSynced && setName && `«${setName}»${own || isRoot ? '' : ' (как у родителя)'}`,
   ].filter(Boolean).join(' · ');
+  const togglePanel = (name) => setPanel(panel === name ? null : name);
 
   return (
-    <section className={`tree-node tree-folder ${open ? 'tree-node-open' : ''}`}>
+    <section className={`tree-node tree-folder ${panel ? 'tree-node-open' : ''}`}>
       <div className="tree-head">
-        <button type="button" className="tree-toggle" aria-expanded={open} onClick={() => toggle(folder.id)}>
+        <button type="button" className="tree-chevron"
+          aria-expanded={open} aria-label={open ? 'Свернуть' : 'Развернуть'} onClick={() => toggle(folder.id)}>
           <Chevron />
-          <span className="tree-title">
-            <span className="tree-label">{folder.name}</span>
-            <span className="tree-meta">{meta}</span>
-          </span>
         </button>
-        {!needle && (
-          <OrderButtons canUp={index > 0} canDown={index < count - 1} onMove={(d) => reorderFolder(folder.id, d)} />
+        {renaming ? (
+          <InlineName value={folder.name} onSave={(name) => renameFolder(folder.id, name)} onDone={() => setRenaming(false)} />
+        ) : (
+          <button type="button" className="tree-toggle" onClick={() => toggle(folder.id)} onDoubleClick={() => setRenaming(true)}>
+            <span className="tree-title">
+              <span className="tree-label">{folder.name}</span>
+              {meta && <span className="tree-meta">{meta}</span>}
+            </span>
+          </button>
         )}
-      </div>
-      {open && (
-        <div className="tree-body">
-          <div className="manage-row">
-            <NameInput value={folder.name} className="manage-project-name" label="Название папки"
-              onSave={(name) => renameFolder(folder.id, name)} />
-            {canShare && (
-              <button className={`btn btn-small ${sharingId === folder.id ? 'btn-primary' : ''}`}
-                aria-expanded={sharingId === folder.id}
-                onClick={() => setSharingId(sharingId === folder.id ? null : folder.id)}>Доступ</button>
-            )}
-            <button className="btn btn-small" onClick={() => ctx.onMove(folder)}>Перенести…</button>
-            <button className="btn btn-small btn-danger" onClick={() => ctx.onRemove(folder)}>Удалить</button>
-          </div>
-          {canShare && sharingId === folder.id && <FolderMembers folder={folder} folders={folders} />}
-          {columnsSynced && isOwnBoard && (
-            <label className="field">
-              <span className="field-label">Набор колонок</span>
-              <select className="select" value={own || isRoot ? setId : TOP}
-                onChange={(e) => ctx.onChangeSet(folder, e.target.value || null)}>
-                {!isRoot && <option value={TOP}>Как у родителя{parentSetName ? ` («${parentSetName}»)` : ''}</option>}
-                {model.sets.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </label>
+        <div className="tree-actions">
+          <IconButton label="Переименовать" active={renaming} onClick={() => setRenaming(!renaming)}><EditIcon /></IconButton>
+          {canShare && (
+            <IconButton label="Доступ" active={panel === 'access'} onClick={() => togglePanel('access')}><PeopleIcon /></IconButton>
           )}
+          {columnsSynced && isOwnBoard && (
+            <IconButton label="Набор колонок" active={panel === 'columns'} onClick={() => togglePanel('columns')}><ColumnsIcon /></IconButton>
+          )}
+          <IconButton label="Перенести…" onClick={() => ctx.onMove(folder)}><MoveIcon /></IconButton>
+          {!needle && (
+            <>
+              <IconButton label="Выше" disabled={index === 0} onClick={() => reorderFolder(folder.id, -1)}><UpIcon /></IconButton>
+              <IconButton label="Ниже" disabled={index >= count - 1} onClick={() => reorderFolder(folder.id, 1)}><DownIcon /></IconButton>
+            </>
+          )}
+          <IconButton label="Удалить" danger onClick={() => ctx.onRemove(folder)}><TrashIcon /></IconButton>
+        </div>
+      </div>
+      {panel === 'access' && canShare && (
+        <div className="tree-body"><FolderMembers folder={folder} folders={folders} /></div>
+      )}
+      {panel === 'columns' && columnsSynced && isOwnBoard && (
+        <div className="tree-body">
+          <label className="field">
+            <span className="field-label">Набор колонок</span>
+            <select className="select" value={own || isRoot ? setId : TOP}
+              onChange={(e) => ctx.onChangeSet(folder, e.target.value || null)}>
+              {!isRoot && <option value={TOP}>Как у родителя{parentSetName ? ` («${parentSetName}»)` : ''}</option>}
+              {model.sets.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </label>
           <p className="muted account-hint">
             Колонки набора общие для папки и вложенных в неё папок, у которых нет своего набора.
           </p>
@@ -148,8 +201,7 @@ function FolderNode({ folder, index, count, ctx }) {
           ))}
           {!needle && (
             <AddButton label="Новая вложенная папка" onAdd={async (name) => {
-              const id = await createFolder(name, { parentId: folder.id });
-              expand(id);
+              await createFolder(name, { parentId: folder.id });
             }} />
           )}
         </div>
@@ -178,7 +230,6 @@ export default function StructureEditor({
     return next;
   });
   const expand = (id) => setOpenIds((s) => new Set([...s, id]));
-  const [sharingId, setSharingId] = useState(null);
   const [moving, setMoving] = useState(null);
   const [query, setQuery] = useState('');
 
@@ -189,7 +240,7 @@ export default function StructureEditor({
   if (!synced) return <p className="muted">Папки появятся после синхронизации.</p>;
 
   const ctx = {
-    model, folders, columnsSynced, canShare, needle, matches, isOpen, toggle, expand, sharingId, setSharingId,
+    model, folders, columnsSynced, canShare, needle, matches, isOpen, toggle, expand,
     onMove: setMoving, onChangeSet, onRemove: onRemoveFolder,
   };
   return (
