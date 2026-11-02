@@ -5,6 +5,7 @@ import Modal from './Modal.jsx';
 
 const SEARCH_FROM = 7;
 const COLLAPSED_KEY = 'folderFilterCollapsed';
+const MAX_INDENT = 4;
 
 const svg = (children, size = 18) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
@@ -80,11 +81,14 @@ function FolderFilterDialog({ folders, filter, onClose }) {
           const state = stateOf(folder.id);
           const parent = !search && childrenOf(folders, folder.id).length > 0;
           const open = parent && !collapsed.has(folder.id);
-          const where = search && folderPath(folder, folders).slice(0, -1).map((p) => p.name).join(' › ');
+          // Deeper than MAX_INDENT the rows stay at that indent and say what they are inside.
+          const above = folderPath(folder, folders).slice(0, -1);
+          const where = search ? above.map((p) => p.name).join(' › ')
+            : depth > MAX_INDENT && `в «${above[above.length - 1].name}»`;
           return (
             <li key={folder.id} className="fp-row">
               <button type="button" className="fp-pick ff-pick" role="checkbox" aria-checked={state}
-                style={{ paddingLeft: `${0.8 + depth * 1.4}rem` }} onClick={() => filter.onToggle(folder.id)}>
+                style={{ paddingLeft: `${0.8 + Math.min(depth, MAX_INDENT) * 1.2}rem` }} onClick={() => filter.onToggle(folder.id)}>
                 <RoundCheck state={state} />
                 <span className="fp-text">
                   <span className="fp-name">{folder.name}</span>
