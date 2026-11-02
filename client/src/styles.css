@@ -1205,3 +1205,4 @@ a.btn { display: inline-block; text-decoration: none; }
   .chat-dialog:not(.chat-dialog-open) .chat-pane { display: none; }
   .chat-back { display: inline-block; }
 }
+.tree-expand-all { display: flex; gap: 0.5rem; justify-content: flex-end; }

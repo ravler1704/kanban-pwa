@@ -82,11 +82,11 @@ function OrderButtons({ onMove, canUp, canDown }) {
 
 /** One folder with its settings (when open) and, below, the folders inside it. */
 function FolderNode({ folder, index, count, ctx }) {
-  const { model, folders, columnsSynced, canShare, needle, matches, openId, setOpenId, sharingId, setSharingId } = ctx;
+  const { model, folders, columnsSynced, canShare, needle, matches, isOpen, toggle, expand, sharingId, setSharingId } = ctx;
   const tree = folderTree(folders);
   const kids = childrenOf(folders, folder.id);
   const shownKids = kids.filter(matches);
-  const open = openId === folder.id;
+  const open = Boolean(needle) || isOpen(folder.id);
   const isRoot = !tree.parentOf(folder);
   const parent = tree.byId.get(tree.parentOf(folder));
   const own = Boolean(folder.columnSetId);
@@ -101,7 +101,7 @@ function FolderNode({ folder, index, count, ctx }) {
   return (
     <section className={`tree-node tree-folder ${open ? 'tree-node-open' : ''}`}>
       <div className="tree-head">
-        <button type="button" className="tree-toggle" aria-expanded={open} onClick={() => setOpenId(open ? null : folder.id)}>
+        <button type="button" className="tree-toggle" aria-expanded={open} onClick={() => toggle(folder.id)}>
           <Chevron />
           <span className="tree-title">
             <span className="tree-label">{folder.name}</span>
@@ -141,17 +141,19 @@ function FolderNode({ folder, index, count, ctx }) {
           </p>
         </div>
       )}
-      <div className="tree-children">
-        {shownKids.map((child) => (
-          <FolderNode key={child.id} folder={child} index={kids.indexOf(child)} count={kids.length} ctx={ctx} />
-        ))}
-        {!needle && (
-          <AddButton label="Новая вложенная папка" onAdd={async (name) => {
-            const id = await createFolder(name, { parentId: folder.id });
-            setOpenId(id);
-          }} />
-        )}
-      </div>
+      {open && (
+        <div className="tree-children">
+          {shownKids.map((child) => (
+            <FolderNode key={child.id} folder={child} index={kids.indexOf(child)} count={kids.length} ctx={ctx} />
+          ))}
+          {!needle && (
+            <AddButton label="Новая вложенная папка" onAdd={async (name) => {
+              const id = await createFolder(name, { parentId: folder.id });
+              expand(id);
+            }} />
+          )}
+        </div>
+      )}
     </section>
   );
 }
@@ -166,7 +168,16 @@ export default function StructureEditor({
 }) {
   const canShare = useCanShare();
   const roots = childrenOf(folders, null);
-  const [openId, setOpenId] = useState(() => (folders.length === 1 ? folders[0].id : null));
+  // Expanded folders show their settings and the folders inside them; collapsed ones hide the whole branch.
+  const [openIds, setOpenIds] = useState(() => new Set(folders.length === 1 ? [folders[0].id] : []));
+  const isOpen = (id) => openIds.has(id);
+  const toggle = (id) => setOpenIds((s) => {
+    const next = new Set(s);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    return next;
+  });
+  const expand = (id) => setOpenIds((s) => new Set([...s, id]));
   const [sharingId, setSharingId] = useState(null);
   const [moving, setMoving] = useState(null);
   const [query, setQuery] = useState('');
@@ -178,7 +189,7 @@ export default function StructureEditor({
   if (!synced) return <p className="muted">Папки появятся после синхронизации.</p>;
 
   const ctx = {
-    model, folders, columnsSynced, canShare, needle, matches, openId, setOpenId, sharingId, setSharingId,
+    model, folders, columnsSynced, canShare, needle, matches, isOpen, toggle, expand, sharingId, setSharingId,
     onMove: setMoving, onChangeSet, onRemove: onRemoveFolder,
   };
   return (
@@ -190,6 +201,16 @@ export default function StructureEditor({
           <input type="search" className="manage-search" value={query} onChange={(e) => setQuery(e.target.value)} />
         </label>
       )}
+      {!needle && folders.length > 1 && (
+        <div className="tree-expand-all">
+          <button type="button" className="btn btn-small" onClick={() => setOpenIds(new Set(folders.map((f) => f.id)))}>
+            Развернуть все
+          </button>
+          <button type="button" className="btn btn-small" disabled={!openIds.size} onClick={() => setOpenIds(new Set())}>
+            Свернуть все
+          </button>
+        </div>
+      )}
       {roots.filter(matches).map((root) => (
         <FolderNode key={root.id} folder={root} index={roots.indexOf(root)} count={roots.length} ctx={ctx} />
       ))}
@@ -197,7 +218,7 @@ export default function StructureEditor({
       {!needle && isOwnBoard && (
         <AddButton label="Новая папка верхнего уровня" onAdd={async (name) => {
           const id = await createFolder(name, { columnSetId: model.newFolderSetId });
-          setOpenId(id);
+          expand(id);
         }} />
       )}
 
