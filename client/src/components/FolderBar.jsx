@@ -60,7 +60,7 @@ const VIEWS = [
 ];
 
 /**
- * `folderFilter` is { selected, indeterminate, onToggle, onSetAll, onClear, summary } over the ids of
+ * `folderFilter` is { selected, indeterminate, onToggle, onSetFolder, onSetAll, onClear, summary } over the ids of
  * `folders` (all live folders). `conflictsByFolder` is { [folderId]: number of cards
  * with a conflict }. Without `onManage` / `onAddCard` (read only) their buttons are not shown.
  */

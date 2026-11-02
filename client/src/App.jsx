@@ -354,6 +354,10 @@ export default function App() {
     selected: checkedIds,
     indeterminate: partial,
     onToggle: toggleSubtree,
+    onSetFolder: (id, on) => {
+      const ids = subtree(id);
+      saveChecked(on ? [...new Set([...checkedIds, ...ids])] : checkedIds.filter((x) => !ids.includes(x)));
+    },
     onSetAll: (on) => saveChecked(on ? folders.map((f) => f.id) : []),
     onClear: allChecked ? null : () => saveChecked(folders.map((f) => f.id)),
     summary: allChecked ? 'Все папки' : checkedIds.length ? filterSummary() : 'Не выбраны',

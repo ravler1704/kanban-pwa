@@ -1,123 +1,126 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { childrenOf, flattenFolders, folderPath } from '../folders.js';
+import { childrenOf, descendants, flattenFolders, folderPath, folderTree } from '../folders.js';
+import { Chevron } from './ManageFields.jsx';
 import Modal from './Modal.jsx';
 
 const SEARCH_FROM = 7;
-const COLLAPSED_KEY = 'folderFilterCollapsed';
-const MAX_INDENT = 4;
 
 const svg = (children, size = 18) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
     strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
 );
 const SearchIcon = () => svg(<><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>, 16);
+const BackIcon = () => svg(<path d="m15 18-6-6 6-6" />, 20);
 
-function readCollapsed() {
-  try {
-    const ids = JSON.parse(localStorage.getItem(COLLAPSED_KEY));
-    return new Set(Array.isArray(ids) ? ids : []);
-  } catch {
-    return new Set();
-  }
+/** An iOS-like switch: the whole line is the control. */
+function SwitchRow({ label, meta, on, onChange, strong = false }) {
+  return (
+    <li className="fp-row">
+      <button type="button" role="switch" aria-checked={on} className="fp-pick ff-row" onClick={() => onChange(!on)}>
+        <span className="fp-text">
+          <span className={`fp-name ${strong ? 'ff-strong' : ''}`}>{label}</span>
+          {meta && <span className="fp-meta">{meta}</span>}
+        </span>
+        <span className={`ff-switch ${on ? 'ff-switch-on' : ''}`} aria-hidden="true"><span className="ff-knob" /></span>
+      </button>
+    </li>
+  );
 }
 
-/** A round check like in iOS: true, false or 'mixed'. */
-function RoundCheck({ state }) {
+/** A line that opens a folder; `status` is said on the right, like a value in iOS settings. */
+function GroupRow({ label, meta, status, onOpen }) {
   return (
-    <span className={`ff-check ${state ? 'ff-check-on' : ''}`} aria-hidden="true">
-      {state === 'mixed' ? svg(<path d="M7 12h10" />, 14) : state ? svg(<path d="m6 12 4 4 8-9" />, 14) : null}
-    </span>
+    <li className="fp-row">
+      <button type="button" className="fp-pick ff-row" onClick={onOpen}>
+        <span className="fp-text">
+          <span className="fp-name">{label}</span>
+          {meta && <span className="fp-meta">{meta}</span>}
+        </span>
+        <span className="ff-status">{status}</span>
+        <span className="fp-chevron"><Chevron /></span>
+      </button>
+    </li>
   );
 }
 
 /**
- * Which folders the board shows, like «Календари» in iOS: one list with the nesting as indents, a tap
- * checks or unchecks a folder with everything inside it, the arrow folds a branch in place; changes apply
- * at once. `filter` is { selected, indeterminate, onToggle, onSetAll } over folder ids.
+ * Which folders the board shows, like the iOS settings: one level per screen; a folder with subfolders
+ * opens (its state on the right), one without them is a switch; inside a folder the first switch shows or
+ * hides it with everything inside. Changes apply at once. `filter` is { selected, onSetFolder(id, on),
+ * onSetAll(on) } over folder ids; onSetFolder checks or unchecks the folder with everything inside it.
  */
 function FolderFilterDialog({ folders, filter, onClose }) {
-  const [collapsed, setCollapsed] = useState(readCollapsed);
+  const tree = folderTree(folders);
+  const [currentId, setCurrentId] = useState(null);
+  const current = currentId ? tree.byId.get(currentId) ?? null : null;
   const [query, setQuery] = useState('');
   const needle = query.trim().toLowerCase();
 
-  const fold = (id) => setCollapsed((prev) => {
-    const next = new Set(prev);
-    if (!next.delete(id)) next.add(id);
-    localStorage.setItem(COLLAPSED_KEY, JSON.stringify([...next]));
-    return next;
-  });
-  const stateOf = (id) => (filter.indeterminate.includes(id) ? 'mixed' : filter.selected.includes(id));
-
-  const rows = [];
-  if (needle) {
-    for (const { folder } of flattenFolders(folders)) {
-      if (folder.name.toLowerCase().includes(needle)) rows.push({ folder, depth: 0, search: true });
-    }
-  } else {
-    const hiddenUnder = new Set();
-    for (const { folder, depth } of flattenFolders(folders)) {
-      if (hiddenUnder.has(folder.parentId)) {
-        hiddenUnder.add(folder.id);
-        continue;
-      }
-      if (collapsed.has(folder.id)) hiddenUnder.add(folder.id);
-      rows.push({ folder, depth });
-    }
-  }
+  const on = (id) => filter.selected.includes(id);
+  const subtree = (id) => [id, ...descendants(folders, id).map((f) => f.id)];
+  const statusOf = (id) => {
+    const ids = subtree(id);
+    const n = ids.filter(on).length;
+    return n === ids.length ? 'Все' : n === 0 ? 'Выкл.' : `${n} из ${ids.length}`;
+  };
   const allOn = filter.selected.length === folders.length;
+  const open = (id) => {
+    setQuery('');
+    setCurrentId(id);
+  };
+
+  const list = needle
+    ? flattenFolders(folders).map(({ folder }) => folder).filter((f) => f.name.toLowerCase().includes(needle))
+    : childrenOf(folders, currentId);
+  const row = (f) => {
+    const where = needle && folderPath(f, folders).slice(0, -1).map((p) => p.name).join(' › ');
+    return childrenOf(folders, f.id).length
+      ? <GroupRow key={f.id} label={f.name} meta={where} status={statusOf(f.id)} onOpen={() => open(f.id)} />
+      : <SwitchRow key={f.id} label={f.name} meta={where} on={on(f.id)} onChange={(v) => filter.onSetFolder(f.id, v)} />;
+  };
+  const parent = current ? tree.byId.get(tree.parentOf(current)) : null;
 
   return (
-    <Modal title="Папки" onClose={onClose} className="folder-picker folder-filter-sheet" closeButton>
-      {folders.length >= SEARCH_FROM && (
+    <Modal title={current ? current.name : 'Папки'} onClose={onClose} className="folder-picker folder-filter-sheet" closeButton>
+      {current && (
+        <button type="button" className="ff-back" onClick={() => open(parent?.id ?? null)}>
+          <BackIcon />
+          <span>{parent ? parent.name : 'Папки'}</span>
+        </button>
+      )}
+      {!current && folders.length >= SEARCH_FROM && (
         <label className="fp-search">
           <SearchIcon />
           <input type="search" placeholder="Поиск папки" value={query} aria-label="Поиск папки"
             onChange={(e) => setQuery(e.target.value)} />
         </label>
       )}
+      {!needle && (
+        <ul className="fp-list ff-group">
+          {current ? (
+            <SwitchRow strong label={`Показывать «${current.name}»`} on={on(current.id)}
+              meta={!childrenOf(folders, current.id).length ? null
+                : statusOf(current.id) === 'Все' || statusOf(current.id) === 'Выкл.' ? 'вместе со всем, что внутри'
+                  : `показано ${statusOf(current.id)}`}
+              onChange={(v) => filter.onSetFolder(current.id, v)} />
+          ) : (
+            <SwitchRow strong label="Показывать все папки" on={allOn} onChange={(v) => filter.onSetAll(v)} />
+          )}
+        </ul>
+      )}
       <ul className="fp-list ff-list">
-        {rows.map(({ folder, depth, search }) => {
-          const state = stateOf(folder.id);
-          const parent = !search && childrenOf(folders, folder.id).length > 0;
-          const open = parent && !collapsed.has(folder.id);
-          // Deeper than MAX_INDENT the rows stay at that indent and say what they are inside.
-          const above = folderPath(folder, folders).slice(0, -1);
-          const where = search ? above.map((p) => p.name).join(' › ')
-            : depth > MAX_INDENT && `в «${above[above.length - 1].name}»`;
-          return (
-            <li key={folder.id} className="fp-row">
-              <button type="button" className="fp-pick ff-pick" role="checkbox" aria-checked={state}
-                style={{ paddingLeft: `${0.8 + Math.min(depth, MAX_INDENT) * 1.2}rem` }} onClick={() => filter.onToggle(folder.id)}>
-                <RoundCheck state={state} />
-                <span className="fp-text">
-                  <span className="fp-name">{folder.name}</span>
-                  {where && <span className="fp-meta">{where}</span>}
-                </span>
-              </button>
-              {parent && (
-                <button type="button" className={`ff-fold ${open ? 'ff-fold-open' : ''}`} onClick={() => fold(folder.id)}
-                  aria-expanded={open} aria-label={open ? `Свернуть «${folder.name}»` : `Развернуть «${folder.name}»`}
-                  title={open ? 'Свернуть' : 'Развернуть'}>
-                  {svg(<path d="m9 6 6 6-6 6" />)}
-                </button>
-              )}
-            </li>
-          );
-        })}
-        {rows.length === 0 && <li className="fp-empty">Ничего не найдено</li>}
+        {list.map(row)}
+        {list.length === 0 && <li className="fp-empty">{needle ? 'Ничего не найдено' : 'Вложенных папок нет'}</li>}
       </ul>
-      <div className="actions fp-actions ff-actions">
-        <button type="button" className="btn" onClick={() => filter.onSetAll(!allOn)}>
-          {allOn ? 'Скрыть все' : 'Показать все'}
-        </button>
+      <div className="actions fp-actions">
         <button type="button" className="btn btn-primary" onClick={onClose}>Готово</button>
       </div>
     </Modal>
   );
 }
 
-/** The «Папки» field of the board: shows `filter.summary` and opens the list of folders. */
+/** The «Папки» field of the board: shows `filter.summary` and opens the folder settings. */
 export default function FolderFilter({ folders, filter }) {
   const [open, setOpen] = useState(false);
   return (
