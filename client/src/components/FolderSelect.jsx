@@ -99,12 +99,14 @@ function FolderPickerDialog({ title, folders, value, exclude, topLabel, onPick, 
 
 /**
  * A labelled folder field (`value` is the id) that opens the folder picker. `exclude` is a set of ids that
- * can't be picked; with `topLabel` the top level ('') can be picked too.
+ * can't be picked; with `topLabel` the top level ('') can be picked too. `text` replaces the shown value.
  */
-export default function FolderSelect({ label = 'Папка', folders, value, onChange, exclude, topLabel, className = '' }) {
+export default function FolderSelect({
+  label = 'Папка', folders, value, onChange, exclude, topLabel, className = '', text: textOverride,
+}) {
   const [open, setOpen] = useState(false);
   const folder = value ? folderTree(folders).byId.get(value) : null;
-  const text = folder ? folderPathName(folder, folders, ' › ') : (value === '' && topLabel) || 'Не выбрана';
+  const text = textOverride ?? (folder ? folderPathName(folder, folders, ' › ') : (value === '' && topLabel) || 'Не выбрана');
   return (
     <div className={`field ${className}`}>
       <button type="button" className="select folder-field" aria-haspopup="dialog" onClick={() => setOpen(true)}>

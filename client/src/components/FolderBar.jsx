@@ -1,10 +1,8 @@
 import { useState } from 'react';
 import { publicToken } from '../board.js';
-import { flattenFolders } from '../folders.js';
 import CheckPicker from './CheckPicker.jsx';
+import FolderSelect from './FolderSelect.jsx';
 import TagFilter from './TagFilter.jsx';
-
-const withConflicts = (name, n) => (n ? `${name} (конфликты: ${n})` : name);
 
 function SettingsIcon() {
   return (
@@ -75,9 +73,6 @@ export default function FolderBar({
     localStorage.setItem(FILTERS_HIDDEN_KEY, filtersHidden ? '0' : '1');
     setFiltersHidden(!filtersHidden);
   };
-  const folderItems = flattenFolders(folders).map(({ folder, depth }) => ({
-    key: folder.id, name: withConflicts(folder.name, conflictsByFolder[folder.id]), depth,
-  }));
 
   // A filter that narrows the board: shown on the toggle while the filters are hidden.
   const filtered = Boolean(folderFilter.onClear || tagFilter?.selected.length || cardFilter?.selected.length);
@@ -85,9 +80,9 @@ export default function FolderBar({
   const filters = !filtersHidden && (
     <div className="projectbar-row">
       {!publicToken && (
-        <CheckPicker label="Папки" emptyLabel="Не выбраны" clearLabel="Показать все"
-          searchPlaceholder="Поиск папки" notFound="Папок не найдено" items={folderItems} collapseKey="folderFilterCollapsed"
-          {...folderFilter} />
+        <FolderSelect label="Папки" className="folder-filter" folders={folders} value={folderFilter.value}
+          topLabel="Все папки" text={folderFilter.value == null ? folderFilter.summary ?? 'Не выбраны' : undefined}
+          onChange={(id) => (id ? folderFilter.onOnly(id) : folderFilter.onSetAll(true))} />
       )}
 
       {columnSets && (

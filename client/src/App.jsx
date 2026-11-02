@@ -336,7 +336,11 @@ export default function App() {
       return n > 0 && (n < inside.length || !checkedIds.includes(f.id));
     })
     .map((f) => f.id);
+  // The filter shows one folder with everything inside it, or all ('').
+  const tops = topFolderIds(checkedIds, folders);
+  const single = tops.length === 1 && subtree(tops[0]).length === checkedIds.length ? tops[0] : null;
   const folderFilter = {
+    value: allChecked ? '' : single,
     selected: checkedIds,
     indeterminate: partial,
     onToggle: toggleSubtree,

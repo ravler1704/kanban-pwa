@@ -1312,3 +1312,4 @@ a.btn { display: inline-block; text-decoration: none; }
 .picker-pick .tree-title { flex: 1; }
 .picker-open { flex: none; margin-right: 0.25rem; padding: 0.4rem; border-color: transparent; background: none; color: var(--muted); }
 .picker-open:hover { color: var(--text); background: var(--bg); }
+.field.folder-filter { flex: 0 1 auto; min-width: 120px; max-width: 22rem; }
