@@ -1355,11 +1355,24 @@ a.btn { display: inline-block; text-decoration: none; }
 .fp-row-selected .fp-icon { color: var(--accent); }
 .fp-chevron { flex: none; display: inline-flex; color: var(--muted); }
 .fp-actions { margin-top: 0; }
-.ff-list { max-height: min(26rem, 55vh); }
+.ff-list { min-height: 0; max-height: min(26rem, 55vh); }
 .ff-group { min-height: 0; }
 .ff-row { min-height: 3rem; }
 .ff-strong { font-weight: 600; }
-.ff-status { flex: none; color: var(--muted); font-size: 0.9rem; }
+.ff-open { padding-right: 0.4rem; }
+.ff-open .fp-meta { white-space: normal; }
+.ff-switch-btn, .ff-chevron-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.ff-switch-btn { padding: 0 0.5rem; }
+.ff-chevron-btn { padding: 0 0.8rem 0 0.4rem; border-left: 1px solid var(--border); margin-left: 0.3rem; }
+.ff-chevron-btn:hover { background: var(--card); color: var(--text); }
 .ff-switch {
   flex: none;
   position: relative;

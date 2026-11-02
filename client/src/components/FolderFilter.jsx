@@ -28,20 +28,31 @@ function SwitchRow({ label, meta, on, onChange, strong = false }) {
   );
 }
 
-/** A line that opens a folder; `status` is said on the right, like a value in iOS settings. */
-function GroupRow({ label, meta, status, onOpen }) {
+/** A folder with subfolders: the line opens it, its own switch shows or hides it with everything inside. */
+function GroupRow({ label, meta, on, onChange, onOpen }) {
   return (
     <li className="fp-row">
-      <button type="button" className="fp-pick ff-row" onClick={onOpen}>
+      <button type="button" className="fp-pick ff-row ff-open" onClick={onOpen} title="Открыть">
         <span className="fp-text">
           <span className="fp-name">{label}</span>
           {meta && <span className="fp-meta">{meta}</span>}
         </span>
-        <span className="ff-status">{status}</span>
-        <span className="fp-chevron"><Chevron /></span>
+      </button>
+      <button type="button" role="switch" aria-checked={on} aria-label={`Показывать «${label}»`}
+        className="ff-switch-btn" onClick={() => onChange(!on)}>
+        <span className={`ff-switch ${on ? 'ff-switch-on' : ''}`} aria-hidden="true"><span className="ff-knob" /></span>
+      </button>
+      <button type="button" className="ff-chevron-btn" onClick={onOpen} aria-label={`Открыть «${label}»`}>
+        <Chevron />
       </button>
     </li>
   );
+}
+
+/** «Фильмы, Субару и ещё 2» */
+function names(list) {
+  const shown = list.slice(0, 3).map((f) => f.name).join(', ');
+  return list.length > 3 ? `${shown} и ещё ${list.length - 3}` : shown;
 }
 
 /**
@@ -59,10 +70,12 @@ function FolderFilterDialog({ folders, filter, onClose }) {
 
   const on = (id) => filter.selected.includes(id);
   const subtree = (id) => [id, ...descendants(folders, id).map((f) => f.id)];
-  const statusOf = (id) => {
-    const ids = subtree(id);
-    const n = ids.filter(on).length;
-    return n === ids.length ? 'Все' : n === 0 ? 'Выкл.' : `${n} из ${ids.length}`;
+  // What differs inside a folder from the folder itself: the topmost folders switched the other way.
+  const insideOf = (id) => {
+    const value = on(id);
+    const differ = descendants(folders, id).filter((f) => on(f.id) !== value && on(tree.parentOf(f)) === value);
+    if (!differ.length) return null;
+    return value ? `кроме ${names(differ)}` : `только ${names(differ)}`;
   };
   const allOn = filter.selected.length === folders.length;
   const open = (id) => {
@@ -75,9 +88,15 @@ function FolderFilterDialog({ folders, filter, onClose }) {
     : childrenOf(folders, currentId);
   const row = (f) => {
     const where = needle && folderPath(f, folders).slice(0, -1).map((p) => p.name).join(' › ');
-    return childrenOf(folders, f.id).length
-      ? <GroupRow key={f.id} label={f.name} meta={where} status={statusOf(f.id)} onOpen={() => open(f.id)} />
-      : <SwitchRow key={f.id} label={f.name} meta={where} on={on(f.id)} onChange={(v) => filter.onSetFolder(f.id, v)} />;
+    const set = (v) => filter.onSetFolder(f.id, v);
+    if (!childrenOf(folders, f.id).length) {
+      return <SwitchRow key={f.id} label={f.name} meta={where} on={on(f.id)} onChange={set} />;
+    }
+    const inside = insideOf(f.id);
+    return (
+      <GroupRow key={f.id} label={f.name} meta={[where, inside].filter(Boolean).join(' · ')} on={on(f.id)}
+        onChange={set} onOpen={() => open(f.id)} />
+    );
   };
   const parent = current ? tree.byId.get(tree.parentOf(current)) : null;
 
@@ -100,12 +119,11 @@ function FolderFilterDialog({ folders, filter, onClose }) {
         <ul className="fp-list ff-group">
           {current ? (
             <SwitchRow strong label={`Показывать «${current.name}»`} on={on(current.id)}
-              meta={!childrenOf(folders, current.id).length ? null
-                : statusOf(current.id) === 'Все' || statusOf(current.id) === 'Выкл.' ? 'вместе со всем, что внутри'
-                  : `показано ${statusOf(current.id)}`}
+              meta={childrenOf(folders, current.id).length ? insideOf(current.id) ?? 'вместе со всем, что внутри' : null}
               onChange={(v) => filter.onSetFolder(current.id, v)} />
           ) : (
-            <SwitchRow strong label="Показывать все папки" on={allOn} onChange={(v) => filter.onSetAll(v)} />
+            <SwitchRow strong label="Показывать все папки" on={allOn} meta={allOn ? null : `Сейчас: ${filter.summary}`}
+              onChange={(v) => filter.onSetAll(v)} />
           )}
         </ul>
       )}
