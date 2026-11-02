@@ -1208,7 +1208,6 @@ a.btn { display: inline-block; text-decoration: none; }
   .chat-dialog:not(.chat-dialog-open) .chat-pane { display: none; }
   .chat-back { display: inline-block; }
 }
-.tree-expand-all { display: flex; gap: 0.5rem; justify-content: flex-end; }
 .tree-chevron {
   flex: none;
   display: inline-flex;
@@ -1229,3 +1228,23 @@ a.btn { display: inline-block; text-decoration: none; }
   }
 .tree-more { flex: none; padding: 0.35rem; border-color: transparent; background: none; color: var(--muted); }
 .tree-more:hover, .tree-more.active { color: var(--text); background: var(--bg); }
+.breadcrumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.15rem; font-size: 0.9rem; }
+.crumb-item { display: inline-flex; align-items: center; gap: 0.15rem; min-width: 0; }
+.crumb-sep { color: var(--muted); }
+.crumb {
+  max-width: 14rem;
+  padding: 0.2rem 0.4rem;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.crumb:hover:not(:disabled) { background: var(--card); }
+.crumb:disabled { color: var(--text); font-weight: 600; cursor: default; }
+.tree-toggle .tree-title { flex: 1; }
+.tree-folder-icon { flex: none; color: var(--muted); }

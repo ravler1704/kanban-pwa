@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { createFolder, moveFolder, renameFolder, reorderFolder } from '../actions.js';
 import { isOwnBoard } from '../board.js';
-import { childrenOf, descendants, folderColumnSetId, folderTree } from '../folders.js';
+import { childrenOf, descendants, flattenFolders, folderColumnSetId, folderPath, folderTree } from '../folders.js';
 import ContextMenu from './ContextMenu.jsx';
 import FolderSelect from './FolderSelect.jsx';
 import { AddButton, Chevron, plural } from './ManageFields.jsx';
@@ -103,34 +103,34 @@ function InlineName({ value, onSave, onDone }) {
   );
 }
 
-/** One folder: a row with its name and actions; when expanded, the folders inside it. */
-function FolderNode({ folder, index, count, ctx }) {
-  const { model, folders, columnsSynced, canShare, needle, matches, isOpen, toggle, expand } = ctx;
+/** One folder: a row with its name and actions; clicking it opens the folder (its contents are listed instead). */
+function FolderRow({ folder, index, count, ctx }) {
+  const { model, folders, columnsSynced, canShare, needle, onOpen } = ctx;
   const tree = folderTree(folders);
   const kids = childrenOf(folders, folder.id);
-  const shownKids = kids.filter(matches);
-  const open = Boolean(needle) || isOpen(folder.id);
   const [panel, setPanel] = useState(null);
   const [renaming, setRenaming] = useState(false);
-  const [adding, setAdding] = useState(false);
   const isRoot = !tree.parentOf(folder);
   const parent = tree.byId.get(tree.parentOf(folder));
   const own = Boolean(folder.columnSetId);
   const setId = folderColumnSetId(folder, folders);
   const setName = model.sets.find((s) => s.id === model.setIdOf(folder))?.name;
   const parentSetName = parent && model.sets.find((s) => s.id === model.setIdOf(parent))?.name;
+  // While searching, where the folder is matters more than what is inside it.
+  const where = needle && folderPath(folder, folders).slice(0, -1).map((f) => f.name).join(' › ');
   const meta = [
-    kids.length ? `${kids.length} ${plural(kids.length, 'вложенная папка', 'вложенные папки', 'вложенных папок')}` : null,
+    where,
+    !needle && (kids.length ? `${kids.length} ${plural(kids.length, 'папка', 'папки', 'папок')}` : null),
     columnsSynced && setName && `«${setName}»${own || isRoot ? '' : ' (как у родителя)'}`,
   ].filter(Boolean).join(' · ');
   const togglePanel = (name) => setPanel(panel === name ? null : name);
   const [menu, setMenu] = useState(null);
   const closeMenu = useCallback(() => setMenu(null), []);
   const menuItems = [
+    { label: 'Открыть', run: () => onOpen(folder.id) },
     { label: 'Переименовать', run: () => setRenaming(true) },
     canShare && { label: 'Доступ', active: panel === 'access', run: () => togglePanel('access') },
     columnsSynced && isOwnBoard && { label: 'Набор колонок', active: panel === 'columns', run: () => togglePanel('columns') },
-    { label: 'Новая вложенная папка', run: () => { expand(folder.id); setAdding(true); } },
     { label: 'Перенести…', run: () => ctx.onMove(folder) },
     !needle && null,
     !needle && { label: 'Выше', disabled: index === 0, run: () => reorderFolder(folder.id, -1) },
@@ -146,18 +146,16 @@ function FolderNode({ folder, index, count, ctx }) {
         e.preventDefault();
         setMenu({ x: e.clientX, y: e.clientY });
       }}>
-        <button type="button" className="tree-chevron"
-          aria-expanded={open} aria-label={open ? 'Свернуть' : 'Развернуть'} onClick={() => toggle(folder.id)}>
-          <Chevron />
-        </button>
         {renaming ? (
           <InlineName value={folder.name} onSave={(name) => renameFolder(folder.id, name)} onDone={() => setRenaming(false)} />
         ) : (
-          <button type="button" className="tree-toggle" onClick={() => toggle(folder.id)} onDoubleClick={() => setRenaming(true)}>
+          <button type="button" className="tree-toggle" title="Открыть папку" onClick={() => onOpen(folder.id)}>
+            <FolderIcon />
             <span className="tree-title">
               <span className="tree-label">{folder.name}</span>
               {meta && <span className="tree-meta">{meta}</span>}
             </span>
+            <Chevron />
           </button>
         )}
         <button type="button" className={`btn btn-small btn-icon-only tree-more ${menu ? 'active' : ''}`}
@@ -190,55 +188,51 @@ function FolderNode({ folder, index, count, ctx }) {
           </p>
         </div>
       )}
-      {open && (
-        <div className="tree-children">
-          {shownKids.map((child) => (
-            <FolderNode key={child.id} folder={child} index={kids.indexOf(child)} count={kids.length} ctx={ctx} />
-          ))}
-          {!needle && (
-            <AddButton label="Новая вложенная папка" open={adding} onOpenChange={setAdding} onAdd={async (name) => {
-              await createFolder(name, { parentId: folder.id });
-            }} />
-          )}
-        </div>
-      )}
     </section>
   );
 }
 
+function FolderIcon() {
+  return (
+    <svg className="tree-folder-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
+    </svg>
+  );
+}
+
 /**
- * The folders of the board in one tree of any depth: names, order, access and column sets; a folder moves
- * to another place with everything in it. `writable` (a set of ids, or null for all) are the folders a
- * member may touch.
+ * The folders of the board, one level at a time: breadcrumbs lead back up, a folder opens on click.
+ * Names, order, access and column sets; a folder moves to another place with everything in it.
+ * `writable` (a set of ids, or null for all) are the folders a member may touch.
  */
 export default function StructureEditor({
   model, folders, synced, columnsSynced, writable, onChangeSet, onRemoveFolder,
 }) {
   const canShare = useCanShare();
-  const roots = childrenOf(folders, null);
-  // Expanded folders show their settings and the folders inside them; collapsed ones hide the whole branch.
-  const [openIds, setOpenIds] = useState(() => new Set(folders.length === 1 ? [folders[0].id] : []));
-  const isOpen = (id) => openIds.has(id);
-  const toggle = (id) => setOpenIds((s) => {
-    const next = new Set(s);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    return next;
-  });
-  const expand = (id) => setOpenIds((s) => new Set([...s, id]));
+  const tree = folderTree(folders);
+  const [currentId, setCurrentId] = useState(null);
+  // The opened folder may be deleted or moved away meanwhile: then its nearest live ancestor, or the top.
+  const current = currentId ? tree.byId.get(currentId) ?? null : null;
+  const path = current ? folderPath(current, folders) : [];
+  const list = childrenOf(folders, current?.id ?? null);
   const [moving, setMoving] = useState(null);
   const [query, setQuery] = useState('');
 
   const needle = query.trim().toLowerCase();
-  const matchesSelf = (f) => f.name.toLowerCase().includes(needle);
-  const matches = (f) => !needle || matchesSelf(f) || descendants(folders, f.id).some(matchesSelf);
+  const found = needle ? flattenFolders(folders).map(({ folder }) => folder).filter((f) => f.name.toLowerCase().includes(needle)) : [];
 
   if (!synced) return <p className="muted">Папки появятся после синхронизации.</p>;
 
+  const open = (id) => {
+    setQuery('');
+    setCurrentId(id);
+  };
   const ctx = {
-    model, folders, columnsSynced, canShare, needle, matches, isOpen, toggle, expand,
+    model, folders, columnsSynced, canShare, needle, onOpen: open,
     onMove: setMoving, onChangeSet, onRemove: onRemoveFolder,
   };
+  const canAddHere = current ? true : isOwnBoard;
   return (
     <div className="manage tree">
       {!isOwnBoard && <p className="muted">Колонки настраивает владелец доски, здесь можно менять папки внутри открытых вам.</p>}
@@ -248,25 +242,34 @@ export default function StructureEditor({
           <input type="search" className="manage-search" value={query} onChange={(e) => setQuery(e.target.value)} />
         </label>
       )}
-      {!needle && folders.length > 1 && (
-        <div className="tree-expand-all">
-          <button type="button" className="btn btn-small" onClick={() => setOpenIds(new Set(folders.map((f) => f.id)))}>
-            Развернуть все
-          </button>
-          <button type="button" className="btn btn-small" disabled={!openIds.size} onClick={() => setOpenIds(new Set())}>
-            Свернуть все
-          </button>
-        </div>
+      {!needle && (
+        <nav className="breadcrumbs" aria-label="Путь">
+          <button type="button" className="crumb" disabled={!current} onClick={() => open(null)}>Все папки</button>
+          {path.map((f, i) => (
+            <span key={f.id} className="crumb-item">
+              <span className="crumb-sep" aria-hidden="true">›</span>
+              <button type="button" className="crumb" disabled={i === path.length - 1} onClick={() => open(f.id)}>
+                {f.name}
+              </button>
+            </span>
+          ))}
+        </nav>
       )}
-      {roots.filter(matches).map((root) => (
-        <FolderNode key={root.id} folder={root} index={roots.indexOf(root)} count={roots.length} ctx={ctx} />
-      ))}
-      {needle && !roots.some(matches) && <p className="muted">Ничего не найдено.</p>}
-      {!needle && isOwnBoard && (
-        <AddButton label="Новая папка верхнего уровня" onAdd={async (name) => {
-          const id = await createFolder(name, { columnSetId: model.newFolderSetId });
-          expand(id);
-        }} />
+      {needle ? (
+        found.length
+          ? found.map((f) => <FolderRow key={f.id} folder={f} index={0} count={1} ctx={ctx} />)
+          : <p className="muted">Ничего не найдено.</p>
+      ) : (
+        <>
+          {list.map((f, i) => <FolderRow key={f.id} folder={f} index={i} count={list.length} ctx={ctx} />)}
+          {list.length === 0 && <p className="muted">В этой папке нет вложенных папок.</p>}
+          {canAddHere && (
+            <AddButton key={current?.id ?? 'top'} label={current ? `Новая папка в «${current.name}»` : 'Новая папка верхнего уровня'}
+              onAdd={async (name) => {
+                await createFolder(name, current ? { parentId: current.id } : { columnSetId: model.newFolderSetId });
+              }} />
+          )}
+        </>
       )}
 
       {moving && (
