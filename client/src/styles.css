@@ -331,15 +331,12 @@ body {
   line-height: 1.4;
 }
 .set-usage-unused { border-color: var(--border); background: none; color: var(--muted); }
-.manage-projects { display: flex; flex-direction: column; gap: 0.5rem; }
-.manage-project {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--card);
-}
-.manage-project-open { border-color: var(--muted); }
-.manage-project-head { display: flex; align-items: center; gap: 0.3rem; padding: 0.3rem 0.4rem 0.3rem 0.2rem; }
-.manage-project-toggle {
+.tree { gap: 0.75rem; }
+.tree-node { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
+.tree-node-open { border-color: var(--muted); }
+.tree-project { background: var(--panel); }
+.tree-head { display: flex; align-items: center; gap: 0.3rem; padding: 0.3rem 0.4rem 0.3rem 0.2rem; }
+.tree-toggle {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -354,20 +351,27 @@ body {
   text-align: left;
   cursor: pointer;
 }
-.manage-project-toggle:hover { background: var(--bg); }
-.manage-project-toggle .chevron { flex: none; color: var(--muted); transition: transform 0.15s; }
-.manage-project-toggle[aria-expanded="true"] .chevron { transform: rotate(90deg); }
-.manage-project-title { display: flex; flex-direction: column; min-width: 0; }
-.manage-project-label, .manage-project-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.manage-project-label { font-weight: 600; }
-.manage-project-meta { color: var(--muted); font-size: 0.78rem; }
-.manage-project-body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.6rem;
-  border-top: 1px solid var(--border);
+.tree-toggle:hover { background: var(--bg); }
+.tree-toggle .chevron { flex: none; color: var(--muted); transition: transform 0.15s; }
+.tree-toggle[aria-expanded="true"] .chevron { transform: rotate(90deg); }
+.tree-title { display: flex; flex-direction: column; min-width: 0; }
+.tree-label, .tree-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tree-label { font-weight: 600; }
+.tree-meta { color: var(--muted); font-size: 0.78rem; }
+.tree-kind {
+  margin-right: 0.4rem;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
+.tree-body { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.6rem; border-top: 1px solid var(--border); }
+.tree-children { display: flex; flex-direction: column; gap: 0.4rem; padding: 0 0.6rem 0.6rem 1.4rem; }
+.tree-body .tree-children { padding: 0.2rem 0 0 0.75rem; border-left: 2px solid var(--border); }
+.btn.tree-add { align-self: flex-start; padding: 0.3rem 0.7rem; }
+.move-result { margin: 0; line-height: 1.45; }
+.move-note { margin: 0; font-size: 0.85rem; }
 .manage-sections {
   display: flex;
   flex-direction: column;
@@ -550,8 +554,7 @@ body {
 .member-space-name { font-weight: 600; font-size: 0.9rem; }
 .member-space .member-space-name + .member-projects { padding-left: 1.4rem; }
 .member-via { font-size: 0.82rem; white-space: nowrap; }
-.manage-space { display: flex; flex-direction: column; gap: 0.4rem; }
-.manage-space .manage-sections { padding: 0 0 0.6rem 0.8rem; border-left: 2px solid var(--border); }
+.tree-space > .tree-body .manage-sections { margin: 0; padding: 0 0 0 0.8rem; border-left: 2px solid var(--border); }
 .member-invite { flex-wrap: wrap; margin-top: 0.5rem; }
 .member-invite .field { flex: 1 1 10rem; }
 .mail-fields { border: none; margin: 0; padding: 0; min-width: 0; display: flex; flex-direction: column; gap: 0.5rem; }

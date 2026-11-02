@@ -1,6 +1,7 @@
 import {
   db, DEFAULT_COLUMNS, DEFAULT_SET_ID, DEFAULT_SPACE_ID, isDirty, newId, pickFields, tableOf, TYPES,
 } from './db.js';
+import { columnModel, matchColumn } from './columnSets.js';
 import { requestSync } from './sync.js';
 
 const alive = (r) => !r.deleted;
@@ -209,11 +210,6 @@ export async function deleteSpace(id, targetId) {
   requestSync();
 }
 
-export async function setProjectSpace(projectId, spaceId) {
-  await update('project', projectId, { spaceId });
-  requestSync();
-}
-
 // ---- projects ----
 
 export async function createProject(name, columnSetId = DEFAULT_SET_ID, spaceId = DEFAULT_SPACE_ID) {
@@ -229,13 +225,19 @@ export async function renameProject(id, name) {
   requestSync();
 }
 
-/** Swaps the project with its neighbour; `direction` is -1 (up) or 1 (down). */
-export async function moveProject(id, direction) {
+/**
+ * Swaps the project with its neighbour; `direction` is -1 (up) or 1 (down). With `siblings` (ids) the
+ * neighbour is the nearest of them, e.g. of the same space.
+ */
+export async function moveProject(id, direction, siblings = null) {
   await db.transaction('rw', db.projects, async () => {
     const projects = (await db.projects.toArray()).filter(alive)
       .sort((a, b) => a.position - b.position || a.id.localeCompare(b.id));
     const index = projects.findIndex((p) => p.id === id);
-    const target = index + direction;
+    let target = index + direction;
+    while (siblings && target >= 0 && target < projects.length && !siblings.includes(projects[target].id)) {
+      target += direction;
+    }
     if (index < 0 || target < 0 || target >= projects.length) return;
     [projects[index], projects[target]] = [projects[target], projects[index]];
     // Renumbered rather than swapped: older projects may share a position.
@@ -346,6 +348,119 @@ export async function moveCardToGroup(id, { projectId, sectionId }) {
   const card = await db.cards.get(id);
   if (!card || (card.projectId === projectId && card.sectionId === sectionId)) return;
   return updateCard(id, { projectId, sectionId });
+}
+
+// ---- restructuring: spaces, projects and sections moved to another level ----
+
+const RESTRUCTURE_TABLES = [db.spaces, db.projects, db.sections, db.cards, db.columns, db.columnSets];
+const liveIn = async (table, index, value) => (await table.where(index).equals(value).toArray()).filter(alive);
+
+/** Maps a card's column to the best match in the column set `setId` (same id, same name, or the first). */
+async function columnMatcher() {
+  const model = columnModel(await db.columnSets.toArray(), await db.columns.toArray(), []);
+  return (columnId, setId) => {
+    const from = model.columns.find((c) => c.id === columnId);
+    return matchColumn(from, model.columnsOf(setId))?.id ?? columnId;
+  };
+}
+
+/** Moves the cards into the project `projectId` (column set `setId`) and `sectionId`. */
+async function moveCardsInto(cards, { projectId, sectionId }, setId, columnFor) {
+  for (const c of cards) {
+    const columnId = columnFor(c.columnId, setId);
+    await update('card', c.id, {
+      projectId,
+      sectionId,
+      ...(columnId !== c.columnId && { columnId, position: await arrivalPosition(columnId, c.id) }),
+    });
+  }
+}
+
+const setOfProjectId = async (projectId) => setOfProject(await db.projects.get(projectId));
+
+async function newSpace(name) {
+  return (await insert('space', { name, position: maxPosition(await db.spaces.toArray()) + 1 })).id;
+}
+
+async function newProject(name, spaceId, columnSetId) {
+  const position = maxPosition(await db.projects.toArray()) + 1;
+  return (await insert('project', { name, spaceId, columnSetId, hidden: false, position })).id;
+}
+
+async function newSection(projectId, name) {
+  const position = maxPosition(await db.sections.where('projectId').equals(projectId).toArray()) + 1;
+  return (await insert('section', { projectId, name, hidden: false, position })).id;
+}
+
+/** The section moves to another project with its cards. */
+async function sectionIntoProject(sectionId, projectId, columnFor, name) {
+  const section = await db.sections.get(sectionId);
+  if (!section || section.projectId === projectId) return;
+  const cards = await cardsIn(section.projectId, sectionId);
+  const position = maxPosition(await db.sections.where('projectId').equals(projectId).toArray()) + 1;
+  await update('section', sectionId, { projectId, position, ...(name && { name }) });
+  await moveCardsInto(cards, { projectId, sectionId }, await setOfProjectId(projectId), columnFor);
+}
+
+/** The section becomes a project of the space; its cards go to the project itself. */
+async function sectionIntoSpace(sectionId, spaceId, columnFor) {
+  const section = await db.sections.get(sectionId);
+  if (!section) return;
+  const setId = await setOfProjectId(section.projectId);
+  const projectId = await newProject(section.name, spaceId, setId);
+  await moveCardsInto(await cardsIn(section.projectId, sectionId), { projectId, sectionId: null }, setId, columnFor);
+  await update('section', sectionId, { deleted: true });
+}
+
+/**
+ * The project becomes a section of another one: its own cards go to a section named after it,
+ * its sections follow as «Project / Section».
+ */
+async function projectIntoProject(projectId, targetId, columnFor) {
+  const project = await db.projects.get(projectId);
+  if (!project || projectId === targetId) return;
+  const setId = await setOfProjectId(targetId);
+  const own = await cardsIn(projectId, null);
+  if (own.length) {
+    const sectionId = await newSection(targetId, project.name);
+    await moveCardsInto(own, { projectId: targetId, sectionId }, setId, columnFor);
+  }
+  for (const s of await liveIn(db.sections, 'projectId', projectId)) {
+    await sectionIntoProject(s.id, targetId, columnFor, `${project.name} / ${s.name}`);
+  }
+  await update('project', projectId, { deleted: true });
+}
+
+/** Moves the section (`kind` 'section'), project or space: `to` is { top: true }, { spaceId } or { projectId }. */
+export async function restructure(kind, id, to) {
+  await db.transaction('rw', RESTRUCTURE_TABLES, async () => {
+    const columnFor = await columnMatcher();
+    if (kind === 'section') {
+      if (to.projectId) await sectionIntoProject(id, to.projectId, columnFor);
+      else {
+        const section = await db.sections.get(id);
+        await sectionIntoSpace(id, to.spaceId ?? await newSpace(section.name), columnFor);
+      }
+    } else if (kind === 'project') {
+      if (to.projectId) await projectIntoProject(id, to.projectId, columnFor);
+      else if (to.spaceId) await update('project', id, { spaceId: to.spaceId });
+      else {
+        // A space named after the project: the project goes there and its sections become projects beside it.
+        const project = await db.projects.get(id);
+        const spaceId = await newSpace(project.name);
+        await update('project', id, { spaceId });
+        for (const s of await liveIn(db.sections, 'projectId', id)) await sectionIntoSpace(s.id, spaceId, columnFor);
+      }
+    } else if (kind === 'space') {
+      const projects = (await db.projects.toArray()).filter((p) => alive(p) && spaceOfProject(p) === id);
+      for (const p of projects) {
+        if (to.projectId) await projectIntoProject(p.id, to.projectId, columnFor);
+        else await update('project', p.id, { spaceId: to.spaceId });
+      }
+      await update('space', id, { deleted: true });
+    }
+  });
+  requestSync();
 }
 
 // ---- comments and project chats ----

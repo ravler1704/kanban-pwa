@@ -541,7 +541,6 @@ export default function App() {
           projects={projects}
           spaces={spaces}
           spacesSynced={data.spaces.some((s) => !s.deleted)}
-          newProjectSpaceId={checkedSpaces[0] ?? spaces[0].id}
           onSpaceDeleted={(id, targetId) => {
             // Its projects stay in view in the space they moved to.
             if (spaceOn(id)) changeSpacesOff(spacesOff.filter((s) => s !== targetId && s !== id));
