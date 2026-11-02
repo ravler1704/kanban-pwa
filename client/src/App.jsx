@@ -37,6 +37,9 @@ const SPACES_OFF_KEY = `spacesOff:${dbName}`;
 // a board's selection is converted once, keeping what was in view.
 const OLD_DEFAULTS_KEY = `selectionWithoutDefaults:${dbName}`;
 
+// Folders hidden from the board with everything inside them, whichever folder above them is chosen.
+const HIDDEN_KEY = `hiddenFolders:${dbName}`;
+
 const idList = (value) => (value ? value.split(',').filter((id) => id && id !== 'all') : []);
 
 function storedList(key) {
@@ -97,6 +100,11 @@ export default function App() {
   const seen = useSyncExternalStore(seenStore.subscribe, seenStore.get);
   const people = useSyncExternalStore(peopleStore.subscribe, peopleStore.get);
   const [selection, select] = useSelection();
+  const [hiddenIds, setHiddenIds] = useState(() => readList(HIDDEN_KEY));
+  const changeHidden = useCallback((next) => {
+    setHiddenIds(next);
+    localStorage.setItem(HIDDEN_KEY, JSON.stringify(next));
+  }, []);
   const [openCardId, setOpenCardId] = useState(null);
   const [managing, setManaging] = useState(false);
   const [addingCard, setAddingCard] = useState(false);
@@ -141,8 +149,15 @@ export default function App() {
     if (!card || (card.deleted && !card.conflict)) return;
     const off = readSelection();
     if (off.includes(card.folderId)) select(off.filter((x) => x !== card.folderId));
+    const hidden = readList(HIDDEN_KEY);
+    if (hidden.length) {
+      const all = await db.folders.toArray();
+      const above = new Set();
+      for (let f = all.find((x) => x.id === card.folderId); f; f = all.find((x) => x.id === f.parentId)) above.add(f.id);
+      if (hidden.some((x) => above.has(x))) changeHidden(hidden.filter((x) => !above.has(x)));
+    }
     setOpenCardId(id);
-  }, [select]);
+  }, [select, changeHidden]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -194,7 +209,10 @@ export default function App() {
   // A card is shown if its folder is checked; folders are independent of those above and below them.
   // A public link shows everything it opens.
   const unchecked = publicToken ? [] : selection;
-  const shownFolders = folders.filter((f) => !unchecked.includes(f.id));
+  const hiddenAll = new Set(publicToken ? [] : hiddenIds.flatMap((id) => (
+    tree.byId.has(id) ? [id, ...descendants(folders, id).map((f) => f.id)] : []
+  )));
+  const shownFolders = folders.filter((f) => !unchecked.includes(f.id) && !hiddenAll.has(f.id));
   const scopeFolderIds = shownFolders.map((f) => f.id).join(',');
   const folderCards = useLiveQuery(
     () => db.cards.where('folderId').anyOf(scopeFolderIds ? scopeFolderIds.split(',') : []).toArray(),
@@ -319,45 +337,35 @@ export default function App() {
   };
 
   // The last choice is kept (see readSelection).
-  const checkedIds = shownFolders.map((f) => f.id);
+  // The chosen folders (hidden ones aside): one folder with everything inside it, or all ('').
+  const checkedIds = folders.filter((f) => !unchecked.includes(f.id)).map((f) => f.id);
   const saveChecked = (ids) => select(folders.filter((f) => !ids.includes(f.id)).map((f) => f.id));
   const allChecked = checkedIds.length === folders.length;
-  // A folder is checked or unchecked together with everything inside it.
   const subtree = (id) => [id, ...descendants(folders, id).map((f) => f.id)];
-  const toggleSubtree = (id) => {
-    const ids = subtree(id);
-    const on = !checkedIds.includes(id);
-    saveChecked(on ? [...new Set([...checkedIds, ...ids])] : checkedIds.filter((x) => !ids.includes(x)));
-  };
-  const partial = folders
-    .filter((f) => {
-      const inside = descendants(folders, f.id);
-      const n = inside.filter((d) => checkedIds.includes(d.id)).length;
-      return n > 0 && (n < inside.length || !checkedIds.includes(f.id));
-    })
-    .map((f) => f.id);
-  // «Дела, Работа · кроме Фильмы»: the checked folders and the unchecked ones right inside checked ones.
-  const filterSummary = () => {
-    const name = (id) => tree.byId.get(id)?.name;
-    const included = topFolderIds(checkedIds, folders).map(name);
-    const excluded = folders
-      .filter((f) => !checkedIds.includes(f.id) && f.parentId && checkedIds.includes(f.parentId))
-      .map((f) => f.name);
-    return excluded.length ? `${included.join(', ')} · кроме ${excluded.join(', ')}` : included.join(', ');
-  };
-  // The filter shows one folder with everything inside it, or all ('').
   const tops = topFolderIds(checkedIds, folders);
   const single = tops.length === 1 && subtree(tops[0]).length === checkedIds.length ? tops[0] : null;
+  // «Дела · без Фильмы»: the chosen folders and the hidden ones among them.
+  const nameOf = (id) => tree.byId.get(id)?.name;
+  const chosenName = allChecked ? 'Все папки' : checkedIds.length ? tops.map(nameOf).join(', ') : 'Не выбраны';
+  const hiddenInView = hiddenIds.filter((id) => tree.byId.has(id) && checkedIds.includes(id)
+    && !hiddenIds.includes(tree.parentOf(tree.byId.get(id))));
+  const toggleHidden = (id) => changeHidden(hiddenIds.includes(id) ? hiddenIds.filter((x) => x !== id) : [...hiddenIds, id]);
   const folderFilter = {
     value: allChecked ? '' : single,
-    selected: checkedIds,
-    indeterminate: partial,
-    onToggle: toggleSubtree,
-    onSet: saveChecked,
-    onOnly: (id) => saveChecked(subtree(id)),
-    onSetAll: (on) => saveChecked(on ? folders.map((f) => f.id) : []),
-    onClear: allChecked ? null : () => saveChecked(folders.map((f) => f.id)),
-    summary: allChecked ? 'Все папки' : checkedIds.length ? filterSummary() : null,
+    hidden: hiddenIds,
+    onToggleHidden: toggleHidden,
+    // A hidden folder (or one inside it) that is chosen shows up again.
+    onOnly: (id) => {
+      saveChecked(subtree(id));
+      const above = new Set(folderPath(tree.byId.get(id), folders).map((f) => f.id));
+      if (hiddenIds.some((x) => above.has(x))) changeHidden(hiddenIds.filter((x) => !above.has(x)));
+    },
+    onSetAll: () => saveChecked(folders.map((f) => f.id)),
+    onClear: allChecked && !hiddenInView.length ? null : () => {
+      saveChecked(folders.map((f) => f.id));
+      changeHidden([]);
+    },
+    summary: hiddenInView.length ? `${chosenName} · без ${hiddenInView.map(nameOf).join(', ')}` : chosenName,
   };
   const openGroup = (card) => saveChecked([card.folderId]);
 

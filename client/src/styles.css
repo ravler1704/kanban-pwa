@@ -1356,21 +1356,20 @@ a.btn { display: inline-block; text-decoration: none; }
 .fp-chevron { flex: none; display: inline-flex; color: var(--muted); }
 .fp-actions { margin-top: 0; }
 .fp-row-off .fp-name, .fp-row-off .fp-icon { color: var(--muted); }
-.fp-checkcell { flex: none; display: flex; align-items: center; padding-left: 0.8rem; }
-.fp-checkcell + .fp-pick { padding-left: 0.65rem; }
-.fp-checkbox {
+.fp-row-off .fp-name { text-decoration: line-through; }
+.fp-eye {
+  flex: none;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 1.25rem;
-  height: 1.25rem;
-  padding: 0;
-  border: 1.5px solid var(--muted);
-  border-radius: 5px;
+  padding: 0 0.85rem;
+  border: none;
+  border-left: 1px solid var(--border);
   background: none;
-  color: var(--on-accent);
+  color: var(--muted);
   cursor: pointer;
 }
-.fp-checkbox-on { background: var(--accent); border-color: var(--accent); }
+.fp-eye:hover:not(:disabled) { background: var(--card); color: var(--text); }
+.fp-eye-off { color: var(--danger, #e5484d); }
+.fp-eye:disabled { opacity: 0.4; cursor: default; }
 .fp-confirm { min-width: 0; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fp-empty { padding: 1.5rem 1rem; color: var(--muted); text-align: center; }

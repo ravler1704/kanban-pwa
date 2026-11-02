@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  childrenOf, descendants, flattenFolders, folderPath, folderPathName, folderTree, topFolderIds,
-} from '../folders.js';
+import { childrenOf, descendants, flattenFolders, folderPath, folderPathName, folderTree } from '../folders.js';
 import { Chevron, plural } from './ManageFields.jsx';
 import Modal from './Modal.jsx';
 
@@ -16,33 +14,35 @@ const FolderIcon = () => svg(<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8
 const CheckIcon = () => svg(<path d="m5 12 5 5 9-10" />);
 const SearchIcon = () => svg(<><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>, 16);
 const BackIcon = () => svg(<path d="m15 18-6-6 6-6" />);
+const EyeIcon = () => svg(<><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></>);
+const EyeOffIcon = () => svg(<><path d="M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-2.2 3.1M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6" />
+  <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /><path d="m3 3 18 18" /></>);
 
 /**
- * One line of the picker; `openable` shows the arrow of a folder that opens on click. With `checked`
- * (true / false) the line starts with a checkbox.
+ * One line of the picker; `openable` shows the arrow of a folder that opens on click. `eye` adds a button
+ * that hides the folder from the board: { hidden, inherited (hidden with a folder above), onToggle }.
  */
-function PickerRow({ name, meta, chosen, openable, onClick, checked, onCheck }) {
+function PickerRow({ name, meta, chosen, openable, onClick, eye }) {
+  const off = eye && (eye.hidden || eye.inherited);
   return (
-    <li className={`fp-row ${chosen ? 'fp-row-selected' : ''} ${checked === false ? 'fp-row-off' : ''}`}>
-      {checked !== undefined && (
-        <span className="fp-checkcell">
-          <button type="button" role="checkbox" aria-checked={checked} onClick={onCheck}
-            className={`fp-checkbox ${checked ? 'fp-checkbox-on' : ''}`}
-            aria-label={checked ? `Не показывать «${name}»` : `Показывать «${name}»`}
-            title={checked ? 'Не показывать' : 'Показывать'}>
-            {checked && svg(<path d="m5 12 5 5 9-10" />, 14)}
-          </button>
-        </span>
-      )}
+    <li className={`fp-row ${chosen ? 'fp-row-selected' : ''} ${off ? 'fp-row-off' : ''}`}>
       <button type="button" className="fp-pick" onClick={(e) => e.detail < 2 && onClick()}>
         <span className="fp-icon"><FolderIcon /></span>
         <span className="fp-text">
           <span className="fp-name">{name}</span>
-          {meta && <span className="fp-meta">{meta}</span>}
+          {(meta || off) && <span className="fp-meta">{off ? 'скрыта с доски' : meta}</span>}
         </span>
         {chosen && <span className="fp-check"><CheckIcon /></span>}
         {openable && <span className="fp-chevron"><Chevron /></span>}
       </button>
+      {eye && (
+        <button type="button" className={`fp-eye ${off ? 'fp-eye-off' : ''}`} disabled={eye.inherited}
+          onClick={eye.onToggle}
+          title={eye.inherited ? 'Скрыта вместе с папкой выше' : eye.hidden ? 'Показывать на доске' : 'Скрыть с доски'}
+          aria-label={eye.hidden ? `Показывать «${name}» на доске` : `Скрыть «${name}» с доски`}>
+          {off ? <EyeOffIcon /> : <EyeIcon />}
+        </button>
+      )}
     </li>
   );
 }
@@ -53,31 +53,12 @@ const countLabel = (n) => `${n} ${plural(n, 'папка', 'папки', 'пап�
  * The folders one level at a time, like «Переместить» in file managers: a folder with subfolders opens on
  * click, one without them is picked at once; the button at the bottom picks the open folder (the top level
  * with `topLabel`). Folders in `exclude` can't be picked but can be opened when something inside them can.
- *
- * With `checks` ({ selected, onSet } over folder ids) it picks a set of folders: the open folder with
- * everything inside it except the subfolders whose checkbox is cleared.
+ * With `hidden` (ids) and `onToggleHidden` each folder gets an eye that hides it from the board.
  */
-function FolderPickerDialog({ title, folders, value, exclude, topLabel, checks, onPick, onClose }) {
+function FolderPickerDialog({ title, folders, value, exclude, topLabel, hidden, onToggleHidden, onPick, onClose }) {
   const tree = folderTree(folders);
   const selected = value ? tree.byId.get(value) : null;
-  const subtree = (id) => [id, ...descendants(folders, id).map((f) => f.id)];
-  const checked = new Set(checks?.selected ?? []);
-  const shown = (id) => subtree(id).some((x) => checked.has(x));
-  // Subfolders of `id` that are out of the filter, while something else inside `id` is in it.
-  const excludedIn = (id) => {
-    const kids = childrenOf(folders, id);
-    return kids.some((k) => shown(k.id)) ? new Set(kids.filter((k) => !shown(k.id)).map((k) => k.id)) : new Set();
-  };
-  const startId = () => {
-    if (!checks) return selected ? tree.parentOf(selected) : null;
-    if (checked.size === folders.length) return null;
-    const tops = topFolderIds(checks.selected, folders);
-    if (tops.length !== 1) return null;
-    return childrenOf(folders, tops[0]).length ? tops[0] : tree.parentOf(tree.byId.get(tops[0]));
-  };
-
-  const [currentId, setCurrentId] = useState(startId);
-  const [excluded, setExcluded] = useState(() => excludedIn(currentId));
+  const [currentId, setCurrentId] = useState(() => (selected ? tree.parentOf(selected) : null));
   const current = currentId ? tree.byId.get(currentId) ?? null : null;
   const path = current ? folderPath(current, folders) : [];
   const [query, setQuery] = useState('');
@@ -89,38 +70,23 @@ function FolderPickerDialog({ title, folders, value, exclude, topLabel, checks, 
     ? flattenFolders(folders).map(({ folder }) => folder).filter((f) => pickable(f) && f.name.toLowerCase().includes(needle))
     : childrenOf(folders, current?.id ?? null).filter((f) => pickable(f) || openable(f));
   const pick = (id) => {
-    if (checks) checks.onSet(subtree(id));
-    else onPick(id);
+    onPick(id);
     onClose();
   };
   const open = (id) => {
     setQuery('');
     setCurrentId(id);
-    setExcluded(excludedIn(id));
   };
   const click = (f) => (openable(f) ? open(f.id) : pick(f.id));
-  const toggle = (id) => setExcluded((prev) => {
-    const next = new Set(prev);
-    if (!next.delete(id)) next.add(id);
-    return next;
-  });
-  // A subfolder that is in the filter keeps what was cleared inside it.
-  const apply = () => {
-    const ids = current ? [current.id] : [];
-    for (const kid of childrenOf(folders, current?.id ?? null)) {
-      if (excluded.has(kid.id)) continue;
-      const all = subtree(kid.id);
-      ids.push(...(checked.has(kid.id) ? all.filter((x) => checked.has(x)) : all));
-    }
-    checks.onSet(ids);
-    onClose();
+  const eyeOf = (f) => hidden && {
+    hidden: hidden.includes(f.id),
+    inherited: folderPath(f, folders).slice(0, -1).some((p) => hidden.includes(p.id)),
+    onToggle: () => onToggleHidden(f.id),
   };
 
-  const targetId = current ? current.id : topLabel || checks ? '' : null;
+  const targetId = current ? current.id : topLabel ? '' : null;
   const canPick = targetId === '' || (current != null && pickable(current));
-  const targetName = current ? `«${current.name}»` : checks ? 'все папки' : topLabel ? `«${topLabel}»` : '';
-  const kidsCount = childrenOf(folders, current?.id ?? null).length;
-  const allOff = checks && !current && excluded.size === kidsCount;
+  const targetName = current ? `«${current.name}»` : topLabel ? `«${topLabel}»` : '';
 
   return (
     <Modal title={title} onClose={onClose} className="folder-picker" closeButton>
@@ -156,8 +122,7 @@ function FolderPickerDialog({ title, folders, value, exclude, topLabel, checks, 
           const where = needle && folderPath(f, folders).slice(0, -1).map((p) => p.name).join(' › ');
           return (
             <PickerRow key={f.id} name={f.name} meta={where || (kids ? countLabel(kids) : null)}
-              chosen={!checks && f.id === value} openable={openable(f)} onClick={() => click(f)}
-              checked={checks && !needle ? !excluded.has(f.id) : undefined} onCheck={() => toggle(f.id)} />
+              chosen={f.id === value} openable={openable(f)} onClick={() => click(f)} eye={eyeOf(f)} />
           );
         })}
         {list.length === 0 && (
@@ -166,15 +131,9 @@ function FolderPickerDialog({ title, folders, value, exclude, topLabel, checks, 
       </ul>
       <div className="actions fp-actions">
         <button type="button" className="btn" onClick={onClose}>Отмена</button>
-        {checks ? (
-          <button type="button" className="btn btn-primary fp-confirm" disabled={allOff} onClick={apply}>
-            {`Показать ${targetName}`}
-          </button>
-        ) : (
-          <button type="button" className="btn btn-primary fp-confirm" disabled={!canPick} onClick={() => pick(targetId)}>
-            {canPick ? `Выбрать ${targetName}` : 'Выберите папку'}
-          </button>
-        )}
+        <button type="button" className="btn btn-primary fp-confirm" disabled={!canPick} onClick={() => pick(targetId)}>
+          {canPick ? `Выбрать ${targetName}` : 'Выберите папку'}
+        </button>
       </div>
     </Modal>
   );
@@ -183,10 +142,11 @@ function FolderPickerDialog({ title, folders, value, exclude, topLabel, checks, 
 /**
  * A labelled folder field (`value` is the id) that opens the folder picker. `exclude` is a set of ids that
  * can't be picked; with `topLabel` the top level ('') can be picked too. `text` replaces the shown value.
- * With `checks` ({ selected, onSet } over folder ids) it picks a set of folders instead of one.
+ * `hidden` / `onToggleHidden`: see FolderPickerDialog.
  */
 export default function FolderSelect({
-  label = 'Папка', folders, value, onChange, exclude, topLabel, checks, className = '', text: textOverride,
+  label = 'Папка', folders, value, onChange, exclude, topLabel, hidden, onToggleHidden, className = '',
+  text: textOverride,
 }) {
   const [open, setOpen] = useState(false);
   const folder = value ? folderTree(folders).byId.get(value) : null;
@@ -199,7 +159,7 @@ export default function FolderSelect({
       </button>
       {open && createPortal(
         <FolderPickerDialog title={label} folders={folders} value={value} exclude={exclude} topLabel={topLabel}
-          checks={checks} onPick={onChange} onClose={() => setOpen(false)} />,
+          hidden={hidden} onToggleHidden={onToggleHidden} onPick={onChange} onClose={() => setOpen(false)} />,
         document.body,
       )}
     </div>

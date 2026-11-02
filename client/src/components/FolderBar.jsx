@@ -60,8 +60,8 @@ const VIEWS = [
 ];
 
 /**
- * `folderFilter` is the CheckPicker props ({ selected, onToggle, onSetAll, onClear, summary }) over the ids
- * of `folders` (all live folders, shown as a tree). `conflictsByFolder` is { [folderId]: number of cards
+ * `folderFilter` is { value (the chosen folder id, '' all, null several), summary, hidden (ids of folders
+ * hidden from the board), onToggleHidden, onOnly, onSetAll, onClear } over `folders` (all live folders). `conflictsByFolder` is { [folderId]: number of cards
  * with a conflict }. Without `onManage` / `onAddCard` (read only) their buttons are not shown.
  */
 export default function FolderBar({
@@ -81,7 +81,9 @@ export default function FolderBar({
     <div className="projectbar-row">
       {!publicToken && (
         <FolderSelect label="Папки" className="folder-filter" folders={folders} value={folderFilter.value}
-          checks={folderFilter} text={folderFilter.summary ?? 'Не выбраны'} />
+          topLabel="Все папки" text={folderFilter.summary}
+          onChange={(id) => (id ? folderFilter.onOnly(id) : folderFilter.onSetAll())}
+          hidden={folderFilter.hidden} onToggleHidden={folderFilter.onToggleHidden} />
       )}
 
       {columnSets && (
