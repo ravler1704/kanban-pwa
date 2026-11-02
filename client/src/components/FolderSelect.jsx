@@ -1,12 +1,10 @@
-import { flattenFolders } from '../folders.js';
+import { flattenFolders, folderPathName } from '../folders.js';
 
-const indent = (depth) => '\u00A0\u00A0\u00A0'.repeat(depth);
-
-/** The options of a folder select: the tree in order, nested folders indented. `exclude` is a set of ids to leave out. */
+/** The options of a folder select: the tree in order, each named by its path. `exclude` is a set of ids to leave out. */
 export function FolderOptions({ folders, exclude }) {
   return flattenFolders(folders)
     .filter(({ folder }) => !exclude?.has(folder.id))
-    .map(({ folder, depth }) => <option key={folder.id} value={folder.id}>{indent(depth)}{folder.name}</option>);
+    .map(({ folder }) => <option key={folder.id} value={folder.id}>{folderPathName(folder, folders, ' › ')}</option>);
 }
 
 /** A labelled select of folders (`value` is the id; `children` may add options before the folders, e.g. «none»). */
@@ -21,5 +19,3 @@ export default function FolderSelect({ label = 'Папка', folders, value, onC
     </label>
   );
 }
-
-export { indent };
