@@ -1355,21 +1355,33 @@ a.btn { display: inline-block; text-decoration: none; }
 .fp-row-selected .fp-icon { color: var(--accent); }
 .fp-chevron { flex: none; display: inline-flex; color: var(--muted); }
 .fp-actions { margin-top: 0; }
-.fp-row-off .fp-name, .fp-row-off .fp-icon { color: var(--muted); }
-.fp-row-off .fp-name { text-decoration: line-through; }
-.fp-eye {
+.ff-list { max-height: min(28rem, 60vh); }
+.ff-pick { min-height: 2.9rem; }
+.ff-check {
   flex: none;
   display: inline-flex;
   align-items: center;
-  padding: 0 0.85rem;
+  justify-content: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border: 1.5px solid var(--muted);
+  border-radius: 50%;
+  color: var(--on-accent);
+}
+.ff-check-on { background: var(--accent); border-color: var(--accent); }
+.ff-fold {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.9rem;
   border: none;
-  border-left: 1px solid var(--border);
   background: none;
   color: var(--muted);
   cursor: pointer;
 }
-.fp-eye:hover:not(:disabled) { background: var(--card); color: var(--text); }
-.fp-eye-off { color: var(--danger, #e5484d); }
-.fp-eye:disabled { opacity: 0.4; cursor: default; }
+.ff-fold svg { transition: transform 0.15s; }
+.ff-fold-open svg { transform: rotate(90deg); }
+.ff-fold:hover { color: var(--text); }
+.ff-actions { justify-content: space-between; }
 .fp-confirm { min-width: 0; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fp-empty { padding: 1.5rem 1rem; color: var(--muted); text-align: center; }

@@ -14,35 +14,20 @@ const FolderIcon = () => svg(<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8
 const CheckIcon = () => svg(<path d="m5 12 5 5 9-10" />);
 const SearchIcon = () => svg(<><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>, 16);
 const BackIcon = () => svg(<path d="m15 18-6-6 6-6" />);
-const EyeIcon = () => svg(<><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3" /></>);
-const EyeOffIcon = () => svg(<><path d="M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-2.2 3.1M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6" />
-  <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /><path d="m3 3 18 18" /></>);
 
-/**
- * One line of the picker; `openable` shows the arrow of a folder that opens on click. `eye` adds a button
- * that hides the folder from the board: { hidden, inherited (hidden with a folder above), onToggle }.
- */
-function PickerRow({ name, meta, chosen, openable, onClick, eye }) {
-  const off = eye && (eye.hidden || eye.inherited);
+/** One line of the picker; `openable` shows the arrow of a folder that opens on click. */
+function PickerRow({ name, meta, chosen, openable, onClick }) {
   return (
-    <li className={`fp-row ${chosen ? 'fp-row-selected' : ''} ${off ? 'fp-row-off' : ''}`}>
+    <li className={`fp-row ${chosen ? 'fp-row-selected' : ''}`}>
       <button type="button" className="fp-pick" onClick={(e) => e.detail < 2 && onClick()}>
         <span className="fp-icon"><FolderIcon /></span>
         <span className="fp-text">
           <span className="fp-name">{name}</span>
-          {(meta || off) && <span className="fp-meta">{off ? 'скрыта с доски' : meta}</span>}
+          {meta && <span className="fp-meta">{meta}</span>}
         </span>
         {chosen && <span className="fp-check"><CheckIcon /></span>}
         {openable && <span className="fp-chevron"><Chevron /></span>}
       </button>
-      {eye && (
-        <button type="button" className={`fp-eye ${off ? 'fp-eye-off' : ''}`} disabled={eye.inherited}
-          onClick={eye.onToggle}
-          title={eye.inherited ? 'Скрыта вместе с папкой выше' : eye.hidden ? 'Показывать на доске' : 'Скрыть с доски'}
-          aria-label={eye.hidden ? `Показывать «${name}» на доске` : `Скрыть «${name}» с доски`}>
-          {off ? <EyeOffIcon /> : <EyeIcon />}
-        </button>
-      )}
     </li>
   );
 }
@@ -53,9 +38,8 @@ const countLabel = (n) => `${n} ${plural(n, 'папка', 'папки', 'пап�
  * The folders one level at a time, like «Переместить» in file managers: a folder with subfolders opens on
  * click, one without them is picked at once; the button at the bottom picks the open folder (the top level
  * with `topLabel`). Folders in `exclude` can't be picked but can be opened when something inside them can.
- * With `hidden` (ids) and `onToggleHidden` each folder gets an eye that hides it from the board.
  */
-function FolderPickerDialog({ title, folders, value, exclude, topLabel, hidden, onToggleHidden, onPick, onClose }) {
+function FolderPickerDialog({ title, folders, value, exclude, topLabel, onPick, onClose }) {
   const tree = folderTree(folders);
   const selected = value ? tree.byId.get(value) : null;
   const [currentId, setCurrentId] = useState(() => (selected ? tree.parentOf(selected) : null));
@@ -78,11 +62,6 @@ function FolderPickerDialog({ title, folders, value, exclude, topLabel, hidden, 
     setCurrentId(id);
   };
   const click = (f) => (openable(f) ? open(f.id) : pick(f.id));
-  const eyeOf = (f) => hidden && {
-    hidden: hidden.includes(f.id),
-    inherited: folderPath(f, folders).slice(0, -1).some((p) => hidden.includes(p.id)),
-    onToggle: () => onToggleHidden(f.id),
-  };
 
   const targetId = current ? current.id : topLabel ? '' : null;
   const canPick = targetId === '' || (current != null && pickable(current));
@@ -122,7 +101,7 @@ function FolderPickerDialog({ title, folders, value, exclude, topLabel, hidden, 
           const where = needle && folderPath(f, folders).slice(0, -1).map((p) => p.name).join(' › ');
           return (
             <PickerRow key={f.id} name={f.name} meta={where || (kids ? countLabel(kids) : null)}
-              chosen={f.id === value} openable={openable(f)} onClick={() => click(f)} eye={eyeOf(f)} />
+              chosen={f.id === value} openable={openable(f)} onClick={() => click(f)} />
           );
         })}
         {list.length === 0 && (
@@ -142,11 +121,9 @@ function FolderPickerDialog({ title, folders, value, exclude, topLabel, hidden, 
 /**
  * A labelled folder field (`value` is the id) that opens the folder picker. `exclude` is a set of ids that
  * can't be picked; with `topLabel` the top level ('') can be picked too. `text` replaces the shown value.
- * `hidden` / `onToggleHidden`: see FolderPickerDialog.
  */
 export default function FolderSelect({
-  label = 'Папка', folders, value, onChange, exclude, topLabel, hidden, onToggleHidden, className = '',
-  text: textOverride,
+  label = 'Папка', folders, value, onChange, exclude, topLabel, className = '', text: textOverride,
 }) {
   const [open, setOpen] = useState(false);
   const folder = value ? folderTree(folders).byId.get(value) : null;
@@ -159,7 +136,7 @@ export default function FolderSelect({
       </button>
       {open && createPortal(
         <FolderPickerDialog title={label} folders={folders} value={value} exclude={exclude} topLabel={topLabel}
-          hidden={hidden} onToggleHidden={onToggleHidden} onPick={onChange} onClose={() => setOpen(false)} />,
+          onPick={onChange} onClose={() => setOpen(false)} />,
         document.body,
       )}
     </div>

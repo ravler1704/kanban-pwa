@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { publicToken } from '../board.js';
 import CheckPicker from './CheckPicker.jsx';
-import FolderSelect from './FolderSelect.jsx';
+import FolderFilter from './FolderFilter.jsx';
 import TagFilter from './TagFilter.jsx';
 
 function SettingsIcon() {
@@ -60,8 +60,8 @@ const VIEWS = [
 ];
 
 /**
- * `folderFilter` is { value (the chosen folder id, '' all, null several), summary, hidden (ids of folders
- * hidden from the board), onToggleHidden, onOnly, onSetAll, onClear } over `folders` (all live folders). `conflictsByFolder` is { [folderId]: number of cards
+ * `folderFilter` is { selected, indeterminate, onToggle, onSetAll, onClear, summary } over the ids of
+ * `folders` (all live folders). `conflictsByFolder` is { [folderId]: number of cards
  * with a conflict }. Without `onManage` / `onAddCard` (read only) their buttons are not shown.
  */
 export default function FolderBar({
@@ -80,10 +80,7 @@ export default function FolderBar({
   const filters = !filtersHidden && (
     <div className="projectbar-row">
       {!publicToken && (
-        <FolderSelect label="Папки" className="folder-filter" folders={folders} value={folderFilter.value}
-          topLabel="Все папки" text={folderFilter.summary}
-          onChange={(id) => (id ? folderFilter.onOnly(id) : folderFilter.onSetAll())}
-          hidden={folderFilter.hidden} onToggleHidden={folderFilter.onToggleHidden} />
+        <FolderFilter folders={folders} filter={folderFilter} />
       )}
 
       {columnSets && (
