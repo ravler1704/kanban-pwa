@@ -46,9 +46,8 @@ function MoveDialog({ folder, folders, model, writable, onClose }) {
   return (
     <Modal title={`Перенести папку «${folder.name}»`} onClose={onClose}>
       <form className="editor" onSubmit={submit}>
-        <FolderSelect label="Куда" folders={folders} exclude={exclude} value={value} onChange={setValue}>
-          {isOwnBoard && <option value={TOP}>Верхний уровень</option>}
-        </FolderSelect>
+        <FolderSelect label="Куда" folders={folders} exclude={exclude} value={value} onChange={setValue}
+          topLabel={isOwnBoard ? 'Верхний уровень' : null} />
         <p className="move-result">Папка перейдёт со всеми вложенными папками и карточками.</p>
         {otherSet && (
           <div className="field">

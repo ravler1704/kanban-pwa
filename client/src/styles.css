@@ -1276,3 +1276,39 @@ a.btn { display: inline-block; text-decoration: none; }
 }
 .check-menu-fold-all:hover:not(:disabled) { background: var(--card); }
 .check-menu-fold-all:disabled { color: var(--muted); opacity: 0.5; cursor: default; }
+.select.folder-field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  min-width: 0;
+  padding-top: 0.3rem;
+  text-align: left;
+  cursor: pointer;
+}
+.folder-field .picker-label { position: static; margin-bottom: 0.15rem; }
+.folder-field .picker-value { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.folder-picker { display: flex; flex-direction: column; gap: 0.6rem; width: min(480px, 100%); }
+.picker-list { display: flex; flex-direction: column; gap: 0.3rem; }
+.picker-row { display: flex; align-items: center; gap: 0.2rem; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
+.picker-row-selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--card)); }
+.picker-pick {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.6rem;
+  border: none;
+  border-radius: 9px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.picker-pick:hover:not(:disabled) { background: var(--bg); }
+.picker-pick:disabled { opacity: 0.5; cursor: default; }
+.picker-pick .tree-title { flex: 1; }
+.picker-open { flex: none; margin-right: 0.25rem; padding: 0.4rem; border-color: transparent; background: none; color: var(--muted); }
+.picker-open:hover { color: var(--text); background: var(--bg); }
