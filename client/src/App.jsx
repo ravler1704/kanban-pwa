@@ -353,6 +353,7 @@ export default function App() {
     selected: checkedIds,
     indeterminate: partial,
     onToggle: toggleSubtree,
+    onSet: saveChecked,
     onOnly: (id) => saveChecked(subtree(id)),
     onSetAll: (on) => saveChecked(on ? folders.map((f) => f.id) : []),
     onClear: allChecked ? null : () => saveChecked(folders.map((f) => f.id)),

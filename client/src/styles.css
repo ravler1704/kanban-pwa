@@ -1355,7 +1355,7 @@ a.btn { display: inline-block; text-decoration: none; }
 .fp-row-selected .fp-icon { color: var(--accent); }
 .fp-chevron { flex: none; display: inline-flex; color: var(--muted); }
 .fp-actions { margin-top: 0; }
-.fp-actions-split { justify-content: space-between; }
+.fp-row-off .fp-name, .fp-row-off .fp-icon { color: var(--muted); }
 .fp-checkcell { flex: none; display: flex; align-items: center; padding-left: 0.8rem; }
 .fp-checkcell + .fp-pick { padding-left: 0.65rem; }
 .fp-checkbox {
