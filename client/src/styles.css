@@ -209,6 +209,20 @@ body {
   cursor: pointer;
 }
 .check-menu-item:hover { background: var(--card); }
+.check-menu-only {
+  padding: 0.1rem 0.4rem;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+  opacity: 0;
+}
+.check-menu-item:hover .check-menu-only, .check-menu-only:focus-visible { opacity: 1; }
+.check-menu-only:hover { color: var(--accent); }
+@media (hover: none) { .check-menu-only { opacity: 1; } }
 .check-menu-all { border-bottom: 1px solid var(--border); border-radius: 6px 6px 0 0; margin-bottom: 0.2rem; }
 .check-menu-group {
   padding: 0.5rem 0.5rem 0.2rem;

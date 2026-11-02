@@ -17,7 +17,7 @@ import CalendarView from './components/CalendarView.jsx';
 import ChatDialog from './components/ChatDialog.jsx';
 import PeopleBar from './components/People.jsx';
 import { tagKey, tagNames, tagsOf } from './tags.js';
-import { descendants, folderPath, folderTree, liveFolders } from './folders.js';
+import { descendants, folderPath, folderTree, liveFolders, topFolderIds } from './folders.js';
 import { folderIdsOf, peopleStore } from './people.js';
 
 const VIEW_KEY = 'view';
@@ -321,14 +321,31 @@ export default function App() {
   // The last choice is kept (see readSelection).
   const checkedIds = shownFolders.map((f) => f.id);
   const saveChecked = (ids) => select(folders.filter((f) => !ids.includes(f.id)).map((f) => f.id));
-  const toggle = (list, id) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
   const allChecked = checkedIds.length === folders.length;
+  // A folder is checked or unchecked together with everything inside it.
+  const subtree = (id) => [id, ...descendants(folders, id).map((f) => f.id)];
+  const toggleSubtree = (id) => {
+    const ids = subtree(id);
+    const on = !checkedIds.includes(id);
+    saveChecked(on ? [...new Set([...checkedIds, ...ids])] : checkedIds.filter((x) => !ids.includes(x)));
+  };
+  const partial = folders
+    .filter((f) => {
+      const inside = descendants(folders, f.id);
+      const n = inside.filter((d) => checkedIds.includes(d.id)).length;
+      return n > 0 && (n < inside.length || !checkedIds.includes(f.id));
+    })
+    .map((f) => f.id);
   const folderFilter = {
     selected: checkedIds,
-    onToggle: (id) => saveChecked(toggle(checkedIds, id)),
+    indeterminate: partial,
+    onToggle: toggleSubtree,
+    onOnly: (id) => saveChecked(subtree(id)),
     onSetAll: (on) => saveChecked(on ? folders.map((f) => f.id) : []),
     onClear: allChecked ? null : () => saveChecked(folders.map((f) => f.id)),
-    summary: allChecked ? 'Все папки' : null,
+    summary: allChecked ? 'Все папки' : checkedIds.length
+      ? topFolderIds(checkedIds, folders).map((id) => tree.byId.get(id)?.name).join(', ')
+      : null,
   };
   const openGroup = (card) => saveChecked([card.folderId]);
 

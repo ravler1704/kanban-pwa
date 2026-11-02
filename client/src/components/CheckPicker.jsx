@@ -14,10 +14,11 @@ function ClearIcon() {
  * sharing a `group` follow its heading (keep them together); `depth` indents an item (a tree), unless searching. The button shows `summary`, or the
  * selected names, or `emptyLabel` when nothing is selected; the clear button shows with `onClear`.
  * With `onSetAll(checked)` the list starts with an «all» checkbox. The search matches names and groups.
+ * `indeterminate` lists keys shown half-checked; with `onOnly(key)` each item has a «только» button.
  */
 export default function CheckPicker({
   label, items, selected, onToggle, onClear, onSetAll, summary, emptyLabel = 'Все', clearLabel,
-  searchPlaceholder = 'Поиск', notFound = 'Ничего не найдено', className = '',
+  searchPlaceholder = 'Поиск', notFound = 'Ничего не найдено', className = '', indeterminate = [], onOnly,
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -89,9 +90,16 @@ export default function CheckPicker({
                 <div className="check-menu-group">{item.group}</div>
               )}
               <label className="check-menu-item" style={item.depth && !query ? { paddingLeft: `${0.5 + item.depth * 1.1}rem` } : undefined}>
-                <input type="checkbox" checked={selected.includes(item.key)} onChange={() => onToggle(item.key)} />
+                <input type="checkbox" checked={selected.includes(item.key)} onChange={() => onToggle(item.key)}
+                  ref={(el) => { if (el) el.indeterminate = indeterminate.includes(item.key); }} />
                 <span className="check-menu-name">{item.name}</span>
                 {item.count != null && <span className="count">{item.count}</span>}
+                {onOnly && (
+                  <button type="button" className="check-menu-only" title="Показать только эту"
+                    onClick={(e) => { e.preventDefault(); onOnly(item.key); }}>
+                    только
+                  </button>
+                )}
               </label>
             </div>
           ))}
