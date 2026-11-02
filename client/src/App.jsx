@@ -336,6 +336,15 @@ export default function App() {
       return n > 0 && (n < inside.length || !checkedIds.includes(f.id));
     })
     .map((f) => f.id);
+  // «Дела, Работа · кроме Фильмы»: the checked folders and the unchecked ones right inside checked ones.
+  const filterSummary = () => {
+    const name = (id) => tree.byId.get(id)?.name;
+    const included = topFolderIds(checkedIds, folders).map(name);
+    const excluded = folders
+      .filter((f) => !checkedIds.includes(f.id) && f.parentId && checkedIds.includes(f.parentId))
+      .map((f) => f.name);
+    return excluded.length ? `${included.join(', ')} · кроме ${excluded.join(', ')}` : included.join(', ');
+  };
   // The filter shows one folder with everything inside it, or all ('').
   const tops = topFolderIds(checkedIds, folders);
   const single = tops.length === 1 && subtree(tops[0]).length === checkedIds.length ? tops[0] : null;
@@ -347,9 +356,7 @@ export default function App() {
     onOnly: (id) => saveChecked(subtree(id)),
     onSetAll: (on) => saveChecked(on ? folders.map((f) => f.id) : []),
     onClear: allChecked ? null : () => saveChecked(folders.map((f) => f.id)),
-    summary: allChecked ? 'Все папки' : checkedIds.length
-      ? topFolderIds(checkedIds, folders).map((id) => tree.byId.get(id)?.name).join(', ')
-      : null,
+    summary: allChecked ? 'Все папки' : checkedIds.length ? filterSummary() : null,
   };
   const openGroup = (card) => saveChecked([card.folderId]);
 

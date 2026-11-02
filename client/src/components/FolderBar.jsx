@@ -81,8 +81,7 @@ export default function FolderBar({
     <div className="projectbar-row">
       {!publicToken && (
         <FolderSelect label="Папки" className="folder-filter" folders={folders} value={folderFilter.value}
-          topLabel="Все папки" text={folderFilter.value == null ? folderFilter.summary ?? 'Не выбраны' : undefined}
-          onChange={(id) => (id ? folderFilter.onOnly(id) : folderFilter.onSetAll(true))} />
+          checks={folderFilter} text={folderFilter.summary ?? 'Не выбраны'} />
       )}
 
       {columnSets && (

@@ -15,10 +15,29 @@ const CheckIcon = () => svg(<path d="m5 12 5 5 9-10" />);
 const SearchIcon = () => svg(<><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>, 16);
 const BackIcon = () => svg(<path d="m15 18-6-6 6-6" />);
 
-/** One line of the picker; `openable` shows the arrow of a folder that opens on click. */
-function PickerRow({ name, meta, chosen, openable, onClick }) {
+/** A tri-state checkbox; `checked` is true, false or 'mixed'. */
+function CheckBox({ checked, label, onToggle }) {
+  return (
+    <button type="button" role="checkbox" aria-checked={checked} aria-label={label} title={label}
+      className={`fp-checkbox ${checked ? 'fp-checkbox-on' : ''}`} onClick={onToggle}>
+      {checked === 'mixed' ? svg(<path d="M6 12h12" />, 14) : checked ? svg(<path d="m5 12 5 5 9-10" />, 14) : null}
+    </button>
+  );
+}
+
+/**
+ * One line of the picker; `openable` shows the arrow of a folder that opens on click. With `checked` the
+ * line starts with a checkbox.
+ */
+function PickerRow({ name, meta, chosen, openable, onClick, checked, onCheck }) {
   return (
     <li className={`fp-row ${chosen ? 'fp-row-selected' : ''}`}>
+      {checked !== undefined && (
+        <span className="fp-checkcell">
+          <CheckBox checked={checked} label={checked === true ? `Исключить «${name}»` : `Включить «${name}»`}
+            onToggle={onCheck} />
+        </span>
+      )}
       <button type="button" className="fp-pick" onClick={(e) => e.detail < 2 && onClick()}>
         <span className="fp-icon"><FolderIcon /></span>
         <span className="fp-text">
@@ -39,10 +58,10 @@ const countLabel = (n) => `${n} ${plural(n, 'папка', 'папки', 'пап�
  * click, one without them is picked at once; the button at the bottom picks the open folder (the top level
  * with `topLabel`). Folders in `exclude` can't be picked but can be opened when something inside them can.
  */
-function FolderPickerDialog({ title, folders, value, exclude, topLabel, onPick, onClose }) {
+function FolderPickerDialog({ title, folders, value, exclude, topLabel, checks, onPick, onClose }) {
   const tree = folderTree(folders);
   const selected = value ? tree.byId.get(value) : null;
-  const [currentId, setCurrentId] = useState(() => (selected ? tree.parentOf(selected) : null));
+  const [currentId, setCurrentId] = useState(() => (selected && !checks ? tree.parentOf(selected) : null));
   const current = currentId ? tree.byId.get(currentId) ?? null : null;
   const path = current ? folderPath(current, folders) : [];
   const [query, setQuery] = useState('');
@@ -63,8 +82,11 @@ function FolderPickerDialog({ title, folders, value, exclude, topLabel, onPick, 
   };
   const click = (f) => {
     if (openable(f)) open(f.id);
+    else if (checks) checks.onToggle(f.id);
     else pick(f.id);
   };
+  const checkedOf = (f) => (checks?.indeterminate.includes(f.id) ? 'mixed' : checks?.selected.includes(f.id) ?? false);
+  const allOn = checks && checks.selected.length === folders.length;
 
   const targetId = current ? current.id : topLabel ? '' : null;
   const canPick = targetId === '' || (current != null && pickable(current));
@@ -104,19 +126,29 @@ function FolderPickerDialog({ title, folders, value, exclude, topLabel, onPick, 
           const where = needle && folderPath(f, folders).slice(0, -1).map((p) => p.name).join(' › ');
           return (
             <PickerRow key={f.id} name={f.name} meta={where || (kids ? countLabel(kids) : null)}
-              chosen={f.id === value} openable={openable(f)} onClick={() => click(f)} />
+              chosen={!checks && f.id === value} openable={openable(f)} onClick={() => click(f)}
+              checked={checks ? checkedOf(f) : undefined} onCheck={() => checks.onToggle(f.id)} />
           );
         })}
         {list.length === 0 && (
           <li className="fp-empty">{needle ? 'Ничего не найдено' : 'Вложенных папок нет'}</li>
         )}
       </ul>
-      <div className="actions fp-actions">
-        <button type="button" className="btn" onClick={onClose}>Отмена</button>
-        <button type="button" className="btn btn-primary fp-confirm" disabled={!canPick} onClick={() => pick(targetId)}>
-          {canPick ? `Выбрать ${targetName}` : 'Выберите папку'}
-        </button>
-      </div>
+      {checks ? (
+        <div className="actions fp-actions fp-actions-split">
+          <button type="button" className="btn" onClick={() => checks.onSetAll(!allOn)}>
+            {allOn ? 'Снять все' : 'Выбрать все'}
+          </button>
+          <button type="button" className="btn btn-primary" onClick={onClose}>Готово</button>
+        </div>
+      ) : (
+        <div className="actions fp-actions">
+          <button type="button" className="btn" onClick={onClose}>Отмена</button>
+          <button type="button" className="btn btn-primary fp-confirm" disabled={!canPick} onClick={() => pick(targetId)}>
+            {canPick ? `Выбрать ${targetName}` : 'Выберите папку'}
+          </button>
+        </div>
+      )}
     </Modal>
   );
 }
@@ -124,9 +156,11 @@ function FolderPickerDialog({ title, folders, value, exclude, topLabel, onPick, 
 /**
  * A labelled folder field (`value` is the id) that opens the folder picker. `exclude` is a set of ids that
  * can't be picked; with `topLabel` the top level ('') can be picked too. `text` replaces the shown value.
+ * With `checks` ({ selected, indeterminate, onToggle, onSetAll } over folder ids) the picker shows
+ * checkboxes that apply at once instead of picking one folder.
  */
 export default function FolderSelect({
-  label = 'Папка', folders, value, onChange, exclude, topLabel, className = '', text: textOverride,
+  label = 'Папка', folders, value, onChange, exclude, topLabel, checks, className = '', text: textOverride,
 }) {
   const [open, setOpen] = useState(false);
   const folder = value ? folderTree(folders).byId.get(value) : null;
@@ -139,7 +173,7 @@ export default function FolderSelect({
       </button>
       {open && createPortal(
         <FolderPickerDialog title={label} folders={folders} value={value} exclude={exclude} topLabel={topLabel}
-          onPick={onChange} onClose={() => setOpen(false)} />,
+          checks={checks} onPick={onChange} onClose={() => setOpen(false)} />,
         document.body,
       )}
     </div>

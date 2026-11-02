@@ -1355,5 +1355,22 @@ a.btn { display: inline-block; text-decoration: none; }
 .fp-row-selected .fp-icon { color: var(--accent); }
 .fp-chevron { flex: none; display: inline-flex; color: var(--muted); }
 .fp-actions { margin-top: 0; }
+.fp-actions-split { justify-content: space-between; }
+.fp-checkcell { flex: none; display: flex; align-items: center; padding-left: 0.8rem; }
+.fp-checkcell + .fp-pick { padding-left: 0.65rem; }
+.fp-checkbox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  border: 1.5px solid var(--muted);
+  border-radius: 5px;
+  background: none;
+  color: var(--on-accent);
+  cursor: pointer;
+}
+.fp-checkbox-on { background: var(--accent); border-color: var(--accent); }
 .fp-confirm { min-width: 0; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fp-empty { padding: 1.5rem 1rem; color: var(--muted); text-align: center; }
