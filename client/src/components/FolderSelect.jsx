@@ -11,34 +11,24 @@ const svg = (children, size = 18) => (
     strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
 );
 const FolderIcon = () => svg(<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />);
-const AllIcon = () => svg(<><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" />
-  <rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></>);
 const CheckIcon = () => svg(<path d="m5 12 5 5 9-10" />);
 const SearchIcon = () => svg(<><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>, 16);
 const BackIcon = () => svg(<path d="m15 18-6-6 6-6" />);
 
-/**
- * One line of the picker. With `onOpen` a click on the line opens the folder and `onPick` moves to a
- * separate «Выбрать» button; without it the click picks.
- */
-function PickerRow({ icon, name, meta, selected, disabled, onPick, onOpen, accent = false }) {
+/** One line of the picker; `openable` shows the arrow of a folder that opens on click. */
+function PickerRow({ name, meta, chosen, openable, onClick, onDoubleClick }) {
   return (
-    <li className={`fp-row ${selected ? 'fp-row-selected' : ''} ${accent ? 'fp-row-accent' : ''}`}>
-      <button type="button" className="fp-pick" disabled={!onOpen && disabled} onClick={onOpen ?? onPick}
-        title={onOpen ? 'Открыть папку' : undefined}>
-        <span className="fp-icon">{icon}</span>
+    <li className={`fp-row ${chosen ? 'fp-row-selected' : ''}`}>
+      <button type="button" className="fp-pick" onClick={(e) => e.detail < 2 && onClick()}
+        onDoubleClick={onDoubleClick}>
+        <span className="fp-icon"><FolderIcon /></span>
         <span className="fp-text">
           <span className="fp-name">{name}</span>
           {meta && <span className="fp-meta">{meta}</span>}
         </span>
-        {selected && <span className="fp-check"><CheckIcon /></span>}
-        {onOpen && <span className="fp-chevron"><Chevron /></span>}
+        {chosen && <span className="fp-check"><CheckIcon /></span>}
+        {openable && <span className="fp-chevron"><Chevron /></span>}
       </button>
-      {onOpen && !disabled && (
-        <button type="button" className="fp-select" aria-label={`Выбрать «${name}»`} onClick={onPick}>
-          Выбрать
-        </button>
-      )}
     </li>
   );
 }
@@ -46,15 +36,16 @@ function PickerRow({ icon, name, meta, selected, disabled, onPick, onOpen, accen
 const countLabel = (n) => `${n} ${plural(n, 'папка', 'папки', 'папок')}`;
 
 /**
- * The folders one level at a time, like in the board settings: a row with subfolders opens on click and is
- * picked with its «Выбрать» button, a row without them is picked on click; inside a folder the first row
- * picks the folder itself. Folders in `exclude` can't be picked but can be
- * opened when something inside them can.
+ * The folders one level at a time, like «Переместить» in file managers: a folder with subfolders opens on
+ * click, one without them gets highlighted, a double click picks at once; the button at the bottom picks
+ * the highlighted folder or else the open one (the top level with `topLabel`). Folders in `exclude` can't
+ * be picked but can be opened when something inside them can.
  */
 function FolderPickerDialog({ title, folders, value, exclude, topLabel, onPick, onClose }) {
   const tree = folderTree(folders);
   const selected = value ? tree.byId.get(value) : null;
   const [currentId, setCurrentId] = useState(() => (selected ? tree.parentOf(selected) : null));
+  const [chosenId, setChosenId] = useState(selected?.id ?? null);
   const current = currentId ? tree.byId.get(currentId) ?? null : null;
   const path = current ? folderPath(current, folders) : [];
   const [query, setQuery] = useState('');
@@ -72,7 +63,18 @@ function FolderPickerDialog({ title, folders, value, exclude, topLabel, onPick, 
   const open = (id) => {
     setQuery('');
     setCurrentId(id);
+    setChosenId(null);
   };
+  const click = (f) => {
+    if (openable(f)) open(f.id);
+    else setChosenId(f.id === chosenId ? null : f.id);
+  };
+
+  const chosen = chosenId ? tree.byId.get(chosenId) : null;
+  const target = chosen ?? current;
+  const targetId = target ? target.id : topLabel ? '' : null;
+  const canPick = targetId === '' || (target != null && pickable(target));
+  const targetName = target ? `«${target.name}»` : topLabel ? `«${topLabel}»` : '';
 
   return (
     <Modal title={title} onClose={onClose} className="folder-picker" closeButton>
@@ -103,28 +105,25 @@ function FolderPickerDialog({ title, folders, value, exclude, topLabel, onPick, 
         </nav>
       )}
       <ul className="fp-list">
-        {!needle && !current && topLabel && (
-          <PickerRow accent icon={<AllIcon />} name={topLabel} selected={value === ''} onPick={() => pick('')} />
-        )}
-        {!needle && current && pickable(current) && (
-          <PickerRow accent icon={<FolderIcon />} name={`Вся папка «${current.name}»`}
-            meta={descendants(folders, current.id).length ? 'вместе со всем, что внутри' : null}
-            selected={value === current.id} onPick={() => pick(current.id)} />
-        )}
         {list.map((f) => {
           const kids = childrenOf(folders, f.id).length;
           const where = needle && folderPath(f, folders).slice(0, -1).map((p) => p.name).join(' › ');
           return (
-            <PickerRow key={f.id} icon={<FolderIcon />} name={f.name}
-              meta={where || (kids ? countLabel(kids) : null)}
-              selected={f.id === value} disabled={!pickable(f)} onPick={() => pick(f.id)}
-              onOpen={!needle && openable(f) ? () => open(f.id) : null} />
+            <PickerRow key={f.id} name={f.name} meta={where || (kids ? countLabel(kids) : null)}
+              chosen={f.id === chosenId} openable={openable(f)} onClick={() => click(f)}
+              onDoubleClick={() => pickable(f) && pick(f.id)} />
           );
         })}
         {list.length === 0 && (
           <li className="fp-empty">{needle ? 'Ничего не найдено' : 'Вложенных папок нет'}</li>
         )}
       </ul>
+      <div className="actions fp-actions">
+        <button type="button" className="btn" onClick={onClose}>Отмена</button>
+        <button type="button" className="btn btn-primary fp-confirm" disabled={!canPick} onClick={() => pick(targetId)}>
+          {canPick ? `Выбрать ${targetName}` : 'Выберите папку'}
+        </button>
+      </div>
     </Modal>
   );
 }

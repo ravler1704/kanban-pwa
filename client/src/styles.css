@@ -1353,22 +1353,7 @@ a.btn { display: inline-block; text-decoration: none; }
 .fp-row-selected .fp-pick { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .fp-row-selected .fp-name { font-weight: 600; }
 .fp-row-selected .fp-icon { color: var(--accent); }
-.fp-row-accent .fp-name { font-weight: 600; }
-.fp-row-accent { background: var(--panel); }
 .fp-chevron { flex: none; display: inline-flex; color: var(--muted); }
-.fp-select {
-  flex: none;
-  align-self: center;
-  margin-right: 0.6rem;
-  padding: 0.3rem 0.7rem;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--panel);
-  color: var(--text);
-  font: inherit;
-  font-size: 0.8rem;
-  cursor: pointer;
-}
-.fp-select:hover { border-color: var(--accent); color: var(--accent); }
-.fp-row-selected .fp-select { border-color: var(--accent); color: var(--accent); }
+.fp-actions { margin-top: 0; }
+.fp-confirm { min-width: 0; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fp-empty { padding: 1.5rem 1rem; color: var(--muted); text-align: center; }
