@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { createFolder, moveFolder, renameFolder, reorderFolder } from '../actions.js';
 import { isOwnBoard } from '../board.js';
 import { childrenOf, descendants, folderColumnSetId, folderTree } from '../folders.js';
+import ContextMenu from './ContextMenu.jsx';
 import FolderSelect from './FolderSelect.jsx';
 import { AddButton, Chevron, plural } from './ManageFields.jsx';
 import Modal from './Modal.jsx';
@@ -71,29 +72,11 @@ function MoveDialog({ folder, folders, model, writable, onClose }) {
   );
 }
 
-const icon = (d) => function Icon() {
+function MoreIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      {d.map((path) => <path key={path} d={path} />)}
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" />
     </svg>
-  );
-};
-const EditIcon = icon(['M12 20h9', 'M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z']);
-const PeopleIcon = icon(['M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2', 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z',
-  'M22 21v-2a4 4 0 0 0-3-3.87', 'M16 3.13a4 4 0 0 1 0 7.75']);
-const ColumnsIcon = icon(['M3 4h18v16H3Z', 'M9 4v16', 'M15 4v16']);
-const MoveIcon = icon(['M5 9l-3 3 3 3', 'M9 5l3-3 3 3', 'M15 19l-3 3-3-3', 'M19 9l3 3-3 3', 'M2 12h20', 'M12 2v20']);
-const TrashIcon = icon(['M3 6h18', 'M8 6V4h8v2', 'M19 6l-1 14H6L5 6']);
-const UpIcon = icon(['M12 19V5', 'm5 12 7-7 7 7']);
-const DownIcon = icon(['M12 5v14', 'm19 12-7 7-7-7']);
-
-function IconButton({ label, onClick, active = false, danger = false, disabled = false, children }) {
-  return (
-    <button type="button" className={`btn btn-small btn-icon-only tree-action ${active ? 'btn-primary' : ''} ${danger ? 'btn-danger' : ''}`}
-      title={label} aria-label={label} aria-pressed={active || undefined} disabled={disabled} onClick={onClick}>
-      {children}
-    </button>
   );
 }
 
@@ -122,13 +105,14 @@ function InlineName({ value, onSave, onDone }) {
 
 /** One folder: a row with its name and actions; when expanded, the folders inside it. */
 function FolderNode({ folder, index, count, ctx }) {
-  const { model, folders, columnsSynced, canShare, needle, matches, isOpen, toggle } = ctx;
+  const { model, folders, columnsSynced, canShare, needle, matches, isOpen, toggle, expand } = ctx;
   const tree = folderTree(folders);
   const kids = childrenOf(folders, folder.id);
   const shownKids = kids.filter(matches);
   const open = Boolean(needle) || isOpen(folder.id);
   const [panel, setPanel] = useState(null);
   const [renaming, setRenaming] = useState(false);
+  const [adding, setAdding] = useState(false);
   const isRoot = !tree.parentOf(folder);
   const parent = tree.byId.get(tree.parentOf(folder));
   const own = Boolean(folder.columnSetId);
@@ -140,10 +124,28 @@ function FolderNode({ folder, index, count, ctx }) {
     columnsSynced && setName && `«${setName}»${own || isRoot ? '' : ' (как у родителя)'}`,
   ].filter(Boolean).join(' · ');
   const togglePanel = (name) => setPanel(panel === name ? null : name);
+  const [menu, setMenu] = useState(null);
+  const closeMenu = useCallback(() => setMenu(null), []);
+  const menuItems = [
+    { label: 'Переименовать', run: () => setRenaming(true) },
+    canShare && { label: 'Доступ', active: panel === 'access', run: () => togglePanel('access') },
+    columnsSynced && isOwnBoard && { label: 'Набор колонок', active: panel === 'columns', run: () => togglePanel('columns') },
+    { label: 'Новая вложенная папка', run: () => { expand(folder.id); setAdding(true); } },
+    { label: 'Перенести…', run: () => ctx.onMove(folder) },
+    !needle && null,
+    !needle && { label: 'Выше', disabled: index === 0, run: () => reorderFolder(folder.id, -1) },
+    !needle && { label: 'Ниже', disabled: index >= count - 1, run: () => reorderFolder(folder.id, 1) },
+    null,
+    { label: 'Удалить', danger: true, run: () => ctx.onRemove(folder) },
+  ].filter((item) => item !== false);
 
   return (
     <section className={`tree-node tree-folder ${panel ? 'tree-node-open' : ''}`}>
-      <div className="tree-head">
+      <div className="tree-head" onContextMenu={(e) => {
+        if (renaming) return;
+        e.preventDefault();
+        setMenu({ x: e.clientX, y: e.clientY });
+      }}>
         <button type="button" className="tree-chevron"
           aria-expanded={open} aria-label={open ? 'Свернуть' : 'Развернуть'} onClick={() => toggle(folder.id)}>
           <Chevron />
@@ -158,24 +160,18 @@ function FolderNode({ folder, index, count, ctx }) {
             </span>
           </button>
         )}
-        <div className="tree-actions">
-          <IconButton label="Переименовать" active={renaming} onClick={() => setRenaming(!renaming)}><EditIcon /></IconButton>
-          {canShare && (
-            <IconButton label="Доступ" active={panel === 'access'} onClick={() => togglePanel('access')}><PeopleIcon /></IconButton>
-          )}
-          {columnsSynced && isOwnBoard && (
-            <IconButton label="Набор колонок" active={panel === 'columns'} onClick={() => togglePanel('columns')}><ColumnsIcon /></IconButton>
-          )}
-          <IconButton label="Перенести…" onClick={() => ctx.onMove(folder)}><MoveIcon /></IconButton>
-          {!needle && (
-            <>
-              <IconButton label="Выше" disabled={index === 0} onClick={() => reorderFolder(folder.id, -1)}><UpIcon /></IconButton>
-              <IconButton label="Ниже" disabled={index >= count - 1} onClick={() => reorderFolder(folder.id, 1)}><DownIcon /></IconButton>
-            </>
-          )}
-          <IconButton label="Удалить" danger onClick={() => ctx.onRemove(folder)}><TrashIcon /></IconButton>
-        </div>
+        <button type="button" className={`btn btn-small btn-icon-only tree-more ${menu ? 'active' : ''}`}
+          title="Действия" aria-label="Действия с папкой" aria-haspopup="menu" aria-expanded={Boolean(menu)}
+          onMouseDown={(e) => menu && e.stopPropagation()}
+          onClick={(e) => {
+            if (menu) return setMenu(null);
+            const r = e.currentTarget.getBoundingClientRect();
+            return setMenu({ x: r.right - 200, y: r.bottom + 4 });
+          }}>
+          <MoreIcon />
+        </button>
       </div>
+      {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={closeMenu} />}
       {panel === 'access' && canShare && (
         <div className="tree-body"><FolderMembers folder={folder} folders={folders} /></div>
       )}
@@ -200,7 +196,7 @@ function FolderNode({ folder, index, count, ctx }) {
             <FolderNode key={child.id} folder={child} index={kids.indexOf(child)} count={kids.length} ctx={ctx} />
           ))}
           {!needle && (
-            <AddButton label="Новая вложенная папка" onAdd={async (name) => {
+            <AddButton label="Новая вложенная папка" open={adding} onOpenChange={setAdding} onAdd={async (name) => {
               await createFolder(name, { parentId: folder.id });
             }} />
           )}

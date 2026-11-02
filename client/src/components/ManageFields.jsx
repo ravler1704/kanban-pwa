@@ -89,9 +89,11 @@ export function Chevron() {
   );
 }
 
-/** A «+ label» button that turns into an `AddForm` and back. */
-export function AddButton({ label, onAdd }) {
-  const [open, setOpen] = useState(false);
+/** A «+ label» button that turns into an `AddForm` and back; `open` / `onOpenChange` control it from outside. */
+export function AddButton({ label, onAdd, open: openProp, onOpenChange }) {
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  const setOpen = onOpenChange ?? setOpenState;
   if (!open) {
     return <button type="button" className="btn field-add tree-add" onClick={() => setOpen(true)}>+ {label}</button>;
   }
