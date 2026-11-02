@@ -1,23 +1,49 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { childrenOf, descendants, flattenFolders, folderPath, folderPathName, folderTree } from '../folders.js';
-import { Chevron } from './ManageFields.jsx';
+import { Chevron, plural } from './ManageFields.jsx';
 import Modal from './Modal.jsx';
 
 const SEARCH_FROM = 7;
 
-function FolderIcon() {
+const svg = (children, size = 18) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
+);
+const FolderIcon = () => svg(<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />);
+const AllIcon = () => svg(<><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" />
+  <rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></>);
+const CheckIcon = () => svg(<path d="m5 12 5 5 9-10" />);
+const SearchIcon = () => svg(<><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>, 16);
+const BackIcon = () => svg(<path d="m15 18-6-6 6-6" />);
+
+/** One line of the picker: picks on click; `onOpen` adds an arrow that opens the folder. */
+function PickerRow({ icon, name, meta, selected, disabled, onPick, onOpen, openLabel, accent = false }) {
   return (
-    <svg className="tree-folder-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
-    </svg>
+    <li className={`fp-row ${selected ? 'fp-row-selected' : ''} ${accent ? 'fp-row-accent' : ''}`}>
+      <button type="button" className="fp-pick" disabled={disabled} onClick={onPick}>
+        <span className="fp-icon">{icon}</span>
+        <span className="fp-text">
+          <span className="fp-name">{name}</span>
+          {meta && <span className="fp-meta">{meta}</span>}
+        </span>
+        {selected && <span className="fp-check"><CheckIcon /></span>}
+      </button>
+      {onOpen && (
+        <button type="button" className="fp-open" title="Открыть папку" aria-label={openLabel} onClick={onOpen}>
+          <Chevron />
+        </button>
+      )}
+    </li>
   );
 }
 
+const countLabel = (n) => `${n} ${plural(n, 'папка', 'папки', 'папок')}`;
+
 /**
- * The folders one level at a time, like in the board settings: a row picks the folder, its arrow opens it.
- * Folders in `exclude` can't be picked but can be opened when something inside them can.
+ * The folders one level at a time, like in the board settings: a row picks the folder, its arrow opens it;
+ * inside a folder the first row picks the folder itself. Folders in `exclude` can't be picked but can be
+ * opened when something inside them can.
  */
 function FolderPickerDialog({ title, folders, value, exclude, topLabel, onPick, onClose }) {
   const tree = folderTree(folders);
@@ -45,54 +71,54 @@ function FolderPickerDialog({ title, folders, value, exclude, topLabel, onPick, 
   return (
     <Modal title={title} onClose={onClose} className="folder-picker" closeButton>
       {folders.length >= SEARCH_FROM && (
-        <input type="search" className="manage-search" placeholder="Поиск папки" autoFocus value={query}
-          onChange={(e) => setQuery(e.target.value)} />
+        <label className="fp-search">
+          <SearchIcon />
+          <input type="search" placeholder="Поиск папки" value={query} aria-label="Поиск папки"
+            onChange={(e) => setQuery(e.target.value)} />
+        </label>
       )}
       {!needle && (
-        <nav className="breadcrumbs" aria-label="Путь">
-          <button type="button" className="crumb" disabled={!current} onClick={() => open(null)}>Все папки</button>
-          {path.map((f, i) => (
-            <span key={f.id} className="crumb-item">
-              <span className="crumb-sep" aria-hidden="true">›</span>
-              <button type="button" className="crumb" disabled={i === path.length - 1} onClick={() => open(f.id)}>
-                {f.name}
-              </button>
-            </span>
-          ))}
+        <nav className="fp-nav" aria-label="Путь">
+          <button type="button" className="fp-back" disabled={!current} title="Назад" aria-label="Назад"
+            onClick={() => open(tree.parentOf(current))}>
+            <BackIcon />
+          </button>
+          <div className="breadcrumbs">
+            <button type="button" className="crumb" disabled={!current} onClick={() => open(null)}>Все папки</button>
+            {path.map((f, i) => (
+              <span key={f.id} className="crumb-item">
+                <span className="crumb-sep" aria-hidden="true">›</span>
+                <button type="button" className="crumb" disabled={i === path.length - 1} onClick={() => open(f.id)}>
+                  {f.name}
+                </button>
+              </span>
+            ))}
+          </div>
         </nav>
       )}
-      <div className="picker-list">
+      <ul className="fp-list">
         {!needle && !current && topLabel && (
-          <div className={`picker-row ${value === '' ? 'picker-row-selected' : ''}`}>
-            <button type="button" className="picker-pick" onClick={() => pick('')}>
-              <span className="tree-label">{topLabel}</span>
-            </button>
-          </div>
+          <PickerRow accent icon={<AllIcon />} name={topLabel} selected={value === ''} onPick={() => pick('')} />
+        )}
+        {!needle && current && pickable(current) && (
+          <PickerRow accent icon={<FolderIcon />} name={`Вся папка «${current.name}»`}
+            meta={descendants(folders, current.id).length ? 'вместе со всем, что внутри' : null}
+            selected={value === current.id} onPick={() => pick(current.id)} />
         )}
         {list.map((f) => {
           const kids = childrenOf(folders, f.id).length;
           const where = needle && folderPath(f, folders).slice(0, -1).map((p) => p.name).join(' › ');
           return (
-            <div key={f.id} className={`picker-row ${f.id === value ? 'picker-row-selected' : ''}`}>
-              <button type="button" className="picker-pick" disabled={!pickable(f)}
-                title={pickable(f) ? 'Выбрать эту папку' : 'Эту папку выбрать нельзя'} onClick={() => pick(f.id)}>
-                <FolderIcon />
-                <span className="tree-title">
-                  <span className="tree-label">{f.name}</span>
-                  {(where || kids > 0) && <span className="tree-meta">{where || `вложенных: ${kids}`}</span>}
-                </span>
-              </button>
-              {!needle && openable(f) && (
-                <button type="button" className="btn btn-small btn-icon-only picker-open" title="Открыть папку"
-                  aria-label={`Открыть «${f.name}»`} onClick={() => open(f.id)}>
-                  <Chevron />
-                </button>
-              )}
-            </div>
+            <PickerRow key={f.id} icon={<FolderIcon />} name={f.name}
+              meta={where || (kids ? countLabel(kids) : null)}
+              selected={f.id === value} disabled={!pickable(f)} onPick={() => pick(f.id)}
+              onOpen={!needle && openable(f) ? () => open(f.id) : null} openLabel={`Открыть «${f.name}»`} />
           );
         })}
-        {list.length === 0 && <p className="muted">{needle ? 'Ничего не найдено.' : 'Здесь нет папок для выбора.'}</p>}
-      </div>
+        {list.length === 0 && (
+          <li className="fp-empty">{needle ? 'Ничего не найдено' : 'Вложенных папок нет'}</li>
+        )}
+      </ul>
     </Modal>
   );
 }
