@@ -16,11 +16,10 @@ const SearchIcon = () => svg(<><circle cx="11" cy="11" r="7" /><path d="m20 20-3
 const BackIcon = () => svg(<path d="m15 18-6-6 6-6" />);
 
 /** One line of the picker; `openable` shows the arrow of a folder that opens on click. */
-function PickerRow({ name, meta, chosen, openable, onClick, onDoubleClick }) {
+function PickerRow({ name, meta, chosen, openable, onClick }) {
   return (
     <li className={`fp-row ${chosen ? 'fp-row-selected' : ''}`}>
-      <button type="button" className="fp-pick" onClick={(e) => e.detail < 2 && onClick()}
-        onDoubleClick={onDoubleClick}>
+      <button type="button" className="fp-pick" onClick={(e) => e.detail < 2 && onClick()}>
         <span className="fp-icon"><FolderIcon /></span>
         <span className="fp-text">
           <span className="fp-name">{name}</span>
@@ -37,15 +36,13 @@ const countLabel = (n) => `${n} ${plural(n, 'папка', 'папки', 'пап�
 
 /**
  * The folders one level at a time, like «Переместить» in file managers: a folder with subfolders opens on
- * click, one without them gets highlighted, a double click picks at once; the button at the bottom picks
- * the highlighted folder or else the open one (the top level with `topLabel`). Folders in `exclude` can't
- * be picked but can be opened when something inside them can.
+ * click, one without them is picked at once; the button at the bottom picks the open folder (the top level
+ * with `topLabel`). Folders in `exclude` can't be picked but can be opened when something inside them can.
  */
 function FolderPickerDialog({ title, folders, value, exclude, topLabel, onPick, onClose }) {
   const tree = folderTree(folders);
   const selected = value ? tree.byId.get(value) : null;
   const [currentId, setCurrentId] = useState(() => (selected ? tree.parentOf(selected) : null));
-  const [chosenId, setChosenId] = useState(selected?.id ?? null);
   const current = currentId ? tree.byId.get(currentId) ?? null : null;
   const path = current ? folderPath(current, folders) : [];
   const [query, setQuery] = useState('');
@@ -63,18 +60,15 @@ function FolderPickerDialog({ title, folders, value, exclude, topLabel, onPick, 
   const open = (id) => {
     setQuery('');
     setCurrentId(id);
-    setChosenId(null);
   };
   const click = (f) => {
     if (openable(f)) open(f.id);
-    else setChosenId(f.id === chosenId ? null : f.id);
+    else pick(f.id);
   };
 
-  const chosen = chosenId ? tree.byId.get(chosenId) : null;
-  const target = chosen ?? current;
-  const targetId = target ? target.id : topLabel ? '' : null;
-  const canPick = targetId === '' || (target != null && pickable(target));
-  const targetName = target ? `«${target.name}»` : topLabel ? `«${topLabel}»` : '';
+  const targetId = current ? current.id : topLabel ? '' : null;
+  const canPick = targetId === '' || (current != null && pickable(current));
+  const targetName = current ? `«${current.name}»` : topLabel ? `«${topLabel}»` : '';
 
   return (
     <Modal title={title} onClose={onClose} className="folder-picker" closeButton>
@@ -110,8 +104,7 @@ function FolderPickerDialog({ title, folders, value, exclude, topLabel, onPick, 
           const where = needle && folderPath(f, folders).slice(0, -1).map((p) => p.name).join(' › ');
           return (
             <PickerRow key={f.id} name={f.name} meta={where || (kids ? countLabel(kids) : null)}
-              chosen={f.id === chosenId} openable={openable(f)} onClick={() => click(f)}
-              onDoubleClick={() => pickable(f) && pick(f.id)} />
+              chosen={f.id === value} openable={openable(f)} onClick={() => click(f)} />
           );
         })}
         {list.length === 0 && (
