@@ -86,7 +86,8 @@ export default function FolderBar({
     <div className="projectbar-row">
       {!publicToken && (
         <CheckPicker label="Папки" emptyLabel="Не выбраны" clearLabel="Показать все"
-          searchPlaceholder="Поиск папки" notFound="Папок не найдено" items={folderItems} {...folderFilter} />
+          searchPlaceholder="Поиск папки" notFound="Папок не найдено" items={folderItems} collapseKey="folderFilterCollapsed"
+          {...folderFilter} />
       )}
 
       {columnSets && (

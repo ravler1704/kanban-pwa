@@ -15,14 +15,31 @@ function ClearIcon() {
  * selected names, or `emptyLabel` when nothing is selected; the clear button shows with `onClear`.
  * With `onSetAll(checked)` the list starts with an «all» checkbox. The search matches names and groups.
  * `indeterminate` lists keys shown half-checked; with `onOnly(key)` each item has a «только» button.
+ * In a tree (`depth`), items with nested ones fold; with `collapseKey` what is folded is remembered.
  */
 export default function CheckPicker({
   label, items, selected, onToggle, onClear, onSetAll, summary, emptyLabel = 'Все', clearLabel,
   searchPlaceholder = 'Поиск', notFound = 'Ничего не найдено', className = '', indeterminate = [], onOnly,
+  collapseKey,
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return new Set(collapseKey ? JSON.parse(localStorage.getItem(collapseKey) ?? '[]') : []);
+    } catch {
+      return new Set();
+    }
+  });
   const root = useRef(null);
+
+  function toggleCollapsed(key) {
+    const next = new Set(collapsed);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    setCollapsed(next);
+    if (collapseKey) localStorage.setItem(collapseKey, JSON.stringify([...next]));
+  }
 
   useEffect(() => {
     if (!open) return undefined;
@@ -44,9 +61,21 @@ export default function CheckPicker({
   const allChecked = items.every((i) => selected.includes(i.key));
   const nameOf = (key) => items.find((i) => i.key === key)?.name ?? key;
   const query = search.trim().replace(/^#+/, '').toLowerCase();
+  const tree = items.some((i) => i.depth);
+  const hasNested = (i) => (items[i + 1]?.depth ?? 0) > (items[i].depth ?? 0);
+  // Items under a folded one are left out (deeper than it, up to the next at its depth or above).
+  const unfolded = [];
+  let foldedAt = null;
+  items.forEach((item, i) => {
+    const depth = item.depth ?? 0;
+    if (foldedAt !== null && depth > foldedAt) return;
+    foldedAt = null;
+    unfolded.push({ ...item, nested: hasNested(i) });
+    if (hasNested(i) && collapsed.has(item.key)) foldedAt = depth;
+  });
   const found = query
     ? items.filter((i) => [i.name, i.group ?? ''].some((text) => text.toLowerCase().includes(query)))
-    : items;
+    : unfolded;
 
   function toggleOpen() {
     setSearch('');
@@ -90,6 +119,14 @@ export default function CheckPicker({
                 <div className="check-menu-group">{item.group}</div>
               )}
               <label className="check-menu-item" style={item.depth && !query ? { paddingLeft: `${0.5 + item.depth * 1.1}rem` } : undefined}>
+                {tree && !query && (item.nested ? (
+                  <button type="button" className="check-menu-fold" aria-expanded={!collapsed.has(item.key)}
+                    aria-label={collapsed.has(item.key) ? 'Развернуть' : 'Свернуть'}
+                    onClick={(e) => { e.preventDefault(); toggleCollapsed(item.key); }}>
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5"
+                      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+                  </button>
+                ) : <span className="check-menu-fold-space" aria-hidden="true" />)}
                 <input type="checkbox" checked={selected.includes(item.key)} onChange={() => onToggle(item.key)}
                   ref={(el) => { if (el) el.indeterminate = indeterminate.includes(item.key); }} />
                 <span className="check-menu-name">{item.name}</span>

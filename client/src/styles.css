@@ -1248,3 +1248,18 @@ a.btn { display: inline-block; text-decoration: none; }
 .crumb:disabled { color: var(--text); font-weight: 600; cursor: default; }
 .tree-toggle .tree-title { flex: 1; }
 .tree-folder-icon { flex: none; color: var(--muted); }
+.check-menu-fold {
+  flex: none;
+  display: inline-flex;
+  padding: 0.15rem;
+  margin: -0.15rem 0;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.check-menu-fold:hover { color: var(--text); background: var(--bg); }
+.check-menu-fold svg { transition: transform 0.15s; }
+.check-menu-fold[aria-expanded="true"] svg { transform: rotate(90deg); }
+.check-menu-fold-space { flex: none; width: calc(14px + 0.3rem); }
