@@ -270,13 +270,13 @@ function FilterSettings() {
   return (
     <div className="manage">
       <p className="muted">
-        Основные фильтры всегда видны в панели фильтров, остальные открываются в ней кнопкой «Ещё».
+        Основные фильтры видны прямо на панели доски. Все фильтры открываются кнопкой фильтров.
         Настройка хранится на этом устройстве.
       </p>
       <ul className="fp-list ff-list">
         {FILTERS.map((f) => (
           <SwitchRow key={f.id} label={f.label} on={main.includes(f.id)}
-            meta={[main.includes(f.id) ? 'Основной' : 'Под кнопкой «Ещё»', f.note].filter(Boolean).join(' · ')}
+            meta={[main.includes(f.id) ? 'Основной' : 'Только в окне фильтров', f.note].filter(Boolean).join(' · ')}
             onChange={(on) => setMainFilters(on ? [...main, f.id] : main.filter((id) => id !== f.id))} />
         ))}
       </ul>

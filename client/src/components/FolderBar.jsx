@@ -1,8 +1,10 @@
 import { Fragment, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { publicToken } from '../board.js';
 import ColumnSetFilter from './ColumnSetFilter.jsx';
 import { useMainFilters } from '../filterPrefs.js';
 import FolderFilter from './FolderFilter.jsx';
+import Modal from './Modal.jsx';
 import PersonFilter from './PersonFilter.jsx';
 import TagFilter from './TagFilter.jsx';
 
@@ -64,18 +66,6 @@ function FilterIcon() {
 }
 
 // The filters behind the toggle are shown while it is on; the main ones always are.
-function MoreIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" />
-    </svg>
-  );
-}
-
-// The whole filters panel; inside it, filters other than the main ones open with «Ещё».
-const FILTERS_HIDDEN_KEY = 'filtersHidden';
-const MORE_KEY = 'filtersMore';
-
 const VIEWS = [
   { id: 'board', label: 'Доска', Icon: BoardIcon },
   { id: 'calendar', label: 'Календарь', Icon: CalendarIcon },
@@ -91,16 +81,7 @@ export default function FolderBar({
   folders, folderFilter, conflictsByFolder, columnSets, columnSetId, onSelectColumnSet, tagFilter, authorFilter, holderFilter,
   view, onView, onManage, onAddCard, children,
 }) {
-  const [filtersHidden, setFiltersHidden] = useState(() => localStorage.getItem(FILTERS_HIDDEN_KEY) === '1');
-  const toggleFilters = () => {
-    localStorage.setItem(FILTERS_HIDDEN_KEY, filtersHidden ? '0' : '1');
-    setFiltersHidden(!filtersHidden);
-  };
-  const [more, setMore] = useState(() => localStorage.getItem(MORE_KEY) === '1');
-  const toggleMore = () => {
-    localStorage.setItem(MORE_KEY, more ? '0' : '1');
-    setMore(!more);
-  };
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const main = useMainFilters();
 
   const hasPeople = (f) => f && (f.counts.size > 0 || f.selected.length > 0);
@@ -124,24 +105,31 @@ export default function FolderBar({
     },
   ].filter(Boolean);
   const mainOnes = filters.filter((f) => main.includes(f.id));
-  const extra = filters.filter((f) => !main.includes(f.id));
-  const extraActive = extra.filter((f) => f.active).length;
-  // A filter that narrows the board: marked on the toggle while the panel is hidden.
-  const filtered = filters.some((f) => f.active);
+  // A filter outside the panel that narrows the board: marked on the filters button.
+  const hiddenActive = filters.some((f) => f.active && !main.includes(f.id));
+  const clearers = [folderFilter.onClear, tagFilter?.selected.length && tagFilter.onClear,
+    authorFilter?.selected.length && authorFilter.onClear, holderFilter?.selected.length && holderFilter.onClear]
+    .filter(Boolean);
 
-  const filterRow = !filtersHidden && (
+  const filterRow = (
     <div className="projectbar-row">
       {mainOnes.map((f) => <Fragment key={f.id}>{f.node}</Fragment>)}
-      {more && extra.map((f) => <Fragment key={f.id}>{f.node}</Fragment>)}
-      {extra.length > 0 && (
-        <button type="button" className={`btn btn-small btn-icon-only filters-more ${more ? 'active' : ''}`}
-          aria-expanded={more} onClick={toggleMore}
-          title={more ? 'Скрыть остальные фильтры'
-            : `Остальные фильтры: ${extra.length}${extraActive ? ' (есть включённые)' : ''}`}
-          aria-label={more ? 'Скрыть остальные фильтры' : 'Остальные фильтры'}>
-          <MoreIcon />
-          {!more && extraActive > 0 && <span className="filters-more-dot" aria-hidden="true" />}
-        </button>
+      {filtersOpen && createPortal(
+        <Modal title="Фильтры" onClose={() => setFiltersOpen(false)} className="filters-dialog" closeButton>
+          <div className="filters-dialog-list">
+            {filters.map((f) => <Fragment key={f.id}>{f.node}</Fragment>)}
+          </div>
+          <p className="fp-hint">Какие фильтры видны прямо на панели — в «Настройках доски», вкладка «Фильтры».</p>
+          <div className="actions">
+            {clearers.length > 0 && (
+              <button type="button" className="btn filters-reset" onClick={() => clearers.forEach((clear) => clear())}>
+                Сбросить все
+              </button>
+            )}
+            <button type="button" className="btn btn-primary" onClick={() => setFiltersOpen(false)}>Готово</button>
+          </div>
+        </Modal>,
+        document.body,
       )}
     </div>
   );
@@ -149,12 +137,11 @@ export default function FolderBar({
   return (
     <nav className="projectbar">
       <div className="projectbar-row projectbar-actions">
-        <button type="button" className={`btn btn-small btn-icon-only filters-toggle ${filtersHidden ? '' : 'active'}`}
-          aria-pressed={!filtersHidden} onClick={toggleFilters}
-          title={filtersHidden ? `Показать фильтры${filtered ? ' (доска отфильтрована)' : ''}` : 'Скрыть фильтры'}
-          aria-label={filtersHidden ? 'Показать фильтры' : 'Скрыть фильтры'}>
+        <button type="button" className="btn btn-small btn-icon-only filters-toggle" aria-haspopup="dialog"
+          onClick={() => setFiltersOpen(true)}
+          title={hiddenActive ? 'Фильтры (доска отфильтрована)' : 'Фильтры'} aria-label="Фильтры">
           <FilterIcon />
-          {filtersHidden && filtered && <span className="filters-dot" aria-hidden="true" />}
+          {hiddenActive && <span className="filters-dot" aria-hidden="true" />}
         </button>
 
         {children}

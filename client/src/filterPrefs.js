@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 
-// Which board filters are main (shown in the filters panel) and which open with «Ещё».
+// Which board filters are main (shown on the board's panel); all of them are in the filters dialog.
 const KEY = 'mainFilters';
 const DEFAULT_MAIN = ['folders'];
 
