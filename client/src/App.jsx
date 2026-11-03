@@ -4,7 +4,7 @@ import { authState } from './auth.js';
 import { isUnread, seenStore } from './seen.js';
 import { dbName, isCurrentBoard, isOwnBoard, publicToken, switchBoard } from './board.js';
 import { useReadOnly } from './public.js';
-import { db } from './db.js';
+import { db, DEFAULT_FOLDER_ID } from './db.js';
 import { columnModel } from './columnSets.js';
 import StatusBar from './components/StatusBar.jsx';
 import FolderBar from './components/FolderBar.jsx';
@@ -12,7 +12,7 @@ import Column from './components/Column.jsx';
 import CardEditor from './components/CardEditor.jsx';
 import ConflictDialog from './components/ConflictDialog.jsx';
 import ManageDialog from './components/ManageDialog.jsx';
-import NewCardDialog, { lastTarget } from './components/NewCardDialog.jsx';
+import NewCardDialog from './components/NewCardDialog.jsx';
 import CalendarView from './components/CalendarView.jsx';
 import ListView from './components/ListView.jsx';
 import ChatDialog from './components/ChatDialog.jsx';
@@ -284,15 +284,14 @@ export default function App() {
       ? openRecord.columnId : folderColumnIds.get(openRecord.folderId)[0] }
     : null);
 
-  // Where new cards go among `list`: the folder the view is narrowed to (with what is inside it), else the
-  // last used one, else the first in the tree.
+  // Where new cards go among `list`: the folder the view is narrowed to (with what is inside it), else
+  // «Личное», else the first in the tree.
   const treeOrder = flattenFolders(folders).map(({ folder }) => folder.id);
   const targetIn = (list) => {
     const ids = treeOrder.filter((id) => list.some((f) => f.id === id));
     const tops = topFolderIds(ids, folders);
     if (tops.length === 1) return tops[0];
-    const last = lastTarget();
-    return ids.includes(last) ? last : ids[0] ?? null;
+    return ids.includes(DEFAULT_FOLDER_ID) ? DEFAULT_FOLDER_ID : tops[0] ?? null;
   };
   const shownUsable = usable.filter((f) => shownFolders.includes(f));
   const target = targetIn(shownUsable);

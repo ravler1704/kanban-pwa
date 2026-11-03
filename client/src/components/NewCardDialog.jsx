@@ -6,30 +6,12 @@ import Modal from './Modal.jsx';
 import { fromInputValue } from './ReminderField.jsx';
 import TitleField from './TitleField.jsx';
 
-const LAST_KEY = 'lastTargetForNewCard';
-
 /**
- * Where a new card goes when several folders are shown: the last used folder, or the first one.
- * `folders` are the folders to choose from; returns an id (null if there are none).
- */
-export function defaultTarget(folders) {
-  const last = lastTarget();
-  return folders.some((f) => f.id === last) ? last : folders[0]?.id ?? null;
-}
-
-/** The folder the last card was added to through the dialog (an id, or ''). */
-export function lastTarget() {
-  // An older build stored 'projectId|sectionId'; the section (else the project) is a folder now.
-  const [project, section] = (localStorage.getItem(LAST_KEY) ?? '').split('|');
-  return section || project;
-}
-
-/**
- * `folders` are the folders a card can be added to and `target` the one preselected (an id; when null
- * the last used folder is preselected).
+ * `folders` are the folders a card can be added to and `target` the one preselected (an id; else the
+ * first folder).
  */
 export default function NewCardDialog({ folders, columnsOfFolder, target, onClose }) {
-  const [folderId, setFolderId] = useState(() => (folders.some((f) => f.id === target) ? target : defaultTarget(folders)) ?? '');
+  const [folderId, setFolderId] = useState(() => (folders.some((f) => f.id === target) ? target : folders[0]?.id) ?? '');
   // The folder's column set decides the choice. New cards land in «Входящие» (the default
   // backlog column) or the first column; a picked column is kept by name across sets.
   const columns = folderId ? columnsOfFolder(folderId) : [];
@@ -47,7 +29,6 @@ export default function NewCardDialog({ folders, columnsOfFolder, target, onClos
   async function submit(e) {
     e.preventDefault();
     if (!title.trim() || !folderId || !columnId) return;
-    localStorage.setItem(LAST_KEY, folderId);
     await createCard({ folderId }, columnId, title.trim(), description, fromInputValue(remindAt));
     onClose();
   }
