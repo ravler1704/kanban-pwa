@@ -383,14 +383,17 @@ export default function App() {
             folders={folders}
             folderFilter={folderFilter}
             conflictsByFolder={conflictsByFolder}
-            columnSets={shownFolders.length !== 1 && view === 'board' && usedSets.length > 1 ? usedSets : null}
+            columnSets={shownFolders.length !== 1 && view === 'board' && usedSets.length > 1 ? usedSets.map((s) => ({
+              ...s,
+              columns: model.columnsOf(s.id).map((c) => c.name),
+              folders: activeFolders.filter((f) => model.setIdOf(f) === s.id).map((f) => f.name),
+            })) : null}
             columnSetId={boardSetId}
             onSelectColumnSet={changeAllFoldersSet}
             tagFilter={tags.length ? {
               tags,
               selected: tagFilter,
               onToggle: toggleTag,
-              onSetAll: (on) => changeTagFilter(on ? tags.map((t) => t.key) : []),
               onClear: () => changeTagFilter([]),
             } : null}
             view={view}

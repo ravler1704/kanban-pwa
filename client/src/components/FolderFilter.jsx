@@ -14,7 +14,7 @@ const SearchIcon = () => svg(<><circle cx="11" cy="11" r="7" /><path d="m20 20-3
 const BackIcon = () => svg(<path d="m15 18-6-6 6-6" />, 20);
 
 /** An iOS-like switch: the whole line is the control. */
-function SwitchRow({ label, meta, on, onChange, strong = false }) {
+export function SwitchRow({ label, meta, on, onChange, strong = false }) {
   return (
     <li className="fp-row">
       <button type="button" role="switch" aria-checked={on} className="fp-pick ff-row" onClick={() => onChange(!on)}>
@@ -138,19 +138,25 @@ function FolderFilterDialog({ folders, filter, onClose }) {
   );
 }
 
-/** The «Папки» field of the board: shows `filter.summary` and opens the folder settings. */
-export default function FolderFilter({ folders, filter }) {
+/** A field of the board's filters: shows `value` and opens `dialog(onClose)`. */
+export function DialogField({ label, value, title, dialog }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="field folder-filter">
-      <button type="button" className="select folder-field" aria-haspopup="dialog" onClick={() => setOpen(true)}>
-        <span className="picker-label">Папки</span>
-        <span className="picker-value">{filter.summary}</span>
+      <button type="button" className="select folder-field" aria-haspopup="dialog" title={title}
+        onClick={() => setOpen(true)}>
+        <span className="picker-label">{label}</span>
+        <span className="picker-value">{value}</span>
       </button>
-      {open && createPortal(
-        <FolderFilterDialog folders={folders} filter={filter} onClose={() => setOpen(false)} />,
-        document.body,
-      )}
+      {open && createPortal(dialog(() => setOpen(false)), document.body)}
     </div>
+  );
+}
+
+/** The «Папки» field of the board: shows `filter.summary` and opens the folder settings. */
+export default function FolderFilter({ folders, filter }) {
+  return (
+    <DialogField label="Папки" value={filter.summary}
+      dialog={(onClose) => <FolderFilterDialog folders={folders} filter={filter} onClose={onClose} />} />
   );
 }

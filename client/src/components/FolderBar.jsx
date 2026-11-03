@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { publicToken } from '../board.js';
+import ColumnSetFilter from './ColumnSetFilter.jsx';
 import FolderFilter from './FolderFilter.jsx';
 import TagFilter from './TagFilter.jsx';
 
@@ -93,14 +94,7 @@ export default function FolderBar({
       )}
 
       {columnSets && (
-        <div className="picker">
-          <label className="picker-label" htmlFor="column-set-select">Колонки</label>
-          <select id="column-set-select" className="select" value={columnSetId}
-            title="Папки с разными наборами колонок показываются по отдельности"
-            onChange={(e) => onSelectColumnSet(e.target.value)}>
-            {columnSets.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-        </div>
+        <ColumnSetFilter columnSets={columnSets} value={columnSetId} onChange={onSelectColumnSet} />
       )}
 
       {tagFilter && <TagFilter {...tagFilter} />}

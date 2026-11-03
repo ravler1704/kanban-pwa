@@ -1,14 +1,68 @@
-import CheckPicker from './CheckPicker.jsx';
+import { useState } from 'react';
+import { DialogField, SwitchRow } from './FolderFilter.jsx';
+import Modal from './Modal.jsx';
+
+const SEARCH_FROM = 7;
+
+const SearchIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+  </svg>
+);
+
+const cardsCount = (n) => {
+  const one = n % 10 === 1 && n % 100 !== 11;
+  const few = n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20);
+  return `${n} ${one ? 'карточка' : few ? 'карточки' : 'карточек'}`;
+};
+
+/** Switches of the tags; changes apply at once. */
+function TagFilterDialog({ tags, selected, onToggle, onClear, onClose }) {
+  const [query, setQuery] = useState('');
+  const needle = query.trim().replace(/^#+/, '').toLowerCase();
+  const found = needle ? tags.filter((t) => t.name.toLowerCase().includes(needle)) : tags;
+
+  return (
+    <Modal title="Теги" onClose={onClose} className="folder-picker folder-filter-sheet" closeButton>
+      {tags.length >= SEARCH_FROM && (
+        <label className="fp-search">
+          <SearchIcon />
+          <input type="search" placeholder="Поиск тега" value={query} aria-label="Поиск тега"
+            onChange={(e) => setQuery(e.target.value)} />
+        </label>
+      )}
+      {!needle && tags.length > 0 && (
+        <ul className="fp-list ff-group">
+          <SwitchRow strong label="Все карточки" on={selected.length === 0}
+            meta={selected.length ? 'Сейчас: только с выбранными тегами' : 'Или включите нужные теги ниже'}
+            onChange={(v) => v && onClear()} />
+        </ul>
+      )}
+      <ul className="fp-list ff-list">
+        {found.map((t) => (
+          <SwitchRow key={t.key} label={`#${t.name}`} meta={t.count != null ? cardsCount(t.count) : null}
+            on={selected.includes(t.key)} onChange={() => onToggle(t.key)} />
+        ))}
+        {found.length === 0 && <li className="fp-empty">{needle ? 'Тегов не найдено' : 'У карточек пока нет тегов'}</li>}
+      </ul>
+      <div className="actions fp-actions">
+        <button type="button" className="btn btn-primary" onClick={onClose}>Готово</button>
+      </div>
+    </Modal>
+  );
+}
 
 /**
- * Picker of the tags to filter cards by: a card is shown when it has any of the `selected` tag keys.
+ * Tags to filter cards by: a card is shown when it has any of the `selected` tag keys.
  * `tags` ({ key, name, count }) are the tags of the cards in view and the selected ones.
  */
-export default function TagFilter({ tags, selected, onToggle, onSetAll, onClear }) {
+export default function TagFilter({ tags, selected, onToggle, onClear }) {
+  const nameOf = (key) => `#${tags.find((t) => t.key === key)?.name ?? key}`;
   return (
-    <CheckPicker label="Теги" emptyLabel="Не выбраны" className="tag-filter" searchPlaceholder="Поиск тега"
-      notFound="Тегов не найдено" clearLabel="Сбросить теги"
-      items={tags.map((t) => ({ key: t.key, name: `#${t.name}`, count: t.count }))}
-      selected={selected} onToggle={onToggle} onSetAll={onSetAll} onClear={selected.length ? onClear : null} />
+    <DialogField label="Теги" value={selected.length ? selected.map(nameOf).join(', ') : 'Все карточки'}
+      dialog={(onClose) => (
+        <TagFilterDialog tags={tags} selected={selected} onToggle={onToggle} onClear={onClear} onClose={onClose} />
+      )} />
   );
 }
