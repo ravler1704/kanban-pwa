@@ -503,6 +503,8 @@ const LIVE_FOLDER = `JOIN records r ON r.owner = m.board AND r.id = m.folder AND
 const selectMembers = db.prepare(`
   SELECT m.email, m.folder, MIN(m.added_at) OVER (PARTITION BY m.email) AS first_added,
     (SELECT i.name FROM identities i WHERE i.email = m.email ORDER BY i.linked_at LIMIT 1) AS name,
+    (SELECT i.picture FROM identities i WHERE i.email = m.email AND i.picture IS NOT NULL
+      ORDER BY i.linked_at LIMIT 1) AS picture,
     EXISTS (SELECT 1 FROM identities i WHERE i.email = m.email) AS joined
   FROM folder_members m ${LIVE_FOLDER}
   WHERE m.board = ? ORDER BY first_added, m.email
@@ -542,7 +544,7 @@ export function listMembers(board) {
   for (const row of selectMembers.all(board)) {
     if (!byEmail.has(row.email)) {
       byEmail.set(row.email, {
-        email: row.email, name: row.name ?? null, joined: Boolean(row.joined), folders: [],
+        email: row.email, name: row.name ?? null, picture: row.picture ?? null, joined: Boolean(row.joined), folders: [],
       });
     }
     byEmail.get(row.email).folders.push(row.folder);

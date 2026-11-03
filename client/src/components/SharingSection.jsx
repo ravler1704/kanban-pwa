@@ -6,6 +6,7 @@ import { db } from '../db.js';
 import { childrenOf, descendants, flattenFolders, folderPath, folderTree, liveFolders, topFolderIds } from '../folders.js';
 import { folderIdsOf, peopleStore } from '../people.js';
 import { syncStatus } from '../sync.js';
+import Avatar from './Avatar.jsx';
 import {
   BackIcon, DialogField, GroupRow, names, SEARCH_FROM, SearchField, SwitchRow,
 } from './FolderFilter.jsx';
@@ -51,10 +52,13 @@ const memberLabel = (m) => (m.name ? `${m.name} · ${m.email}` : m.email);
 
 function MemberName({ member }) {
   return (
-    <span className="account-email" title={member.email}>
-      {memberLabel(member)}
-      {!member.joined && <span className="muted"> — ещё не входил</span>}
-    </span>
+    <>
+      <Avatar user={member} size={28} />
+      <span className="account-email" title={member.email}>
+        {memberLabel(member)}
+        {!member.joined && <span className="muted"> — ещё не входил</span>}
+      </span>
+    </>
   );
 }
 
