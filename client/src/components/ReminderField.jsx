@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Modal from './Modal.jsx';
 
@@ -12,9 +12,9 @@ export function toInputValue(ts) {
 
 export const fromInputValue = (value) => (value ? new Date(value).getTime() : null);
 
-const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+const WEEKDAYS = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'];
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
-const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5);
+const MINUTES = Array.from({ length: 60 }, (_, m) => m);
 
 const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
@@ -58,79 +58,137 @@ function monthDays(month) {
   ];
 }
 
+const ITEM = 36;
+
+/** An iOS-like wheel: scrolls with snapping; the value is the item in the middle band. */
+function Wheel({ values, value, onChange, label }) {
+  const list = useRef(null);
+  const timer = useRef(null);
+  const index = values.indexOf(value);
+
+  useLayoutEffect(() => {
+    const el = list.current;
+    if (Math.round(el.scrollTop / ITEM) !== index) el.scrollTop = index * ITEM;
+  }, [index]);
+
+  const onScroll = () => {
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      const next = values[Math.min(values.length - 1, Math.max(0, Math.round(list.current.scrollTop / ITEM)))];
+      if (next !== value) onChange(next);
+    }, 90);
+  };
+
+  return (
+    <div className="rem-wheel" ref={list} onScroll={onScroll} role="listbox" aria-label={label} tabIndex={0}
+      onKeyDown={(e) => {
+        const step = { ArrowUp: -1, ArrowDown: 1 }[e.key];
+        if (!step) return;
+        e.preventDefault();
+        onChange(values[Math.min(values.length - 1, Math.max(0, index + step))]);
+      }}>
+      {values.map((v, i) => (
+        <div key={v} role="option" aria-selected={v === value} className={`rem-wheel-item${v === value ? ' rem-on' : ''}`}
+          onClick={() => list.current.scrollTo({ top: i * ITEM, behavior: 'smooth' })}>
+          {pad(v)}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+const ChevronIcon = ({ dir = 'right' }) => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d={dir === 'left' ? 'm15 18-6-6 6-6' : 'm9 6 6 6-6 6'} />
+  </svg>
+);
+
+function Calendar({ value, onChange, now }) {
+  const today = startOfDay(now);
+  const [month, setMonth] = useState(() => new Date(value.getFullYear(), value.getMonth(), 1));
+  const shift = (n) => setMonth(new Date(month.getFullYear(), month.getMonth() + n, 1));
+  const title = month.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })
+    .replace(/^./, (c) => c.toUpperCase()).replace(/\s*г\.$/, '');
+  return (
+    <div className="rem-calendar">
+      <div className="rem-month">
+        <span className="rem-month-name">{title}</span>
+        <button type="button" className="rem-nav" aria-label="Предыдущий месяц"
+          disabled={month <= new Date(today.getFullYear(), today.getMonth(), 1)} onClick={() => shift(-1)}>
+          <ChevronIcon dir="left" />
+        </button>
+        <button type="button" className="rem-nav" aria-label="Следующий месяц" onClick={() => shift(1)}>
+          <ChevronIcon />
+        </button>
+      </div>
+      <div className="rem-grid">
+        {WEEKDAYS.map((d) => <span key={d} className="rem-weekday">{d}</span>)}
+        {monthDays(month).map((day, i) => (day ? (
+          <button key={i} type="button" disabled={day < today}
+            className={`rem-day${sameDay(day, value) ? ' rem-on' : ''}${sameDay(day, now) ? ' rem-today' : ''}`}
+            onClick={() => onChange(at(day, value.getHours(), value.getMinutes()))}>
+            {day.getDate()}
+          </button>
+        ) : <span key={i} />))}
+      </div>
+    </div>
+  );
+}
+
+/** A row of the iOS-like list: the title, the value under it; pressing it unfolds `children`. */
+function PickerRow({ label, value, open, onToggle, children }) {
+  return (
+    <li className="rem-row">
+      <button type="button" className="rem-row-head" aria-expanded={open} onClick={onToggle}>
+        <span className="rem-row-label">{label}</span>
+        <span className="rem-row-value">{value}</span>
+      </button>
+      {open && <div className="rem-row-body">{children}</div>}
+    </li>
+  );
+}
+
 function ReminderDialog({ value, onSave, onRemove, onClose }) {
   const now = new Date();
   const [draft, setDraft] = useState(() => (value ? new Date(value) : at(addDays(startOfDay(now), 1), 9)));
-  const [month, setMonth] = useState(() => new Date(draft.getFullYear(), draft.getMonth(), 1));
-  const today = startOfDay(now);
-  const set = (next) => {
-    setDraft(next);
-    setMonth(new Date(next.getFullYear(), next.getMonth(), 1));
-  };
-  const shiftMonth = (n) => setMonth(new Date(month.getFullYear(), month.getMonth() + n, 1));
+  const [open, setOpen] = useState('date');
+  const toggle = (part) => setOpen(open === part ? null : part);
   const save = (date) => {
     onSave(format(date));
     onClose();
   };
-  const minute = draft.getMinutes() - (draft.getMinutes() % 5);
+  const dateText = describeReminder(draft, now).replace(/, \d+:\d+$/, '');
 
   return (
     <Modal title="Напоминание" onClose={onClose} className="reminder-dialog" closeButton>
       <div className="rem-presets">
         {presets(now).map((p) => (
-          <button key={p.label} type="button" className="btn btn-small rem-preset" onClick={() => save(p.date)}>
+          <button key={p.label} type="button" className="rem-preset" onClick={() => save(p.date)}>
             {p.label}
             <span className="rem-preset-when">{describeReminder(p.date, now)}</span>
           </button>
         ))}
       </div>
 
-      <div className="rem-calendar">
-        <div className="rem-month">
-          <button type="button" className="btn btn-small btn-icon-only" aria-label="Предыдущий месяц"
-            disabled={month <= new Date(today.getFullYear(), today.getMonth(), 1)} onClick={() => shiftMonth(-1)}>‹</button>
-          <span className="rem-month-name">
-            {month.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }).replace(/^./, (c) => c.toUpperCase())}
-          </span>
-          <button type="button" className="btn btn-small btn-icon-only" aria-label="Следующий месяц"
-            onClick={() => shiftMonth(1)}>›</button>
-        </div>
-        <div className="rem-grid">
-          {WEEKDAYS.map((d) => <span key={d} className="rem-weekday">{d}</span>)}
-          {monthDays(month).map((day, i) => (day ? (
-            <button key={i} type="button" disabled={day < today}
-              className={`rem-day${sameDay(day, draft) ? ' rem-on' : ''}${sameDay(day, now) ? ' rem-today' : ''}`}
-              onClick={() => set(at(day, draft.getHours(), draft.getMinutes()))}>
-              {day.getDate()}
-            </button>
-          ) : <span key={i} />))}
-        </div>
-      </div>
+      <ul className="rem-rows">
+        <PickerRow label="Дата" value={dateText} open={open === 'date'} onToggle={() => toggle('date')}>
+          <Calendar value={draft} onChange={setDraft} now={now} />
+        </PickerRow>
+        <PickerRow label="Время" value={`${pad(draft.getHours())}:${pad(draft.getMinutes())}`} open={open === 'time'}
+          onToggle={() => toggle('time')}>
+          <div className="rem-wheels">
+            <span className="rem-wheel-band" aria-hidden="true" />
+            <Wheel label="Часы" values={HOURS} value={draft.getHours()}
+              onChange={(h) => setDraft((d) => at(d, h, d.getMinutes()))} />
+            <span className="rem-wheel-colon" aria-hidden="true">:</span>
+            <Wheel label="Минуты" values={MINUTES} value={draft.getMinutes()}
+              onChange={(m) => setDraft((d) => at(d, d.getHours(), m))} />
+          </div>
+        </PickerRow>
+      </ul>
 
-      <div className="rem-time">
-        <span className="rem-time-label">Час</span>
-        <div className="rem-hours">
-          {HOURS.map((h) => (
-            <button key={h} type="button" className={`rem-cell${draft.getHours() === h ? ' rem-on' : ''}`}
-              onClick={() => setDraft(at(draft, h, draft.getMinutes()))}>
-              {h}
-            </button>
-          ))}
-        </div>
-        <span className="rem-time-label">Минуты</span>
-        <div className="rem-minutes">
-          {MINUTES.map((m) => (
-            <button key={m} type="button" className={`rem-cell${minute === m ? ' rem-on' : ''}`}
-              onClick={() => setDraft(at(draft, draft.getHours(), m))}>
-              {pad(m)}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <p className={`rem-summary${draft < now ? ' rem-past' : ''}`}>
-        {describeReminder(draft, now)}{draft < now && ' — это время уже прошло'}
-      </p>
+      {draft < now && <p className="rem-past">Это время уже прошло</p>}
       <div className="actions">
         {value && <button type="button" className="btn btn-danger rem-remove" onClick={() => { onRemove(); onClose(); }}>Убрать</button>}
         <button type="button" className="btn" onClick={onClose}>Отмена</button>
