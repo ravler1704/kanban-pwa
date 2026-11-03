@@ -210,6 +210,11 @@ body {
 .modal.filters-dialog { width: min(440px, 100%); }
 .filters-dialog-list { display: flex; flex-direction: column; gap: 0.6rem; }
 .filters-dialog-list .field.folder-filter { max-width: none; width: 100%; }
+.filters-dialog-list[hidden] { display: none; }
+.filter-screen { width: 100%; }
+.filter-screen .modal-head { align-items: center; min-height: 2.25rem; }
+.filter-screen .ff-back { margin: 0 0 0 -0.4rem; }
+.filter-screen-title { margin: 0; }
 .filters-reset { margin-right: auto; }
 .filters-toggle { position: relative; color: var(--muted); }
 .filters-toggle.active { color: var(--text); }

@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { DialogField, SEARCH_FROM, SearchField } from './FolderFilter.jsx';
-import Modal from './Modal.jsx';
+import { DialogField, FilterActions, FilterSheet, SEARCH_FROM, SearchField } from './FolderFilter.jsx';
 
 const CheckIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
@@ -20,7 +19,7 @@ function ColumnSetDialog({ columnSets, value, onChange, onClose }) {
     ? columnSets.filter((s) => [s.name, ...s.columns, ...s.folders].some((t) => t.toLowerCase().includes(needle)))
     : columnSets;
   return (
-    <Modal title="Колонки" onClose={onClose} className="folder-picker folder-filter-sheet" closeButton>
+    <FilterSheet title="Колонки" onClose={onClose}>
       <p className="fp-hint">Папки с разными наборами колонок показываются по отдельности.</p>
       {columnSets.length >= SEARCH_FROM && (
         <SearchField placeholder="Поиск набора, колонки или папки" value={query} onChange={setQuery} />
@@ -46,10 +45,8 @@ function ColumnSetDialog({ columnSets, value, onChange, onClose }) {
           );
         })}
       </ul>
-      <div className="actions fp-actions">
-        <button type="button" className="btn" onClick={onClose}>Отмена</button>
-      </div>
-    </Modal>
+      <FilterActions onClose={onClose} />
+    </FilterSheet>
   );
 }
 

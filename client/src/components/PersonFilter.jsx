@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import Avatar from './Avatar.jsx';
 import { personLabel, personOf, useBoardPeople } from './CardPeople.jsx';
-import { DialogField, FilterActions, SEARCH_FROM, SearchField, SwitchRow } from './FolderFilter.jsx';
-import Modal from './Modal.jsx';
+import { DialogField, FilterActions, FilterSheet, SEARCH_FROM, SearchField, SwitchRow } from './FolderFilter.jsx';
 
 const cardsCount = (n) => {
   const one = n % 10 === 1 && n % 100 !== 11;
@@ -17,7 +16,7 @@ function PersonFilterDialog({ title, list, meId, selected, onToggle, onClear, on
     ? list.filter(({ person: p }) => [p.name, p.email].some((t) => t?.toLowerCase().includes(needle)))
     : list;
   return (
-    <Modal title={title} onClose={onClose} className="folder-picker folder-filter-sheet" closeButton>
+    <FilterSheet title={title} onClose={onClose}>
       {list.length >= SEARCH_FROM && <SearchField placeholder="Поиск участника" value={query} onChange={setQuery} />}
       {!needle && (
         <ul className="fp-list ff-group">
@@ -35,7 +34,7 @@ function PersonFilterDialog({ title, list, meId, selected, onToggle, onClear, on
         {found.length === 0 && <li className="fp-empty">Никого не найдено</li>}
       </ul>
       <FilterActions onClose={onClose} />
-    </Modal>
+    </FilterSheet>
   );
 }
 

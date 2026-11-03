@@ -1,7 +1,10 @@
 import { useEffect, useRef } from 'react';
 
-/** `closeButton`: a × in the corner, for dialogs without their own «Закрыть». */
-export default function Modal({ title, onClose, className = '', closeButton = false, children }) {
+/**
+ * `closeButton`: a × in the corner, for dialogs without their own «Закрыть». `header` false: the
+ * content draws its own (the title still names the dialog).
+ */
+export default function Modal({ title, onClose, className = '', closeButton = false, header = true, children }) {
   const backdrop = useRef(null);
 
   useEffect(() => {
@@ -18,7 +21,7 @@ export default function Modal({ title, onClose, className = '', closeButton = fa
   return (
     <div className="modal-backdrop" ref={backdrop} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className={`modal ${className}`} role="dialog" aria-label={title}>
-        {closeButton ? (
+        {!header ? null : closeButton ? (
           <div className="modal-head">
             <h3>{title}</h3>
             <button type="button" className="btn btn-small btn-icon-only modal-close" onClick={onClose}

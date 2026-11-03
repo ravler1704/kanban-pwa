@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { DialogField, FilterActions, SEARCH_FROM, SearchField, SwitchRow } from './FolderFilter.jsx';
-import Modal from './Modal.jsx';
+import { DialogField, FilterActions, FilterSheet, SEARCH_FROM, SearchField, SwitchRow } from './FolderFilter.jsx';
 
 const cardsCount = (n) => {
   const one = n % 10 === 1 && n % 100 !== 11;
@@ -15,7 +14,7 @@ function TagFilterDialog({ tags, selected, onToggle, onClear, onClose }) {
   const found = needle ? tags.filter((t) => t.name.toLowerCase().includes(needle)) : tags;
 
   return (
-    <Modal title="Теги" onClose={onClose} className="folder-picker folder-filter-sheet" closeButton>
+    <FilterSheet title="Теги" onClose={onClose}>
       {tags.length >= SEARCH_FROM && <SearchField placeholder="Поиск тега" value={query} onChange={setQuery} />}
       {!needle && tags.length > 0 && (
         <ul className="fp-list ff-group">
@@ -32,7 +31,7 @@ function TagFilterDialog({ tags, selected, onToggle, onClear, onClose }) {
         {found.length === 0 && <li className="fp-empty">{needle ? 'Тегов не найдено' : 'У карточек пока нет тегов'}</li>}
       </ul>
       <FilterActions onClose={onClose} />
-    </Modal>
+    </FilterSheet>
   );
 }
 

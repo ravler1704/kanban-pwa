@@ -1,8 +1,8 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { publicToken } from '../board.js';
 import ColumnSetFilter from './ColumnSetFilter.jsx';
-import FolderFilter, { CloseFilters } from './FolderFilter.jsx';
+import FolderFilter, { FilterNav } from './FolderFilter.jsx';
 import Modal from './Modal.jsx';
 import PersonFilter from './PersonFilter.jsx';
 import TagFilter from './TagFilter.jsx';
@@ -81,6 +81,10 @@ export default function FolderBar({
   view, onView, onManage, onAddCard, children,
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // A filter opened inside the filters dialog: its screen replaces the list of filters.
+  const [screen, setScreen] = useState(null);
+  const [screenOpen, setScreenOpen] = useState(false);
+  const nav = useMemo(() => ({ target: screen, setActive: setScreenOpen, closeAll: () => setFiltersOpen(false) }), [screen]);
 
   const hasPeople = (f) => f && (f.counts.size > 0 || f.selected.length > 0);
   const filters = [
@@ -109,14 +113,16 @@ export default function FolderBar({
     .filter(Boolean);
 
   const filtersDialog = filtersOpen && createPortal(
-    <Modal title="Фильтры" onClose={() => setFiltersOpen(false)} className="filters-dialog" closeButton>
-      <CloseFilters.Provider value={() => setFiltersOpen(false)}>
-        <div className="filters-dialog-list">
+    <Modal title="Фильтры" onClose={() => setFiltersOpen(false)} className="filters-dialog" closeButton
+      header={!screenOpen}>
+      <FilterNav.Provider value={nav}>
+        <div className="filters-dialog-list" hidden={screenOpen}>
           {filters.map((f) => <Fragment key={f.id}>{f.node}</Fragment>)}
         </div>
-      </CloseFilters.Provider>
+      </FilterNav.Provider>
+      <div ref={setScreen} />
       <div className="actions">
-        {clearers.length > 0 && (
+        {!screenOpen && clearers.length > 0 && (
           <button type="button" className="btn filters-reset" onClick={() => clearers.forEach((clear) => clear())}>
             Сбросить все
           </button>

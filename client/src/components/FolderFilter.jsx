@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { childrenOf, descendants, flattenFolders, folderPath, folderTree } from '../folders.js';
 import { Chevron } from './ManageFields.jsx';
@@ -11,21 +11,53 @@ const svg = (children, size = 18) => (
 const SearchIcon = () => svg(<><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>, 16);
 export const BackIcon = () => svg(<path d="m15 18-6-6 6-6" />, 20);
 
-/** Closes the board's filters dialog with the filter dialogs opened from it; null outside it. */
-export const CloseFilters = createContext(null);
+/**
+ * Inside the board's filters dialog the filter dialogs open as screens of it: { target (element the
+ * screen goes into), setActive(on), closeAll }. null elsewhere: they open as dialogs of their own.
+ */
+export const FilterNav = createContext(null);
+
+const CloseIcon = () => svg(<path d="M18 6 6 18M6 6l12 12" />, 16);
 
 /**
- * Buttons of a filter dialog: «К фильтрам» returns to the filters dialog, «Применить и закрыть» closes it too.
- * Changes apply at once either way.
+ * A filter dialog, or a screen of the filters dialog. `back` ({ label, onClick }) leads one level up
+ * inside the dialog; on a screen the default leads back to the filters.
  */
+export function FilterSheet({ title, onClose, back = null, children }) {
+  const nav = useContext(FilterNav);
+  const backButton = (b) => b && (
+    <button type="button" className="ff-back" onClick={b.onClick}>
+      <BackIcon />
+      <span>{b.label}</span>
+    </button>
+  );
+  if (!nav) {
+    return (
+      <Modal title={title} onClose={onClose} className="folder-picker folder-filter-sheet" closeButton>
+        {backButton(back)}
+        {children}
+      </Modal>
+    );
+  }
+  return (
+    <div className="folder-picker filter-screen">
+      <div className="modal-head">
+        {backButton(back ?? { label: 'Фильтры', onClick: onClose })}
+        <button type="button" className="btn btn-small btn-icon-only modal-close" onClick={nav.closeAll}
+          aria-label="Закрыть" title="Закрыть"><CloseIcon /></button>
+      </div>
+      <h3 className="filter-screen-title">{title}</h3>
+      {children}
+    </div>
+  );
+}
+
+/** «Готово» of a filter dialog; a screen of the filters dialog uses the dialog's own. */
 export function FilterActions({ onClose }) {
-  const closeAll = useContext(CloseFilters);
+  if (useContext(FilterNav)) return null;
   return (
     <div className="actions fp-actions">
-      <button type="button" className={`btn ${closeAll ? '' : 'btn-primary'}`} onClick={onClose}>
-        {closeAll ? 'К фильтрам' : 'Готово'}
-      </button>
-      {closeAll && <button type="button" className="btn btn-primary" onClick={closeAll}>Применить и закрыть</button>}
+      <button type="button" className="btn btn-primary" onClick={onClose}>Готово</button>
     </div>
   );
 }
@@ -132,13 +164,8 @@ function FolderFilterDialog({ folders, filter, onClose }) {
   const parent = current ? tree.byId.get(tree.parentOf(current)) : null;
 
   return (
-    <Modal title={current ? current.name : 'Папки'} onClose={onClose} className="folder-picker folder-filter-sheet" closeButton>
-      {current && (
-        <button type="button" className="ff-back" onClick={() => open(parent?.id ?? null)}>
-          <BackIcon />
-          <span>{parent ? parent.name : 'Папки'}</span>
-        </button>
-      )}
+    <FilterSheet title={current ? current.name : 'Папки'} onClose={onClose}
+      back={current ? { label: parent ? parent.name : 'Папки', onClick: () => open(parent?.id ?? null) } : null}>
       {!current && folders.length >= SEARCH_FROM && (
         <SearchField placeholder="Поиск папки" value={query} onChange={setQuery} />
       )}
@@ -159,13 +186,23 @@ function FolderFilterDialog({ folders, filter, onClose }) {
         {list.length === 0 && <li className="fp-empty">{needle ? 'Ничего не найдено' : 'Вложенных папок нет'}</li>}
       </ul>
       <FilterActions onClose={onClose} />
-    </Modal>
+    </FilterSheet>
   );
 }
 
-/** A field of the board's filters: shows `value` and opens `dialog(onClose)`. */
+/**
+ * A field of the board's filters: shows `value` and opens `dialog(onClose)`, as a screen of the filters
+ * dialog when inside it.
+ */
 export function DialogField({ label, value, title, dialog }) {
+  const nav = useContext(FilterNav);
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!nav || !open) return undefined;
+    nav.setActive(true);
+    return () => nav.setActive(false);
+  }, [nav, open]);
+  const target = nav ? nav.target : document.body;
   return (
     <div className="field folder-filter">
       <button type="button" className="select folder-field" aria-haspopup="dialog" title={title}
@@ -173,7 +210,7 @@ export function DialogField({ label, value, title, dialog }) {
         <span className="picker-label">{label}</span>
         <span className="picker-value">{value}</span>
       </button>
-      {open && createPortal(dialog(() => setOpen(false)), document.body)}
+      {open && target && createPortal(dialog(() => setOpen(false)), target)}
     </div>
   );
 }
