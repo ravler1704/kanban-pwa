@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { publicToken } from '../board.js';
-import CheckPicker from './CheckPicker.jsx';
 import FolderFilter from './FolderFilter.jsx';
 import TagFilter from './TagFilter.jsx';
 
@@ -43,6 +42,15 @@ function CalendarIcon() {
   );
 }
 
+function ListIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" />
+    </svg>
+  );
+}
+
 function FilterIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
@@ -57,6 +65,7 @@ const FILTERS_HIDDEN_KEY = 'filtersHidden';
 const VIEWS = [
   { id: 'board', label: 'Доска', Icon: BoardIcon },
   { id: 'calendar', label: 'Календарь', Icon: CalendarIcon },
+  { id: 'list', label: 'Список', Icon: ListIcon },
 ];
 
 /**
@@ -65,7 +74,7 @@ const VIEWS = [
  * with a conflict }. Without `onManage` / `onAddCard` (read only) their buttons are not shown.
  */
 export default function FolderBar({
-  folders, folderFilter, conflictsByFolder, columnSets, columnSetId, onSelectColumnSet, tagFilter, cardFilter,
+  folders, folderFilter, conflictsByFolder, columnSets, columnSetId, onSelectColumnSet, tagFilter,
   view, onView, onManage, onAddCard, children,
 }) {
   const [filtersHidden, setFiltersHidden] = useState(() => localStorage.getItem(FILTERS_HIDDEN_KEY) === '1');
@@ -75,7 +84,7 @@ export default function FolderBar({
   };
 
   // A filter that narrows the board: shown on the toggle while the filters are hidden.
-  const filtered = Boolean(folderFilter.onClear || tagFilter?.selected.length || cardFilter?.selected.length);
+  const filtered = Boolean(folderFilter.onClear || tagFilter?.selected.length);
 
   const filters = !filtersHidden && (
     <div className="projectbar-row">
@@ -95,11 +104,6 @@ export default function FolderBar({
       )}
 
       {tagFilter && <TagFilter {...tagFilter} />}
-
-      {cardFilter && (
-        <CheckPicker label="Карточки" emptyLabel="Все" clearLabel="Показать все карточки" className="card-filter"
-          searchPlaceholder="Номер или название" notFound="Карточек не найдено" {...cardFilter} />
-      )}
     </div>
   );
 

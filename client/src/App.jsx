@@ -14,6 +14,7 @@ import ConflictDialog from './components/ConflictDialog.jsx';
 import ManageDialog from './components/ManageDialog.jsx';
 import NewCardDialog, { lastTarget } from './components/NewCardDialog.jsx';
 import CalendarView from './components/CalendarView.jsx';
+import ListView from './components/ListView.jsx';
 import ChatDialog from './components/ChatDialog.jsx';
 import PeopleBar from './components/People.jsx';
 import { tagKey, tagNames, tagsOf } from './tags.js';
@@ -23,7 +24,6 @@ import { folderIdsOf, peopleStore } from './people.js';
 const VIEW_KEY = 'view';
 const ALL_SET_KEY = 'allProjectsColumnSet';
 const TAG_FILTER_KEY = 'tagFilter';
-const CARD_FILTER_KEY = `cardFilter:${dbName}`;
 const byPosition = (a, b) => a.position - b.position || a.id.localeCompare(b.id);
 
 // The folder filter is a list of unchecked folder ids (`folderToggles`), so new folders show up checked.
@@ -105,7 +105,8 @@ export default function App() {
   const [addingCard, setAddingCard] = useState(false);
   // The chats window: null closed, '' the list, 'folder:<id>' or 'dm:<user id>' a conversation.
   const [chat, setChat] = useState(null);
-  const [view, setView] = useState(() => (localStorage.getItem(VIEW_KEY) === 'calendar' ? 'calendar' : 'board'));
+  const [view, setView] = useState(() => (['calendar', 'list'].includes(localStorage.getItem(VIEW_KEY))
+    ? localStorage.getItem(VIEW_KEY) : 'board'));
 
   const changeView = (next) => {
     setView(next);
@@ -127,13 +128,6 @@ export default function App() {
   const toggleTag = (name) => {
     const key = tagKey(name);
     changeTagFilter(tagFilter.includes(key) ? tagFilter.filter((k) => k !== key) : [...tagFilter, key]);
-  };
-
-  // Card ids: only these cards are shown.
-  const [cardFilter, setCardFilter] = useState(() => readList(CARD_FILTER_KEY));
-  const changeCardFilter = (next) => {
-    setCardFilter(next);
-    localStorage.setItem(CARD_FILTER_KEY, JSON.stringify(next));
   };
 
   // A tapped reminder opens its card: `?card=` when the app starts from the notification,
@@ -208,6 +202,7 @@ export default function App() {
       .filter((c) => c.cardId && !c.deleted).toArray(),
     [scopeFolderIds],
   );
+  const openRecord = useLiveQuery(() => (openCardId ? db.cards.get(openCardId) : null), [openCardId]);
 
   // Selections of earlier builds are converted once: `hidden` projects and unchecked spaces (with their projects).
   useEffect(() => {
@@ -280,19 +275,14 @@ export default function App() {
     .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
   const activeTags = new Set(tagFilter);
 
-  // Cards to pick: those in view and the picked ones even if their folder is not shown now.
-  const liveCards = new Map(cards.filter((c) => !c.deleted || c.conflict).map((c) => [c.id, c]));
-  const pickedCards = cardFilter.filter((id) => liveCards.has(id));
-  const picked = new Set(pickedCards);
-  const cardItems = [...new Set([...inScope, ...pickedCards.map((id) => liveCards.get(id))])]
-    .sort((a, b) => (a.number ?? Infinity) - (b.number ?? Infinity) || byPosition(a, b))
-    .map((c) => ({ key: c.id, name: `${c.number ? `#${c.number} ` : ''}${c.title.trim() || 'Без названия'}` }));
-
   const visible = inScope
     .filter((c) => !tagFilter.length || [...tagsOf(c)].some((key) => activeTags.has(key)))
-    .filter((c) => !picked.size || picked.has(c.id))
     .sort(byPosition);
-  const openCard = cards.find((c) => c.id === openCardId);
+  // A card found in the list may be in a folder that is not shown.
+  const openCard = cards.find((c) => c.id === openCardId) ?? (openRecord && tree.byId.has(openRecord.folderId)
+    ? { ...openRecord, columnId: folderColumnIds.get(openRecord.folderId).includes(openRecord.columnId)
+      ? openRecord.columnId : folderColumnIds.get(openRecord.folderId)[0] }
+    : null);
 
   // Where new cards go among `list`: the folder the view is narrowed to (with what is inside it), else the
   // last used one, else the first in the tree.
@@ -404,16 +394,6 @@ export default function App() {
               onSetAll: (on) => changeTagFilter(on ? tags.map((t) => t.key) : []),
               onClear: () => changeTagFilter([]),
             } : null}
-            cardFilter={cardItems.length ? {
-              items: cardItems,
-              selected: pickedCards,
-              summary: pickedCards.length
-                ? pickedCards.map((id) => liveCards.get(id)).map((c) => (c.number ? `#${c.number}` : c.title)).join(', ')
-                : undefined,
-              onToggle: (id) => changeCardFilter(picked.has(id) ? pickedCards.filter((k) => k !== id) : [...pickedCards, id]),
-              onSetAll: (on) => changeCardFilter(on ? cardItems.map((i) => i.key) : []),
-              onClear: pickedCards.length ? () => changeCardFilter([]) : null,
-            } : null}
             view={view}
             onView={changeView}
             onManage={readOnly ? null : () => setManaging(true)}
@@ -421,10 +401,12 @@ export default function App() {
           >
             {!publicToken && <PeopleBar folders={shownFolders} allFolders={folders} onChat={setChat} />}
           </FolderBar>
-          {shownFolders.length === 0 ? (
+          {shownFolders.length === 0 && view !== 'list' ? (
             <div className="empty">
               <p>Не отмечена ни одна папка — отметьте нужные в списке «Папки».</p>
             </div>
+          ) : view === 'list' ? (
+            <ListView cards={visible} folders={folders} columnsOfFolder={model.columnsOfFolder} onOpen={setOpenCardId} />
           ) : view === 'calendar' ? (
             <CalendarView cards={visible} columns={model.columns} cardLabel={cardLabel} onOpen={setOpenCardId} />
           ) : (
