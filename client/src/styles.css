@@ -207,8 +207,8 @@ body {
 .view-switch-btn:hover { color: var(--text); }
 .view-switch-btn.active { background: var(--card); color: var(--text); }
 .projectbar-row > .btn-add-card { margin-left: auto; }
-.projectbar-row > .filters-more { position: relative; align-self: stretch; padding: 0 0.9rem; color: var(--muted); }
-.filters-more.active { color: var(--text); }
+.projectbar-row > .filters-more { position: relative; color: var(--muted); }
+.filters-more.active { color: var(--text); background: var(--card); }
 .filters-more-dot {
   position: absolute; top: 0.4rem; right: 0.4rem; width: 0.45rem; height: 0.45rem;
   border-radius: 50%; background: var(--accent);

@@ -64,6 +64,14 @@ function FilterIcon() {
 }
 
 // The filters behind the toggle are shown while it is on; the main ones always are.
+function MoreIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" />
+    </svg>
+  );
+}
+
 // The whole filters panel; inside it, filters other than the main ones open with «Ещё».
 const FILTERS_HIDDEN_KEY = 'filtersHidden';
 const MORE_KEY = 'filtersMore';
@@ -124,14 +132,17 @@ export default function FolderBar({
   const filterRow = !filtersHidden && (
     <div className="projectbar-row">
       {mainOnes.map((f) => <Fragment key={f.id}>{f.node}</Fragment>)}
+      {more && extra.map((f) => <Fragment key={f.id}>{f.node}</Fragment>)}
       {extra.length > 0 && (
-        <button type="button" className={`btn btn-small filters-more ${more ? 'active' : ''}`} aria-expanded={more}
-          onClick={toggleMore} title={extraActive && !more ? 'Среди скрытых фильтров есть включённые' : undefined}>
-          {more ? 'Скрыть' : `Ещё ${extra.length}`}
+        <button type="button" className={`btn btn-small btn-icon-only filters-more ${more ? 'active' : ''}`}
+          aria-expanded={more} onClick={toggleMore}
+          title={more ? 'Скрыть остальные фильтры'
+            : `Остальные фильтры: ${extra.length}${extraActive ? ' (есть включённые)' : ''}`}
+          aria-label={more ? 'Скрыть остальные фильтры' : 'Остальные фильтры'}>
+          <MoreIcon />
           {!more && extraActive > 0 && <span className="filters-more-dot" aria-hidden="true" />}
         </button>
       )}
-      {more && extra.map((f) => <Fragment key={f.id}>{f.node}</Fragment>)}
     </div>
   );
 
