@@ -3,7 +3,7 @@ import { pasteAsLink } from '../links.js';
 import { useLinkMenu } from './LinkMenu.jsx';
 
 /** Card title: always as tall as its text. */
-export default function TitleField({ value, onChange, autoFocus }) {
+export default function TitleField({ value, onChange }) {
   const input = useRef(null);
   // Caret to set once the pasted text is rendered.
   const [caret, setCaret] = useState(null);
@@ -36,7 +36,7 @@ export default function TitleField({ value, onChange, autoFocus }) {
     <label className="field">
       <span className="field-label">Название</span>
       <textarea ref={input} className="title-input" rows={1}
-        value={value} maxLength={500} autoFocus={autoFocus}
+        value={value} maxLength={500}
         onChange={(e) => onChange(e.target.value.replace(/\s*\n\s*/g, ' '))}
         onPaste={(e) => {
           const next = pasteAsLink(e.currentTarget, e.clipboardData.getData('text/plain'));

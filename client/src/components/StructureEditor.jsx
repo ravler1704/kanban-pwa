@@ -1,10 +1,10 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { createFolder, moveFolder, renameFolder, reorderFolder } from '../actions.js';
 import { isOwnBoard } from '../board.js';
 import { childrenOf, descendants, flattenFolders, folderColumnSetId, folderPath, folderTree } from '../folders.js';
 import ContextMenu from './ContextMenu.jsx';
 import FolderSelect from './FolderSelect.jsx';
-import { AddButton, Chevron, plural } from './ManageFields.jsx';
+import { AddButton, Chevron, plural, useOutsidePress } from './ManageFields.jsx';
 import Modal from './Modal.jsx';
 import { FolderMembers, useCanShare } from './SharingSection.jsx';
 
@@ -79,16 +79,21 @@ function MoreIcon() {
   );
 }
 
-/** The folder's name edited in place: Enter or leaving the field saves, Escape cancels. */
+/** The folder's name edited in place: Enter, leaving the field or a press outside saves, Escape cancels. */
 function InlineName({ value, onSave, onDone }) {
   const [draft, setDraft] = useState(value);
+  const input = useRef(null);
+  const done = useRef(false);
   const finish = (save) => {
+    if (done.current) return;
+    done.current = true;
     const name = draft.trim();
     if (save && name && name !== value) onSave(name);
     onDone();
   };
+  useOutsidePress(input, () => finish(true));
   return (
-    <input className="manage-input tree-rename" value={draft} maxLength={200} autoFocus aria-label="Название папки"
+    <input ref={input} className="manage-input tree-rename" value={draft} maxLength={200} aria-label="Название папки"
       onFocus={(e) => e.currentTarget.select()}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={() => finish(true)}

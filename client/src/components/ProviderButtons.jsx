@@ -66,12 +66,6 @@ export function EmailCodeForm({ link = false, submitLabel, onCode }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [wait, setWait] = useState(0);
-  const codeInput = useRef(null);
-
-  // The field is disabled while a code is checked; a wrong one is typed again right away.
-  useEffect(() => {
-    if (step === 'code' && !busy) codeInput.current?.focus();
-  }, [step, busy]);
 
   useEffect(() => {
     if (wait <= 0) return undefined;
@@ -129,7 +123,7 @@ export function EmailCodeForm({ link = false, submitLabel, onCode }) {
       <label className="field">
         <span className="field-label">Код из письма</span>
         <input className="email-input email-code" value={code} inputMode="numeric" autoComplete="one-time-code"
-          maxLength={4} ref={codeInput} disabled={busy}
+          maxLength={4} disabled={busy}
           onChange={(e) => {
             const value = e.target.value.replace(/\D/g, '').slice(0, 4);
             setCode(value);

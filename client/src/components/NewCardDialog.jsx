@@ -36,7 +36,7 @@ export default function NewCardDialog({ folders, columnsOfFolder, target, onClos
   return (
     <Modal title="Новая карточка" onClose={onClose}>
       <form className="editor" onSubmit={submit}>
-        <TitleField value={title} onChange={setTitle} autoFocus />
+        <TitleField value={title} onChange={setTitle} />
         <CardExtraFields
           description={description}
           onDescription={setDescription}

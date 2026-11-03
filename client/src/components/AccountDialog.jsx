@@ -116,7 +116,7 @@ function DeleteAccount({ online }) {
       </p>
       <label className="field">
         <span className="field-label">Чтобы подтвердить, введите «{DELETE_WORD}»</span>
-        <input className="manage-input" value={word} autoFocus autoComplete="off" onChange={(e) => setWord(e.target.value)} />
+        <input className="manage-input" value={word} autoComplete="off" onChange={(e) => setWord(e.target.value)} />
       </label>
       <div className="manage-row">
         <button type="submit" className="btn btn-danger"

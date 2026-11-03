@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /** Text input that saves on Enter / blur and reverts on Escape. */
 export function NameInput({ value, onSave, className = '', label, maxLength = 200 }) {
@@ -37,11 +37,27 @@ export function NameInput({ value, onSave, className = '', label, maxLength = 20
   );
 }
 
-/** `onCancel`: the form closes on Escape or when it loses focus empty (with `autoFocus`). */
-export function AddForm({ label, onAdd, autoFocus = false, onCancel }) {
+/** Calls `handler` on a press outside `ref` (fields that open without focus close this way). */
+export function useOutsidePress(ref, handler) {
+  const latest = useRef(handler);
+  latest.current = handler;
+  useEffect(() => {
+    const onDown = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) latest.current?.();
+    };
+    document.addEventListener('pointerdown', onDown);
+    return () => document.removeEventListener('pointerdown', onDown);
+  }, [ref]);
+}
+
+/** `onCancel`: the form closes on Escape, or when it is left or pressed outside while empty. */
+export function AddForm({ label, onAdd, onCancel }) {
   const [name, setName] = useState('');
+  const form = useRef(null);
+  useOutsidePress(form, () => onCancel && !name.trim() && onCancel());
   return (
     <form
+      ref={form}
       className="manage-add"
       onSubmit={(e) => {
         e.preventDefault();
@@ -57,7 +73,6 @@ export function AddForm({ label, onAdd, autoFocus = false, onCancel }) {
           className="manage-input"
           value={name}
           maxLength={200}
-          autoFocus={autoFocus}
           onChange={(e) => setName(e.target.value)}
           onBlur={(e) => onCancel && !name.trim() && !e.currentTarget.form.contains(e.relatedTarget) && onCancel()}
           onKeyDown={(e) => {
@@ -97,5 +112,5 @@ export function AddButton({ label, onAdd, open: openProp, onOpenChange }) {
   if (!open) {
     return <button type="button" className="btn field-add tree-add" onClick={() => setOpen(true)}>+ {label}</button>;
   }
-  return <AddForm label={label} autoFocus onAdd={onAdd} onCancel={() => setOpen(false)} />;
+  return <AddForm label={label} onAdd={onAdd} onCancel={() => setOpen(false)} />;
 }
