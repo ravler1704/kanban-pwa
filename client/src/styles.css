@@ -619,6 +619,7 @@ body {
 .card-moves { display: flex; gap: 0.25rem; }
 .card-reminder { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; color: var(--accent); }
 .card-reminder-past { color: var(--muted); }
+.card-reminder-more { color: var(--muted); }
 .card-uploading { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; color: var(--accent); }
 .attachment-failed .attachment-size { color: var(--danger); flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card-number { font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -719,7 +720,24 @@ body {
 a.link { color: var(--accent); overflow-wrap: anywhere; }
 .field-adds { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 .btn.field-add { border-style: dashed; background: none; color: var(--muted); font-size: 0.85rem; }
-.reminder-input .reminder-value { flex: 1; min-width: 0; text-align: left; cursor: pointer; }
+.reminder-input .reminder-value {
+  display: flex; align-items: center; gap: 0.35rem; flex: 1; min-width: 0; text-align: left; cursor: pointer;
+}
+.reminder-input .reminder-value svg { flex: none; color: var(--accent); }
+.reminder-past { color: var(--muted); }
+.field:has(.reminder-list) { display: flex; flex-direction: column; gap: 0.4rem; }
+.reminder-list li + li .reminder-value { padding-top: 0.35rem; }
+.reminder-list { display: flex; flex-direction: column; gap: 0.4rem; margin: 0; padding: 0; list-style: none; }
+.btn.reminder-add { align-self: flex-start; border-style: dashed; background: none; color: var(--muted); }
+.rem-repeats { display: flex; flex-direction: column; }
+.rem-repeat {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+  padding: 0.55rem 0.4rem; border: none; border-radius: 8px; background: none;
+  color: var(--text); font: inherit; text-align: left; cursor: pointer;
+}
+.rem-repeat + .rem-repeat { border-top: 1px solid var(--border); border-radius: 0; }
+.rem-repeat:hover { color: var(--accent); }
+.rem-repeat.rem-on { color: var(--accent); font-weight: 600; }
 .reminder-dialog { display: flex; flex-direction: column; gap: 0.9rem; width: min(400px, 100%); }
 .reminder-dialog .actions { margin-top: 0; }
 .rem-remove { margin-right: auto; }

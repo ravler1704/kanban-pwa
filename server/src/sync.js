@@ -3,6 +3,7 @@ import {
   cardIdsInOrder, commentIdsOfCard, getMaxSeq, getMeta, getRecord, getRecordsSince, saveRecord, setMeta, transaction,
 } from './db.js';
 import { folderAncestors, folderColumnSet } from './folders.js';
+import { cardReminders, isReminderList, nextTime } from './reminders.js';
 import { textDiff } from './textDiff.js';
 
 const string = (max) => (v) => typeof v === 'string' && v.length <= max;
@@ -67,13 +68,15 @@ export const SCHEMAS = {
       description: string(10_000),
       position: number,
       deleted: boolean,
+      // A single reminder of cards saved before `reminders` (see reminders.js).
       remindAt: optionalTime,
+      reminders: isReminderList,
       attachments,
       number: (v) => v === null || (Number.isInteger(v) && v > 0),
     },
     defaults: {
       columnId: 'todo', title: '', description: '', position: 0, deleted: false, remindAt: null,
-      attachments: [], number: null,
+      reminders: [], attachments: [], number: null,
     },
     textFields: ['title', 'description'],
     serverFields: ['attachments', 'number'],
@@ -338,7 +341,10 @@ function recordEvents(owner, actor, type, before, after) {
       const diff = textDiff(before.description, after.description, 3000 - JSON.stringify(card).length);
       note(at, { k: 'card.description', card, ...(diff && { diff }) });
     }
-    if (after.remindAt !== before.remindAt) note(at, { k: 'card.remind', card, at: after.remindAt });
+    const reminders = cardReminders(after);
+    if (JSON.stringify(reminders) !== JSON.stringify(cardReminders(before))) {
+      note(at, { k: 'card.remind', card, reminders: reminders.map((r) => ({ at: nextTime(r, Date.now()) ?? r.at, repeat: r.repeat })) });
+    }
   } else if (type === 'folder') {
     const parent = after.parentId;
     if (!before) {

@@ -241,7 +241,7 @@ db.version(13).stores({
 });
 
 const FOLDER_FIELDS = ['parentId', 'columnSetId', 'name', 'position', 'deleted', 'hidden'];
-const CARD_FIELDS = ['folderId', 'columnId', 'title', 'description', 'position', 'deleted', 'remindAt', 'attachments', 'number'];
+const CARD_FIELDS = ['folderId', 'columnId', 'title', 'description', 'position', 'deleted', 'remindAt', 'reminders', 'attachments', 'number'];
 
 // Push order matters: columns and sets before the folders that use them, folders before their cards.
 // Folders among themselves go parents first (see sortFolders in sync.js).
@@ -253,7 +253,7 @@ export const TYPES = {
   folder: { table: 'folders', fields: FOLDER_FIELDS },
   card: {
     table: 'cards',
-    // remindAt: Unix time in ms of the push reminder, or null.
+    // reminders: [{ at, repeat, off }] (see reminders.js); remindAt: the single reminder of older cards.
     // attachments: [{ id, name, size, type, addedAt }], changed by the server only (files.js).
     // number: #1, #2, … within the board, given by the server (null until the card is synced).
     fields: CARD_FIELDS,

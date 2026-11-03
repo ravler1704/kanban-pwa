@@ -812,28 +812,28 @@ export function deletePushSubscription(endpoint, owner) {
   else removeOwnSubscription.run(endpoint, owner);
 }
 
-// Cards whose reminder time has come, skipping ones far in the past (e.g. set before the
-// server was down for a long time) and ones already sent for this exact time.
-const selectDueReminders = db.prepare(`
-  SELECT r.owner, r.id, r.data, json_extract(r.data, '$.remindAt') AS remind_at
-  FROM records r
-  WHERE r.type = 'card'
-    AND json_extract(r.data, '$.remindAt') BETWEEN ? AND ?
-    AND json_extract(r.data, '$.deleted') = 0
-    AND NOT EXISTS (
-      SELECT 1 FROM reminders_sent s
-      WHERE s.owner = r.owner AND s.card_id = r.id AND s.remind_at = json_extract(r.data, '$.remindAt')
-    )
+// Cards with reminders; push.js picks the ones whose time has come.
+const selectCardsWithReminders = db.prepare(`
+  SELECT owner, id, data FROM records
+  WHERE type = 'card'
+    AND json_extract(data, '$.deleted') = 0
+    AND (json_array_length(data, '$.reminders') > 0 OR json_extract(data, '$.remindAt') >= ?)
 `);
+const selectReminderSent = db.prepare(
+  'SELECT 1 FROM reminders_sent WHERE owner = ? AND card_id = ? AND remind_at = ?',
+);
 const insertReminderSent = db.prepare(
   'INSERT OR IGNORE INTO reminders_sent (owner, card_id, remind_at, sent_at) VALUES (?, ?, ?, ?)',
 );
 const removeOldRemindersSent = db.prepare('DELETE FROM reminders_sent WHERE remind_at < ?');
 
-export function getDueReminders(now, maxAgeMs) {
-  return selectDueReminders.all(now - maxAgeMs, now).map((row) => ({
-    owner: row.owner, id: row.id, remindAt: row.remind_at, card: JSON.parse(row.data),
-  }));
+/** Cards that may have a reminder at or after `since`: { owner, id, card }. */
+export function getCardsWithReminders(since) {
+  return selectCardsWithReminders.all(since).map((row) => ({ owner: row.owner, id: row.id, card: JSON.parse(row.data) }));
+}
+
+export function isReminderSent(owner, cardId, remindAt) {
+  return Boolean(selectReminderSent.get(owner, cardId, remindAt));
 }
 
 /** Returns false if another check already claimed this reminder. */

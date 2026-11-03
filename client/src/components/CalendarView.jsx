@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { withoutLinks } from '../links.js';
+import { cardReminders, timesBetween } from '../reminders.js';
 
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
@@ -45,13 +46,13 @@ function ChevronIcon({ left }) {
   );
 }
 
-function Reminder({ card, label, columnName, now, onOpen, detailed }) {
-  const past = card.remindAt < now;
+function Reminder({ card, time, label, columnName, now, onOpen, detailed }) {
+  const past = time < now;
   const title = withoutLinks(card.title);
   return (
     <button type="button" className={`cal-card ${past ? 'cal-card-past' : ''}`} onClick={() => onOpen(card.id)}
       title={[label, title, columnName].filter(Boolean).join(' · ')}>
-      <span className="cal-card-time">{formatTime(card.remindAt)}</span>
+      <span className="cal-card-time">{formatTime(time)}</span>
       <span className="cal-card-title">{title || 'Без названия'}</span>
       {detailed && (label || columnName) && (
         <span className="cal-card-meta">{[label, columnName].filter(Boolean).join(' · ')}</span>
@@ -73,21 +74,26 @@ export default function CalendarView({ cards, columns, cardLabel, onOpen }) {
   const todayKey = dayKey(new Date(now));
   const columnName = new Map(columns.map((c) => [c.id, c.name]));
 
+  const days = monthDays(month);
+  const from = days[0].getTime();
+  const to = new Date(days.at(-1).getFullYear(), days.at(-1).getMonth(), days.at(-1).getDate() + 1).getTime();
+  const items = cards.filter((c) => !c.deleted).flatMap((card) => [...new Set(
+    cardReminders(card).flatMap((r) => timesBetween(r, from, to)),
+  )].map((time) => ({ card, time })));
   const byDay = new Map();
-  for (const card of [...cards].filter((c) => c.remindAt && !c.deleted).sort((a, b) => a.remindAt - b.remindAt)) {
-    const key = dayKey(new Date(card.remindAt));
+  for (const item of items.sort((a, b) => a.time - b.time)) {
+    const key = dayKey(new Date(item.time));
     if (!byDay.has(key)) byDay.set(key, []);
-    byDay.get(key).push(card);
+    byDay.get(key).push(item);
   }
 
-  const days = monthDays(month);
   const inMonth = (d) => d.getMonth() === month.getMonth();
   const shift = (n) => setMonth(new Date(month.getFullYear(), month.getMonth() + n, 1));
   const title = `${capitalize(month.toLocaleDateString('ru-RU', { month: 'long' }))} ${month.getFullYear()}`;
   const agendaDays = days.filter((d) => inMonth(d) && byDay.has(dayKey(d)));
 
-  const reminder = (card, detailed) => (
-    <Reminder key={card.id} card={card} label={cardLabel?.(card)} columnName={columnName.get(card.columnId)}
+  const reminder = ({ card, time }, detailed) => (
+    <Reminder key={`${card.id}-${time}`} card={card} time={time} label={cardLabel?.(card)} columnName={columnName.get(card.columnId)}
       now={now} onOpen={onOpen} detailed={detailed} />
   );
 
@@ -117,7 +123,7 @@ export default function CalendarView({ cards, columns, cardLabel, onOpen }) {
           return (
             <div key={key} className={classes.join(' ')}>
               <div className="cal-day-number">{d.getDate()}</div>
-              {byDay.get(key)?.map((card) => reminder(card, false))}
+              {byDay.get(key)?.map((item) => reminder(item, false))}
             </div>
           );
         })}
@@ -130,7 +136,7 @@ export default function CalendarView({ cards, columns, cardLabel, onOpen }) {
           return (
             <section key={key} className={`cal-agenda-day ${key === todayKey ? 'cal-day-today' : ''}`}>
               <h3>{capitalize(d.toLocaleDateString('ru-RU', { weekday: 'short', day: 'numeric', month: 'long' }))}</h3>
-              {byDay.get(key).map((card) => reminder(card, true))}
+              {byDay.get(key).map((item) => reminder(item, true))}
             </section>
           );
         })}

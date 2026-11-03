@@ -8,13 +8,13 @@ import ReminderField from './ReminderField.jsx';
  * Description, reminder and (for an existing `card`) files: empty ones collapse into "add"
  * buttons sharing one row.
  */
-export default function CardExtraFields({ description, onDescription, remindAt, onRemindAt, descriptionRows, card }) {
+export default function CardExtraFields({ description, onDescription, reminders, onReminders, descriptionRows, card }) {
   const [descriptionOpen, setDescriptionOpen] = useState(Boolean(description));
-  const [reminderOpen, setReminderOpen] = useState(Boolean(remindAt));
+  const [reminderOpen, setReminderOpen] = useState(reminders.length > 0);
   const [filesOpen, setFilesOpen] = useState(false);
   const uploading = useSyncExternalStore(uploadStore.subscribe, uploadStore.get).some((u) => u.cardId === card?.id);
   const showDescription = descriptionOpen || Boolean(description);
-  const showReminder = reminderOpen || Boolean(remindAt);
+  const showReminder = reminderOpen || reminders.length > 0;
   const showFiles = !card || filesOpen || card.attachments?.length > 0 || uploading;
 
   return (
@@ -28,7 +28,7 @@ export default function CardExtraFields({ description, onDescription, remindAt, 
         />
       )}
       {showReminder && (
-        <ReminderField value={remindAt} onChange={onRemindAt} onCollapse={() => setReminderOpen(false)} />
+        <ReminderField value={reminders} onChange={onReminders} onCollapse={() => setReminderOpen(false)} />
       )}
       {card && showFiles && (
         <Attachments card={card} pickOnOpen={filesOpen} onCollapse={() => setFilesOpen(false)} />

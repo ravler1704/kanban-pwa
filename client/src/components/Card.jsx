@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { uploadStore } from '../files.js';
+import { cardReminders, nextReminder } from '../reminders.js';
 import { splitTags, tagKey } from '../tags.js';
 import Markdown from './Markdown.jsx';
 
@@ -14,6 +15,21 @@ function formatReminder(ts) {
     day: 'numeric', month: 'short', ...(d.getFullYear() !== now.getFullYear() && { year: 'numeric' }),
   });
   return `${date} ${time}`;
+}
+
+function ReminderBadge({ card }) {
+  const next = nextReminder(card, Date.now());
+  if (!next) return null;
+  const count = cardReminders(card).length;
+  return (
+    <span className={`card-reminder${next.past ? ' card-reminder-past' : ''}`}
+      title={count > 1 ? `Напоминаний: ${count}` : 'Напоминание'}>
+      <BellIcon />
+      {formatReminder(next.time)}
+      {next.repeat && ' ↻'}
+      {count > 1 && <span className="card-reminder-more">+{count - 1}</span>}
+    </span>
+  );
 }
 
 function BellIcon() {
@@ -134,13 +150,7 @@ export default function Card({
       <div className="card-footer">
         <div className="card-badges">
           {card.number && <span className="card-number" title="Номер карточки">#{card.number}</span>}
-          {card.remindAt && (
-            <span className={`card-reminder${card.remindAt <= Date.now() ? ' card-reminder-past' : ''}`}
-              title="Напоминание">
-              <BellIcon />
-              {formatReminder(card.remindAt)}
-            </span>
-          )}
+          <ReminderBadge card={card} />
           <UploadBadge cardId={card.id} />
           {card.attachments?.length > 0 && (
             <span className="card-files" title="Прикреплённые файлы">

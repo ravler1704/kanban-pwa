@@ -1,6 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from './db.js';
 import { withoutLinks } from './links.js';
+import { REPEAT_LABELS } from './reminders.js';
 
 // Notes of changes the server writes into a folder's chat: a comment whose `event` is JSON
 // { k: kind, card: { id, title, number }, ... } (see recordEvents in server/src/sync.js).
@@ -43,9 +44,12 @@ function parts(e) {
     case 'card.out': return ['Карточка ', card, ` перенесена в папку ${q(e.folder ?? e.project)}`];
     case 'card.in': return ['Карточка ', card, ` перенесена из папки ${q(e.folder ?? e.project)}`];
     case 'card.description': return ['Изменено описание карточки ', card];
-    case 'card.remind': return e.at
-      ? ['Напоминание по карточке ', card, `: ${remindTime(e.at)}`]
-      : ['Убрано напоминание по карточке ', card];
+    case 'card.remind': {
+      const list = e.reminders ?? (e.at ? [{ at: e.at, repeat: null }] : []);
+      if (!list.length) return ['Убраны напоминания по карточке ', card];
+      const times = list.map((r) => remindTime(r.at) + (r.repeat ? ` (${REPEAT_LABELS[r.repeat].toLowerCase()})` : ''));
+      return [list.length > 1 ? 'Напоминания по карточке ' : 'Напоминание по карточке ', card, `: ${times.join(', ')}`];
+    }
     case 'card.file.add': return [`Прикреплён файл ${q(e.name)} к карточке `, card];
     case 'card.file.remove': return [`Удалён файл ${q(e.name)} из карточки `, card];
     case 'folder.create': return [`Создана папка ${q(e.name)}`];

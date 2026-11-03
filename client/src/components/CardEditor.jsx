@@ -8,7 +8,8 @@ import Modal from './Modal.jsx';
 import FolderSelect from './FolderSelect.jsx';
 import { matchColumn } from '../columnSets.js';
 import { folderPathName } from '../folders.js';
-import { fromInputValue, toInputValue } from './ReminderField.jsx';
+import { cardReminders } from '../reminders.js';
+import { reminderText } from './ReminderField.jsx';
 import TitleField from './TitleField.jsx';
 
 /** Comments sent right away, apart from the card's «Сохранить», among the notes of what was done with it. */
@@ -28,9 +29,8 @@ function CardView({ card, columnsOfFolder, folders, onClose }) {
         </h3>
         <p className="muted">
           {[column?.name, folder && folderPathName(folder, folders)].filter(Boolean).join(' · ')}
-          {card.remindAt && ` · напоминание ${new Date(card.remindAt).toLocaleString('ru-RU', {
-            day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
-          })}`}
+          {cardReminders(card).length > 0
+            && ` · напоминания: ${cardReminders(card).map((r) => reminderText(r)).join('; ')}`}
         </p>
         {card.description && <div className="card-view-desc"><Markdown text={card.description} /></div>}
         <Attachments card={card} readOnly />
@@ -59,7 +59,7 @@ function CardForm({ card, columnsOfFolder, folders, onClose }) {
   const [description, setDescription] = useState(card.description);
   const [folderId, setFolderId] = useState(card.folderId);
   const [columnId, setColumnId] = useState(card.columnId);
-  const [remindAt, setRemindAt] = useState(() => toInputValue(card.remindAt));
+  const [reminders, setReminders] = useState(() => cardReminders(card));
 
   // Another folder may use another column set: the status then is one of its columns.
   const columns = columnsOfFolder(folderId);
@@ -81,7 +81,10 @@ function CardForm({ card, columnsOfFolder, folders, onClose }) {
     const patch = {};
     if (title !== base.title) patch.title = title;
     if (description !== base.description) patch.description = description;
-    if (remindAt !== toInputValue(card.remindAt)) patch.remindAt = fromInputValue(remindAt);
+    if (JSON.stringify(reminders) !== JSON.stringify(cardReminders(card))) {
+      patch.reminders = reminders;
+      patch.remindAt = null;
+    }
     if (Object.keys(patch).length) await updateCard(card.id, patch, base);
     await moveCardToFolder(card.id, folderId);
     if (columnId !== card.columnId) await moveCardToColumn(card.id, columnId);
@@ -113,8 +116,8 @@ function CardForm({ card, columnsOfFolder, folders, onClose }) {
         <CardExtraFields
           description={description}
           onDescription={setDescription}
-          remindAt={remindAt}
-          onRemindAt={setRemindAt}
+          reminders={reminders}
+          onReminders={setReminders}
           card={card}
         />
         <FolderSelect folders={folders} value={folderId} onChange={changeFolder} />

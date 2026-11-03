@@ -356,13 +356,14 @@ async function arrivalPosition(columnId, cardId = null) {
   return cards.reduce((min, c) => Math.min(min, c.position), 1) - 1;
 }
 
-export async function createCard({ folderId }, columnId, title, description = '', remindAt = null) {
+export async function createCard({ folderId }, columnId, title, description = '', reminders = []) {
   await insert('card', {
     folderId,
     columnId,
     title,
     description,
-    remindAt,
+    remindAt: null,
+    reminders,
     attachments: [],
     position: await arrivalPosition(columnId),
   });

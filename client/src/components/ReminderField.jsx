@@ -1,16 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { MAX_REMINDERS, REPEAT_LABELS, REPEATS, makeReminder, nextTime } from '../reminders.js';
 import Modal from './Modal.jsx';
 
-// The value is local time as "YYYY-MM-DDTHH:mm" (the datetime-local format), '' for none.
 const pad = (n) => String(n).padStart(2, '0');
-const format = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-
-export function toInputValue(ts) {
-  return ts ? format(new Date(ts)) : '';
-}
-
-export const fromInputValue = (value) => (value ? new Date(value).getTime() : null);
 
 const WEEKDAYS = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'];
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
@@ -189,19 +182,44 @@ function PickerRow({ label, value, open, onToggle, children }) {
   );
 }
 
+const CheckIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M20 6 9 17l-5-5" />
+  </svg>
+);
+
+const RepeatIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25"
+    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="m17 2 4 4-4 4" /><path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+    <path d="m7 22-4-4 4-4" /><path d="M21 13v1a4 4 0 0 1-4 4H3" />
+  </svg>
+);
+
+/** «Завтра, 9:00 · Ежедневно»: the reminder's next time (or its past one) and repeat. */
+export function reminderText(r, now = new Date()) {
+  const text = describeReminder(new Date(nextTime(r, now.getTime()) ?? r.at), now);
+  return r.repeat ? `${text} · ${REPEAT_LABELS[r.repeat]}` : text;
+}
+
+/** `value`: the reminder being edited, null for a new one. */
 function ReminderDialog({ value, onSave, onRemove, onClose }) {
   const now = new Date();
-  const [draft, setDraft] = useState(() => (value ? new Date(value) : at(addDays(startOfDay(now), 1), 9)));
+  const [draft, setDraft] = useState(() => (value
+    ? new Date(nextTime(value, now.getTime()) ?? value.at)
+    : at(addDays(startOfDay(now), 1), 9)));
+  const [repeat, setRepeat] = useState(value?.repeat ?? null);
   const [open, setOpen] = useState('date');
   const toggle = (part) => setOpen(open === part ? null : part);
   const save = (date) => {
-    onSave(format(date));
+    onSave(makeReminder(date.getTime(), repeat));
     onClose();
   };
   const dateText = describeReminder(draft, now).replace(/, \d+:\d+$/, '');
 
   return (
-    <Modal title="Напоминание" onClose={onClose} className="reminder-dialog" closeButton>
+    <Modal title={value ? 'Напоминание' : 'Новое напоминание'} onClose={onClose} className="reminder-dialog" closeButton>
       <div className="rem-presets">
         {presets(now).map((p) => (
           <button key={p.label} type="button" className="rem-preset" onClick={() => save(p.date)}>
@@ -226,11 +244,23 @@ function ReminderDialog({ value, onSave, onRemove, onClose }) {
               onChange={(m) => setDraft((d) => at(d, d.getHours(), m))} />
           </div>
         </PickerRow>
+        <PickerRow label="Повтор" value={repeat ? REPEAT_LABELS[repeat] : 'Никогда'} open={open === 'repeat'}
+          onToggle={() => toggle('repeat')}>
+          <div className="rem-repeats" role="radiogroup" aria-label="Повтор">
+            {[null, ...REPEATS].map((r) => (
+              <button key={r ?? 'none'} type="button" role="radio" aria-checked={r === repeat}
+                className={`rem-repeat${r === repeat ? ' rem-on' : ''}`} onClick={() => setRepeat(r)}>
+                {r ? REPEAT_LABELS[r] : 'Никогда'}
+                {r === repeat && <CheckIcon />}
+              </button>
+            ))}
+          </div>
+        </PickerRow>
       </ul>
 
-      {draft < now && <p className="rem-past">Это время уже прошло</p>}
+      {!repeat && draft < now && <p className="rem-past">Это время уже прошло</p>}
       <div className="actions">
-        {value && <button type="button" className="btn btn-danger rem-remove" onClick={() => { onRemove(); onClose(); }}>Убрать</button>}
+        {value && <button type="button" className="btn btn-danger rem-remove" onClick={() => { onRemove(); onClose(); }}>Удалить</button>}
         <button type="button" className="btn" onClick={onClose}>Отмена</button>
         <button type="button" className="btn btn-primary" onClick={() => save(draft)}>Готово</button>
       </div>
@@ -239,30 +269,49 @@ function ReminderDialog({ value, onSave, onRemove, onClose }) {
 }
 
 /**
- * Expanded reminder; `value` is in the datetime-local format (see toInputValue), '' for none.
- * Opens its dialog right away when added; «Убрать» or cancelling without a value calls `onCollapse`.
+ * The card's reminders (see reminders.js), any number of them. Opens the dialog right away when
+ * added; removing the last one or cancelling the first calls `onCollapse`.
  */
 export default function ReminderField({ value, onChange, onCollapse }) {
-  const [open, setOpen] = useState(!value);
+  // The index of the reminder being edited, 'new', or null.
+  const [editing, setEditing] = useState(value.length ? null : 'new');
+  const now = new Date();
   const close = () => {
-    setOpen(false);
-    if (!value) onCollapse();
+    setEditing(null);
+    if (!value.length) onCollapse();
   };
-  const remove = () => {
-    onChange('');
-    onCollapse();
+  const save = (reminder) => {
+    const next = editing === 'new' ? [...value, reminder] : value.map((r, i) => (i === editing ? reminder : r));
+    onChange(next.sort((a, b) => a.at - b.at));
+  };
+  const remove = (index) => {
+    const next = value.filter((_, i) => i !== index);
+    onChange(next);
+    if (!next.length) onCollapse();
   };
   return (
     <div className="field">
-      <span className="field-label">Напоминание</span>
-      <span className="reminder-input">
-        <button type="button" className="select reminder-value" aria-haspopup="dialog" onClick={() => setOpen(true)}>
-          {value ? describeReminder(new Date(value)) : 'Не задано'}
+      <span className="field-label">{value.length > 1 ? 'Напоминания' : 'Напоминание'}</span>
+      <ul className="reminder-list">
+        {value.map((r, i) => (
+          <li key={`${r.at}-${r.repeat}-${i}`} className="reminder-input">
+            <button type="button" aria-haspopup="dialog" onClick={() => setEditing(i)}
+              className={`select reminder-value${!r.repeat && r.at < now ? ' reminder-past' : ''}`}>
+              {r.repeat && <RepeatIcon />}
+              {reminderText(r, now)}
+            </button>
+            <button type="button" className="btn btn-small" onClick={() => remove(i)}>Убрать</button>
+          </li>
+        ))}
+      </ul>
+      {value.length > 0 && value.length < MAX_REMINDERS && (
+        <button type="button" className="btn btn-small reminder-add" onClick={() => setEditing('new')}>
+          + Ещё напоминание
         </button>
-        <button type="button" className="btn btn-small" onClick={remove}>Убрать</button>
-      </span>
-      {open && createPortal(
-        <ReminderDialog value={value} onSave={onChange} onRemove={remove} onClose={close} />,
+      )}
+      {editing !== null && createPortal(
+        <ReminderDialog value={editing === 'new' ? null : value[editing]} onSave={save}
+          onRemove={() => remove(editing)} onClose={close} />,
         document.body,
       )}
     </div>

@@ -3,7 +3,6 @@ import { createCard } from '../actions.js';
 import CardExtraFields from './CardExtraFields.jsx';
 import FolderSelect from './FolderSelect.jsx';
 import Modal from './Modal.jsx';
-import { fromInputValue } from './ReminderField.jsx';
 import TitleField from './TitleField.jsx';
 
 /**
@@ -24,12 +23,12 @@ export default function NewCardDialog({ folders, columnsOfFolder, target, onClos
   const setColumnId = (id) => setPicked(columns.find((c) => c.id === id));
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [remindAt, setRemindAt] = useState('');
+  const [reminders, setReminders] = useState([]);
 
   async function submit(e) {
     e.preventDefault();
     if (!title.trim() || !folderId || !columnId) return;
-    await createCard({ folderId }, columnId, title.trim(), description, fromInputValue(remindAt));
+    await createCard({ folderId }, columnId, title.trim(), description, reminders);
     onClose();
   }
 
@@ -40,8 +39,8 @@ export default function NewCardDialog({ folders, columnsOfFolder, target, onClos
         <CardExtraFields
           description={description}
           onDescription={setDescription}
-          remindAt={remindAt}
-          onRemindAt={setRemindAt}
+          reminders={reminders}
+          onReminders={setReminders}
           descriptionRows={4}
         />
         <FolderSelect folders={folders} value={folderId} onChange={setFolderId} />

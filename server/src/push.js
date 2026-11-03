@@ -1,9 +1,11 @@
 import webpush from 'web-push';
 import {
-  deletePushSubscription, folderUsers, getDueReminders, getMeta, getPushSubscriptions, getRecord, markReminderSent,
+  deletePushSubscription, folderUsers, getCardsWithReminders, getMeta, getPushSubscriptions, getRecord, isReminderSent,
+  markReminderSent,
   pruneRemindersSent, savePushSubscription, setMeta,
 } from './db.js';
 import { folderAncestors } from './folders.js';
+import { cardReminders, nextTime } from './reminders.js';
 
 // Card reminders delivered with Web Push. The VAPID key pair identifies this server to the
 // browsers' push services; it is generated once and kept in the database, because
@@ -102,9 +104,18 @@ async function checkReminders() {
   checking = true;
   try {
     const now = Date.now();
-    for (const reminder of getDueReminders(now, MAX_LATE_MS)) {
-      if (!markReminderSent(reminder.owner, reminder.id, reminder.remindAt)) continue;
-      await send(reminder.owner, reminder.card.folderId, reminderPayload(reminder.owner, reminder));
+    for (const entry of getCardsWithReminders(now - MAX_LATE_MS)) {
+      // The latest time of each reminder within the last MAX_LATE_MS that is not sent yet.
+      const due = new Set();
+      for (const r of cardReminders(entry.card)) {
+        let latest = null;
+        for (let t = nextTime(r, now - MAX_LATE_MS); t !== null && t <= now; t = nextTime(r, t + 1)) latest = t;
+        if (latest !== null && !isReminderSent(entry.owner, entry.id, latest)) due.add(latest);
+      }
+      for (const time of due) {
+        if (!markReminderSent(entry.owner, entry.id, time)) continue;
+        await send(entry.owner, entry.card.folderId, reminderPayload(entry.owner, entry));
+      }
     }
     pruneRemindersSent(now - 30 * 24 * 60 * 60 * 1000);
   } catch (err) {
