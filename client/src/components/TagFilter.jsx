@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DialogField, SearchField, SwitchRow } from './FolderFilter.jsx';
+import { DialogField, SEARCH_FROM, SearchField, SwitchRow } from './FolderFilter.jsx';
 import Modal from './Modal.jsx';
 
 const cardsCount = (n) => {
@@ -16,7 +16,7 @@ function TagFilterDialog({ tags, selected, onToggle, onClear, onClose }) {
 
   return (
     <Modal title="Теги" onClose={onClose} className="folder-picker folder-filter-sheet" closeButton>
-      <SearchField placeholder="Поиск тега" value={query} onChange={setQuery} />
+      {tags.length >= SEARCH_FROM && <SearchField placeholder="Поиск тега" value={query} onChange={setQuery} />}
       {!needle && tags.length > 0 && (
         <ul className="fp-list ff-group">
           <SwitchRow strong label="Все карточки" on={selected.length === 0}

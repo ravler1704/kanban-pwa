@@ -11,6 +11,9 @@ const svg = (children, size = 18) => (
 const SearchIcon = () => svg(<><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>, 16);
 const BackIcon = () => svg(<path d="m15 18-6-6 6-6" />, 20);
 
+/** The dialogs show a search from this many items. */
+export const SEARCH_FROM = 7;
+
 export function SearchField({ placeholder, value, onChange }) {
   return (
     <label className="fp-search">
@@ -116,7 +119,9 @@ function FolderFilterDialog({ folders, filter, onClose }) {
           <span>{parent ? parent.name : 'Папки'}</span>
         </button>
       )}
-      <SearchField placeholder="Поиск папки" value={query} onChange={setQuery} />
+      {!current && folders.length >= SEARCH_FROM && (
+        <SearchField placeholder="Поиск папки" value={query} onChange={setQuery} />
+      )}
       {!needle && (
         <ul className="fp-list ff-group">
           {current ? (
