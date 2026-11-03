@@ -207,6 +207,7 @@ body {
 .view-switch-btn:hover { color: var(--text); }
 .view-switch-btn.active { background: var(--card); color: var(--text); }
 .projectbar-row > .btn-add-card { margin-left: auto; }
+.projectbar-row > .filters-settings { align-self: stretch; color: var(--muted); }
 .filters-toggle { position: relative; color: var(--muted); }
 .filters-toggle.active { color: var(--text); }
 .filters-dot {
