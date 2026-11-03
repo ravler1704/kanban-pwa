@@ -14,11 +14,11 @@ function positionAtEnd(cards) {
 }
 
 /**
- * `target` (a folder id) is where new cards go.
+ * `target` (a folder id) is where new cards go; `targetName`, when set, is said in the add field.
  * `cardLabel(card)` returns the folder shown on the card, or null for none.
  */
 export default function Column({
-  target, column, prevColumn, nextColumn, cards, cardLabel, activeTags, onTag, readOnly, onOpen, onOpenGroup,
+  target, targetName, column, prevColumn, nextColumn, cards, cardLabel, activeTags, onTag, readOnly, onOpen, onOpenGroup,
 }) {
   const [title, setTitle] = useState('');
   // While a card is dragged over the column: the id of the card it would land before, or null for the end.
@@ -128,7 +128,7 @@ export default function Column({
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="+ Новая карточка"
+          placeholder={targetName ? `+ Новая карточка в «${targetName}»` : '+ Новая карточка'}
           maxLength={500}
         />
         {title.trim() && <button type="submit" className="btn btn-primary btn-small">Добавить</button>}

@@ -13,10 +13,15 @@ const LAST_KEY = 'lastTargetForNewCard';
  * `folders` are the folders to choose from; returns an id (null if there are none).
  */
 export function defaultTarget(folders) {
+  const last = lastTarget();
+  return folders.some((f) => f.id === last) ? last : folders[0]?.id ?? null;
+}
+
+/** The folder the last card was added to through the dialog (an id, or ''). */
+export function lastTarget() {
   // An older build stored 'projectId|sectionId'; the section (else the project) is a folder now.
   const [project, section] = (localStorage.getItem(LAST_KEY) ?? '').split('|');
-  const last = section || project;
-  return folders.some((f) => f.id === last) ? last : folders[0]?.id ?? null;
+  return section || project;
 }
 
 /**

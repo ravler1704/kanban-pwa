@@ -12,12 +12,12 @@ import Column from './components/Column.jsx';
 import CardEditor from './components/CardEditor.jsx';
 import ConflictDialog from './components/ConflictDialog.jsx';
 import ManageDialog from './components/ManageDialog.jsx';
-import NewCardDialog, { defaultTarget } from './components/NewCardDialog.jsx';
+import NewCardDialog, { lastTarget } from './components/NewCardDialog.jsx';
 import CalendarView from './components/CalendarView.jsx';
 import ChatDialog from './components/ChatDialog.jsx';
 import PeopleBar from './components/People.jsx';
 import { tagKey, tagNames, tagsOf } from './tags.js';
-import { descendants, folderPath, folderTree, liveFolders, topFolderIds } from './folders.js';
+import { descendants, flattenFolders, folderPath, folderTree, liveFolders, topFolderIds } from './folders.js';
 import { folderIdsOf, peopleStore } from './people.js';
 
 const VIEW_KEY = 'view';
@@ -294,9 +294,18 @@ export default function App() {
     .sort(byPosition);
   const openCard = cards.find((c) => c.id === openCardId);
 
-  // Where new cards go: the only checked folder, else the last used one.
+  // Where new cards go among `list`: the folder the view is narrowed to (with what is inside it), else the
+  // last used one, else the first in the tree.
+  const treeOrder = flattenFolders(folders).map(({ folder }) => folder.id);
+  const targetIn = (list) => {
+    const ids = treeOrder.filter((id) => list.some((f) => f.id === id));
+    const tops = topFolderIds(ids, folders);
+    if (tops.length === 1) return tops[0];
+    const last = lastTarget();
+    return ids.includes(last) ? last : ids[0] ?? null;
+  };
   const shownUsable = usable.filter((f) => shownFolders.includes(f));
-  const target = shownFolders.length === 1 ? shownFolders[0].id : defaultTarget(shownUsable);
+  const target = targetIn(shownUsable);
 
   // The folders on the board: the checked ones that have cards or are the target.
   const hasCards = new Set(inScope.map((c) => c.folderId));
@@ -309,7 +318,7 @@ export default function App() {
   const boardSetId = (usedSets.find((s) => s.id === allFoldersSet) ?? usedSets[0] ?? model.sets[0]).id;
   const columns = model.columnsOf(boardSetId);
   const boardFolders = shownUsable.filter((f) => model.setIdOf(f) === boardSetId);
-  const boardTarget = target && boardFolders.some((f) => f.id === target) ? target : defaultTarget(boardFolders);
+  const boardTarget = target && boardFolders.some((f) => f.id === target) ? target : targetIn(boardFolders);
   const boardCards = visible.filter((c) => model.setIdOf(tree.byId.get(c.folderId)) === boardSetId);
 
   // What the current view does not already say about where a card belongs: the path below the folders
@@ -424,6 +433,7 @@ export default function App() {
                 <Column
                   key={col.id}
                   target={boardTarget}
+                  targetName={boardFolders.length > 1 ? tree.byId.get(boardTarget)?.name : null}
                   column={col}
                   prevColumn={columns[index - 1]}
                   nextColumn={columns[index + 1]}
@@ -456,7 +466,7 @@ export default function App() {
 
       {addingCard && (
         <NewCardDialog folders={usable} columnsOfFolder={model.columnsOfFolder}
-          target={target ?? defaultTarget(usable)} onClose={() => setAddingCard(false)} />
+          target={target ?? targetIn(usable)} onClose={() => setAddingCard(false)} />
       )}
 
       {managing && (
