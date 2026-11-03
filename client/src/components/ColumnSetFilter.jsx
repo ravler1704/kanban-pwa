@@ -1,4 +1,5 @@
-import { DialogField } from './FolderFilter.jsx';
+import { useState } from 'react';
+import { DialogField, SearchField } from './FolderFilter.jsx';
 import Modal from './Modal.jsx';
 
 const CheckIcon = () => (
@@ -13,11 +14,18 @@ function names(list) {
 }
 
 function ColumnSetDialog({ columnSets, value, onChange, onClose }) {
+  const [query, setQuery] = useState('');
+  const needle = query.trim().toLowerCase();
+  const found = needle
+    ? columnSets.filter((s) => [s.name, ...s.columns, ...s.folders].some((t) => t.toLowerCase().includes(needle)))
+    : columnSets;
   return (
     <Modal title="Колонки" onClose={onClose} className="folder-picker folder-filter-sheet" closeButton>
       <p className="fp-hint">Папки с разными наборами колонок показываются по отдельности.</p>
+      <SearchField placeholder="Поиск набора, колонки или папки" value={query} onChange={setQuery} />
       <ul className="fp-list ff-list">
-        {columnSets.map((s) => {
+        {found.length === 0 && <li className="fp-empty">Ничего не найдено</li>}
+        {found.map((s) => {
           const chosen = s.id === value;
           return (
             <li key={s.id} className={`fp-row ${chosen ? 'fp-row-selected' : ''}`}>

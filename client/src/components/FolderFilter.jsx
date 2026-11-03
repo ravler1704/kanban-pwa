@@ -4,14 +4,22 @@ import { childrenOf, descendants, flattenFolders, folderPath, folderTree } from 
 import { Chevron } from './ManageFields.jsx';
 import Modal from './Modal.jsx';
 
-const SEARCH_FROM = 7;
-
 const svg = (children, size = 18) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
     strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
 );
 const SearchIcon = () => svg(<><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>, 16);
 const BackIcon = () => svg(<path d="m15 18-6-6 6-6" />, 20);
+
+export function SearchField({ placeholder, value, onChange }) {
+  return (
+    <label className="fp-search">
+      <SearchIcon />
+      <input type="search" placeholder={placeholder} value={value} aria-label={placeholder}
+        onChange={(e) => onChange(e.target.value)} />
+    </label>
+  );
+}
 
 /** An iOS-like switch: the whole line is the control. */
 export function SwitchRow({ label, meta, on, onChange, strong = false }) {
@@ -108,13 +116,7 @@ function FolderFilterDialog({ folders, filter, onClose }) {
           <span>{parent ? parent.name : 'Папки'}</span>
         </button>
       )}
-      {!current && folders.length >= SEARCH_FROM && (
-        <label className="fp-search">
-          <SearchIcon />
-          <input type="search" placeholder="Поиск папки" value={query} aria-label="Поиск папки"
-            onChange={(e) => setQuery(e.target.value)} />
-        </label>
-      )}
+      <SearchField placeholder="Поиск папки" value={query} onChange={setQuery} />
       {!needle && (
         <ul className="fp-list ff-group">
           {current ? (
