@@ -361,6 +361,13 @@ export function deleteIdentity(userId, provider, subject) {
 
 const selectUserByEmail = db.prepare('SELECT user_id FROM identities WHERE email = ? ORDER BY linked_at LIMIT 1');
 
+const selectUsersByEmail = db.prepare('SELECT DISTINCT user_id FROM identities WHERE email = ?');
+
+/** Every user with an account that has this e-mail. */
+export function usersWithEmail(email) {
+  return selectUsersByEmail.all(email).map((r) => r.user_id);
+}
+
 /** The user who has an account with this e-mail (the earliest linked one), or null. */
 export function findUserByEmail(email) {
   return selectUserByEmail.get(email)?.user_id ?? null;

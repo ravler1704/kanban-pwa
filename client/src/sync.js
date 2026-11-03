@@ -1,4 +1,4 @@
-import { isSignedOut, markSignedOut } from './auth.js';
+import { checkAuth, isSignedOut, markSignedOut } from './auth.js';
 import { boardHeaders, boardQuery, dropCurrentBoard, publicToken } from './board.js';
 import { markLinkGone, publicLinkGone } from './public.js';
 import { clearLocalData, db, getDeviceId, isDirty, pickFields, sameValue, tableOf, TYPES } from './db.js';
@@ -265,6 +265,8 @@ function connectEvents() {
       const data = JSON.parse(e.data);
       // A direct message to or from the user (the peer's id), on whatever board.
       if ('dm' in data) dmChanged(data.dm);
+      // Someone opened a board to the user or closed it.
+      else if (data.boards) checkAuth();
       else if (data.from !== deviceId) requestSync();
     } catch {
       // ignore malformed messages

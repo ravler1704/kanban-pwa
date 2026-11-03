@@ -4,9 +4,9 @@ import {
   addMember, addSpaceMember, boardSummary, countEmailCodeAttempt, createSession, deleteIdentity, deleteMember, deletePublicLink,
   deleteSession, deleteUser, findUserByEmail, getEmailCode, getIdentityUser, getPublicLink, getRecord, getSession, isInvited,
   leaveBoard, listIdentities, listMembers, listPublicLinks, memberProjects, mergeUsers, ownerFileIds, pruneEmailCodes,
-  saveEmailCode, saveIdentity, savePublicLink, sharedBoards, useEmailCode,
+  saveEmailCode, saveIdentity, savePublicLink, sharedBoards, useEmailCode, usersWithEmail,
 } from './db.js';
-import { broadcast, disconnect, disconnectUser } from './events.js';
+import { broadcast, disconnect, disconnectUser, notifyUser } from './events.js';
 import { removeFiles } from './files.js';
 import {
   clearMailSettings, mailEnabled, mailFromEnv, mailSettings, saveMailSettings, sendMail,
@@ -362,6 +362,11 @@ function authRoute(verify) {
   };
 }
 
+/** The open apps of the person with this e-mail reload the list of boards shared with them. */
+function notifyBoardsChanged(email) {
+  for (const userId of usersWithEmail(email)) notifyUser(userId, { boards: true });
+}
+
 export function registerAuthRoutes(app) {
   app.get('/api/auth/config', (req, res) => {
     res.json({
@@ -427,6 +432,7 @@ export function registerAuthRoutes(app) {
     addMember(req.user, id, email);
     // Open streams of members belong to the old access; reconnecting picks up the new one.
     disconnect(req.user, { except: req.user });
+    notifyBoardsChanged(email);
     res.json({ members: listMembers(req.user) });
   });
 
@@ -442,6 +448,7 @@ export function registerAuthRoutes(app) {
       return res.status(404).json({ error: 'not found' });
     }
     disconnect(req.user, { except: req.user });
+    notifyBoardsChanged(email);
     res.json({ members: listMembers(req.user) });
   });
 
