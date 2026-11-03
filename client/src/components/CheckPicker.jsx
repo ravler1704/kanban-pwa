@@ -101,7 +101,7 @@ export default function CheckPicker({
       )}
       {open && (
         <div className="check-menu">
-          <input className="check-search" type="search" placeholder={searchPlaceholder} autoFocus
+          <input className="check-search" type="search" placeholder={searchPlaceholder}
             value={search} onChange={(e) => setSearch(e.target.value)}
             onKeyDown={(e) => {
               if (e.key !== 'Enter' || !found.length) return;
