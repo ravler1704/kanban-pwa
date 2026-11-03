@@ -207,7 +207,14 @@ body {
 .view-switch-btn:hover { color: var(--text); }
 .view-switch-btn.active { background: var(--card); color: var(--text); }
 .projectbar-row > .btn-add-card { margin-left: auto; }
-.modal.filters-dialog { width: min(440px, 100%); }
+.modal.filters-dialog {
+  /* The same size on every screen of it, so switching screens moves nothing. */
+  display: flex;
+  flex-direction: column;
+  width: min(440px, 100%);
+  height: min(560px, 85vh);
+}
+.filters-dialog > .actions { margin-top: auto; padding-top: 1rem; }
 .filters-dialog-list { display: flex; flex-direction: column; gap: 0.6rem; }
 .filters-dialog-list .field.folder-filter { max-width: none; width: 100%; }
 .filters-dialog-list[hidden] { display: none; }
