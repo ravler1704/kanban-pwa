@@ -9,7 +9,7 @@ const svg = (children, size = 18) => (
     strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{children}</svg>
 );
 const SearchIcon = () => svg(<><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>, 16);
-const BackIcon = () => svg(<path d="m15 18-6-6 6-6" />, 20);
+export const BackIcon = () => svg(<path d="m15 18-6-6 6-6" />, 20);
 
 /** The dialogs show a search from this many items. */
 export const SEARCH_FROM = 7;
@@ -25,10 +25,11 @@ export function SearchField({ placeholder, value, onChange }) {
 }
 
 /** An iOS-like switch: the whole line is the control. */
-export function SwitchRow({ label, meta, on, onChange, strong = false }) {
+export function SwitchRow({ label, meta, on, onChange, strong = false, disabled = false }) {
   return (
     <li className="fp-row">
-      <button type="button" role="switch" aria-checked={on} className="fp-pick ff-row" onClick={() => onChange(!on)}>
+      <button type="button" role="switch" aria-checked={on} className="fp-pick ff-row" disabled={disabled}
+        onClick={() => onChange(!on)}>
         <span className="fp-text">
           <span className={`fp-name ${strong ? 'ff-strong' : ''}`}>{label}</span>
           {meta && <span className="fp-meta">{meta}</span>}
@@ -40,7 +41,7 @@ export function SwitchRow({ label, meta, on, onChange, strong = false }) {
 }
 
 /** A folder with subfolders: the line opens it, its own switch shows or hides it with everything inside. */
-function GroupRow({ label, meta, on, onChange, onOpen }) {
+export function GroupRow({ label, meta, on, onChange, onOpen, switchLabel = `Показывать «${label}»`, disabled = false }) {
   return (
     <li className="fp-row">
       <button type="button" className="fp-pick ff-row ff-open" onClick={onOpen} title="Открыть">
@@ -49,8 +50,8 @@ function GroupRow({ label, meta, on, onChange, onOpen }) {
           {meta && <span className="fp-meta">{meta}</span>}
         </span>
       </button>
-      <button type="button" role="switch" aria-checked={on} aria-label={`Показывать «${label}»`}
-        className="ff-switch-btn" onClick={() => onChange(!on)}>
+      <button type="button" role="switch" aria-checked={on} aria-label={switchLabel}
+        className="ff-switch-btn" disabled={disabled} onClick={() => onChange(!on)}>
         <span className={`ff-switch ${on ? 'ff-switch-on' : ''}`} aria-hidden="true"><span className="ff-knob" /></span>
       </button>
       <button type="button" className="ff-chevron-btn" onClick={onOpen} aria-label={`Открыть «${label}»`}>
@@ -61,7 +62,7 @@ function GroupRow({ label, meta, on, onChange, onOpen }) {
 }
 
 /** «Фильмы, Субару и ещё 2» */
-function names(list) {
+export function names(list) {
   const shown = list.slice(0, 3).map((f) => f.name).join(', ');
   return list.length > 3 ? `${shown} и ещё ${list.length - 3}` : shown;
 }

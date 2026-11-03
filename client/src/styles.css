@@ -499,12 +499,8 @@ body {
 .account-provider { min-width: 5.5rem; color: var(--muted); font-size: 0.85rem; }
 .account-email { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .member { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
-.member-projects { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.9rem; }
-.member-project { display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; }
-.member-project input { accent-color: var(--accent); margin: 0; }
-.member-space { display: flex; flex-direction: column; gap: 0.25rem; }
-.member-space-name { font-weight: 600; font-size: 0.9rem; }
-.member-space .member-space-name + .member-projects { padding-left: 1.4rem; }
+.radio-option { display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; }
+.radio-option input { accent-color: var(--accent); margin: 0; }
 .member-via { font-size: 0.82rem; white-space: nowrap; }
 .tree-folder > .tree-body .manage-sections { margin: 0; padding: 0 0 0 0.8rem; border-left: 2px solid var(--border); }
 .member-invite { flex-wrap: wrap; margin-top: 0.5rem; }
@@ -1316,6 +1312,8 @@ a.btn { display: inline-block; text-decoration: none; }
   cursor: pointer;
 }
 .ff-switch-btn { padding: 0 0.5rem; }
+.ff-row:disabled, .ff-switch-btn:disabled { cursor: default; }
+.ff-row:disabled .ff-switch, .ff-switch-btn:disabled .ff-switch { opacity: 0.5; }
 .ff-chevron-btn { padding: 0 0.8rem 0 0.4rem; border-left: 1px solid var(--border); margin-left: 0.3rem; }
 .ff-chevron-btn:hover { background: var(--card); color: var(--text); }
 .ff-switch {

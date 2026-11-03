@@ -3,10 +3,14 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { authState, inviteMember, leaveCurrentBoard, loadMembers, membersState, removeMember } from '../auth.js';
 import { boardName, currentBoard, isOwnBoard } from '../board.js';
 import { db } from '../db.js';
-import { flattenFolders, folderPath, liveFolders, topFolderIds } from '../folders.js';
+import { childrenOf, descendants, flattenFolders, folderPath, folderTree, liveFolders, topFolderIds } from '../folders.js';
 import { folderIdsOf, peopleStore } from '../people.js';
 import { syncStatus } from '../sync.js';
+import {
+  BackIcon, DialogField, GroupRow, names, SEARCH_FROM, SearchField, SwitchRow,
+} from './FolderFilter.jsx';
 import FolderSelect from './FolderSelect.jsx';
+import Modal from './Modal.jsx';
 
 /** Folders of the own board can be shared: signed in and not on someone else's board. */
 export function useCanShare() {
@@ -166,11 +170,83 @@ function SharedBoard({ board, folders }) {
   );
 }
 
+/**
+ * The folders opened to `member`, like the «Папки» filter: one level per screen, a switch per folder.
+ * A folder opened through one above it is on and locked.
+ */
+function MemberFoldersDialog({ member, folders, busy, onSet, onClose }) {
+  const tree = folderTree(folders);
+  const own = new Set(folderIdsOf(member));
+  const through = (folder) => folderPath(folder, folders).slice(0, -1).reverse().find((f) => own.has(f.id));
+  const [currentId, setCurrentId] = useState(null);
+  const current = currentId ? tree.byId.get(currentId) ?? null : null;
+  const [query, setQuery] = useState('');
+  const needle = query.trim().toLowerCase();
+  const open = (id) => {
+    setQuery('');
+    setCurrentId(id);
+  };
+
+  const list = needle
+    ? flattenFolders(folders).map(({ folder }) => folder).filter((f) => f.name.toLowerCase().includes(needle))
+    : childrenOf(folders, currentId);
+  const row = (f) => {
+    const via = through(f);
+    const where = needle && folderPath(f, folders).slice(0, -1).map((p) => p.name).join(' › ');
+    const inside = !via && !own.has(f.id)
+      && descendants(folders, f.id).filter((d) => own.has(d.id) && !through(d));
+    const meta = [where, via && `через «${via.name}»`, inside?.length && `внутри открыты: ${names(inside)}`]
+      .filter(Boolean).join(' · ') || null;
+    const props = {
+      label: f.name, meta, on: own.has(f.id) || Boolean(via), disabled: busy || Boolean(via),
+      onChange: (on) => onSet(f, on),
+    };
+    return childrenOf(folders, f.id).length
+      ? <GroupRow key={f.id} {...props} switchLabel={`Доступ к «${f.name}»`} onOpen={() => open(f.id)} />
+      : <SwitchRow key={f.id} {...props} />;
+  };
+  const parent = current ? tree.byId.get(tree.parentOf(current)) : null;
+
+  return (
+    <Modal title={current ? current.name : member.name || member.email} onClose={onClose}
+      className="folder-picker folder-filter-sheet" closeButton>
+      {current ? (
+        <button type="button" className="ff-back" onClick={() => open(parent?.id ?? null)}>
+          <BackIcon />
+          <span>{parent ? parent.name : 'Все папки'}</span>
+        </button>
+      ) : (
+        <p className="fp-hint">Доступ к папке открывает всё, что в ней, в том числе папки, которые появятся позже.</p>
+      )}
+      {!current && folders.length >= SEARCH_FROM && (
+        <SearchField placeholder="Поиск папки" value={query} onChange={setQuery} />
+      )}
+      <ul className="fp-list ff-list">
+        {list.map(row)}
+        {list.length === 0 && <li className="fp-empty">{needle ? 'Ничего не найдено' : 'Вложенных папок нет'}</li>}
+      </ul>
+      <div className="actions fp-actions">
+        <button type="button" className="btn btn-primary" onClick={onClose}>Готово</button>
+      </div>
+    </Modal>
+  );
+}
+
+/** The field with the folders opened to `member`; opens MemberFoldersDialog. */
+function MemberFolders({ member, folders, busy, onSet }) {
+  const top = topFolderIds(folderIdsOf(member), folders).map((id) => folders.find((f) => f.id === id)).filter(Boolean);
+  return (
+    <DialogField label="Доступ к папкам" value={top.length ? names(top) : 'Нет'}
+      dialog={(onClose) => (
+        <MemberFoldersDialog member={member} folders={folders} busy={busy} onSet={onSet} onClose={onClose} />
+      )} />
+  );
+}
+
 function OwnBoard({ folders }) {
   const { online, members, error, busy, run } = useMembers();
   const [email, setEmail] = useState('');
   const [picked, setPicked] = useState('');
-  const rows = flattenFolders(folders);
   const choice = folders.some((f) => f.id === picked) ? picked : folders[0]?.id ?? '';
 
   async function invite(e) {
@@ -197,32 +273,15 @@ function OwnBoard({ folders }) {
         экрана. Участников также видно в настройках папки.
       </p>
       {!online && OFFLINE}
-      {online && members?.map((m) => {
-        const own = new Set(folderIdsOf(m));
-        // The folder above that gives access to this one, if any.
-        const through = (folder) => folderPath(folder, folders).slice(0, -1).reverse().find((f) => own.has(f.id));
-        return (
+      {online && members?.map((m) => (
           <div key={m.email} className="member">
             <div className="manage-row account-row">
               <MemberName member={m} />
               <button className="btn btn-small" disabled={busy} onClick={() => removeAll(m)}>Убрать</button>
             </div>
-            <div className="member-projects">
-              {rows.map(({ folder, depth }) => {
-                const via = through(folder);
-                return (
-                  <label key={folder.id} className="member-project" style={{ paddingLeft: `${depth * 18}px` }}
-                    title={via ? `Открыта через папку «${via.name}»` : undefined}>
-                    <input type="checkbox" checked={own.has(folder.id) || Boolean(via)} disabled={busy || Boolean(via)}
-                      onChange={(e) => toggle(m, folder, e.target.checked)} />
-                    {folder.name}
-                  </label>
-                );
-              })}
-            </div>
+            <MemberFolders member={m} folders={folders} busy={busy} onSet={(folder, on) => toggle(m, folder, on)} />
           </div>
-        );
-      })}
+      ))}
       {online && folders.length > 0 && (
         <form className="manage-add member-invite" onSubmit={invite}>
           <label className="field manage-field">

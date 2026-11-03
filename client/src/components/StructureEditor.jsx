@@ -52,11 +52,11 @@ function MoveDialog({ folder, folders, model, writable, onClose }) {
         {otherSet && (
           <div className="field">
             <span className="field-label">У новой папки другой набор колонок</span>
-            <label className="member-project">
+            <label className="radio-option">
               <input type="radio" name="keep-columns" checked={keepColumns} onChange={() => setKeepColumns(true)} />
               Оставить набор «{setName(before)}»
             </label>
-            <label className="member-project">
+            <label className="radio-option">
               <input type="radio" name="keep-columns" checked={!keepColumns} onChange={() => setKeepColumns(false)} />
               Взять набор «{setName(after)}»: карточки встанут в колонки с теми же названиями, остальные — в первую
             </label>
