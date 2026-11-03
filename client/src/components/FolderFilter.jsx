@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useLayoutEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { childrenOf, descendants, flattenFolders, folderPath, folderTree } from '../folders.js';
 import { Chevron } from './ManageFields.jsx';
@@ -39,18 +39,13 @@ export function FilterSheet({ title, onClose, back = null, children }) {
       </Modal>
     );
   }
-  // The title takes the place of the dialog's own, its back arrow hanging to the left of it.
   const up = back ?? { label: 'Фильтры', onClick: onClose };
   return (
     <div className="folder-picker filter-screen">
       <div className="modal-head">
-        <h3>
-          <button type="button" className="filter-screen-back" onClick={up.onClick} title={`Назад: ${up.label}`}
-            aria-label={`${title}. Назад: ${up.label}`}>
-            <BackIcon />
-            <span>{title}</span>
-          </button>
-        </h3>
+        <button type="button" className="btn btn-small btn-icon-only modal-close filter-screen-back"
+          onClick={up.onClick} title={`Назад: ${up.label}`} aria-label={`Назад: ${up.label}`}><BackIcon /></button>
+        <h3>{title}</h3>
         <button type="button" className="btn btn-small btn-icon-only modal-close" onClick={nav.closeAll}
           aria-label="Закрыть" title="Закрыть"><CloseIcon /></button>
       </div>
@@ -204,7 +199,7 @@ function FolderFilterDialog({ folders, filter, onClose }) {
 export function DialogField({ label, value, title, dialog }) {
   const nav = useContext(FilterNav);
   const [open, setOpen] = useState(false);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!nav || !open) return undefined;
     nav.setActive(true);
     return () => nav.setActive(false);
