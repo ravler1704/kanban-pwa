@@ -15,15 +15,17 @@ export const BackIcon = () => svg(<path d="m15 18-6-6 6-6" />, 20);
 export const CloseFilters = createContext(null);
 
 /**
- * Buttons of a filter dialog: «Готово» returns to the filters dialog, «Применить» closes it too.
+ * Buttons of a filter dialog: «К фильтрам» returns to the filters dialog, «Применить и закрыть» closes it too.
  * Changes apply at once either way.
  */
 export function FilterActions({ onClose }) {
   const closeAll = useContext(CloseFilters);
   return (
     <div className="actions fp-actions">
-      <button type="button" className={`btn ${closeAll ? '' : 'btn-primary'}`} onClick={onClose}>Готово</button>
-      {closeAll && <button type="button" className="btn btn-primary" onClick={closeAll}>Применить</button>}
+      <button type="button" className={`btn ${closeAll ? '' : 'btn-primary'}`} onClick={onClose}>
+        {closeAll ? 'К фильтрам' : 'Готово'}
+      </button>
+      {closeAll && <button type="button" className="btn btn-primary" onClick={closeAll}>Применить и закрыть</button>}
     </div>
   );
 }
