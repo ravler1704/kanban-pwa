@@ -643,6 +643,18 @@ const selectCommentsOfCard = db.prepare(`
 const selectCardIds = db.prepare("SELECT id FROM records WHERE owner = ? AND type = 'card' ORDER BY rowid");
 
 /** The board's cards (deleted too) in the order they were created. */
+const selectCardCreations = db.prepare(`
+  SELECT json_extract(event, '$.card.id') AS card, author FROM (
+    SELECT json_extract(data, '$.event') AS event, json_extract(data, '$.authorId') AS author
+    FROM records WHERE owner = ? AND type = 'comment' AND json_extract(data, '$.event') LIKE '{%'
+  ) WHERE CASE WHEN json_valid(event) THEN json_extract(event, '$.k') END = 'card.create'
+`);
+
+/** Card id → id of the user who created it, from the notes in the chats. */
+export function cardCreators(owner) {
+  return new Map(selectCardCreations.all(owner).filter((r) => r.card && r.author).map((r) => [r.card, r.author]));
+}
+
 export function cardIdsInOrder(owner) {
   return selectCardIds.all(owner).map((r) => r.id);
 }

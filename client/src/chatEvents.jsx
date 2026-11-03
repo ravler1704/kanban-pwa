@@ -50,6 +50,8 @@ function parts(e) {
       const times = list.map((r) => remindTime(r.at) + (r.repeat ? ` (${REPEAT_LABELS[r.repeat].toLowerCase()})` : ''));
       return [list.length > 1 ? 'Напоминания по карточке ' : 'Напоминание по карточке ', card, `: ${times.join(', ')}`];
     }
+    case 'card.assignee': return ['Карточка ', card, ` передана: ${e.to ?? 'другому участнику'}`];
+    case 'card.author': return ['Автор карточки ', card, `: ${e.to ?? 'другой участник'}`];
     case 'card.file.add': return [`Прикреплён файл ${q(e.name)} к карточке `, card];
     case 'card.file.remove': return [`Удалён файл ${q(e.name)} из карточки `, card];
     case 'folder.create': return [`Создана папка ${q(e.name)}`];

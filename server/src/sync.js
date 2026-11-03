@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import {
-  cardIdsInOrder, commentIdsOfCard, getMaxSeq, getMeta, getRecord, getRecordsSince, saveRecord, setMeta, transaction,
+  cardCreators, cardIdsInOrder, commentIdsOfCard, getMaxSeq, getMeta, getRecord, getRecordsSince, saveRecord, setMeta,
+  transaction, userProfile,
 } from './db.js';
 import { folderAncestors, folderColumnSet } from './folders.js';
 import { cardReminders, isReminderList, nextTime } from './reminders.js';
@@ -12,6 +13,7 @@ const optionalRef = (v) => v === null || ref(v);
 const number = (v) => typeof v === 'number' && Number.isFinite(v);
 const boolean = (v) => typeof v === 'boolean';
 const optionalTime = (v) => v === null || (Number.isInteger(v) && v > 0);
+const optionalUser = (v) => v === null || (typeof v === 'string' && v.length > 0 && v.length <= 200);
 const attachment = (v) => v !== null && typeof v === 'object' && ref(v.id) && string(255)(v.name)
   && Number.isInteger(v.size) && v.size >= 0 && string(255)(v.type) && Number.isInteger(v.addedAt);
 const attachments = (v) => Array.isArray(v) && v.length <= 1000 && v.every(attachment);
@@ -71,12 +73,15 @@ export const SCHEMAS = {
       // A single reminder of cards saved before `reminders` (see reminders.js).
       remindAt: optionalTime,
       reminders: isReminderList,
+      // User ids: who made the card and who has it now (null: the author).
+      authorId: optionalUser,
+      assigneeId: optionalUser,
       attachments,
       number: (v) => v === null || (Number.isInteger(v) && v > 0),
     },
     defaults: {
       columnId: 'todo', title: '', description: '', position: 0, deleted: false, remindAt: null,
-      reminders: [], attachments: [], number: null,
+      reminders: [], authorId: null, assigneeId: null, attachments: [], number: null,
     },
     textFields: ['title', 'description'],
     serverFields: ['attachments', 'number'],
@@ -341,6 +346,15 @@ function recordEvents(owner, actor, type, before, after) {
       const diff = textDiff(before.description, after.description, 3000 - JSON.stringify(card).length);
       note(at, { k: 'card.description', card, ...(diff && { diff }) });
     }
+    const holder = (r) => r.assigneeId || r.authorId || null;
+    const personName = (userId) => {
+      const p = userId ? userProfile(userId) : null;
+      return p?.name || p?.email || null;
+    };
+    if (holder(after) !== holder(before)) note(at, { k: 'card.assignee', card, to: personName(holder(after)) });
+    if (after.authorId !== before.authorId && before.authorId) {
+      note(at, { k: 'card.author', card, to: personName(after.authorId) });
+    }
     const reminders = cardReminders(after);
     if (JSON.stringify(reminders) !== JSON.stringify(cardReminders(before))) {
       note(at, { k: 'card.remind', card, reminders: reminders.map((r) => ({ at: nextTime(r, Date.now()) ?? r.at, repeat: r.repeat })) });
@@ -405,10 +419,27 @@ function numberCards(owner) {
       setMeta(flag, '1');
     });
   }
+  // Authors of the cards from before authors existed: who created them (from the chat notes), else the owner.
+  const authorsFlag = `cardAuthors:${owner}`;
+  if (!getMeta(authorsFlag)) {
+    transaction(() => {
+      const creators = cardCreators(owner);
+      for (const id of cardIdsInOrder(owner)) {
+        const card = withDefaults(getRecord(owner, id));
+        if (card.authorId) continue;
+        const authorId = creators.get(id) || owner || null;
+        if (!authorId) continue;
+        saveRecord(owner, 'card', id, pickData(SCHEMAS.card, { ...card, authorId }), {
+          version: card.version + 1, deviceId: 'server',
+        });
+      }
+      setMeta(authorsFlag, '1');
+    });
+  }
   numbered.add(owner);
 }
 
-function applyChange(owner, deviceId, { type, id, baseVersion, fields, base }, access) {
+function applyChange(owner, deviceId, { type, id, baseVersion, fields, base }, access, actor) {
   const schema = SCHEMAS[type];
   const current = withDefaults(getRecord(owner, id));
   const result = (status, record, conflicts) => ({ type, id, status, record, ...(conflicts && { conflicts }) });
@@ -424,7 +455,10 @@ function applyChange(owner, deviceId, { type, id, baseVersion, fields, base }, a
     for (const f of Object.keys(schema.fields)) {
       if (!(f in data)) throw new ValidationError(`missing field "${f}" for new ${type}`);
     }
-    if (type === 'card') data.number = nextCardNumber(owner);
+    if (type === 'card') {
+      data.number = nextCardNumber(owner);
+      if (!data.authorId) data.authorId = actor?.id ?? (owner || null);
+    }
     return result('applied', save(data, 1));
   }
   if (current.type !== type) throw new ValidationError(`record ${id} is not a ${type}`);
@@ -509,7 +543,7 @@ export function push(owner, deviceId, rawChanges, access = null, actor = null) {
     const results = changes.map((c) => {
       if (c.type === 'comment') return applyComment(owner, deviceId, c, access, actor);
       const previous = withDefaults(getRecord(owner, c.id));
-      const r = applyChange(owner, deviceId, c, access);
+      const r = applyChange(owner, deviceId, c, access, actor);
       if (c.type === 'card' && previous && r.record.folderId && r.record.folderId !== previous.folderId) {
         moveComments(owner, c.id, r.record.folderId);
       }

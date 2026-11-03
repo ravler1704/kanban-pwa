@@ -24,6 +24,10 @@ import { folderIdsOf, peopleStore } from './people.js';
 const VIEW_KEY = 'view';
 const ALL_SET_KEY = 'allProjectsColumnSet';
 const TAG_FILTER_KEY = 'tagFilter';
+// User ids: only cards made by / held by any of them are shown.
+const AUTHOR_FILTER_KEY = `authorFilter:${dbName}`;
+const HOLDER_FILTER_KEY = `holderFilter:${dbName}`;
+const holderOf = (card) => card.assigneeId || card.authorId || null;
 const byPosition = (a, b) => a.position - b.position || a.id.localeCompare(b.id);
 
 // The folder filter is a list of unchecked folder ids (`folderToggles`), so new folders show up checked.
@@ -67,6 +71,15 @@ function readList(key) {
   } catch {
     return [];
   }
+}
+
+function useStoredList(key) {
+  const [list, setList] = useState(() => readList(key));
+  const change = (next) => {
+    setList(next);
+    localStorage.setItem(key, JSON.stringify(next));
+  };
+  return [list, change];
 }
 
 function useSelection() {
@@ -125,6 +138,8 @@ export default function App() {
     setTagFilter(next);
     localStorage.setItem(TAG_FILTER_KEY, JSON.stringify(next));
   };
+  const [authorFilter, changeAuthorFilter] = useStoredList(AUTHOR_FILTER_KEY);
+  const [holderFilter, changeHolderFilter] = useStoredList(HOLDER_FILTER_KEY);
   const toggleTag = (name) => {
     const key = tagKey(name);
     changeTagFilter(tagFilter.includes(key) ? tagFilter.filter((k) => k !== key) : [...tagFilter, key]);
@@ -275,8 +290,22 @@ export default function App() {
     .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
   const activeTags = new Set(tagFilter);
 
+  const countBy = (of) => {
+    const counts = new Map();
+    for (const card of inScope) if (of(card)) counts.set(of(card), (counts.get(of(card)) ?? 0) + 1);
+    return counts;
+  };
+  const personFilter = (selected, change, of) => ({
+    counts: countBy(of),
+    selected,
+    onToggle: (id) => change(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]),
+    onClear: () => change([]),
+  });
+
   const visible = inScope
     .filter((c) => !tagFilter.length || [...tagsOf(c)].some((key) => activeTags.has(key)))
+    .filter((c) => !authorFilter.length || authorFilter.includes(c.authorId))
+    .filter((c) => !holderFilter.length || holderFilter.includes(holderOf(c)))
     .sort(byPosition);
   // A card found in the list may be in a folder that is not shown.
   const openCard = cards.find((c) => c.id === openCardId) ?? (openRecord && tree.byId.has(openRecord.folderId)
@@ -396,6 +425,8 @@ export default function App() {
               onToggle: toggleTag,
               onClear: () => changeTagFilter([]),
             } : null}
+            authorFilter={publicToken ? null : personFilter(authorFilter, changeAuthorFilter, (c) => c.authorId)}
+            holderFilter={publicToken ? null : personFilter(holderFilter, changeHolderFilter, holderOf)}
             view={view}
             onView={changeView}
             onManage={readOnly ? null : () => setManaging(true)}

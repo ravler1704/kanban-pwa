@@ -1483,3 +1483,17 @@ a.btn { display: inline-block; text-decoration: none; }
 .fp-confirm { min-width: 0; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fp-empty { padding: 1.5rem 1rem; color: var(--muted); text-align: center; }
 .fp-hint { margin: 0; color: var(--muted); font-size: 0.85rem; }
+
+/* Author and holder of a card: a quiet line under the main fields. */
+.card-people { display: flex; flex-wrap: wrap; gap: 0.25rem 0.9rem; margin-top: -0.2rem; }
+.cp-chip {
+  display: inline-flex; align-items: center; gap: 0.35rem; min-width: 0; max-width: 100%;
+  padding: 0.15rem 0.35rem 0.15rem 0; border: none; border-radius: 6px; background: none;
+  color: var(--muted); font: inherit; font-size: 0.8rem; text-align: left;
+}
+button.cp-chip { cursor: pointer; }
+button.cp-chip:hover { color: var(--text); }
+.cp-chip .avatar { flex: none; }
+.cp-label { opacity: 0.8; }
+.cp-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); opacity: 0.85; }
+.ff-person { display: inline-flex; align-items: center; gap: 0.5rem; min-width: 0; }

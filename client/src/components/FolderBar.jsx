@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { publicToken } from '../board.js';
 import ColumnSetFilter from './ColumnSetFilter.jsx';
 import FolderFilter from './FolderFilter.jsx';
+import PersonFilter from './PersonFilter.jsx';
 import TagFilter from './TagFilter.jsx';
 
 function SettingsIcon() {
@@ -75,7 +76,7 @@ const VIEWS = [
  * with a conflict }. Without `onManage` / `onAddCard` (read only) their buttons are not shown.
  */
 export default function FolderBar({
-  folders, folderFilter, conflictsByFolder, columnSets, columnSetId, onSelectColumnSet, tagFilter,
+  folders, folderFilter, conflictsByFolder, columnSets, columnSetId, onSelectColumnSet, tagFilter, authorFilter, holderFilter,
   view, onView, onManage, onAddCard, children,
 }) {
   const [filtersHidden, setFiltersHidden] = useState(() => localStorage.getItem(FILTERS_HIDDEN_KEY) === '1');
@@ -85,7 +86,8 @@ export default function FolderBar({
   };
 
   // A filter that narrows the board: shown on the toggle while the filters are hidden.
-  const filtered = Boolean(folderFilter.onClear || tagFilter?.selected.length);
+  const filtered = Boolean(folderFilter.onClear || tagFilter?.selected.length || authorFilter?.selected.length
+    || holderFilter?.selected.length);
 
   const filters = !filtersHidden && (
     <div className="projectbar-row">
@@ -98,6 +100,14 @@ export default function FolderBar({
       )}
 
       {tagFilter && <TagFilter {...tagFilter} />}
+
+      {authorFilter && (authorFilter.counts.size > 0 || authorFilter.selected.length > 0) && (
+        <PersonFilter label="Автор" title="Автор" {...authorFilter} />
+      )}
+
+      {holderFilter && (holderFilter.counts.size > 0 || holderFilter.selected.length > 0) && (
+        <PersonFilter label="На ком" title="На ком карточка" {...holderFilter} />
+      )}
     </div>
   );
 

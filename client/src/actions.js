@@ -3,6 +3,7 @@ import {
 } from './db.js';
 import { columnModel, matchColumn } from './columnSets.js';
 import { descendants, folderColumnSetId, folderTree, inheritingFolders } from './folders.js';
+import { authState } from './auth.js';
 import { requestSync } from './sync.js';
 
 const alive = (r) => !r.deleted;
@@ -356,7 +357,9 @@ async function arrivalPosition(columnId, cardId = null) {
   return cards.reduce((min, c) => Math.min(min, c.position), 1) - 1;
 }
 
-export async function createCard({ folderId }, columnId, title, description = '', reminders = []) {
+export async function createCard(
+  { folderId }, columnId, title, description = '', reminders = [], { authorId = null, assigneeId = null } = {},
+) {
   await insert('card', {
     folderId,
     columnId,
@@ -364,6 +367,8 @@ export async function createCard({ folderId }, columnId, title, description = ''
     description,
     remindAt: null,
     reminders,
+    authorId: authorId ?? authState.get().user?.id ?? null,
+    assigneeId,
     attachments: [],
     position: await arrivalPosition(columnId),
   });

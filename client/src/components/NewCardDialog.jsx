@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { createCard } from '../actions.js';
 import CardExtraFields from './CardExtraFields.jsx';
+import CardPeople, { useBoardPeople } from './CardPeople.jsx';
 import FolderSelect from './FolderSelect.jsx';
 import Modal from './Modal.jsx';
 import TitleField from './TitleField.jsx';
@@ -24,11 +25,16 @@ export default function NewCardDialog({ folders, columnsOfFolder, target, onClos
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [reminders, setReminders] = useState([]);
+  const { meId } = useBoardPeople();
+  const [authorId, setAuthorId] = useState(null);
+  const [assigneeId, setAssigneeId] = useState(null);
 
   async function submit(e) {
     e.preventDefault();
     if (!title.trim() || !folderId || !columnId) return;
-    await createCard({ folderId }, columnId, title.trim(), description, reminders);
+    await createCard({ folderId }, columnId, title.trim(), description, reminders, {
+      authorId: authorId ?? meId, assigneeId,
+    });
     onClose();
   }
 
@@ -50,6 +56,8 @@ export default function NewCardDialog({ folders, columnsOfFolder, target, onClos
             {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </label>
+        <CardPeople folderId={folderId} authorId={authorId ?? meId} assigneeId={assigneeId}
+          onAuthor={setAuthorId} onAssignee={setAssigneeId} />
         <div className="actions">
           <span className="spacer" />
           <button type="button" className="btn" onClick={onClose}>Отмена</button>

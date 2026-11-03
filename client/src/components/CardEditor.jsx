@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { deleteCard, moveCardToColumn, moveCardToFolder, updateCard } from '../actions.js';
 import Attachments from './Attachments.jsx';
 import CardExtraFields from './CardExtraFields.jsx';
+import CardPeople from './CardPeople.jsx';
 import Comments from './Comments.jsx';
 import Markdown from './Markdown.jsx';
 import Modal from './Modal.jsx';
@@ -33,6 +34,7 @@ function CardView({ card, columnsOfFolder, folders, onClose }) {
             && ` · напоминания: ${cardReminders(card).map((r) => reminderText(r)).join('; ')}`}
         </p>
         {card.description && <div className="card-view-desc"><Markdown text={card.description} /></div>}
+        <CardPeople folderId={card.folderId} authorId={card.authorId} assigneeId={card.assigneeId} />
         <Attachments card={card} readOnly />
         <CardComments card={card} />
         <div className="actions">
@@ -60,6 +62,8 @@ function CardForm({ card, columnsOfFolder, folders, onClose }) {
   const [folderId, setFolderId] = useState(card.folderId);
   const [columnId, setColumnId] = useState(card.columnId);
   const [reminders, setReminders] = useState(() => cardReminders(card));
+  const [authorId, setAuthorId] = useState(card.authorId ?? null);
+  const [assigneeId, setAssigneeId] = useState(card.assigneeId ?? null);
 
   // Another folder may use another column set: the status then is one of its columns.
   const columns = columnsOfFolder(folderId);
@@ -85,6 +89,8 @@ function CardForm({ card, columnsOfFolder, folders, onClose }) {
       patch.reminders = reminders;
       patch.remindAt = null;
     }
+    if (authorId !== (card.authorId ?? null)) patch.authorId = authorId;
+    if (assigneeId !== (card.assigneeId ?? null)) patch.assigneeId = assigneeId;
     if (Object.keys(patch).length) await updateCard(card.id, patch, base);
     await moveCardToFolder(card.id, folderId);
     if (columnId !== card.columnId) await moveCardToColumn(card.id, columnId);
@@ -126,6 +132,8 @@ function CardForm({ card, columnsOfFolder, folders, onClose }) {
             У этой папки другой набор колонок — проверьте статус, в который попадёт карточка.
           </p>
         )}
+        <CardPeople folderId={folderId} authorId={authorId} assigneeId={assigneeId}
+          onAuthor={setAuthorId} onAssignee={setAssigneeId} />
         <div className="actions">
           <button type="button" className="btn btn-danger" onClick={remove}>Удалить</button>
           <span className="spacer" />
