@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Modal from './Modal.jsx';
 
@@ -59,24 +59,64 @@ function monthDays(month) {
 }
 
 const ITEM = 36;
+// Wheel and trackpad: this much scrolling moves the wheel by one item.
+const WHEEL_STEP = 28;
 
 /** An iOS-like wheel: scrolls with snapping; the value is the item in the middle band. */
 function Wheel({ values, value, onChange, label }) {
   const list = useRef(null);
   const timer = useRef(null);
+  const wheel = useRef({ target: 0, rest: 0, active: false });
   const index = values.indexOf(value);
+  const latest = useRef({ values, value, onChange });
+  latest.current = { values, value, onChange };
 
   useLayoutEffect(() => {
     const el = list.current;
-    if (Math.round(el.scrollTop / ITEM) !== index) el.scrollTop = index * ITEM;
+    if (!wheel.current.active && Math.round(el.scrollTop / ITEM) !== index) el.scrollTop = index * ITEM;
   }, [index]);
 
+  const commit = (i) => {
+    const { values: all, value: current, onChange: change } = latest.current;
+    const next = all[Math.min(all.length - 1, Math.max(0, i))];
+    if (next !== current) change(next);
+  };
+
+  // Snapping alone makes trackpads jumpy: the many small deltas are turned into steps of one item.
+  useEffect(() => {
+    const el = list.current;
+    const onWheel = (e) => {
+      e.preventDefault();
+      const w = wheel.current;
+      if (!w.active) {
+        w.active = true;
+        w.target = Math.round(el.scrollTop / ITEM);
+        w.rest = 0;
+      }
+      let delta = e.deltaMode === 1 ? e.deltaY * ITEM : e.deltaY;
+      // A mouse wheel notch: one item.
+      if (Math.abs(delta) >= 50 && Number.isInteger(delta)) delta = Math.sign(delta) * WHEEL_STEP;
+      w.rest += delta;
+      const steps = Math.trunc(w.rest / WHEEL_STEP);
+      if (steps) {
+        w.rest -= steps * WHEEL_STEP;
+        w.target = Math.min(latest.current.values.length - 1, Math.max(0, w.target + steps));
+        el.scrollTo({ top: w.target * ITEM, behavior: 'smooth' });
+      }
+      clearTimeout(timer.current);
+      timer.current = setTimeout(() => {
+        w.active = false;
+        commit(w.target);
+      }, 150);
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
+
   const onScroll = () => {
+    if (wheel.current.active) return;
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => {
-      const next = values[Math.min(values.length - 1, Math.max(0, Math.round(list.current.scrollTop / ITEM)))];
-      if (next !== value) onChange(next);
-    }, 90);
+    timer.current = setTimeout(() => commit(Math.round(list.current.scrollTop / ITEM)), 90);
   };
 
   return (
