@@ -786,7 +786,7 @@ a.btn { display: inline-block; text-decoration: none; }
 }
 .modal h3 { margin-top: 0; }
 .modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; }
-.modal-close { font-size: 1.2rem; line-height: 1; }
+.modal-close { flex: none; width: 2.25rem; height: 2.25rem; padding: 0; }
 
 .editor { display: flex; flex-direction: column; gap: 0.8rem; }
 /* Labelled field: the caption sits inside the box, above the value (like the project picker). */
