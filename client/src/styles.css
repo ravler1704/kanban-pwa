@@ -219,9 +219,23 @@ body {
 .filters-dialog-list .field.folder-filter { max-width: none; width: 100%; }
 .filters-dialog-list[hidden] { display: none; }
 .filter-screen { width: 100%; }
-.filter-screen .modal-head { align-items: center; min-height: 2.25rem; }
-.filter-screen .ff-back { margin: 0 0 0 -0.4rem; }
-.filter-screen-title { margin: 0; }
+.filter-screen-back {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  margin-left: -1.2rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.filter-screen-back svg { flex: none; color: var(--accent); }
+.filter-screen > .modal-head { margin-bottom: -0.7rem; }
+.filter-screen > .modal-head h3 { display: flex; flex: 1; min-width: 0; }
+.filter-screen-back span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.filter-screen-back:hover svg { transform: translateX(-2px); }
 .filters-reset { margin-right: auto; }
 .filters-toggle { position: relative; color: var(--muted); }
 .filters-toggle.active { color: var(--text); }

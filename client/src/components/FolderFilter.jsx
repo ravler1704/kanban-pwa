@@ -39,14 +39,21 @@ export function FilterSheet({ title, onClose, back = null, children }) {
       </Modal>
     );
   }
+  // The title takes the place of the dialog's own, its back arrow hanging to the left of it.
+  const up = back ?? { label: 'Фильтры', onClick: onClose };
   return (
     <div className="folder-picker filter-screen">
       <div className="modal-head">
-        {backButton(back ?? { label: 'Фильтры', onClick: onClose })}
+        <h3>
+          <button type="button" className="filter-screen-back" onClick={up.onClick} title={`Назад: ${up.label}`}
+            aria-label={`${title}. Назад: ${up.label}`}>
+            <BackIcon />
+            <span>{title}</span>
+          </button>
+        </h3>
         <button type="button" className="btn btn-small btn-icon-only modal-close" onClick={nav.closeAll}
           aria-label="Закрыть" title="Закрыть"><CloseIcon /></button>
       </div>
-      <h3 className="filter-screen-title">{title}</h3>
       {children}
     </div>
   );
