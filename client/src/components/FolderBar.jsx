@@ -2,7 +2,6 @@ import { Fragment, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { publicToken } from '../board.js';
 import ColumnSetFilter from './ColumnSetFilter.jsx';
-import { useMainFilters } from '../filterPrefs.js';
 import FolderFilter from './FolderFilter.jsx';
 import Modal from './Modal.jsx';
 import PersonFilter from './PersonFilter.jsx';
@@ -82,7 +81,6 @@ export default function FolderBar({
   view, onView, onManage, onAddCard, children,
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const main = useMainFilters();
 
   const hasPeople = (f) => f && (f.counts.size > 0 || f.selected.length > 0);
   const filters = [
@@ -104,34 +102,27 @@ export default function FolderBar({
       node: <PersonFilter label="На ком" title="На ком карточка" {...holderFilter} />,
     },
   ].filter(Boolean);
-  const mainOnes = filters.filter((f) => main.includes(f.id));
-  // A filter outside the panel that narrows the board: marked on the filters button.
-  const hiddenActive = filters.some((f) => f.active && !main.includes(f.id));
+  // A filter that narrows the board: marked on the filters button.
+  const filtered = filters.some((f) => f.active);
   const clearers = [folderFilter.onClear, tagFilter?.selected.length && tagFilter.onClear,
     authorFilter?.selected.length && authorFilter.onClear, holderFilter?.selected.length && holderFilter.onClear]
     .filter(Boolean);
 
-  const filterRow = (
-    <div className="projectbar-row">
-      {mainOnes.map((f) => <Fragment key={f.id}>{f.node}</Fragment>)}
-      {filtersOpen && createPortal(
-        <Modal title="Фильтры" onClose={() => setFiltersOpen(false)} className="filters-dialog" closeButton>
-          <div className="filters-dialog-list">
-            {filters.map((f) => <Fragment key={f.id}>{f.node}</Fragment>)}
-          </div>
-          <p className="fp-hint">Какие фильтры видны прямо на панели — в «Настройках доски», вкладка «Фильтры».</p>
-          <div className="actions">
-            {clearers.length > 0 && (
-              <button type="button" className="btn filters-reset" onClick={() => clearers.forEach((clear) => clear())}>
-                Сбросить все
-              </button>
-            )}
-            <button type="button" className="btn btn-primary" onClick={() => setFiltersOpen(false)}>Готово</button>
-          </div>
-        </Modal>,
-        document.body,
-      )}
-    </div>
+  const filtersDialog = filtersOpen && createPortal(
+    <Modal title="Фильтры" onClose={() => setFiltersOpen(false)} className="filters-dialog" closeButton>
+      <div className="filters-dialog-list">
+        {filters.map((f) => <Fragment key={f.id}>{f.node}</Fragment>)}
+      </div>
+      <div className="actions">
+        {clearers.length > 0 && (
+          <button type="button" className="btn filters-reset" onClick={() => clearers.forEach((clear) => clear())}>
+            Сбросить все
+          </button>
+        )}
+        <button type="button" className="btn btn-primary" onClick={() => setFiltersOpen(false)}>Готово</button>
+      </div>
+    </Modal>,
+    document.body,
   );
 
   return (
@@ -139,9 +130,9 @@ export default function FolderBar({
       <div className="projectbar-row projectbar-actions">
         <button type="button" className="btn btn-small btn-icon-only filters-toggle" aria-haspopup="dialog"
           onClick={() => setFiltersOpen(true)}
-          title={hiddenActive ? 'Фильтры (доска отфильтрована)' : 'Фильтры'} aria-label="Фильтры">
+          title={filtered ? 'Фильтры (доска отфильтрована)' : 'Фильтры'} aria-label="Фильтры">
           <FilterIcon />
-          {hiddenActive && <span className="filters-dot" aria-hidden="true" />}
+          {filtered && <span className="filters-dot" aria-hidden="true" />}
         </button>
 
         {children}
@@ -168,7 +159,7 @@ export default function FolderBar({
         )}
       </div>
 
-      {filterRow}
+      {filtersDialog}
     </nav>
   );
 }

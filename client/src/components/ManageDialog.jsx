@@ -7,9 +7,7 @@ import {
 import { isOwnBoard } from '../board.js';
 import { matchColumn } from '../columnSets.js';
 import { db } from '../db.js';
-import { FILTERS, setMainFilters, useMainFilters } from '../filterPrefs.js';
 import { folderColumnSetId, inheritingFolders } from '../folders.js';
-import { SwitchRow } from './FolderFilter.jsx';
 import FolderSelect from './FolderSelect.jsx';
 import { AddForm, NameInput } from './ManageFields.jsx';
 import Modal from './Modal.jsx';
@@ -264,26 +262,6 @@ const TAB_KEY = 'manageDialogTab';
  * of the «Доступ» tab. `folders` are the live folders of the board, `writable` the ids a member may
  * change (null: all). The folders are arranged on «Папки» (members arrange those they have access to).
  */
-/** Main filters are in the filters panel; the others open there with «Ещё». Kept on this device. */
-function FilterSettings() {
-  const main = useMainFilters();
-  return (
-    <div className="manage">
-      <p className="muted">
-        Основные фильтры видны прямо на панели доски. Все фильтры открываются кнопкой фильтров.
-        Настройка хранится на этом устройстве.
-      </p>
-      <ul className="fp-list ff-list">
-        {FILTERS.map((f) => (
-          <SwitchRow key={f.id} label={f.label} on={main.includes(f.id)}
-            meta={[main.includes(f.id) ? 'Основной' : 'Только в окне фильтров', f.note].filter(Boolean).join(' · ')}
-            onChange={(on) => setMainFilters(on ? [...main, f.id] : main.filter((id) => id !== f.id))} />
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 export default function ManageDialog({
   model, columnsSynced, initialSetId, initialFolderId, folders, foldersSynced, writable, onClose,
 }) {
@@ -292,7 +270,6 @@ export default function ManageDialog({
     { id: 'structure', label: 'Папки' },
     ...(canShare ? [{ id: 'access', label: 'Доступ' }] : []),
     ...(isOwnBoard ? [{ id: 'columns', label: 'Колонки' }] : []),
-    { id: 'filters', label: 'Фильтры' },
   ];
   const [deleting, setDeleting] = useState(null);
   const [changingSet, setChangingSet] = useState(null);
@@ -351,11 +328,6 @@ export default function ManageDialog({
       {tab === 'columns' && (
         <div role="tabpanel">
           <ColumnSetsEditor model={model} synced={columnsSynced} initialSetId={initialSetId} />
-        </div>
-      )}
-      {tab === 'filters' && (
-        <div role="tabpanel">
-          <FilterSettings />
         </div>
       )}
       {changingSet && (

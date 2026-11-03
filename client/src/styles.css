@@ -210,7 +210,6 @@ body {
 .modal.filters-dialog { width: min(440px, 100%); }
 .filters-dialog-list { display: flex; flex-direction: column; gap: 0.6rem; }
 .filters-dialog-list .field.folder-filter { max-width: none; width: 100%; }
-.filters-dialog .fp-hint { margin: 0.8rem 0 0; }
 .filters-reset { margin-right: auto; }
 .filters-toggle { position: relative; color: var(--muted); }
 .filters-toggle.active { color: var(--text); }
