@@ -1,9 +1,8 @@
 import { Fragment, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { publicToken } from '../board.js';
 import ColumnSetFilter from './ColumnSetFilter.jsx';
-import FolderFilter, { SwitchRow } from './FolderFilter.jsx';
-import Modal from './Modal.jsx';
+import { useMainFilters } from '../filterPrefs.js';
+import FolderFilter from './FolderFilter.jsx';
 import PersonFilter from './PersonFilter.jsx';
 import TagFilter from './TagFilter.jsx';
 
@@ -65,54 +64,9 @@ function FilterIcon() {
 }
 
 // The filters behind the toggle are shown while it is on; the main ones always are.
-function SlidersIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0" />
-      <circle cx="16" cy="6" r="2" /><circle cx="10" cy="12" r="2" /><circle cx="18" cy="18" r="2" />
-    </svg>
-  );
-}
-
-const FILTERS_OPEN_KEY = 'filtersOpen';
-const MAIN_FILTERS_KEY = 'mainFilters';
-const DEFAULT_MAIN = ['folders'];
-
-const FILTERS = [
-  { id: 'folders', label: 'Папки' },
-  { id: 'columns', label: 'Колонки', note: 'Когда в виду папки с разными наборами колонок' },
-  { id: 'tags', label: 'Теги', note: 'Когда у карточек есть теги' },
-  { id: 'author', label: 'Автор' },
-  { id: 'holder', label: 'На ком' },
-];
-
-function readMain() {
-  try {
-    const list = JSON.parse(localStorage.getItem(MAIN_FILTERS_KEY));
-    return Array.isArray(list) ? list : DEFAULT_MAIN;
-  } catch {
-    return DEFAULT_MAIN;
-  }
-}
-
-function FilterSettings({ main, onChange, onClose }) {
-  return (
-    <Modal title="Фильтры" onClose={onClose} className="folder-picker folder-filter-sheet" closeButton>
-      <p className="fp-hint">Основные фильтры всегда на виду, остальные открываются кнопкой фильтров.</p>
-      <ul className="fp-list ff-list">
-        {FILTERS.filter((f) => f.id !== 'folders' || !publicToken).map((f) => (
-          <SwitchRow key={f.id} label={f.label} on={main.includes(f.id)}
-            meta={[main.includes(f.id) ? 'Основной' : 'Под кнопкой', f.note].filter(Boolean).join(' · ')}
-            onChange={(on) => onChange(on ? [...main, f.id] : main.filter((id) => id !== f.id))} />
-        ))}
-      </ul>
-      <div className="actions fp-actions">
-        <button type="button" className="btn btn-primary" onClick={onClose}>Готово</button>
-      </div>
-    </Modal>
-  );
-}
+// The whole filters panel; inside it, filters other than the main ones open with «Ещё».
+const FILTERS_HIDDEN_KEY = 'filtersHidden';
+const MORE_KEY = 'filtersMore';
 
 const VIEWS = [
   { id: 'board', label: 'Доска', Icon: BoardIcon },
@@ -129,17 +83,17 @@ export default function FolderBar({
   folders, folderFilter, conflictsByFolder, columnSets, columnSetId, onSelectColumnSet, tagFilter, authorFilter, holderFilter,
   view, onView, onManage, onAddCard, children,
 }) {
-  const [filtersOpen, setFiltersOpen] = useState(() => localStorage.getItem(FILTERS_OPEN_KEY) === '1');
+  const [filtersHidden, setFiltersHidden] = useState(() => localStorage.getItem(FILTERS_HIDDEN_KEY) === '1');
   const toggleFilters = () => {
-    localStorage.setItem(FILTERS_OPEN_KEY, filtersOpen ? '0' : '1');
-    setFiltersOpen(!filtersOpen);
+    localStorage.setItem(FILTERS_HIDDEN_KEY, filtersHidden ? '0' : '1');
+    setFiltersHidden(!filtersHidden);
   };
-  const [main, setMain] = useState(readMain);
-  const changeMain = (next) => {
-    setMain(next);
-    localStorage.setItem(MAIN_FILTERS_KEY, JSON.stringify(next));
+  const [more, setMore] = useState(() => localStorage.getItem(MORE_KEY) === '1');
+  const toggleMore = () => {
+    localStorage.setItem(MORE_KEY, more ? '0' : '1');
+    setMore(!more);
   };
-  const [configuring, setConfiguring] = useState(false);
+  const main = useMainFilters();
 
   const hasPeople = (f) => f && (f.counts.size > 0 || f.selected.length > 0);
   const filters = [
@@ -161,36 +115,35 @@ export default function FolderBar({
       node: <PersonFilter label="На ком" title="На ком карточка" {...holderFilter} />,
     },
   ].filter(Boolean);
-  const shown = filters.filter((f) => filtersOpen || main.includes(f.id));
-  // A hidden filter that narrows the board: marked on the toggle.
-  const filtered = !filtersOpen && filters.some((f) => f.active && !main.includes(f.id));
+  const mainOnes = filters.filter((f) => main.includes(f.id));
+  const extra = filters.filter((f) => !main.includes(f.id));
+  const extraActive = extra.filter((f) => f.active).length;
+  // A filter that narrows the board: marked on the toggle while the panel is hidden.
+  const filtered = filters.some((f) => f.active);
 
-  const filterRow = (
+  const filterRow = !filtersHidden && (
     <div className="projectbar-row">
-      {shown.map((f) => <Fragment key={f.id}>{f.node}</Fragment>)}
-      {filtersOpen && (
-        <button type="button" className="btn btn-small btn-icon-only filters-settings" title="Настроить фильтры"
-          aria-label="Настроить фильтры" onClick={() => setConfiguring(true)}>
-          <SlidersIcon />
+      {mainOnes.map((f) => <Fragment key={f.id}>{f.node}</Fragment>)}
+      {extra.length > 0 && (
+        <button type="button" className={`btn btn-small filters-more ${more ? 'active' : ''}`} aria-expanded={more}
+          onClick={toggleMore} title={extraActive && !more ? 'Среди скрытых фильтров есть включённые' : undefined}>
+          {more ? 'Скрыть' : `Ещё ${extra.length}`}
+          {!more && extraActive > 0 && <span className="filters-more-dot" aria-hidden="true" />}
         </button>
       )}
-      {configuring && createPortal(
-        <FilterSettings main={main} onChange={changeMain} onClose={() => setConfiguring(false)} />,
-        document.body,
-      )}
+      {more && extra.map((f) => <Fragment key={f.id}>{f.node}</Fragment>)}
     </div>
   );
 
   return (
     <nav className="projectbar">
       <div className="projectbar-row projectbar-actions">
-        <button type="button" className={`btn btn-small btn-icon-only filters-toggle ${filtersOpen ? 'active' : ''}`}
-          aria-pressed={filtersOpen} onClick={toggleFilters}
-          title={filtersOpen ? 'Скрыть дополнительные фильтры'
-            : `Все фильтры${filtered ? ' (доска отфильтрована скрытым фильтром)' : ''}`}
-          aria-label={filtersOpen ? 'Скрыть дополнительные фильтры' : 'Все фильтры'}>
+        <button type="button" className={`btn btn-small btn-icon-only filters-toggle ${filtersHidden ? '' : 'active'}`}
+          aria-pressed={!filtersHidden} onClick={toggleFilters}
+          title={filtersHidden ? `Показать фильтры${filtered ? ' (доска отфильтрована)' : ''}` : 'Скрыть фильтры'}
+          aria-label={filtersHidden ? 'Показать фильтры' : 'Скрыть фильтры'}>
           <FilterIcon />
-          {filtered && <span className="filters-dot" aria-hidden="true" />}
+          {filtersHidden && filtered && <span className="filters-dot" aria-hidden="true" />}
         </button>
 
         {children}
