@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { createContext, useContext, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { childrenOf, descendants, flattenFolders, folderPath, folderTree } from '../folders.js';
 import { Chevron } from './ManageFields.jsx';
@@ -10,6 +10,23 @@ const svg = (children, size = 18) => (
 );
 const SearchIcon = () => svg(<><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>, 16);
 export const BackIcon = () => svg(<path d="m15 18-6-6 6-6" />, 20);
+
+/** Closes the board's filters dialog with the filter dialogs opened from it; null outside it. */
+export const CloseFilters = createContext(null);
+
+/**
+ * Buttons of a filter dialog: «Готово» returns to the filters dialog, «Применить» closes it too.
+ * Changes apply at once either way.
+ */
+export function FilterActions({ onClose }) {
+  const closeAll = useContext(CloseFilters);
+  return (
+    <div className="actions fp-actions">
+      <button type="button" className={`btn ${closeAll ? '' : 'btn-primary'}`} onClick={onClose}>Готово</button>
+      {closeAll && <button type="button" className="btn btn-primary" onClick={closeAll}>Применить</button>}
+    </div>
+  );
+}
 
 /** The dialogs show a search from this many items. */
 export const SEARCH_FROM = 7;
@@ -139,9 +156,7 @@ function FolderFilterDialog({ folders, filter, onClose }) {
         {list.map(row)}
         {list.length === 0 && <li className="fp-empty">{needle ? 'Ничего не найдено' : 'Вложенных папок нет'}</li>}
       </ul>
-      <div className="actions fp-actions">
-        <button type="button" className="btn btn-primary" onClick={onClose}>Готово</button>
-      </div>
+      <FilterActions onClose={onClose} />
     </Modal>
   );
 }

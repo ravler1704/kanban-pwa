@@ -2,7 +2,7 @@ import { Fragment, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { publicToken } from '../board.js';
 import ColumnSetFilter from './ColumnSetFilter.jsx';
-import FolderFilter from './FolderFilter.jsx';
+import FolderFilter, { CloseFilters } from './FolderFilter.jsx';
 import Modal from './Modal.jsx';
 import PersonFilter from './PersonFilter.jsx';
 import TagFilter from './TagFilter.jsx';
@@ -110,9 +110,11 @@ export default function FolderBar({
 
   const filtersDialog = filtersOpen && createPortal(
     <Modal title="Фильтры" onClose={() => setFiltersOpen(false)} className="filters-dialog" closeButton>
-      <div className="filters-dialog-list">
-        {filters.map((f) => <Fragment key={f.id}>{f.node}</Fragment>)}
-      </div>
+      <CloseFilters.Provider value={() => setFiltersOpen(false)}>
+        <div className="filters-dialog-list">
+          {filters.map((f) => <Fragment key={f.id}>{f.node}</Fragment>)}
+        </div>
+      </CloseFilters.Provider>
       <div className="actions">
         {clearers.length > 0 && (
           <button type="button" className="btn filters-reset" onClick={() => clearers.forEach((clear) => clear())}>

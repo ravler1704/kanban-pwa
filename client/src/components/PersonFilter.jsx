@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Avatar from './Avatar.jsx';
 import { personLabel, personOf, useBoardPeople } from './CardPeople.jsx';
-import { DialogField, SEARCH_FROM, SearchField, SwitchRow } from './FolderFilter.jsx';
+import { DialogField, FilterActions, SEARCH_FROM, SearchField, SwitchRow } from './FolderFilter.jsx';
 import Modal from './Modal.jsx';
 
 const cardsCount = (n) => {
@@ -34,9 +34,7 @@ function PersonFilterDialog({ title, list, meId, selected, onToggle, onClear, on
         ))}
         {found.length === 0 && <li className="fp-empty">Никого не найдено</li>}
       </ul>
-      <div className="actions fp-actions">
-        <button type="button" className="btn btn-primary" onClick={onClose}>Готово</button>
-      </div>
+      <FilterActions onClose={onClose} />
     </Modal>
   );
 }

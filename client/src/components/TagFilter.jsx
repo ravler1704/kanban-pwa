@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DialogField, SEARCH_FROM, SearchField, SwitchRow } from './FolderFilter.jsx';
+import { DialogField, FilterActions, SEARCH_FROM, SearchField, SwitchRow } from './FolderFilter.jsx';
 import Modal from './Modal.jsx';
 
 const cardsCount = (n) => {
@@ -31,9 +31,7 @@ function TagFilterDialog({ tags, selected, onToggle, onClear, onClose }) {
         ))}
         {found.length === 0 && <li className="fp-empty">{needle ? 'Тегов не найдено' : 'У карточек пока нет тегов'}</li>}
       </ul>
-      <div className="actions fp-actions">
-        <button type="button" className="btn btn-primary" onClick={onClose}>Готово</button>
-      </div>
+      <FilterActions onClose={onClose} />
     </Modal>
   );
 }
