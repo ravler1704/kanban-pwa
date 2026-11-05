@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createCard, moveCard, moveCardsToColumn, moveCardToColumn } from '../actions.js';
-import Card, { draggedCardId } from './Card.jsx';
+import Card, { ALL_LEFT, ALL_RIGHT, draggedCardId, MoveIcon } from './Card.jsx';
 
 function positionBefore(cards, targetId) {
   const index = cards.findIndex((c) => c.id === targetId);
@@ -97,11 +97,13 @@ export default function Column({
           <div className="column-moves">
             {prevColumn && (
               <button type="button" className="btn btn-icon" onClick={() => moveAll(prevColumn)}
-                title={`Перенести все карточки в «${prevColumn.name}»`}>«</button>
+                title={`Перенести все карточки в «${prevColumn.name}»`}
+                aria-label={`Перенести все карточки в «${prevColumn.name}»`}><MoveIcon d={ALL_LEFT} /></button>
             )}
             {nextColumn && (
               <button type="button" className="btn btn-icon" onClick={() => moveAll(nextColumn)}
-                title={`Перенести все карточки в «${nextColumn.name}»`}>»</button>
+                title={`Перенести все карточки в «${nextColumn.name}»`}
+                aria-label={`Перенести все карточки в «${nextColumn.name}»`}><MoveIcon d={ALL_RIGHT} /></button>
             )}
           </div>
         )}

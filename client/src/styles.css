@@ -910,7 +910,15 @@ a.btn { display: inline-block; text-decoration: none; }
 .btn:hover:not(:disabled) { border-color: var(--muted); }
 .btn:disabled { opacity: 0.5; cursor: default; }
 .btn-small { padding: 0.25rem 0.6rem; font-size: 0.85rem; }
-.btn-icon { padding: 0.1rem 0.45rem; font-size: 0.85rem; }
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.5rem;
+  padding: 0;
+  font-size: 0.85rem;
+}
 .btn-primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
 .btn-danger { color: var(--danger); }
 
