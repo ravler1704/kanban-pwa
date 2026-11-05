@@ -27,7 +27,7 @@ export default function LoginScreen({ clientId, yandexClientId, devLogin, emailL
         <h1>Канбан</h1>
         {online ? (
           <>
-            <p className="muted">Войдите, чтобы открыть доску.</p>
+            <p className="muted">Войдите, чтобы открыть своё пространство.</p>
             {clientId && (
               <GoogleButton clientId={clientId} onError={setError}
                 onCredential={(credential) => run(() => signInWithGoogle(credential))} />

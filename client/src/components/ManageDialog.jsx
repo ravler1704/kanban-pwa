@@ -50,13 +50,13 @@ const folderList = (folders) => folders.map((f) => `«${f.name}»`).join(', ');
 /** Which folders a change of the set affects; shown above its columns so it is never a surprise. */
 function SetUsage({ folders }) {
   if (folders.length === 0) {
-    return <p className="set-usage set-usage-unused">Этот набор пока не использует ни одна папка.</p>;
+    return <p className="set-usage set-usage-unused">Этот набор пока не использует ни одна доска.</p>;
   }
   return (
     <p className="set-usage">
       {folders.length === 1
-        ? <>Набор использует папка {folderList(folders)}. Изменения колонок сразу применятся к ней.</>
-        : <>Набор используют папки: {folderList(folders)}. Изменения колонок сразу применятся ко всем этим папкам.</>}
+        ? <>Набор использует доска {folderList(folders)}. Изменения колонок сразу применятся к ней.</>
+        : <>Набор используют доски: {folderList(folders)}. Изменения колонок сразу применятся ко всем этим доскам.</>}
     </p>
   );
 }
@@ -99,7 +99,7 @@ function ColumnSetsEditor({ model, synced, initialSetId }) {
         <NameInput key={set.id} value={set.name} className="manage-project-name" label="Название набора"
           maxLength={100} onSave={(name) => renameColumnSet(set.id, name)} />
         <button className="btn btn-small btn-danger" disabled={users.length > 0 || model.sets.length === 1}
-          title={users.length > 0 ? 'Сначала переключите папки на другой набор' : undefined}
+          title={users.length > 0 ? 'Сначала переключите доски на другой набор' : undefined}
           onClick={removeSet}>Удалить набор</button>
       </div>
       <SetUsage folders={users} />
@@ -182,7 +182,7 @@ function ChangeSetDialog({ model, folder, folders, setId, onClose }) {
     <Modal title="Сменить набор колонок" onClose={onClose}>
       <form className="editor" onSubmit={submit}>
         <p>
-          У папки «{folder.name}»{group.length > 1 && ' и вложенных в неё папок, которые берут набор у неё,'} будут колонки
+          У доски «{folder.name}»{group.length > 1 && ' и вложенных в неё досок, которые берут набор у неё,'} будут колонки
           набора «{set?.name}»: {to.map((c) => c.name).join(', ')}.
           Выберите, куда перенести карточки из текущих колонок.
         </p>
@@ -222,23 +222,23 @@ function DeleteFolderDialog({ folder, stats, folders, onClose }) {
   }
 
   return (
-    <Modal title="Удалить папку" onClose={onClose}>
+    <Modal title="Удалить доску" onClose={onClose}>
       <p>
-        В папке «{folder.name}»: карточек {stats.cards}
-        {stats.folders > 0 && `, вложенных папок ${stats.folders} (в них карточек ${stats.subCards})`}. Что с ними сделать?
+        На доске «{folder.name}»: карточек {stats.cards}
+        {stats.folders > 0 && `, вложенных досок ${stats.folders} (в них карточек ${stats.subCards})`}. Что с ними сделать?
       </p>
       {stats.cards > 0 && (
-        <FolderSelect label="Карточки папки оставить в папке" folders={folders} exclude={new Set([folder.id])}
+        <FolderSelect label="Карточки доски перенести на доску" folders={folders} exclude={new Set([folder.id])}
           value={targetId} onChange={setTargetId} />
       )}
       {error && <p className="login-error">{error}</p>}
       <div className="actions">
         <button className="btn" onClick={onClose}>Отмена</button>
         <button className="btn" disabled={stats.cards > 0 && !targetId} onClick={() => finish(true)}>
-          Оставить карточки{stats.folders > 0 ? ' и вложенные папки' : ''}
+          Оставить карточки{stats.folders > 0 ? ' и вложенные доски' : ''}
         </button>
         <button className="btn btn-danger" onClick={() => finish(false)}>
-          Удалить {total > 0 || stats.folders > 0 ? 'всё' : 'папку'}
+          Удалить {total > 0 || stats.folders > 0 ? 'всё' : 'доску'}
         </button>
       </div>
     </Modal>
@@ -260,14 +260,14 @@ const TAB_KEY = 'manageDialogTab';
 /**
  * `initialSetId` is the column set opened on the «Колонки» tab and `initialFolderId` the folder
  * of the «Доступ» tab. `folders` are the live folders of the board, `writable` the ids a member may
- * change (null: all). The folders are arranged on «Папки» (members arrange those they have access to).
+ * change (null: all). The folders are arranged on «Доски» (members arrange those they have access to).
  */
 export default function ManageDialog({
   model, columnsSynced, initialSetId, initialFolderId, folders, foldersSynced, writable, onClose,
 }) {
   const canShare = useCanShare();
   const tabs = [
-    { id: 'structure', label: 'Папки' },
+    { id: 'structure', label: 'Доски' },
     ...(canShare ? [{ id: 'access', label: 'Доступ' }] : []),
     ...(isOwnBoard ? [{ id: 'columns', label: 'Колонки' }] : []),
   ];
@@ -286,7 +286,7 @@ export default function ManageDialog({
   async function removeFolder(folder) {
     const stats = await folderStats(folder.id);
     if (stats.cards + stats.subCards + stats.folders > 0) setDeleting({ folder, stats });
-    else if (confirm(`Удалить папку «${folder.name}»?`)) await deleteFolder(folder.id);
+    else if (confirm(`Удалить доску «${folder.name}»?`)) await deleteFolder(folder.id);
   }
 
   // Cards have to be placed in the new columns; an empty folder just switches.
@@ -300,7 +300,7 @@ export default function ManageDialog({
   }
 
   return (
-    <Modal title="Настройки доски" onClose={onClose}>
+    <Modal title="Настройки пространства" onClose={onClose}>
       {tabs.length > 1 && <div className="tabs-bar">
         <div className="tabs" role="tablist">
           {tabs.map((t) => (
@@ -318,7 +318,7 @@ export default function ManageDialog({
         </div>
       )}
       {tab === 'access' && !folder && (
-        <p className="muted">Сначала создайте папку на вкладке «Папки».</p>
+        <p className="muted">Сначала создайте доску на вкладке «Доски».</p>
       )}
       {tab === 'access' && folder && (
         <div role="tabpanel">

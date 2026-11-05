@@ -166,10 +166,10 @@ function FolderFilterDialog({ folders, filter, onClose }) {
   const parent = current ? tree.byId.get(tree.parentOf(current)) : null;
 
   return (
-    <FilterSheet title={current ? current.name : 'Папки'} onClose={onClose}
-      back={current ? { label: parent ? parent.name : 'Папки', onClick: () => open(parent?.id ?? null) } : null}>
+    <FilterSheet title={current ? current.name : 'Доски'} onClose={onClose}
+      back={current ? { label: parent ? parent.name : 'Доски', onClick: () => open(parent?.id ?? null) } : null}>
       {!current && folders.length >= SEARCH_FROM && (
-        <SearchField placeholder="Поиск папки" value={query} onChange={setQuery} />
+        <SearchField placeholder="Поиск доски" value={query} onChange={setQuery} />
       )}
       {!needle && (
         <ul className="fp-list ff-group">
@@ -178,14 +178,14 @@ function FolderFilterDialog({ folders, filter, onClose }) {
               meta={childrenOf(folders, current.id).length ? insideOf(current.id) ?? 'вместе со всем, что внутри' : null}
               onChange={(v) => filter.onSetFolder(current.id, v)} />
           ) : (
-            <SwitchRow strong label="Показывать все папки" on={allOn} meta={allOn ? null : `Сейчас: ${filter.summary}`}
+            <SwitchRow strong label="Показывать все доски" on={allOn} meta={allOn ? null : `Сейчас: ${filter.summary}`}
               onChange={(v) => filter.onSetAll(v)} />
           )}
         </ul>
       )}
       <ul className="fp-list ff-list">
         {list.map(row)}
-        {list.length === 0 && <li className="fp-empty">{needle ? 'Ничего не найдено' : 'Вложенных папок нет'}</li>}
+        {list.length === 0 && <li className="fp-empty">{needle ? 'Ничего не найдено' : 'Вложенных досок нет'}</li>}
       </ul>
       <FilterActions onClose={onClose} />
     </FilterSheet>
@@ -217,10 +217,10 @@ export function DialogField({ label, value, title, dialog }) {
   );
 }
 
-/** The «Папки» field of the board: shows `filter.summary` and opens the folder settings. */
+/** The «Доски» field of the board: shows `filter.summary` and opens the folder settings. */
 export default function FolderFilter({ folders, filter }) {
   return (
-    <DialogField label="Папки" value={filter.summary}
+    <DialogField label="Доски" value={filter.summary}
       dialog={(onClose) => <FolderFilterDialog folders={folders} filter={filter} onClose={onClose} />} />
   );
 }

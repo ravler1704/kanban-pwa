@@ -41,7 +41,7 @@ function PublicTitle() {
     <div className="statusbar-user">
       {info?.owner && <Avatar user={info.owner} />}
       <h1 className="statusbar-title" title={owner ? `Владелец: ${owner}` : undefined}>
-        {info?.project.name ?? 'Папка'}
+        {info?.project.name ?? 'Доска'}
       </h1>
       {info && <span className="badge public-mode">{info.mode === 'edit' ? 'Можно редактировать' : 'Только просмотр'}</span>}
     </div>
@@ -75,11 +75,11 @@ export default function StatusBar({ pending, conflicts, folders, onChat }) {
       {publicToken ? <PublicTitle /> : <div className="statusbar-user">
         {user && <Avatar user={boardOwner ?? user} />}
         {boards.length > 0 || currentBoard ? (
-          <select className="select board-select" aria-label="Доска" value={currentBoard ?? ''}
+          <select className="select board-select" aria-label="Пространство" value={currentBoard ?? ''}
             title={user?.name || user?.email || undefined} onChange={(e) => switchBoard(e.target.value || null)}>
-            <option value="">Моя доска</option>
+            <option value="">Моё пространство</option>
             {boards.map((b) => <option key={b.id} value={b.id}>{boardName(b)}</option>)}
-            {currentBoard && !boards.some((b) => b.id === currentBoard) && <option value={currentBoard}>Общая доска</option>}
+            {currentBoard && !boards.some((b) => b.id === currentBoard) && <option value={currentBoard}>Общее пространство</option>}
           </select>
         ) : (
           <h1 className="statusbar-title" title={user?.email || undefined}>{user?.name || user?.email || 'Канбан'}</h1>
@@ -95,7 +95,7 @@ export default function StatusBar({ pending, conflicts, folders, onChat }) {
           title="Синхронизировать" aria-label="Синхронизировать">
           <SyncIcon spinning={s.syncing} />
         </button>
-        {publicToken && <a className="btn btn-small" href="/" title="Открыть свою доску">Мой Канбан</a>}
+        {publicToken && <a className="btn btn-small" href="/" title="Открыть своё пространство">Мой Канбан</a>}
         {user && !publicToken && (
           <button className="btn btn-small btn-icon-only" onClick={() => setAccountOpen(true)}
             title={user.email ? `Аккаунт: ${user.email}` : 'Аккаунт'} aria-label="Аккаунт">

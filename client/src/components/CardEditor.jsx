@@ -129,7 +129,7 @@ function CardForm({ card, columnsOfFolder, folders, onClose }) {
         <FolderSelect folders={folders} value={folderId} onChange={changeFolder} />
         {otherSet && (
           <p className="notice">
-            У этой папки другой набор колонок — проверьте статус, в который попадёт карточка.
+            У этой доски другой набор колонок — проверьте статус, в который попадёт карточка.
           </p>
         )}
         <CardPeople folderId={folderId} authorId={authorId} assigneeId={assigneeId}

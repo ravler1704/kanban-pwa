@@ -109,6 +109,14 @@ body {
   gap: 0.5rem;
 }
 .projectbar-row:empty { display: none; }
+.board-title {
+  margin: 0;
+  padding: 0.9rem 1.25rem 0;
+  overflow: hidden;
+  font-size: 1.25rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .projectbar-actions { min-height: 2.25rem; }
 .picker { position: relative; display: inline-flex; min-width: 0; }
 .picker .select-empty { color: var(--muted); font-weight: normal; }

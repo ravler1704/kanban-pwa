@@ -168,7 +168,7 @@ function MembersList({ people, me, onWrite }) {
           <Avatar user={p} size={36} />
           <div className="people-info">
             <div className="people-name">{personName(p)}{p.id === me && <span className="muted"> (вы)</span>}</div>
-            <div className="muted people-role">{p.owner ? 'Владелец доски' : p.email}</div>
+            <div className="muted people-role">{p.owner ? 'Владелец пространства' : p.email}</div>
           </div>
           {p.id !== me && <button type="button" className="btn btn-small" onClick={() => onWrite(p)}>Написать</button>}
         </li>

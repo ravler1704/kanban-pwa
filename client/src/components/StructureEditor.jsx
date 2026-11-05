@@ -44,14 +44,14 @@ function MoveDialog({ folder, folders, model, writable, onClose }) {
   }
 
   return (
-    <Modal title={`Перенести папку «${folder.name}»`} onClose={onClose}>
+    <Modal title={`Перенести доску «${folder.name}»`} onClose={onClose}>
       <form className="editor" onSubmit={submit}>
         <FolderSelect label="Куда" folders={folders} exclude={exclude} value={value} onChange={setValue}
           topLabel={isOwnBoard ? 'Верхний уровень' : null} />
-        <p className="move-result">Папка перейдёт со всеми вложенными папками и карточками.</p>
+        <p className="move-result">Доска перейдёт со всеми вложенными досками и карточками.</p>
         {otherSet && (
           <div className="field">
-            <span className="field-label">У новой папки другой набор колонок</span>
+            <span className="field-label">У новой доски другой набор колонок</span>
             <label className="radio-option">
               <input type="radio" name="keep-columns" checked={keepColumns} onChange={() => setKeepColumns(true)} />
               Оставить набор «{setName(before)}»
@@ -93,7 +93,7 @@ function InlineName({ value, onSave, onDone }) {
   };
   useOutsidePress(input, () => finish(true));
   return (
-    <input ref={input} className="manage-input tree-rename" value={draft} maxLength={200} aria-label="Название папки"
+    <input ref={input} className="manage-input tree-rename" value={draft} maxLength={200} aria-label="Название доски"
       onFocus={(e) => e.currentTarget.select()}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={() => finish(true)}
@@ -124,7 +124,7 @@ function FolderRow({ folder, index, count, ctx }) {
   const where = needle && folderPath(folder, folders).slice(0, -1).map((f) => f.name).join(' › ');
   const meta = [
     where,
-    !needle && (kids.length ? `${kids.length} ${plural(kids.length, 'папка', 'папки', 'папок')}` : null),
+    !needle && (kids.length ? `${kids.length} ${plural(kids.length, 'доска', 'доски', 'досок')}` : null),
     columnsSynced && setName && `«${setName}»${own || isRoot ? '' : ' (как у родителя)'}`,
   ].filter(Boolean).join(' · ');
   const togglePanel = (name) => setPanel(panel === name ? null : name);
@@ -153,7 +153,7 @@ function FolderRow({ folder, index, count, ctx }) {
         {renaming ? (
           <InlineName value={folder.name} onSave={(name) => renameFolder(folder.id, name)} onDone={() => setRenaming(false)} />
         ) : (
-          <button type="button" className="tree-toggle" title="Открыть папку" onClick={() => onOpen(folder.id)}>
+          <button type="button" className="tree-toggle" title="Открыть доску" onClick={() => onOpen(folder.id)}>
             <FolderIcon />
             <span className="tree-title">
               <span className="tree-label">{folder.name}</span>
@@ -163,7 +163,7 @@ function FolderRow({ folder, index, count, ctx }) {
           </button>
         )}
         <button type="button" className={`btn btn-small btn-icon-only tree-more ${menu ? 'active' : ''}`}
-          title="Действия" aria-label="Действия с папкой" aria-haspopup="menu" aria-expanded={Boolean(menu)}
+          title="Действия" aria-label="Действия с доской" aria-haspopup="menu" aria-expanded={Boolean(menu)}
           onMouseDown={(e) => menu && e.stopPropagation()}
           onClick={(e) => {
             if (menu) return setMenu(null);
@@ -188,7 +188,7 @@ function FolderRow({ folder, index, count, ctx }) {
             </select>
           </label>
           <p className="muted account-hint">
-            Колонки набора общие для папки и вложенных в неё папок, у которых нет своего набора.
+            Колонки набора общие для доски и вложенных в неё досок, у которых нет своего набора.
           </p>
         </div>
       )}
@@ -226,7 +226,7 @@ export default function StructureEditor({
   const needle = query.trim().toLowerCase();
   const found = needle ? flattenFolders(folders).map(({ folder }) => folder).filter((f) => f.name.toLowerCase().includes(needle)) : [];
 
-  if (!synced) return <p className="muted">Папки появятся после синхронизации.</p>;
+  if (!synced) return <p className="muted">Доски появятся после синхронизации.</p>;
 
   const open = (id) => {
     setQuery('');
@@ -239,16 +239,16 @@ export default function StructureEditor({
   const canAddHere = current ? true : isOwnBoard;
   return (
     <div className="manage tree">
-      {!isOwnBoard && <p className="muted">Колонки настраивает владелец доски, здесь можно менять папки внутри открытых вам.</p>}
+      {!isOwnBoard && <p className="muted">Колонки настраивает владелец пространства, здесь можно менять доски внутри открытых вам.</p>}
       {folders.length >= SEARCH_FROM && (
         <label className="field">
-          <span className="field-label">Поиск папки</span>
+          <span className="field-label">Поиск доски</span>
           <input type="search" className="manage-search" value={query} onChange={(e) => setQuery(e.target.value)} />
         </label>
       )}
       {!needle && (
         <nav className="breadcrumbs" aria-label="Путь">
-          <button type="button" className="crumb" disabled={!current} onClick={() => open(null)}>Все папки</button>
+          <button type="button" className="crumb" disabled={!current} onClick={() => open(null)}>Все доски</button>
           {path.map((f, i) => (
             <span key={f.id} className="crumb-item">
               <span className="crumb-sep" aria-hidden="true">›</span>
@@ -266,9 +266,9 @@ export default function StructureEditor({
       ) : (
         <>
           {list.map((f, i) => <FolderRow key={f.id} folder={f} index={i} count={list.length} ctx={ctx} />)}
-          {list.length === 0 && <p className="muted">В этой папке нет вложенных папок.</p>}
+          {list.length === 0 && <p className="muted">У этой доски нет вложенных досок.</p>}
           {canAddHere && (
-            <AddButton key={current?.id ?? 'top'} label={current ? `Новая папка в «${current.name}»` : 'Новая папка верхнего уровня'}
+            <AddButton key={current?.id ?? 'top'} label={current ? `Новая доска в «${current.name}»` : 'Новая доска верхнего уровня'}
               onAdd={async (name) => {
                 await createFolder(name, current ? { parentId: current.id } : { columnSetId: model.newFolderSetId });
               }} />

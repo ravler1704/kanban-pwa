@@ -32,7 +32,7 @@ function PublicGate({ children }) {
       <div className="login-card">
         <h1>Канбан</h1>
         <p className="muted">Ссылка больше не действует: владелец закрыл доступ к проекту.</p>
-        <a className="btn" href="/">Открыть свою доску</a>
+        <a className="btn" href="/">Открыть своё пространство</a>
       </div>
     </div>
   );

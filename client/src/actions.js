@@ -91,7 +91,7 @@ export async function renameColumnSet(id, name) {
 export async function deleteColumnSet(id) {
   await db.transaction('rw', db.columnSets, db.columns, db.folders, async () => {
     const folders = await liveFolderList();
-    if (folders.some((f) => folderColumnSetId(f, folders) === id)) throw new Error('Набор используется папками');
+    if (folders.some((f) => folderColumnSetId(f, folders) === id)) throw new Error('Набор используется досками');
     for (const c of await liveColumns(id)) await update('column', c.id, { deleted: true });
     await update('columnSet', id, { deleted: true });
   });
@@ -245,7 +245,7 @@ export async function moveFolder(id, parentId, { keepColumns = true } = {}) {
     if (!folder || (folder.parentId ?? null) === parentId) return;
     if (parentId && (!folders.some((f) => f.id === parentId) || parentId === id
       || descendants(folders, id).some((f) => f.id === parentId))) {
-      throw new Error('Папку нельзя перенести в неё саму или во вложенную в неё');
+      throw new Error('Доску нельзя перенести в неё саму или во вложенную в неё');
     }
     const patch = { parentId, position: maxPosition(siblingsOf(folders, parentId)) + 1 };
     if (!folder.columnSetId) {
@@ -303,7 +303,7 @@ export async function deleteFolder(id, { keepCards = false, targetId = null } = 
 
     const own = await cardsIn(id);
     const target = folders.find((f) => f.id === targetId && f.id !== id);
-    if (own.length && !target) throw new Error('Выберите папку для карточек');
+    if (own.length && !target) throw new Error('Выберите доску для карточек');
 
     // Subfolders go up a level; those taking their column set from the folder keep the one they have.
     const tree = folderTree(folders);

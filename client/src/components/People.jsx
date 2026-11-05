@@ -25,7 +25,7 @@ function PeopleDialog({ people, folders, allFolders, me, onChat, onClose }) {
       <div className="people-chats">
         {folders.map((f) => (
           <button key={f.id} type="button" className="btn btn-small" onClick={() => onChat(`folder:${f.id}`)}>
-            <CommentIcon size={14} /> Чат папки «{f.name}»
+            <CommentIcon size={14} /> Чат доски «{f.name}»
           </button>
         ))}
       </div>
@@ -37,7 +37,7 @@ function PeopleDialog({ people, folders, allFolders, me, onChat, onClose }) {
               <div className="people-name">{personName(p)}{p.id === me && <span className="muted"> (вы)</span>}</div>
               {p.email && p.name && <div className="muted people-email">{p.email}</div>}
               <div className="muted people-role">
-                {p.owner ? 'Владелец доски' : accessOf(p).join(', ')}
+                {p.owner ? 'Владелец пространства' : accessOf(p).join(', ')}
               </div>
             </div>
             {p.id !== me && (

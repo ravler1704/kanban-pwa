@@ -20,9 +20,9 @@ function ColumnSetDialog({ columnSets, value, onChange, onClose }) {
     : columnSets;
   return (
     <FilterSheet title="Колонки" onClose={onClose}>
-      <p className="fp-hint">Папки с разными наборами колонок показываются по отдельности.</p>
+      <p className="fp-hint">Доски с разными наборами колонок показываются по отдельности.</p>
       {columnSets.length >= SEARCH_FROM && (
-        <SearchField placeholder="Поиск набора, колонки или папки" value={query} onChange={setQuery} />
+        <SearchField placeholder="Поиск набора, колонки или доски" value={query} onChange={setQuery} />
       )}
       <ul className="fp-list ff-list">
         {found.length === 0 && <li className="fp-empty">Ничего не найдено</li>}
@@ -37,7 +37,7 @@ function ColumnSetDialog({ columnSets, value, onChange, onClose }) {
                 <span className="fp-text">
                   <span className="fp-name">{s.name}</span>
                   <span className="fp-meta">{s.columns.join(' · ')}</span>
-                  {s.folders.length > 0 && <span className="fp-meta">Папки: {names(s.folders)}</span>}
+                  {s.folders.length > 0 && <span className="fp-meta">Доски: {names(s.folders)}</span>}
                 </span>
                 {chosen && <span className="fp-check"><CheckIcon /></span>}
               </button>
@@ -57,7 +57,7 @@ function ColumnSetDialog({ columnSets, value, onChange, onClose }) {
 export default function ColumnSetFilter({ columnSets, value, onChange }) {
   return (
     <DialogField label="Колонки" value={columnSets.find((s) => s.id === value)?.name ?? ''}
-      title="Папки с разными наборами колонок показываются по отдельности"
+      title="Доски с разными наборами колонок показываются по отдельности"
       dialog={(onClose) => <ColumnSetDialog columnSets={columnSets} value={value} onChange={onChange} onClose={onClose} />} />
   );
 }

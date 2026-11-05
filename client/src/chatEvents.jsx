@@ -41,8 +41,8 @@ function parts(e) {
     case 'card.section': return e.to
       ? ['Карточка ', card, ` перенесена в раздел ${q(e.to)}`]
       : ['Карточка ', card, ` вынесена из раздела ${q(e.from)}`];
-    case 'card.out': return ['Карточка ', card, ` перенесена в папку ${q(e.folder ?? e.project)}`];
-    case 'card.in': return ['Карточка ', card, ` перенесена из папки ${q(e.folder ?? e.project)}`];
+    case 'card.out': return ['Карточка ', card, ` перенесена на доску ${q(e.folder ?? e.project)}`];
+    case 'card.in': return ['Карточка ', card, ` перенесена с доски ${q(e.folder ?? e.project)}`];
     case 'card.description': return ['Изменено описание карточки ', card];
     case 'card.remind': {
       const list = e.reminders ?? (e.at ? [{ at: e.at, repeat: null }] : []);
@@ -54,18 +54,18 @@ function parts(e) {
     case 'card.author': return ['Автор карточки ', card, `: ${e.to ?? 'другой участник'}`];
     case 'card.file.add': return [`Прикреплён файл ${q(e.name)} к карточке `, card];
     case 'card.file.remove': return [`Удалён файл ${q(e.name)} из карточки `, card];
-    case 'folder.create': return [`Создана папка ${q(e.name)}`];
-    case 'folder.child': return [`Внутри создана папка ${q(e.name)}`];
-    case 'folder.rename': return [`Папка ${q(e.from)} переименована в ${q(e.name)}`];
-    case 'folder.delete': return [`Удалена папка ${q(e.name)}`];
-    case 'folder.restore': return [`Восстановлена папка ${q(e.name)}`];
-    case 'folder.columns': return [e.name ? `Папке назначен набор колонок ${q(e.name)}` : 'Папка берёт набор колонок у родителя'];
+    case 'folder.create': return [`Создана доска ${q(e.name)}`];
+    case 'folder.child': return [`Внутри создана доска ${q(e.name)}`];
+    case 'folder.rename': return [`Доска ${q(e.from)} переименована в ${q(e.name)}`];
+    case 'folder.delete': return [`Удалена доска ${q(e.name)}`];
+    case 'folder.restore': return [`Восстановлена доска ${q(e.name)}`];
+    case 'folder.columns': return [e.name ? `Доске назначен набор колонок ${q(e.name)}` : 'Доска берёт набор колонок у родителя'];
     case 'folder.out': return [e.folder
-      ? `Папка ${q(e.name)} перенесена в папку ${q(e.folder)}`
-      : `Папка ${q(e.name)} перенесена на верхний уровень`];
+      ? `Доска ${q(e.name)} перенесена в доску ${q(e.folder)}`
+      : `Доска ${q(e.name)} перенесена на верхний уровень`];
     case 'folder.in': return [e.folder
-      ? `Папка ${q(e.name)} перенесена сюда из папки ${q(e.folder)}`
-      : `Папка ${q(e.name)} перенесена сюда с верхнего уровня`];
+      ? `Доска ${q(e.name)} перенесена сюда из доски ${q(e.folder)}`
+      : `Доска ${q(e.name)} перенесена сюда с верхнего уровня`];
     // Notes written before folders replaced sections, projects and spaces.
     case 'section.create': return [`Создан раздел ${q(e.name)}`];
     case 'section.delete': return [`Удалён раздел ${q(e.name)}`];
@@ -81,7 +81,7 @@ function parts(e) {
     case 'project.in': return [`Проект ${q(e.name)} перенесён сюда из пространства ${q(e.space)}`];
     case 'space.create': return [`Создано пространство ${q(e.name)}`];
     case 'space.rename': return [`Пространство ${q(e.from)} переименовано в ${q(e.name)}`];
-    default: return ['Изменения в папке'];
+    default: return ['Изменения на доске'];
   }
 }
 

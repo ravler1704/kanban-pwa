@@ -120,7 +120,7 @@ async function postAuth(provider, payload) {
 
 function authError({ status, body }, action) {
   if (status === 403 && body.error === 'not allowed') {
-    return new Error(`У аккаунта ${body.email ?? ''} нет доступа к этой доске.`);
+    return new Error(`У аккаунта ${body.email ?? ''} нет доступа к этому пространству.`);
   }
   if (body.error === 'invalid code') {
     return new Error(`Неверный код. Осталось попыток: ${body.attemptsLeft}.`);
@@ -170,9 +170,9 @@ export async function linkAccount(provider, payload) {
     const { projects = 0, folders = projects, cards } = res.body.board;
     const who = res.body.email ? `Аккаунт ${res.body.email}` : 'Этот аккаунт';
     const ok = confirm(
-      `${who} уже входит в другую доску (${plural(folders, 'папка', 'папки', 'папок')}, `
-      + `${plural(cards, 'карточка', 'карточки', 'карточек')}). Объединить её с текущей? `
-      + 'Её папки и карточки перейдут сюда, а вход через любой из аккаунтов будет открывать эту доску.',
+      `${who} уже входит в другое пространство (${plural(folders, 'доска', 'доски', 'досок')}, `
+      + `${plural(cards, 'карточка', 'карточки', 'карточек')}). Объединить его с текущим? `
+      + 'Его доски и карточки перейдут сюда, а вход через любой из аккаунтов будет открывать это пространство.',
     );
     if (!ok) return false;
     res = await postAuth(provider, { ...payload, link: true, merge: true });
@@ -323,7 +323,7 @@ export async function inviteMember(email, { folder }) {
   const res = await postJson('/api/members', { email, folder });
   if (res.status === 400 && res.body.error === 'own email') throw new Error('Это адрес вашего аккаунта.');
   if (res.status === 400) throw new Error('Проверьте адрес почты.');
-  if (res.status === 404) throw new Error('Папка ещё не сохранена на сервере — подождите синхронизации.');
+  if (res.status === 404) throw new Error('Доска ещё не сохранена на сервере — подождите синхронизации.');
   if (res.status !== 200) throw new Error('Не удалось пригласить. Попробуйте ещё раз.');
   setMembers(res.body.members);
 }
@@ -338,7 +338,7 @@ export async function removeMember(email, { folder } = {}) {
 /** Leaves the shared board that is open now; the own board opens. */
 export async function leaveCurrentBoard() {
   const res = await postJson('/api/boards/leave', { board: currentBoard });
-  if (res.status !== 200 && res.status !== 404) throw new Error('Не удалось покинуть доску. Попробуйте ещё раз.');
+  if (res.status !== 200 && res.status !== 404) throw new Error('Не удалось покинуть пространство. Попробуйте ещё раз.');
   await Dexie.delete(db.name).catch(() => {});
   switchBoard(null);
 }

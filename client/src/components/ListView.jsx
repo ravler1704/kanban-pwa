@@ -49,8 +49,8 @@ export default function ListView({ cards, folders, columnsOfFolder, onOpen }) {
       </label>
       <p className="list-count">
         {needle
-          ? `Найдено ${list.length} во всех папках`
-          : `${list.length} ${plural(list.length, 'карточка', 'карточки', 'карточек')} по фильтрам · поиск ищет во всех папках`}
+          ? `Найдено ${list.length} на всех досках`
+          : `${list.length} ${plural(list.length, 'карточка', 'карточки', 'карточек')} по фильтрам · поиск ищет на всех досках`}
       </p>
       <ul className="list-cards">
         {list.map((card) => {

@@ -32,7 +32,7 @@ async function request(url, body) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const err = new Error(data.error === 'no shared project'
-      ? 'У вас больше нет общих папок — написать нельзя.'
+      ? 'У вас больше нет общих досок — написать нельзя.'
       : 'Не удалось связаться с сервером.');
     err.status = res.status;
     throw err;

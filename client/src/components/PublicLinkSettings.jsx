@@ -63,8 +63,8 @@ export default function PublicLinkSettings({ folder }) {
                 <button type="button" className="btn btn-small" onClick={copy}>{copied ? 'Скопировано' : 'Копировать'}</button>
               </div>
               <p className="muted account-hint">
-                Любой, у кого есть ссылка, откроет эту папку со всем, что в ней, без входа
-                {link.mode === 'edit' ? ' и сможет менять карточки и вложенные папки.' : ', но ничего не сможет изменить.'}
+                Любой, у кого есть ссылка, откроет эту доску со всем, что на ней, без входа
+                {link.mode === 'edit' ? ' и сможет менять карточки и вложенные доски.' : ', но ничего не сможет изменить.'}
               </p>
             </>
           )}

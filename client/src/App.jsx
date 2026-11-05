@@ -387,7 +387,7 @@ export default function App() {
     },
     onSetAll: (on) => saveChecked(on ? folders.map((f) => f.id) : []),
     onClear: allChecked ? null : () => saveChecked(folders.map((f) => f.id)),
-    summary: allChecked ? 'Все папки' : checkedIds.length ? filterSummary() : 'Не выбраны',
+    summary: allChecked ? 'Все доски' : checkedIds.length ? filterSummary() : 'Не выбраны',
   };
   const openGroup = (card) => saveChecked([card.folderId]);
 
@@ -398,12 +398,12 @@ export default function App() {
       {folders.length === 0 ? (
         !isOwnBoard ? (
           <div className="empty">
-            <p>Открытые вам папки появятся здесь после синхронизации.</p>
+            <p>Открытые вам доски появятся здесь после синхронизации.</p>
           </div>
         ) : (
           <div className="empty">
-            <p>Пока нет ни одной папки.</p>
-            <button className="btn btn-primary" onClick={() => setManaging(true)}>Создать папку</button>
+            <p>Пока нет ни одной доски.</p>
+            <button className="btn btn-primary" onClick={() => setManaging(true)}>Создать доску</button>
           </div>
         )
       ) : (
@@ -434,9 +434,12 @@ export default function App() {
           >
             {!publicToken && <PeopleBar folders={shownFolders} allFolders={folders} onChat={setChat} />}
           </FolderBar>
+          {checkedIds.length > 0 && !(publicToken && folders.length === 1) && (
+            <h2 className="board-title" title={folderFilter.summary}>{folderFilter.summary}</h2>
+          )}
           {shownFolders.length === 0 && view !== 'list' ? (
             <div className="empty">
-              <p>Не отмечена ни одна папка — отметьте нужные в списке «Папки».</p>
+              <p>Не отмечена ни одна доска — отметьте нужные в фильтре «Доски».</p>
             </div>
           ) : view === 'list' ? (
             <ListView cards={visible} folders={folders} columnsOfFolder={model.columnsOfFolder} onOpen={setOpenCardId} />

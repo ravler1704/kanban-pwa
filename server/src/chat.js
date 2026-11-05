@@ -156,7 +156,7 @@ export function notifyComments(owner, comments) {
     } else {
       const folder = getRecord(owner, c.folderId);
       payload = {
-        title: `${author} · Чат «${folder?.name || 'Папка'}»`,
+        title: `${author} · Чат «${folder?.name || 'Доска'}»`,
         tag: `chat-${c.folderId}`,
         url: `/?${new URLSearchParams({ ...board, chat: `folder:${c.folderId}` })}`,
       };

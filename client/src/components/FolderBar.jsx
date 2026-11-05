@@ -66,7 +66,7 @@ function FilterIcon() {
 
 // The filters behind the toggle are shown while it is on; the main ones always are.
 const VIEWS = [
-  { id: 'board', label: 'Доска', Icon: BoardIcon },
+  { id: 'board', label: 'Колонки', Icon: BoardIcon },
   { id: 'calendar', label: 'Календарь', Icon: CalendarIcon },
   { id: 'list', label: 'Список', Icon: ListIcon },
 ];
@@ -138,7 +138,7 @@ export default function FolderBar({
       <div className="projectbar-row projectbar-actions">
         <button type="button" className="btn btn-small btn-icon-only filters-toggle" aria-haspopup="dialog"
           onClick={() => setFiltersOpen(true)}
-          title={filtered ? 'Фильтры (доска отфильтрована)' : 'Фильтры'} aria-label="Фильтры">
+          title={filtered ? 'Фильтры (включены)' : 'Фильтры'} aria-label="Фильтры">
           <FilterIcon />
           {filtered && <span className="filters-dot" aria-hidden="true" />}
         </button>
@@ -154,7 +154,7 @@ export default function FolderBar({
           ))}
         </div>
         {onManage && (
-          <button className="btn btn-small btn-icon-only" title="Настройки доски" aria-label="Настройки доски"
+          <button className="btn btn-small btn-icon-only" title="Настройки пространства" aria-label="Настройки пространства"
             onClick={onManage}>
             <SettingsIcon />
           </button>

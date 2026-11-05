@@ -32,7 +32,7 @@ function PickerRow({ name, meta, chosen, openable, onClick }) {
   );
 }
 
-const countLabel = (n) => `${n} ${plural(n, 'папка', 'папки', 'папок')}`;
+const countLabel = (n) => `${n} ${plural(n, 'доска', 'доски', 'досок')}`;
 
 /**
  * The folders one level at a time, like «Переместить» in file managers: a folder with subfolders opens on
@@ -72,7 +72,7 @@ function FolderPickerDialog({ title, folders, value, exclude, topLabel, onPick, 
       {folders.length >= SEARCH_FROM && (
         <label className="fp-search">
           <SearchIcon />
-          <input type="search" placeholder="Поиск папки" value={query} aria-label="Поиск папки"
+          <input type="search" placeholder="Поиск доски" value={query} aria-label="Поиск доски"
             onChange={(e) => setQuery(e.target.value)} />
         </label>
       )}
@@ -83,7 +83,7 @@ function FolderPickerDialog({ title, folders, value, exclude, topLabel, onPick, 
             <BackIcon />
           </button>
           <div className="breadcrumbs">
-            <button type="button" className="crumb" disabled={!current} onClick={() => open(null)}>Все папки</button>
+            <button type="button" className="crumb" disabled={!current} onClick={() => open(null)}>Все доски</button>
             {path.map((f, i) => (
               <span key={f.id} className="crumb-item">
                 <span className="crumb-sep" aria-hidden="true">›</span>
@@ -105,13 +105,13 @@ function FolderPickerDialog({ title, folders, value, exclude, topLabel, onPick, 
           );
         })}
         {list.length === 0 && (
-          <li className="fp-empty">{needle ? 'Ничего не найдено' : 'Вложенных папок нет'}</li>
+          <li className="fp-empty">{needle ? 'Ничего не найдено' : 'Вложенных досок нет'}</li>
         )}
       </ul>
       <div className="actions fp-actions">
         <button type="button" className="btn" onClick={onClose}>Отмена</button>
         <button type="button" className="btn btn-primary fp-confirm" disabled={!canPick} onClick={() => pick(targetId)}>
-          {canPick ? `Выбрать ${targetName}` : 'Выберите папку'}
+          {canPick ? `Выбрать ${targetName}` : 'Выберите доску'}
         </button>
       </div>
     </Modal>
@@ -123,7 +123,7 @@ function FolderPickerDialog({ title, folders, value, exclude, topLabel, onPick, 
  * can't be picked; with `topLabel` the top level ('') can be picked too. `text` replaces the shown value.
  */
 export default function FolderSelect({
-  label = 'Папка', folders, value, onChange, exclude, topLabel, className = '', text: textOverride,
+  label = 'Доска', folders, value, onChange, exclude, topLabel, className = '', text: textOverride,
 }) {
   const [open, setOpen] = useState(false);
   const folder = value ? folderTree(folders).byId.get(value) : null;

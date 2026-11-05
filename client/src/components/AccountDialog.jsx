@@ -39,14 +39,14 @@ function SignInTab() {
 
   async function unlink(identity) {
     const what = `${PROVIDERS[identity.provider] ?? identity.provider} ${identity.email ?? ''}`.trim();
-    if (!confirm(`Отвязать ${what}? Вход через этот аккаунт больше не будет открывать вашу доску.`)) return;
+    if (!confirm(`Отвязать ${what}? Вход через этот аккаунт больше не будет открывать ваше пространство.`)) return;
     await run(() => unlinkAccount(identity));
   }
 
   return (
     <div className="manage">
       <h4 className="manage-heading">Привязанные аккаунты</h4>
-      <p className="muted account-hint">Вход через любой из них открывает вашу доску.</p>
+      <p className="muted account-hint">Вход через любой из них открывает ваше пространство.</p>
       {identities.map((i) => (
         <div key={`${i.provider}:${i.subject}`} className="manage-row account-row">
           <Avatar user={i} size={28} />
@@ -111,7 +111,7 @@ function DeleteAccount({ online }) {
     }}>
       <h4 className="manage-heading">Удаление аккаунта</h4>
       <p className="account-hint">
-        Будут удалены ваша доска со всеми проектами и карточками, привязанные входы, приглашения
+        Будут удалены ваше пространство со всеми досками и карточками, привязанные входы, приглашения
         в ваши проекты и публичные ссылки, а также ваш доступ к чужим проектам. Восстановить их будет нельзя.
       </p>
       <label className="field">
@@ -268,7 +268,7 @@ export default function AccountDialog({ onClose }) {
       <div role="tabpanel"><Content /></div>
       <div className="actions">
         <button className="btn btn-danger" onClick={logout} disabled={!online}
-          title={online ? 'Данные этой доски будут удалены с устройства' : 'Для выхода нужен интернет'}>
+          title={online ? 'Данные этого пространства будут удалены с устройства' : 'Для выхода нужен интернет'}>
           Выйти из аккаунта
         </button>
         <span className="spacer" />

@@ -45,7 +45,7 @@ export const dbName = publicToken ? `${PUBLIC_DB_PREFIX}${publicToken}`
 export const isOwnBoard = !currentBoard && !publicToken;
 
 /** `board` is one of `user.boards`: { id, name, email, picture } of its owner. */
-export const boardName = (board) => `Доска: ${board.name || board.email || 'без имени'}`;
+export const boardName = (board) => `Пространство: ${board.name || board.email || 'без имени'}`;
 
 export const isCurrentBoard = (board) => normalize(board) === currentBoard;
 
@@ -74,7 +74,7 @@ export function switchBoard(board, search = '') {
 /** The shared board is no longer available: its local copy is removed and the own board opens. */
 export async function dropCurrentBoard() {
   if (!currentBoard) return;
-  alert('Доступа к этой доске больше нет. Открывается ваша доска.');
+  alert('Доступа к этому пространству больше нет. Открывается ваше пространство.');
   await Dexie.delete(dbName).catch(() => {});
   switchBoard(null);
 }

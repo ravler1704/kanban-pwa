@@ -87,7 +87,7 @@ export function FolderMembers({ folder, folders }) {
   }
 
   async function remove(member) {
-    if (!confirm(`Закрыть доступ к папке «${folder.name}» для ${member.email}?`)) return;
+    if (!confirm(`Закрыть доступ к доске «${folder.name}» для ${member.email}?`)) return;
     await run(() => removeMember(member.email, target));
   }
 
@@ -95,7 +95,7 @@ export function FolderMembers({ folder, folders }) {
     <div className="manage-sections">
       <h4 className="manage-heading">Участники</h4>
       {!online && OFFLINE}
-      {online && members && direct.length + viaAbove.length === 0 && <p className="muted">Папку видите только вы.</p>}
+      {online && members && direct.length + viaAbove.length === 0 && <p className="muted">Доску видите только вы.</p>}
       {online && direct.map((m) => (
         <div key={m.email} className="manage-row account-row">
           <MemberName member={m} />
@@ -105,7 +105,7 @@ export function FolderMembers({ folder, folders }) {
       {online && viaAbove.map((m) => (
         <div key={m.email} className="manage-row account-row">
           <MemberName member={m} />
-          <span className="muted member-via">через папку «{via(m).name}»</span>
+          <span className="muted member-via">через доску «{via(m).name}»</span>
         </div>
       ))}
       {online && (
@@ -146,7 +146,7 @@ function SharedBoard({ board, folders }) {
   const opened = folders && mine?.length ? topFolderIds(mine, folders).map((id) => folders.find((f) => f.id === id)) : [];
 
   async function leave() {
-    if (!confirm('Покинуть эту доску? Вернуться можно будет, только если владелец пригласит вас снова.')) return;
+    if (!confirm('Покинуть это пространство? Вернуться можно будет, только если владелец пригласит вас снова.')) return;
     setBusy(true);
     setError(null);
     try {
@@ -159,23 +159,23 @@ function SharedBoard({ board, folders }) {
 
   return (
     <>
-      <h4 className="manage-heading">Эта доска</h4>
+      <h4 className="manage-heading">Это пространство</h4>
       <div className="manage-row account-row">
-        <span className="account-email">{board ? boardName(board) : 'Общая доска'}</span>
+        <span className="account-email">{board ? boardName(board) : 'Общее пространство'}</span>
         <button className="btn btn-small btn-danger" disabled={busy || !online} onClick={leave}>Покинуть</button>
       </div>
       <p className="muted account-hint">
-        {opened.length ? `Вам открыты папки: ${opened.map((f) => `«${f.name}»`).join(', ')}. ` : ''}
-        Вы можете менять карточки и вложенные папки в них; колонки настраивает владелец.
+        {opened.length ? `Вам открыты доски: ${opened.map((f) => `«${f.name}»`).join(', ')}. ` : ''}
+        Вы можете менять карточки и вложенные доски в них; колонки настраивает владелец.
       </p>
-      <p className="muted account-hint">Чтобы открыть доступ к своим папкам, переключитесь на свою доску.</p>
+      <p className="muted account-hint">Чтобы открыть доступ к своим доскам, переключитесь на своё пространство.</p>
       {error && <p className="login-error">{error}</p>}
     </>
   );
 }
 
 /**
- * The folders opened to `member`, like the «Папки» filter: one level per screen, a switch per folder.
+ * The folders opened to `member`, like the «Доски» filter: one level per screen, a switch per folder.
  * A folder opened through one above it is on and locked.
  */
 function MemberFoldersDialog({ member, folders, busy, onSet, onClose }) {
@@ -217,17 +217,17 @@ function MemberFoldersDialog({ member, folders, busy, onSet, onClose }) {
       {current ? (
         <button type="button" className="ff-back" onClick={() => open(parent?.id ?? null)}>
           <BackIcon />
-          <span>{parent ? parent.name : 'Все папки'}</span>
+          <span>{parent ? parent.name : 'Все доски'}</span>
         </button>
       ) : (
-        <p className="fp-hint">Доступ к папке открывает всё, что в ней, в том числе папки, которые появятся позже.</p>
+        <p className="fp-hint">Доступ к доске открывает всё, что на ней, в том числе вложенные доски, которые появятся позже.</p>
       )}
       {!current && folders.length >= SEARCH_FROM && (
-        <SearchField placeholder="Поиск папки" value={query} onChange={setQuery} />
+        <SearchField placeholder="Поиск доски" value={query} onChange={setQuery} />
       )}
       <ul className="fp-list ff-list">
         {list.map(row)}
-        {list.length === 0 && <li className="fp-empty">{needle ? 'Ничего не найдено' : 'Вложенных папок нет'}</li>}
+        {list.length === 0 && <li className="fp-empty">{needle ? 'Ничего не найдено' : 'Вложенных досок нет'}</li>}
       </ul>
       <div className="actions fp-actions">
         <button type="button" className="btn btn-primary" onClick={onClose}>Готово</button>
@@ -240,7 +240,7 @@ function MemberFoldersDialog({ member, folders, busy, onSet, onClose }) {
 function MemberFolders({ member, folders, busy, onSet }) {
   const top = topFolderIds(folderIdsOf(member), folders).map((id) => folders.find((f) => f.id === id)).filter(Boolean);
   return (
-    <DialogField label="Доступ к папкам" value={top.length ? names(top) : 'Нет'}
+    <DialogField label="Доступ к доскам" value={top.length ? names(top) : 'Нет'}
       dialog={(onClose) => (
         <MemberFoldersDialog member={member} folders={folders} busy={busy} onSet={onSet} onClose={onClose} />
       )} />
@@ -263,18 +263,18 @@ function OwnBoard({ folders }) {
   }
 
   async function removeAll(member) {
-    if (!confirm(`Закрыть ${member.email} доступ ко всем вашим папкам?`)) return;
+    if (!confirm(`Закрыть ${member.email} доступ ко всем вашим доскам?`)) return;
     await run(() => removeMember(member.email));
   }
 
   return (
     <>
-      <h4 className="manage-heading">Доступ к моим папкам</h4>
+      <h4 className="manage-heading">Доступ к моим доскам</h4>
       <p className="muted account-hint">
-        Участник видит только отмеченные папки вместе со всем, что в них, в том числе с вложенными папками,
-        которые появятся позже, и может менять в них карточки и вложенные папки; сами колонки меняете только вы.
-        Пусть войдёт через Google или Яндекс с этим адресом почты — ваша доска появится у него в списке вверху
-        экрана. Участников также видно в настройках папки.
+        Участник видит только отмеченные доски вместе со всем, что на них, в том числе с вложенными досками,
+        которые появятся позже, и может менять в них карточки и вложенные доски; сами колонки меняете только вы.
+        Пусть войдёт через Google или Яндекс с этим адресом почты — ваше пространство появится у него в списке вверху
+        экрана. Участников также видно в настройках доски.
       </p>
       {!online && OFFLINE}
       {online && members?.map((m) => (
