@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createCard, moveCard, moveCardsToColumn, moveCardToColumn } from '../actions.js';
-import Card, { ALL_LEFT, ALL_RIGHT, draggedCardId, MoveIcon } from './Card.jsx';
+import Card, { ALL_LEFT, ALL_RIGHT, draggedCardHeight, draggedCardId, MoveIcon } from './Card.jsx';
 
 function positionBefore(cards, targetId) {
   const index = cards.findIndex((c) => c.id === targetId);
@@ -56,12 +56,8 @@ export default function Column({
   // Dropping right before or after the dragged card itself wouldn't move it.
   const index = dropBefore ? cards.findIndex((c) => c.id === dropBefore) : cards.length;
   const showIndicator = dragOver && cards[index]?.id !== draggedCardId && cards[index - 1]?.id !== draggedCardId;
-  const dropMark = (i) => {
-    if (!showIndicator) return null;
-    if (i === index) return 'before';
-    if (i === cards.length - 1 && index === cards.length) return 'after';
-    return null;
-  };
+  // An empty slot the size of the dragged card, where it would land.
+  const slot = <div key="drop-slot" className="drop-slot" style={{ height: draggedCardHeight || undefined }} />;
 
   // Cards with an unresolved conflict wait for the user's choice and stay put.
   const movable = cards.filter((c) => !c.deleted && !c.conflict);
@@ -109,12 +105,12 @@ export default function Column({
         )}
       </div>
       <div className="cards" ref={list}>
-        {cards.map((card, i) => (
+        {cards.map((card, i) => [
+          showIndicator && i === index && slot,
           <Card
             key={card.id}
             card={card}
             label={cardLabel?.(card)}
-            dropMark={dropMark(i)}
             activeTags={activeTags}
             onTag={onTag}
             readOnly={readOnly}
@@ -122,9 +118,9 @@ export default function Column({
             onOpenLabel={() => onOpenGroup(card)}
             onMoveLeft={!readOnly && prevColumn && (() => moveCardToColumn(card.id, prevColumn.id))}
             onMoveRight={!readOnly && nextColumn && (() => moveCardToColumn(card.id, nextColumn.id))}
-          />
-        ))}
-        {showIndicator && cards.length === 0 && <div className="drop-indicator" />}
+          />,
+        ])}
+        {showIndicator && index === cards.length && slot}
       </div>
       {!readOnly && <form className="add-card" onSubmit={handleAdd}>
         <input

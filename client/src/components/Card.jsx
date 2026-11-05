@@ -114,15 +114,14 @@ function Tags({ text, activeTags, onTag }) {
   });
 }
 
-/** Id of the card being dragged: `dataTransfer` can't be read until the drop. */
+/** Id and height of the card being dragged: `dataTransfer` can't be read until the drop. */
 export let draggedCardId = null;
+export let draggedCardHeight = 0;
 
-/** `dropMark` ('before' | 'after' | null) shows where a dragged card would be inserted. */
 export default function Card({
-  card, label, dropMark, activeTags, onTag, readOnly, onOpen, onOpenLabel, onMoveLeft, onMoveRight,
+  card, label, activeTags, onTag, readOnly, onOpen, onOpenLabel, onMoveLeft, onMoveRight,
 }) {
   const classes = ['card'];
-  if (dropMark) classes.push(`card-drop-${dropMark}`);
   if (card.conflict) classes.push('card-conflict');
   if (card.deleted) classes.push('card-deleted');
 
@@ -133,6 +132,7 @@ export default function Card({
       draggable={!card.conflict && !readOnly}
       onDragStart={(e) => {
         draggedCardId = card.id;
+        draggedCardHeight = e.currentTarget.offsetHeight;
         e.dataTransfer.setData('text/card-id', card.id);
         e.dataTransfer.effectAllowed = 'move';
       }}
