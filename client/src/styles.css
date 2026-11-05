@@ -123,6 +123,24 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.set-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; padding: 0.6rem 1.25rem 0; }
+.set-tabs-label { color: var(--muted); font-size: 0.85rem; }
+.set-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.set-tab:hover { color: var(--text); border-color: var(--muted); }
+.set-tab-active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--text); }
+.set-tab-count { color: var(--muted); font-variant-numeric: tabular-nums; }
 .board-head .btn { flex: none; color: var(--muted); }
 .board-head .btn:hover { color: var(--text); }
 .columns-draft { width: min(480px, 100%); }

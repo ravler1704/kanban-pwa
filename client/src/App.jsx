@@ -346,6 +346,12 @@ export default function App() {
   const boardTops = topFolderIds(boardFolders.map((f) => f.id), folders);
   const columnsFolder = boardTops.length === 1 ? tree.byId.get(boardTops[0]) : null;
   const canEditColumns = isOwnBoard && !readOnly && data.columns.length > 0;
+  // Boards in view with different column sets: the board shows one set, the others are a click away.
+  const setTabs = view === 'board' && usedSets.length > 1 ? usedSets.map((s) => ({
+    ...s,
+    count: visible.filter((c) => model.setIdOf(tree.byId.get(c.folderId)) === s.id).length,
+    boards: activeFolders.filter((f) => model.setIdOf(f) === s.id).map((f) => f.name),
+  })) : null;
 
   // What the current view does not already say about where a card belongs: the path below the folders
   // all the folders in view share.
@@ -455,6 +461,18 @@ export default function App() {
                   </svg>
                 </button>
               )}
+            </div>
+          )}
+          {!searching && setTabs && (
+            <div className="set-tabs" role="tablist" aria-label="Наборы колонок">
+              <span className="set-tabs-label">Наборы колонок:</span>
+              {setTabs.map((s) => (
+                <button key={s.id} type="button" role="tab" aria-selected={s.id === boardSetId}
+                  className={`set-tab ${s.id === boardSetId ? 'set-tab-active' : ''}`}
+                  title={`Доски: ${s.boards.join(', ')}`} onClick={() => changeAllFoldersSet(s.id)}>
+                  {s.name}<span className="set-tab-count">{s.count}</span>
+                </button>
+              ))}
             </div>
           )}
           {searching ? (
