@@ -27,7 +27,7 @@ function formatReminder(ts) {
   return `${date} ${time}`;
 }
 
-function ReminderBadge({ card }) {
+export function ReminderBadge({ card }) {
   const next = nextReminder(card, Date.now());
   if (!next) return null;
   const count = cardReminders(card).length;

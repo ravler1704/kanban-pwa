@@ -458,14 +458,16 @@ export default function App() {
             </div>
           )}
           {searching ? (
-            <ListView cards={visible} query={search} folders={folders} columnsOfFolder={model.columnsOfFolder}
+            <ListView cards={visible} query={search} folders={folders} targets={usable} readOnly={readOnly}
+              columnsOfFolder={model.columnsOfFolder}
               onOpen={setOpenCardId} />
           ) : shownFolders.length === 0 && view !== 'list' ? (
             <div className="empty">
               <p>Не отмечена ни одна доска — отметьте нужные в фильтре «Доски».</p>
             </div>
           ) : view === 'list' ? (
-            <ListView cards={visible} folders={folders} columnsOfFolder={model.columnsOfFolder} onOpen={setOpenCardId} />
+            <ListView cards={visible} folders={folders} targets={usable} readOnly={readOnly}
+              columnsOfFolder={model.columnsOfFolder} onOpen={setOpenCardId} />
           ) : view === 'calendar' ? (
             <CalendarView cards={visible} columns={model.columns} cardLabel={cardLabel} onOpen={setOpenCardId} />
           ) : (

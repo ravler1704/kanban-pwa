@@ -1048,35 +1048,53 @@ a.btn { display: inline-block; text-decoration: none; }
   flex-direction: column;
   gap: 0.6rem;
   width: 100%;
-  max-width: 760px;
-  margin: 0 auto;
   padding: 1rem 1.25rem;
   padding-bottom: max(1rem, env(safe-area-inset-bottom));
   overflow-y: auto;
 }
 .list-count { margin: 0; color: var(--muted); font-size: 0.8rem; }
-.list-cards { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 0.4rem; }
-.list-card {
+.list-empty { padding: 2rem 1rem; color: var(--muted); text-align: center; }
+.lt-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
+.lt { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 0.9rem; }
+.lt th {
+  position: sticky;
+  top: 0;
+  padding: 0.55rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+.lt td { padding: 0.15rem 0.3rem; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.lt tbody tr:last-child td { border-bottom: none; }
+.lt tbody tr:hover td { background: color-mix(in srgb, var(--panel) 60%, transparent); }
+.lt-conflict td:first-child { box-shadow: inset 3px 0 0 var(--danger, #e5484d); }
+.lt .lt-num { width: 3.5rem; padding-left: 0.6rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lt .lt-title { width: 34%; }
+.lt .lt-open { width: 2.5rem; text-align: center; }
+.lt th:not(.lt-num, .lt-title, .lt-open) { min-width: 8.5rem; }
+.lt-reminder { white-space: nowrap; }
+.lt-text { display: block; padding: 0.4rem 0.35rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lt-input, .lt-select {
   width: 100%;
-  display: flex;
-  align-items: baseline;
-  gap: 0.6rem;
-  padding: 0.65rem 0.85rem;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--card);
+  min-width: 0;
+  padding: 0.4rem 0.35rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
   color: var(--text);
   font: inherit;
-  text-align: left;
-  cursor: pointer;
+  text-overflow: ellipsis;
 }
-.list-card:hover { border-color: var(--muted); }
-.list-card-conflict { border-left: 3px solid var(--danger, #e5484d); }
-.list-card-number { flex: none; color: var(--muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
-.list-card-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.15rem; }
-.list-card-title { overflow-wrap: anywhere; }
-.list-card-meta { color: var(--muted); font-size: 0.78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.list-empty { padding: 2rem 1rem; color: var(--muted); text-align: center; }
+.lt-select { appearance: none; -webkit-appearance: none; cursor: pointer; }
+.lt-input:hover, .lt-select:hover { border-color: var(--border); }
+.lt-input:focus, .lt-select:focus { outline: none; border-color: var(--accent); background: var(--bg); }
+.lt-select option { background: var(--panel); color: var(--text); }
+.lt .btn-icon-only { width: 2rem; height: 2rem; padding: 0; color: var(--muted); }
+.lt .btn-icon-only:hover { color: var(--text); }
 .cal-header { display: flex; align-items: center; gap: 0.5rem; }
 .cal-header .btn-icon-only { padding: 0.35rem 0.5rem; }
 .cal-title { margin: 0; min-width: 11rem; text-align: center; font-size: 1.05rem; }
