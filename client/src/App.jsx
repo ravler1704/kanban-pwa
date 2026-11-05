@@ -12,6 +12,7 @@ import Column from './components/Column.jsx';
 import CardEditor from './components/CardEditor.jsx';
 import ConflictDialog from './components/ConflictDialog.jsx';
 import ManageDialog from './components/ManageDialog.jsx';
+import ColumnsDraftDialog from './components/ColumnsDraftDialog.jsx';
 import NewCardDialog from './components/NewCardDialog.jsx';
 import CalendarView from './components/CalendarView.jsx';
 import ListView from './components/ListView.jsx';
@@ -119,6 +120,7 @@ export default function App() {
   // The chats window: null closed, '' the list, 'folder:<id>' or 'dm:<user id>' a conversation.
   const [chat, setChat] = useState(null);
   const [search, setSearch] = useState('');
+  const [editingColumns, setEditingColumns] = useState(false);
   const searching = search.trim() !== '';
   const [view, setView] = useState(() => (['calendar', 'list'].includes(localStorage.getItem(VIEW_KEY))
     ? localStorage.getItem(VIEW_KEY) : 'board'));
@@ -340,6 +342,10 @@ export default function App() {
   const boardFolders = shownUsable.filter((f) => model.setIdOf(f) === boardSetId);
   const boardTarget = target && boardFolders.some((f) => f.id === target) ? target : targetIn(boardFolders);
   const boardCards = visible.filter((c) => model.setIdOf(tree.byId.get(c.folderId)) === boardSetId);
+  // The board whose columns «Изменить колонки» can give a set of its own: the one at the top of those shown.
+  const boardTops = topFolderIds(boardFolders.map((f) => f.id), folders);
+  const columnsFolder = boardTops.length === 1 ? tree.byId.get(boardTops[0]) : null;
+  const canEditColumns = isOwnBoard && !readOnly && data.columns.length > 0;
 
   // What the current view does not already say about where a card belongs: the path below the folders
   // all the folders in view share.
@@ -438,7 +444,18 @@ export default function App() {
             {!publicToken && <PeopleBar folders={shownFolders} allFolders={folders} onChat={setChat} />}
           </FolderBar>
           {!searching && checkedIds.length > 0 && !(publicToken && folders.length === 1) && (
-            <h2 className="board-title" title={folderFilter.summary}>{folderFilter.summary}</h2>
+            <div className="board-head">
+              <h2 className="board-title" title={folderFilter.summary}>{folderFilter.summary}</h2>
+              {view === 'board' && canEditColumns && shownFolders.length > 0 && (
+                <button type="button" className="btn btn-small btn-icon-only" title="Изменить колонки"
+                  aria-label="Изменить колонки" onClick={() => setEditingColumns(true)}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                  </svg>
+                </button>
+              )}
+            </div>
           )}
           {searching ? (
             <ListView cards={visible} query={search} folders={folders} columnsOfFolder={model.columnsOfFolder}
@@ -491,6 +508,11 @@ export default function App() {
       {addingCard && (
         <NewCardDialog folders={usable} columnsOfFolder={model.columnsOfFolder}
           target={target ?? targetIn(usable)} onClose={() => setAddingCard(false)} />
+      )}
+
+      {editingColumns && (
+        <ColumnsDraftDialog model={model} setId={boardSetId} folder={columnsFolder} folders={folders}
+          onClose={() => setEditingColumns(false)} />
       )}
 
       {managing && (

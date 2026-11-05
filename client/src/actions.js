@@ -170,6 +170,63 @@ export async function moveColumn(id, direction) {
   requestSync();
 }
 
+const resolveRow = (rows, ids, key) => ids.get(key) ?? ids.get(rows[0].key);
+
+/**
+ * Applies edited columns to the set itself, so every folder using it gets them. `rows` are
+ * { key, id (null: new), name, addToTop } in their new order; `moves` maps each removed column id
+ * to the key of the row its cards go to.
+ */
+export async function editColumnSet(setId, rows, moves) {
+  await db.transaction('rw', db.columns, db.cards, async () => {
+    const ids = new Map();
+    for (const [i, r] of rows.entries()) {
+      if (r.id) {
+        ids.set(r.key, r.id);
+        await update('column', r.id, { name: r.name, addToTop: !!r.addToTop, position: i + 1 });
+      } else {
+        const c = await insert('column', { setId, name: r.name, position: i + 1, addToTop: !!r.addToTop });
+        ids.set(r.key, c.id);
+      }
+    }
+    const kept = new Set(ids.values());
+    for (const c of await liveColumns(setId)) {
+      if (kept.has(c.id)) continue;
+      const targetId = resolveRow(rows, ids, moves[c.id]);
+      const cards = (await db.cards.filter((x) => alive(x) && x.columnId === c.id).toArray())
+        .sort((a, b) => a.position - b.position);
+      let position = maxPosition(await db.cards.filter((x) => x.columnId === targetId).toArray());
+      for (const card of cards) await update('card', card.id, { columnId: targetId, position: ++position });
+      await update('column', c.id, { deleted: true });
+    }
+  });
+  requestSync();
+}
+
+/**
+ * A new set named `name` with the edited columns (as in editColumnSet) for the folder and the subfolders
+ * that take its set; `fromSetId` stays as it is for the other folders.
+ */
+export async function forkColumnSet(folderId, name, fromSetId, rows, moves) {
+  let setId;
+  const mapping = {};
+  await db.transaction('rw', db.columnSets, db.columns, async () => {
+    const set = await insert('columnSet', { name, position: maxPosition(await db.columnSets.toArray()) + 1 });
+    setId = set.id;
+    const ids = new Map();
+    for (const [i, r] of rows.entries()) {
+      const c = await insert('column', { setId, name: r.name, position: i + 1, addToTop: !!r.addToTop });
+      ids.set(r.key, c.id);
+      if (r.id) mapping[r.id] = c.id;
+    }
+    for (const c of await liveColumns(fromSetId)) {
+      if (!mapping[c.id]) mapping[c.id] = resolveRow(rows, ids, moves[c.id]);
+    }
+  });
+  await changeFolderColumnSet(folderId, setId, mapping);
+  return setId;
+}
+
 export async function countColumnCards(id) {
   return db.cards.filter((c) => alive(c) && c.columnId === id).count();
 }
