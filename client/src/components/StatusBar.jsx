@@ -3,8 +3,10 @@ import { authState } from '../auth.js';
 import { boardName, currentBoard, publicToken, switchBoard } from '../board.js';
 import { usePublicLink } from '../public.js';
 import { sync, syncStatus } from '../sync.js';
-import AccountDialog from './AccountDialog.jsx';
+import { pushState } from '../push.js';
+import AccountDialog, { NotificationSettings } from './AccountDialog.jsx';
 import Avatar from './Avatar.jsx';
+import Modal from './Modal.jsx';
 import { ChatButton } from './People.jsx';
 
 function SyncIcon({ spinning }) {
@@ -38,6 +40,18 @@ function SearchIcon() {
   );
 }
 
+/** A bell; crossed out while reminders don't come to this device. */
+function BellIcon({ off }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+      {off && <path d="m3 3 18 18" />}
+    </svg>
+  );
+}
+
 function formatTime(ts) {
   return ts ? new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '—';
 }
@@ -62,6 +76,8 @@ export default function StatusBar({ pending, conflicts, folders, onChat, search,
   const s = useSyncExternalStore(syncStatus.subscribe, syncStatus.get);
   const { user } = useSyncExternalStore(authState.subscribe, authState.get);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [push, setPush] = useState(pushState);
 
   let state = 'online';
   let label = 'Онлайн';
@@ -115,6 +131,13 @@ export default function StatusBar({ pending, conflicts, folders, onChat, search,
         </button>
         {publicToken && <a className="btn btn-small" href="/" title="Открыть своё пространство">Мой Канбан</a>}
         {user && !publicToken && (
+          <button className={`btn btn-small btn-icon-only ${push === 'enabled' ? '' : 'notifications-off'}`}
+            onClick={() => setNotificationsOpen(true)}
+            title={push === 'enabled' ? 'Уведомления включены' : 'Уведомления выключены'} aria-label="Уведомления">
+            <BellIcon off={push !== 'enabled'} />
+          </button>
+        )}
+        {user && !publicToken && (
           <button className="btn btn-small btn-icon-only" onClick={() => setAccountOpen(true)}
             title={user.email ? `Аккаунт: ${user.email}` : 'Аккаунт'} aria-label="Аккаунт">
             <AccountIcon />
@@ -123,6 +146,14 @@ export default function StatusBar({ pending, conflicts, folders, onChat, search,
         {user && !publicToken && <ChatButton folders={folders} onChat={onChat} />}
       </div>
       {accountOpen && <AccountDialog onClose={() => setAccountOpen(false)} />}
+      {notificationsOpen && (
+        <Modal title="Уведомления" onClose={() => setNotificationsOpen(false)} className="notifications-dialog" closeButton>
+          <NotificationSettings onChange={setPush} />
+          <div className="actions">
+            <button type="button" className="btn btn-primary" onClick={() => setNotificationsOpen(false)}>Готово</button>
+          </div>
+        </Modal>
+      )}
     </header>
   );
 }

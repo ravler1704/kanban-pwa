@@ -134,7 +134,8 @@ function DeleteAccount({ online }) {
   );
 }
 
-function NotificationsTab() {
+/** Reminders on this device; `onChange(state)` hears of every change of the push state. */
+export function NotificationSettings({ onChange }) {
   const { online } = useSyncExternalStore(syncStatus.subscribe, syncStatus.get);
   const { busy, error, run } = useAction();
   const [push, setPush] = useState(pushState);
@@ -155,10 +156,10 @@ function NotificationsTab() {
       window.removeEventListener('focus', recheck);
     };
   }, []);
+  useEffect(() => onChange?.(push), [push, onChange]);
 
   return (
     <div className="manage">
-      <h4 className="manage-heading">Напоминания на этом устройстве</h4>
       <p className="muted account-hint">
         Напоминания по карточкам приходят на все устройства, где включены уведомления.
       </p>
@@ -230,7 +231,6 @@ function AppearanceTab() {
 const TABS = [
   { id: 'signin', label: 'Вход', Content: SignInTab },
   { id: 'sharing', label: 'Доступ', Content: () => <div className="manage"><SharingSection /></div> },
-  { id: 'notifications', label: 'Уведомления', Content: NotificationsTab },
   { id: 'appearance', label: 'Тема', Content: AppearanceTab },
   { id: 'server', label: 'Сервер', Content: MailSettings, admin: true },
 ];
