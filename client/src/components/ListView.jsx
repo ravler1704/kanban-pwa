@@ -1,16 +1,8 @@
-import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db.js';
 import { folderPathName, folderTree } from '../folders.js';
 import { withoutLinks } from '../links.js';
 import { plural } from './ManageFields.jsx';
-
-const SearchIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
-  </svg>
-);
 
 const byNumber = (a, b) => (b.number ?? 0) - (a.number ?? 0) || b.position - a.position;
 
@@ -23,12 +15,11 @@ function matches(card, needle) {
 }
 
 /**
- * The cards as one list, without columns. `cards` are those the filters leave on the board; a search looks
- * through every card of the board, in any folder. `folders` are all live folders, `columnsOfFolder` gives
+ * The cards as one list, without columns. `cards` are those the filters leave on the board; `query` (the
+ * header's search) looks through every card of the space, on any board. `folders` are all live folders, `columnsOfFolder` gives
  * a folder's columns.
  */
-export default function ListView({ cards, folders, columnsOfFolder, onOpen }) {
-  const [query, setQuery] = useState('');
+export default function ListView({ cards, query = '', folders, columnsOfFolder, onOpen }) {
   const needle = query.trim().toLowerCase();
   const all = useLiveQuery(() => db.cards.filter((c) => !c.deleted || !!c.conflict).toArray(), []);
   const tree = folderTree(folders);
@@ -42,15 +33,10 @@ export default function ListView({ cards, folders, columnsOfFolder, onOpen }) {
 
   return (
     <main className="list-view">
-      <label className="fp-search list-search">
-        <SearchIcon />
-        <input type="search" placeholder="Найти карточку: номер, название или описание" value={query}
-          aria-label="Найти карточку" onChange={(e) => setQuery(e.target.value)} />
-      </label>
       <p className="list-count">
         {needle
-          ? `Найдено ${list.length} на всех досках`
-          : `${list.length} ${plural(list.length, 'карточка', 'карточки', 'карточек')} по фильтрам · поиск ищет на всех досках`}
+          ? (all ? `Найдено ${list.length} на всех досках` : 'Поиск на всех досках…')
+          : `${list.length} ${plural(list.length, 'карточка', 'карточки', 'карточек')} по фильтрам`}
       </p>
       <ul className="list-cards">
         {list.map((card) => {
@@ -71,7 +57,7 @@ export default function ListView({ cards, folders, columnsOfFolder, onOpen }) {
             </li>
           );
         })}
-        {list.length === 0 && (
+        {list.length === 0 && (all || !needle) && (
           <li className="list-empty">{needle ? 'Ничего не найдено' : 'Карточек нет'}</li>
         )}
       </ul>

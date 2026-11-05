@@ -29,6 +29,15 @@ function AccountIcon() {
   );
 }
 
+function SearchIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+    </svg>
+  );
+}
+
 function formatTime(ts) {
   return ts ? new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '—';
 }
@@ -48,7 +57,8 @@ function PublicTitle() {
   );
 }
 
-export default function StatusBar({ pending, conflicts, folders, onChat }) {
+/** `search` is the text of the search through all cards; `onSearch(text)` changes it. */
+export default function StatusBar({ pending, conflicts, folders, onChat, search, onSearch }) {
   const s = useSyncExternalStore(syncStatus.subscribe, syncStatus.get);
   const { user } = useSyncExternalStore(authState.subscribe, authState.get);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -85,6 +95,14 @@ export default function StatusBar({ pending, conflicts, folders, onChat }) {
           <h1 className="statusbar-title" title={user?.email || undefined}>{user?.name || user?.email || 'Канбан'}</h1>
         )}
       </div>}
+      {onSearch && (
+        <label className="fp-search header-search">
+          <SearchIcon />
+          <input type="search" placeholder="Найти карточку" value={search}
+            title="Номер, название или описание; ищет на всех досках" aria-label="Найти карточку на всех досках"
+            onChange={(e) => onSearch(e.target.value)} onKeyDown={(e) => e.key === 'Escape' && onSearch('')} />
+        </label>
+      )}
       <div className="status">
         <span className={`dot dot-${state}`} />
         <span>{label}</span>

@@ -66,6 +66,11 @@ body {
 }
 .statusbar h1 { margin: 0; font-size: 1.25rem; }
 .statusbar-title { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.header-search { flex: 1 1 10rem; max-width: 26rem; }
+@media (max-width: 900px) {
+  .header-search { order: 3; flex-basis: 100%; max-width: none; }
+}
+.header-search input { padding: 0.45rem 0; }
 .statusbar-user { display: flex; align-items: center; gap: 0.6rem; min-width: 0; max-width: 100%; }
 .avatar { flex: none; border-radius: 50%; object-fit: cover; }
 .avatar-letter {

@@ -118,6 +118,8 @@ export default function App() {
   const [addingCard, setAddingCard] = useState(false);
   // The chats window: null closed, '' the list, 'folder:<id>' or 'dm:<user id>' a conversation.
   const [chat, setChat] = useState(null);
+  const [search, setSearch] = useState('');
+  const searching = search.trim() !== '';
   const [view, setView] = useState(() => (['calendar', 'list'].includes(localStorage.getItem(VIEW_KEY))
     ? localStorage.getItem(VIEW_KEY) : 'board'));
 
@@ -393,7 +395,8 @@ export default function App() {
 
   return (
     <div className="app">
-      <StatusBar pending={data.pending} conflicts={data.conflicted.length} folders={chatFolders} onChat={setChat} />
+      <StatusBar pending={data.pending} conflicts={data.conflicted.length} folders={chatFolders} onChat={setChat}
+        search={search} onSearch={folders.length ? setSearch : null} />
 
       {folders.length === 0 ? (
         !isOwnBoard ? (
@@ -434,10 +437,13 @@ export default function App() {
           >
             {!publicToken && <PeopleBar folders={shownFolders} allFolders={folders} onChat={setChat} />}
           </FolderBar>
-          {checkedIds.length > 0 && !(publicToken && folders.length === 1) && (
+          {!searching && checkedIds.length > 0 && !(publicToken && folders.length === 1) && (
             <h2 className="board-title" title={folderFilter.summary}>{folderFilter.summary}</h2>
           )}
-          {shownFolders.length === 0 && view !== 'list' ? (
+          {searching ? (
+            <ListView cards={visible} query={search} folders={folders} columnsOfFolder={model.columnsOfFolder}
+              onOpen={setOpenCardId} />
+          ) : shownFolders.length === 0 && view !== 'list' ? (
             <div className="empty">
               <p>Не отмечена ни одна доска — отметьте нужные в фильтре «Доски».</p>
             </div>
