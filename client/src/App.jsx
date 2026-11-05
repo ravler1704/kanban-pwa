@@ -540,7 +540,6 @@ export default function App() {
           model={model}
           columnsSynced={data.columns.length > 0}
           initialSetId={boardSetId}
-          initialFolderId={shownFolders[0]?.id ?? folders[0]?.id ?? null}
           folders={folders}
           foldersSynced={data.folders.some((f) => !f.deleted)}
           writable={writable}

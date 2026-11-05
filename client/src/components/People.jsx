@@ -6,7 +6,10 @@ import { topFolderIds } from '../folders.js';
 import Avatar from './Avatar.jsx';
 import { CommentIcon } from './Card.jsx';
 import { useChats } from './ChatDialog.jsx';
+import FolderSelect from './FolderSelect.jsx';
 import Modal from './Modal.jsx';
+import PublicLinkSettings from './PublicLinkSettings.jsx';
+import { FolderMembers, useCanShare } from './SharingSection.jsx';
 
 const STACK = 4;
 
@@ -16,7 +19,22 @@ const topFolders = (folders, allFolders) => {
   return folders.filter((f) => tops.has(f.id));
 };
 
+/** Who is invited to a folder of the own board, and its public link. */
+function AccessEditor({ folders, initialFolderId }) {
+  const [folderId, setFolderId] = useState(initialFolderId);
+  const folder = folders.find((f) => f.id === folderId) ?? folders[0];
+  return (
+    <div className="manage manage-access people-access">
+      <h4 className="manage-heading">Доступ</h4>
+      <FolderSelect folders={folders} value={folder.id} onChange={setFolderId} />
+      <FolderMembers folder={folder} folders={folders} />
+      <PublicLinkSettings folder={folder} />
+    </div>
+  );
+}
+
 function PeopleDialog({ people, folders, allFolders, me, onChat, onClose }) {
+  const canShare = useCanShare();
   const folderName = new Map(allFolders.map((f) => [f.id, f.name]));
   // Where a person has access: the top folders of their access, as the rest follows from them.
   const accessOf = (p) => topFolderIds(folderIdsOf(p), allFolders).map((id) => folderName.get(id)).filter(Boolean);
@@ -46,6 +64,9 @@ function PeopleDialog({ people, folders, allFolders, me, onChat, onClose }) {
           </li>
         ))}
       </ul>
+      {canShare && allFolders.length > 0 && (
+        <AccessEditor folders={allFolders} initialFolderId={folders[0]?.id ?? allFolders[0].id} />
+      )}
       <div className="actions">
         <button type="button" className="btn" onClick={onClose}>Закрыть</button>
       </div>
@@ -92,7 +113,7 @@ export default function PeopleBar({ folders, allFolders, onChat }) {
   const people = all
     .filter((p) => p.owner || folderIdsOf(p).some((id) => shown.has(id)))
     .sort((a, b) => Number(b.owner) - Number(a.owner) || personName(a).localeCompare(personName(b), 'ru'));
-  if (people.length < 2) return null;
+  if (!people.length) return null;
 
   return (
     <div className="people-bar">

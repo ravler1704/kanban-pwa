@@ -1592,3 +1592,4 @@ button.cp-chip:hover { color: var(--text); }
 .ff-person { display: inline-flex; align-items: center; gap: 0.5rem; min-width: 0; }
 .notifications-off { color: var(--muted); }
 .notifications-dialog { width: min(440px, 100%); }
+.people-access { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }

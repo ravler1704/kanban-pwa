@@ -11,8 +11,6 @@ import { folderColumnSetId, inheritingFolders } from '../folders.js';
 import FolderSelect from './FolderSelect.jsx';
 import { AddForm, NameInput } from './ManageFields.jsx';
 import Modal from './Modal.jsx';
-import PublicLinkSettings from './PublicLinkSettings.jsx';
-import { FolderMembers, useCanShare } from './SharingSection.jsx';
 import StructureEditor from './StructureEditor.jsx';
 
 /** Deleting a column that still has cards: they move to the chosen column. */
@@ -245,38 +243,23 @@ function DeleteFolderDialog({ folder, stats, folders, onClose }) {
   );
 }
 
-function AccessEditor({ folders, folder, onFolder }) {
-  return (
-    <div className="manage manage-access">
-      <FolderSelect folders={folders} value={folder.id} onChange={onFolder} />
-      <FolderMembers folder={folder} folders={folders} />
-      <PublicLinkSettings folder={folder} />
-    </div>
-  );
-}
-
 const TAB_KEY = 'manageDialogTab';
 
 /**
- * `initialSetId` is the column set opened on the «Колонки» tab and `initialFolderId` the folder
- * of the «Доступ» tab. `folders` are the live folders of the board, `writable` the ids a member may
+ * `initialSetId` is the column set opened on the «Колонки» tab. `folders` are the live folders of the board, `writable` the ids a member may
  * change (null: all). The folders are arranged on «Доски» (members arrange those they have access to).
  */
 export default function ManageDialog({
-  model, columnsSynced, initialSetId, initialFolderId, folders, foldersSynced, writable, onClose,
+  model, columnsSynced, initialSetId, folders, foldersSynced, writable, onClose,
 }) {
-  const canShare = useCanShare();
   const tabs = [
     { id: 'structure', label: 'Доски' },
-    ...(canShare ? [{ id: 'access', label: 'Доступ' }] : []),
     ...(isOwnBoard ? [{ id: 'columns', label: 'Колонки' }] : []),
   ];
   const [deleting, setDeleting] = useState(null);
   const [changingSet, setChangingSet] = useState(null);
   const [savedTab, setTab] = useState(() => localStorage.getItem(TAB_KEY));
   const tab = tabs.some((t) => t.id === savedTab) ? savedTab : tabs[0].id;
-  const [folderId, setFolderId] = useState(initialFolderId);
-  const folder = folders.find((f) => f.id === folderId) ?? folders[0];
 
   function selectTab(id) {
     setTab(id);
@@ -315,14 +298,6 @@ export default function ManageDialog({
         <div role="tabpanel">
           <StructureEditor model={model} folders={folders} synced={foldersSynced} columnsSynced={columnsSynced}
             writable={writable} onChangeSet={changeSet} onRemoveFolder={removeFolder} />
-        </div>
-      )}
-      {tab === 'access' && !folder && (
-        <p className="muted">Сначала создайте доску на вкладке «Доски».</p>
-      )}
-      {tab === 'access' && folder && (
-        <div role="tabpanel">
-          <AccessEditor folders={folders} folder={folder} onFolder={setFolderId} />
         </div>
       )}
       {tab === 'columns' && (
