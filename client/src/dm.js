@@ -81,6 +81,12 @@ export async function deleteDm(peer, id) {
   dmChanged(peer);
 }
 
+/** Deletes the conversation with `peer`: for the user only, or `forBoth`. */
+export async function clearDm(peer, forBoth) {
+  await request(`${path(peer)}/clear`, { forBoth });
+  dmChanged(peer);
+}
+
 export async function markDmRead(peer, at) {
   const contact = state.contacts.find((c) => c.id === peer);
   if (!contact?.unread) return;

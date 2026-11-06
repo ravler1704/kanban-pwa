@@ -1,5 +1,5 @@
 import {
-  addDm, boardOwner, changeDm, contactIds, dmConversations, dmThread, folderInvitees, folderUsers, getDm, getRecord,
+  addDm, boardOwner, changeDm, clearDm, contactIds, dmConversations, dmThread, folderInvitees, folderUsers, getDm, getRecord,
   liveFolderIds, markDmRead, userProfile,
 } from './db.js';
 import { notifyUser } from './events.js';
@@ -127,6 +127,17 @@ export function registerChatRoutes(app) {
     const next = changeDm(message.id, { deleted: true });
     changed(req, next);
     res.json({ message: next });
+  });
+
+  // The whole conversation: for the user only, or `forBoth`.
+  app.post('/api/dm/:peer/clear', (req, res) => {
+    const { peer } = req.params;
+    if (!validId(peer) || peer === req.user) return res.status(400).json({ error: 'invalid peer' });
+    const forBoth = req.body?.forBoth === true;
+    clearDm(req.user, peer, forBoth);
+    notifyUser(req.user, { dm: peer });
+    if (forBoth) notifyUser(peer, { dm: req.user });
+    res.json({ ok: true });
   });
 
   app.post('/api/dm/:peer/read', (req, res) => {

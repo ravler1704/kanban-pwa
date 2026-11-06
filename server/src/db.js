@@ -191,6 +191,13 @@ db.exec(`
     read_at     INTEGER NOT NULL,
     PRIMARY KEY (user_id, peer)
   );
+  -- A user deleted the conversation for themselves: messages up to cleared_at are hidden from them.
+  CREATE TABLE IF NOT EXISTS dm_cleared (
+    user_id     TEXT    NOT NULL,
+    peer        TEXT    NOT NULL,
+    cleared_at  INTEGER NOT NULL,
+    PRIMARY KEY (user_id, peer)
+  );
 `);
 
 // Spaces: boards of a user besides the main one, whose id is the user's id (so boards from before
@@ -464,6 +471,9 @@ export function mergeUsers(from, to) {
     db.prepare('UPDATE OR IGNORE dm_reads SET user_id = ? WHERE user_id = ?').run(to, from);
     db.prepare('UPDATE OR IGNORE dm_reads SET peer = ? WHERE peer = ?').run(to, from);
     db.prepare('DELETE FROM dm_reads WHERE user_id = ? OR peer = ? OR user_id = peer').run(from, from);
+    db.prepare('UPDATE OR IGNORE dm_cleared SET user_id = ? WHERE user_id = ?').run(to, from);
+    db.prepare('UPDATE OR IGNORE dm_cleared SET peer = ? WHERE peer = ?').run(to, from);
+    db.prepare('DELETE FROM dm_cleared WHERE user_id = ? OR peer = ? OR user_id = peer').run(from, from);
     // The other spaces come along as they are; the main one has just been merged.
     db.prepare('UPDATE spaces SET owner = ? WHERE owner = ? AND id != ?').run(to, from, from);
     db.prepare('DELETE FROM spaces WHERE id = ?').run(from);
@@ -492,6 +502,7 @@ export function deleteUser(userId) {
     db.prepare('DELETE FROM meta WHERE key IN (?, ?)').run(`columnsSeeded:${userId}`, `simpleSetSeeded:${userId}`);
     db.prepare('DELETE FROM direct_messages WHERE sender = ? OR recipient = ?').run(userId, userId);
     db.prepare('DELETE FROM dm_reads WHERE user_id = ? OR peer = ?').run(userId, userId);
+    db.prepare('DELETE FROM dm_cleared WHERE user_id = ? OR peer = ?').run(userId, userId);
     const usedElsewhere = db.prepare('SELECT 1 FROM identities WHERE lower(email) = ?');
     for (const email of emails) {
       db.prepare('DELETE FROM email_codes WHERE email = ?').run(email);
@@ -801,25 +812,43 @@ const toMessage = (row) => ({
   deleted: Boolean(row.deleted),
 });
 
+const NOT_CLEARED = `created_at > COALESCE(
+  (SELECT cleared_at FROM dm_cleared WHERE user_id = :user AND peer = :peer), 0)`;
 const selectDmPeers = db.prepare(`
-  SELECT CASE WHEN sender = :user THEN recipient ELSE sender END AS peer, MAX(created_at) AS last_at
-  FROM direct_messages WHERE sender = :user OR recipient = :user GROUP BY peer
+  SELECT d.peer, MAX(d.created_at) AS last_at FROM (
+    SELECT CASE WHEN sender = :user THEN recipient ELSE sender END AS peer, created_at
+    FROM direct_messages WHERE sender = :user OR recipient = :user
+  ) d LEFT JOIN dm_cleared c ON c.user_id = :user AND c.peer = d.peer
+  WHERE d.created_at > COALESCE(c.cleared_at, 0)
+  GROUP BY d.peer
 `);
 const selectLastDm = db.prepare(`
   SELECT * FROM direct_messages
-  WHERE (sender = :user AND recipient = :peer) OR (sender = :peer AND recipient = :user)
+  WHERE ((sender = :user AND recipient = :peer) OR (sender = :peer AND recipient = :user)) AND ${NOT_CLEARED}
   ORDER BY created_at DESC, id DESC LIMIT 1
 `);
 const selectDmUnread = db.prepare(`
   SELECT d.sender AS peer, COUNT(*) AS unread FROM direct_messages d
   LEFT JOIN dm_reads r ON r.user_id = d.recipient AND r.peer = d.sender
-  WHERE d.recipient = ? AND d.deleted = 0 AND d.created_at > COALESCE(r.read_at, 0)
+  LEFT JOIN dm_cleared c ON c.user_id = d.recipient AND c.peer = d.sender
+  WHERE d.recipient = ? AND d.deleted = 0 AND d.created_at > MAX(COALESCE(r.read_at, 0), COALESCE(c.cleared_at, 0))
   GROUP BY d.sender
 `);
 const selectDmThread = db.prepare(`
   SELECT * FROM direct_messages
-  WHERE ((sender = :user AND recipient = :peer) OR (sender = :peer AND recipient = :user)) AND created_at < :before
+  WHERE ((sender = :user AND recipient = :peer) OR (sender = :peer AND recipient = :user))
+    AND created_at < :before AND ${NOT_CLEARED}
   ORDER BY created_at DESC, id DESC LIMIT :limit
+`);
+const upsertDmCleared = db.prepare(`
+  INSERT INTO dm_cleared (user_id, peer, cleared_at) VALUES (?, ?, ?)
+  ON CONFLICT(user_id, peer) DO UPDATE SET cleared_at = MAX(cleared_at, excluded.cleared_at)
+`);
+const deleteDmPair = db.prepare(`
+  DELETE FROM direct_messages WHERE (sender = :a AND recipient = :b) OR (sender = :b AND recipient = :a)
+`);
+const deleteDmClearedPair = db.prepare(`
+  DELETE FROM dm_cleared WHERE (user_id = :a AND peer = :b) OR (user_id = :b AND peer = :a)
 `);
 const selectDm = db.prepare('SELECT * FROM direct_messages WHERE id = ?');
 const insertDm = db.prepare(`
@@ -864,6 +893,19 @@ export function changeDm(id, { text, deleted }) {
 
 export function markDmRead(userId, peer, at) {
   upsertDmRead.run(userId, peer, at);
+}
+
+/**
+ * Deletes the conversation with `peer`: for the user only (the messages so far are hidden from them,
+ * the peer keeps theirs), or `forBoth` — the messages are gone for both.
+ */
+export function clearDm(userId, peer, forBoth) {
+  if (forBoth) {
+    deleteDmPair.run({ a: userId, b: peer });
+    deleteDmClearedPair.run({ a: userId, b: peer });
+  } else {
+    upsertDmCleared.run(userId, peer, Date.now());
+  }
 }
 
 // Links to deleted folders stay in the table but open nothing.

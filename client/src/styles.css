@@ -653,6 +653,11 @@ body {
 .mail-port { width: 5.5rem; flex: none; }
 .mail-ssl { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.9rem; }
 .mail-ssl input { accent-color: var(--accent); margin: 0; }
+.delete-dm-dialog { max-width: 420px; }
+.delete-dm-dialog p { margin: 0 0 0.9rem; }
+.delete-dm-both { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; cursor: pointer; }
+.delete-dm-dialog .delete-dm-hint { font-size: 0.85rem; }
+.delete-dm-both input { accent-color: var(--danger); width: 1.05rem; height: 1.05rem; margin: 0; }
 .mail-settings .manage-input { border-color: var(--border); padding-left: 0.7rem; padding-right: 0.7rem; width: 100%; }
 .mail-actions { flex-wrap: wrap; }
 .mail-ok { color: var(--ok); margin: 0; }

@@ -7,7 +7,7 @@ import { db } from '../db.js';
 import { folderPath } from '../folders.js';
 import { withoutLinks } from '../links.js';
 import {
-  deleteDm, dmStore, editDm, loadThread, markDmRead, onDmThreadChange, refreshDm, sendDm,
+  clearDm, deleteDm, dmStore, editDm, loadThread, markDmRead, onDmThreadChange, refreshDm, sendDm,
 } from '../dm.js';
 import { peopleStore, personName, refreshPeople } from '../people.js';
 import { isUnread, seenStore } from '../seen.js';
@@ -105,6 +105,45 @@ function DmThread({ peer }) {
       onEdit={(m, text) => editDm(peer.id, m.id, text)}
       onDelete={(m) => deleteDm(peer.id, m.id)}
     />
+  );
+}
+
+function DeleteDmDialog({ peer, onDone, onClose }) {
+  const { online } = useSyncExternalStore(syncStatus.subscribe, syncStatus.get);
+  const [forBoth, setForBoth] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const name = personName(peer);
+
+  async function submit() {
+    setBusy(true);
+    setError(null);
+    try {
+      await clearDm(peer.id, forBoth);
+      onDone();
+    } catch (err) {
+      setError(err.message);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal title="Удалить чат" onClose={onClose} className="delete-dm-dialog">
+      <p>Удалить всю переписку в чате «{name}»? Это нельзя отменить.</p>
+      <label className="delete-dm-both">
+        <input type="checkbox" checked={forBoth} onChange={(e) => setForBoth(e.target.checked)} />
+        Удалить и у собеседника
+      </label>
+      <p className="muted delete-dm-hint">
+        {forBoth ? 'Переписка исчезнет у обоих.' : 'Переписка исчезнет только у вас, у собеседника она останется.'}
+      </p>
+      {!online && <p className="muted">Удалить чат можно только при подключении к интернету.</p>}
+      {error && <p className="login-error">{error}</p>}
+      <div className="actions">
+        <button type="button" className="btn" onClick={onClose}>Отмена</button>
+        <button type="button" className="btn btn-danger" disabled={busy || !online} onClick={submit}>Удалить</button>
+      </div>
+    </Modal>
   );
 }
 
@@ -211,6 +250,7 @@ export default function ChatDialog({ folders, thread: initialThread, onOpenCard,
   const { user } = useSyncExternalStore(authState.subscribe, authState.get);
   const everyone = useSyncExternalStore(peopleStore.subscribe, peopleStore.get);
   const [showMembers, setShowMembers] = useState(false);
+  const [deletingDm, setDeletingDm] = useState(false);
 
   useEffect(() => {
     refreshDm();
@@ -316,6 +356,15 @@ export default function ChatDialog({ folders, thread: initialThread, onOpenCard,
                 {members.length > 0 && (
                   <MembersButton people={members} open={membersShown} onToggle={() => setShowMembers(!showMembers)} />
                 )}
+                {peer && (
+                  <button type="button" className="chat-head-btn" onClick={() => setDeletingDm(true)}
+                    aria-label="Удалить чат" title="Удалить чат">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6" />
+                    </svg>
+                  </button>
+                )}
                 {card && (
                   <span className="chat-pane-actions">
                     <HistoryToggle />
@@ -340,6 +389,12 @@ export default function ChatDialog({ folders, thread: initialThread, onOpenCard,
           )}
         </section>
       </div>
+      {deletingDm && peer && (
+        <DeleteDmDialog peer={peer} onClose={() => setDeletingDm(false)} onDone={() => {
+          setDeletingDm(false);
+          openThread('');
+        }} />
+      )}
     </Modal>
   );
 }
