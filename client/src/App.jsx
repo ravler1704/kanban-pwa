@@ -6,7 +6,7 @@ import { dbName, isCurrentBoard, isOwnBoard, publicToken, switchBoard } from './
 import { useReadOnly } from './public.js';
 import { db, DEFAULT_FOLDER_ID, INBOX_ID } from './db.js';
 import { columnModel } from './columnSets.js';
-import { folderBackground } from './appearance.js';
+import { backgroundItems, folderBackground } from './appearance.js';
 import { ICONS } from './menuIcons.js';
 import ContextMenu from './components/ContextMenu.jsx';
 import { renameFolder } from './actions.js';
@@ -443,7 +443,7 @@ export default function App() {
   const boardMenuItems = [
     !readOnly && { label: 'Новая карточка…', icon: ICONS.add, shortcut: 'KeyN', run: () => setAddingCard(true) },
     null,
-    {
+    view === 'board' && !searching && {
       label: allCollapsed ? 'Развернуть все колонки' : 'Свернуть все колонки',
       icon: allCollapsed ? ICONS.expand : ICONS.collapse,
       run: () => changeCollapsed((list) => {
@@ -452,6 +452,9 @@ export default function App() {
       }),
     },
     columnEdit && { label: 'Набор колонок…', icon: ICONS.settings, shortcut: 'KeyK', run: () => setEditingColumns(true) },
+    view === 'board' && !searching && !readOnly && columnsFolder && usable.includes(columnsFolder) && {
+      label: 'Фон', icon: ICONS.palette, submenu: backgroundItems(columnsFolder),
+    },
     null,
     !readOnly && !publicToken && {
       label: 'Настройки пространства…', icon: ICONS.gear, run: () => setManaging(true),
@@ -467,7 +470,14 @@ export default function App() {
 
       <div className="app-body">
         {inboxOn && inboxOpen && <InboxPanel folders={usable} onOpen={setOpenCardId} onClose={toggleInbox} />}
-        <div className={`app-main ${background ? 'has-bg' : ''}`} style={background ? { '--board-bg': background } : undefined}>
+        <div className={`app-main ${background ? 'has-bg' : ''}`} style={background ? { '--board-bg': background } : undefined}
+          onContextMenu={(e) => {
+            // Columns and cards have menus of their own; menus and dialogs portaled from inside bubble here too.
+            if (!folders.length || !e.currentTarget.contains(e.target)
+              || e.target.closest('.column, .card, a, button, input, textarea, select, [contenteditable="true"]')) return;
+            e.preventDefault();
+            setBoardMenu({ x: e.clientX, y: e.clientY });
+          }}>
           {folders.length === 0 ? (
             !isOwnBoard ? (
               <div className="empty">
@@ -542,10 +552,6 @@ export default function App() {
               ) : (
                 <main className="board" style={{
                   '--tracks': columns.map((c) => (collapsed.includes(c.id) ? 'var(--column-collapsed)' : 'var(--column-width)')).join(' '),
-                }} onContextMenu={(e) => {
-                  if (e.target.closest('.column, .card, a, input, textarea')) return;
-                  e.preventDefault();
-                  setBoardMenu({ x: e.clientX, y: e.clientY });
                 }}>
                   {columns.map((col, index) => (
                     <Column
