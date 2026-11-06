@@ -539,10 +539,12 @@ export default function App() {
                   edit={columnEdit}
                   collapsed={collapsed.includes(col.id)}
                   onToggleCollapsed={() => toggleCollapsed(col.id)}
-                  onCollapseOthers={() => changeCollapsed((list) => [
-                    ...list.filter((id) => id !== col.id && !columns.some((c) => c.id === id)),
-                    ...columns.filter((c) => c.id !== col.id).map((c) => c.id),
-                  ])}
+                  onCollapseOthers={() => changeCollapsed((list) => {
+                    const elsewhere = list.filter((id) => !columns.some((c) => c.id === id));
+                    const others = columns.filter((c) => c.id !== col.id).map((c) => c.id);
+                    const alone = !list.includes(col.id) && others.every((id) => list.includes(id));
+                    return alone ? elsewhere : [...elsewhere, ...others];
+                  })}
                   onNewCard={() => setAddingCard(col)}
                 />
               ))}

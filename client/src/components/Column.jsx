@@ -25,7 +25,7 @@ function positionAtEnd(cards) {
  * `edit` (see ColumnMenu), when set, lets the columns be changed from the column's menu.
  * `onNewCard()` opens the full new card form for the column.
  * `collapsed`: shown as a narrow strip with its name, `onToggleCollapsed()` switches it.
- * `onCollapseOthers()` expands this column and collapses the rest of the board.
+ * `onCollapseOthers()` expands this column and collapses the rest of the board, or expands them all when it's the only one left.
  */
 export default function Column({
   target, targetName, column, prevColumn, nextColumn, cards, cardLabel, activeTags, onTag, readOnly, onOpen, onOpenGroup,
