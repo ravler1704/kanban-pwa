@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   countColumnCards, deleteColumn, insertColumn, moveColumn, setColumnAddToTop,
 } from '../actions.js';
@@ -88,7 +88,8 @@ function MoreIcon() {
  * The «⋯» menu of a board column: moving all its cards (`moveAll(column)` to `prevColumn` / `nextColumn`,
  * null when it has none to move) and, with `edit` ({ setId, setName, columns, boards: [name], onSetSettings }:
  * the set the column belongs to, its columns in order and the boards using it), changing the columns.
- * The shortcuts also work with the pointer over `hoverRef` (the column).
+ * A right click on `hoverRef` (the column, apart from its cards) opens it too; the shortcuts also work
+ * with the pointer over it.
  */
 export default function ColumnMenu({ column, prevColumn, nextColumn, moveAll, edit, hoverRef }) {
   const [menu, setMenu] = useState(null);
@@ -151,7 +152,21 @@ export default function ColumnMenu({ column, prevColumn, nextColumn, moveAll, ed
   ] : [];
   const items = [...moves, ...(moves.length && changes.length ? [null] : []), ...changes];
   useHoverShortcuts(hoverRef, items);
-  if (!items.length) return null;
+
+  const hasItems = items.length > 0;
+  useEffect(() => {
+    const el = hoverRef.current;
+    if (!el || !hasItems) return undefined;
+    const onContextMenu = (e) => {
+      if (e.defaultPrevented || e.target.closest('a, input, textarea, .card')) return;
+      e.preventDefault();
+      setMenu({ x: e.clientX, y: e.clientY });
+    };
+    el.addEventListener('contextmenu', onContextMenu);
+    return () => el.removeEventListener('contextmenu', onContextMenu);
+  }, [hoverRef, hasItems]);
+
+  if (!hasItems) return null;
 
   return (
     <>
