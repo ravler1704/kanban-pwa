@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { deleteFolder, folderStats } from '../actions.js';
 import FolderSelect from './FolderSelect.jsx';
 import Modal from './Modal.jsx';
+import SharingSection from './SharingSection.jsx';
 import StructureEditor from './StructureEditor.jsx';
 
 /** Deleting a folder that has something in it: delete it all, or keep the cards and the folders inside. */
@@ -44,12 +45,25 @@ function DeleteFolderDialog({ folder, stats, folders, onClose }) {
   );
 }
 
+const TABS = [
+  { id: 'folders', label: 'Доски' },
+  { id: 'sharing', label: 'Доступ' },
+];
+const TAB_KEY = 'manageDialogTab';
+
 /**
- * The folders of the board (`folders`, live); `writable` are the ids a member may change (null: all),
+ * The folders of the board (`folders`, live) and who has access to them; `writable` are the ids a member may change (null: all),
  * members arrange those they have access to. Columns are edited from the board («Изменить колонки»).
  */
 export default function ManageDialog({ model, columnsSynced, folders, foldersSynced, writable, onClose }) {
   const [deleting, setDeleting] = useState(null);
+  const [picked, setTab] = useState(() => localStorage.getItem(TAB_KEY));
+  const tab = TABS.some((t) => t.id === picked) ? picked : TABS[0].id;
+
+  function selectTab(id) {
+    setTab(id);
+    localStorage.setItem(TAB_KEY, id);
+  }
 
   async function removeFolder(folder) {
     const stats = await folderStats(folder.id);
@@ -59,8 +73,22 @@ export default function ManageDialog({ model, columnsSynced, folders, foldersSyn
 
   return (
     <Modal title="Настройки пространства" onClose={onClose}>
-      <StructureEditor model={model} folders={folders} synced={foldersSynced} columnsSynced={columnsSynced}
-        writable={writable} onRemoveFolder={removeFolder} />
+      <div className="tabs-bar">
+        <div className="tabs" role="tablist">
+          {TABS.map((t) => (
+            <button key={t.id} type="button" role="tab" aria-selected={tab === t.id}
+              className={`tab ${tab === t.id ? 'tab-active' : ''}`} onClick={() => selectTab(t.id)}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div role="tabpanel">
+        {tab === 'sharing' ? <div className="manage"><SharingSection /></div> : (
+          <StructureEditor model={model} folders={folders} synced={foldersSynced} columnsSynced={columnsSynced}
+            writable={writable} onRemoveFolder={removeFolder} />
+        )}
+      </div>
       <div className="actions">
         <button className="btn btn-primary" onClick={onClose}>Готово</button>
       </div>
