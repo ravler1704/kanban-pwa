@@ -75,7 +75,7 @@ export async function createColumnSet(name, copyFromSetId) {
     const set = await insert('columnSet', { name, position: maxPosition(await db.columnSets.toArray()) + 1 });
     id = set.id;
     for (const c of await liveColumns(copyFromSetId)) {
-      await insert('column', { setId: id, name: c.name, position: c.position, addToTop: !!c.addToTop });
+      await insert('column', { setId: id, name: c.name, position: c.position, addToTop: !!c.addToTop, color: c.color ?? null });
     }
   });
   requestSync();
@@ -161,6 +161,12 @@ export async function insertColumn(setId, name, index) {
 
 export async function renameColumn(id, name) {
   await update('column', id, { name });
+  requestSync();
+}
+
+/** `color`: an id of CARD_COLORS, or null. */
+export async function setColumnColor(id, color) {
+  await update('column', id, { color });
   requestSync();
 }
 

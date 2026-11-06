@@ -252,7 +252,7 @@ const CARD_FIELDS = ['folderId', 'columnId', 'title', 'description', 'position',
 // Folders among themselves go parents first (see sortFolders in sync.js).
 export const TYPES = {
   columnSet: { table: 'columnSets', fields: ['name', 'position', 'deleted'] },
-  column: { table: 'columns', fields: ['setId', 'name', 'position', 'deleted', 'addToTop'] },
+  column: { table: 'columns', fields: ['setId', 'name', 'position', 'deleted', 'addToTop', 'color'] },
   // Folders nest to any depth: parentId null is a root. columnSetId null: the set of the nearest
   // ancestor that has one (see folders.js). hidden: no longer set; read once to convert an older selection.
   folder: { table: 'folders', fields: FOLDER_FIELDS },

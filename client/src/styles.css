@@ -824,6 +824,12 @@ body {
   min-height: 0;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
+/* A tinted column, as Trello's list colours: the cards stay as they are on it. */
+.column-colored {
+  background: color-mix(in srgb, var(--column-color) 26%, var(--panel));
+  border-color: color-mix(in srgb, var(--column-color) 50%, var(--panel));
+}
+.column-colored .count { color: color-mix(in srgb, var(--text) 70%, var(--column-color)); }
 .column-dragover { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .column { position: relative; }
 .column-head h2 { flex: 1; min-width: 0; }

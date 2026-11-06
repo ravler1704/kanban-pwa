@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createCard, moveCard, moveCardsToColumn, moveColumnTo, renameColumn } from '../actions.js';
+import { columnColor } from '../appearance.js';
 import ColumnMenu from './ColumnMenu.jsx';
 import EditableName from './EditableName.jsx';
 import { PlusIcon } from './FolderBar.jsx';
@@ -165,9 +166,12 @@ export default function Column({
   }
 
   const count = cards.filter((c) => !c.deleted).length;
+  const color = columnColor(column);
   const columnClasses = [
     dragOver && 'column-dragover', columnDrop && `column-drop-${columnDrop}`, dragging && 'column-dragging',
+    color && 'column-colored',
   ].filter(Boolean).join(' ');
+  const columnStyle = color ? { '--column-color': color } : undefined;
   const menu = (
     <ColumnMenu column={column} prevColumn={readOnly ? null : prevColumn} nextColumn={readOnly ? null : nextColumn}
       moveAll={!readOnly && movable.length ? moveAll : null} edit={readOnly ? null : edit}
@@ -178,6 +182,7 @@ export default function Column({
       <section
         ref={section}
         className={`column column-collapsed ${columnClasses}`}
+        style={columnStyle}
         onMouseDownCapture={noteBlur}
         onDragOver={readOnly ? undefined : handleDragOver}
         onDragLeave={(e) => {
@@ -202,6 +207,7 @@ export default function Column({
     <section
       ref={section}
       className={`column ${columnClasses}`}
+      style={columnStyle}
       onMouseDownCapture={noteBlur}
       onClick={(e) => {
         // Clicks from menus portaled out of the column bubble here too.

@@ -1,4 +1,4 @@
-import { setFolderBackground, updateCard } from './actions.js';
+import { setColumnColor, setFolderBackground, updateCard } from './actions.js';
 import { backgroundUrl, isUploadedBackground, uploadBackground } from './files.js';
 import { folderPath } from './folders.js';
 
@@ -51,6 +51,7 @@ export const BOARD_PICTURES = [
 ];
 
 export const cardColor = (card) => CARD_COLORS.find((c) => c.id === card.color)?.value ?? null;
+export const columnColor = (column) => CARD_COLORS.find((c) => c.id === column.color)?.value ?? null;
 
 /** The CSS background of a folder's `background` (a preset or an uploaded picture), null for none. */
 function backgroundValue(id) {
@@ -74,6 +75,15 @@ export const cardColorItems = (card) => [
   null,
   ...CARD_COLORS.map((c) => ({
     label: c.name, swatch: c.value, active: card.color === c.id, run: () => updateCard(card.id, { color: c.id }),
+  })),
+];
+
+/** Menu items that tint the column. */
+export const columnColorItems = (column) => [
+  { label: 'Без цвета', swatch: 'none', active: !column.color, run: () => setColumnColor(column.id, null) },
+  null,
+  ...CARD_COLORS.map((c) => ({
+    label: c.name, swatch: c.value, active: column.color === c.id, run: () => setColumnColor(column.id, c.id),
   })),
 ];
 

@@ -43,8 +43,9 @@ export const SCHEMAS = {
   },
   column: {
     // addToTop: cards added or moved here (other than by dragging) go first instead of last.
-    fields: { setId: ref, name: string(100), position: number, deleted: boolean, addToTop: boolean },
-    defaults: { setId: DEFAULT_SET_ID, name: '', position: 0, deleted: false, addToTop: false },
+    // color: an id of the client's palette (as card covers), or null.
+    fields: { setId: ref, name: string(100), position: number, deleted: boolean, addToTop: boolean, color: optionalKey },
+    defaults: { setId: DEFAULT_SET_ID, name: '', position: 0, deleted: false, addToTop: false, color: null },
     textFields: [],
     deleteConflicts: false,
   },

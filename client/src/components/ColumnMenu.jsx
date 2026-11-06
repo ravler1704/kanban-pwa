@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   countColumnCards, deleteColumn, insertColumn, moveColumn, setColumnAddToTop,
 } from '../actions.js';
+import { columnColorItems } from '../appearance.js';
 import { ICONS } from '../menuIcons.js';
 import ContextMenu, { useHoverShortcuts, useMenuButton } from './ContextMenu.jsx';
 import Modal from './Modal.jsx';
@@ -135,6 +136,7 @@ export default function ColumnMenu({ column, prevColumn, nextColumn, moveAll, ed
       label: 'Новые карточки — в конец', icon: ICONS.toBottom, shortcut: 'KeyB', active: !column.addToTop,
       run: () => setColumnAddToTop(column.id, false),
     },
+    { label: 'Цвет', icon: ICONS.palette, submenu: columnColorItems(column) },
     null,
     {
       label: 'Добавить колонку слева…', icon: ICONS.addLeft, shortcut: 'Shift+KeyN',
