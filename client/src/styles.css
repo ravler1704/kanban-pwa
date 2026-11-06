@@ -892,9 +892,12 @@ body {
 .card-title-row-done { --done-room: 1.5rem; padding-right: var(--done-room); }
 .card-done-btn {
   position: absolute; left: 0; top: 0.2rem; opacity: 0; transform: scale(0.6);
-  transition: opacity 0.25s ease, transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 0.4s ease, transform 0.55s cubic-bezier(0.25, 1, 0.5, 1);
 }
-.card-title-row-done > .card-title { transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease; }
+.card-title-row-done > .card-title {
+  transition: transform 0.55s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.45s ease;
+  will-change: transform;
+}
 .card-title-row-done:has(.done-btn-on) > .card-title { opacity: 0.6; }
 .card:hover .card-done-btn, .card-done-btn:focus-visible, .card-done-btn.done-btn-on { opacity: 1; transform: none; }
 .card:hover .card-title-row-done > .card-title,
