@@ -61,7 +61,7 @@ function SelectCell({ value, options, label, disabled, onChange }) {
 }
 
 /**
- * The cards as a table whose cells can be edited. `cards` are those the filters leave on the board; `query`
+ * The cards as a table whose cells can be edited (on a phone, a card per row). `cards` are those the filters leave on the board; `query`
  * (the header's search) looks through every card of the space, on any board. `folders` are all live
  * folders, `targets` those cards may be moved to, `columnsOfFolder` gives a folder's columns.
  */
@@ -123,32 +123,32 @@ export default function ListView({ cards, query = '', folders, targets = folders
                 <tr key={card.id} className={card.conflict ? 'lt-conflict' : undefined}>
                   <td className="lt-num">{card.number != null ? `#${card.number}` : ''}</td>
                   <td className="lt-title"><TitleCell card={card} readOnly={locked} /></td>
-                  <td>
+                  <td data-label="Доска">
                     {locked ? <span className="lt-text">{folder && folderPathName(folder, folders, ' › ')}</span> : (
                       <SelectCell label="Доска" value={card.folderId} options={folderOptions}
                         onChange={(id) => moveTo(card, id)} />
                     )}
                   </td>
-                  <td>
+                  <td data-label="Колонка">
                     {locked ? <span className="lt-text">{column?.name}</span> : (
                       <SelectCell label="Колонка" value={column?.id}
                         options={columns.map((c) => ({ value: c.id, label: c.name }))}
                         onChange={(columnId) => updateCard(card.id, { columnId })} />
                     )}
                   </td>
-                  <td>
-                    {locked || !holderId ? <span className="lt-text">{holderId ? personLabel(personOf(people, holderId), meId) : ''}</span> : (
+                  <td data-label="На ком">
+                    {!holderId ? null : locked ? <span className="lt-text">{personLabel(personOf(people, holderId), meId)}</span> : (
                       <SelectCell label="На ком" value={holderId} options={peopleOf(card, holderId)}
                         onChange={(id) => updateCard(card.id, { assigneeId: id === card.authorId ? null : id })} />
                     )}
                   </td>
-                  <td>
-                    {locked || !card.authorId ? <span className="lt-text">{card.authorId ? personLabel(personOf(people, card.authorId), meId) : ''}</span> : (
+                  <td data-label="Автор">
+                    {!card.authorId ? null : locked ? <span className="lt-text">{personLabel(personOf(people, card.authorId), meId)}</span> : (
                       <SelectCell label="Автор" value={card.authorId} options={peopleOf(card, card.authorId)}
                         onChange={(id) => updateCard(card.id, { authorId: id, ...(card.assigneeId === id && { assigneeId: null }) })} />
                     )}
                   </td>
-                  <td className="lt-reminder"><ReminderBadge card={card} /></td>
+                  <td className="lt-reminder" data-label="Напоминание"><ReminderBadge card={card} /></td>
                   <td className="lt-open">
                     <button type="button" className="btn btn-small btn-icon-only" title="Открыть карточку"
                       aria-label="Открыть карточку" onClick={() => onOpen(card.id)}><OpenIcon /></button>

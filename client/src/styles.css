@@ -1168,6 +1168,39 @@ a.btn { display: inline-block; text-decoration: none; }
 .lt-select option { background: var(--panel); color: var(--text); }
 .lt .btn-icon-only { width: 2rem; height: 2rem; padding: 0; color: var(--muted); }
 .lt .btn-icon-only:hover { color: var(--text); }
+@media (max-width: 700px) {
+  .lt-wrap { overflow: visible; border: none; background: none; }
+  .lt, .lt tbody { display: block; min-width: 0; }
+  .lt thead { display: none; }
+  .lt tbody { display: flex; flex-direction: column; gap: 0.5rem; }
+  .lt tbody tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    padding: 0.35rem 0.4rem 0.45rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--card);
+  }
+  .lt tbody tr:hover td { background: none; }
+  .lt-conflict { box-shadow: inset 3px 0 0 var(--danger, #e5484d); }
+  .lt-conflict td:first-child { box-shadow: none; }
+  .lt td { display: block; padding: 0; border: none; }
+  .lt .lt-num { grid-row: 1; grid-column: 1; width: auto; padding: 0 0.15rem 0 0.35rem; }
+  .lt .lt-title { grid-row: 1; grid-column: 2; width: auto; font-weight: 600; }
+  .lt .lt-open { grid-row: 1; grid-column: 3; width: auto; }
+  .lt td[data-label] {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 6.5rem minmax(0, 1fr);
+    align-items: center;
+    font-size: 0.85rem;
+  }
+  .lt td[data-label]::before { content: attr(data-label); padding-left: 0.35rem; color: var(--muted); font-size: 0.78rem; }
+  .lt td[data-label]:empty { display: none; }
+  .lt-reminder .card-reminder { justify-self: start; margin-left: 0.35rem; }
+  .lt .list-empty { grid-column: 1 / -1; }
+}
 .cal-header { display: flex; align-items: center; gap: 0.5rem; }
 .cal-header .btn-icon-only { padding: 0.35rem 0.5rem; }
 .cal-title { margin: 0; min-width: 11rem; text-align: center; font-size: 1.05rem; }
