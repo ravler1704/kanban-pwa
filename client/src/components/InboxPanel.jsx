@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { createInboxCard, deleteCard, moveCardTo } from '../actions.js';
 import { db, INBOX_ID } from '../db.js';
-import { ChecklistBadge, ClipIcon, ReminderBadge, setDraggedCard } from './Card.jsx';
+import { setDraggedCard } from './Card.jsx';
 import { FolderPickerDialog } from './FolderSelect.jsx';
 import Markdown from './Markdown.jsx';
 
@@ -19,19 +19,6 @@ export function InboxIcon() {
 const MoveIcon = () => svg(<><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></>);
 const DeleteIcon = () => svg(<><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M6 6l1 14h10l1-14" /></>);
 const CloseIcon = () => svg(<path d="M18 6 6 18M6 6l12 12" />);
-
-/** What the card holds besides its title, as on the board; nothing when it holds nothing. */
-function InboxBadges({ card }) {
-  const files = card.attachments?.length ?? 0;
-  if (!card.remindAt && !card.reminders?.length && !card.checklist?.length && !files) return null;
-  return (
-    <div className="card-badges inbox-card-badges">
-      <ReminderBadge card={card} />
-      <ChecklistBadge card={card} />
-      {files > 0 && <span className="card-files" title="Прикреплённые файлы"><ClipIcon />{files}</span>}
-    </div>
-  );
-}
 
 /** The live cards in «Входящие», in their order. */
 export function useInboxCards() {
@@ -79,12 +66,13 @@ export default function InboxPanel({ folders, onOpen, onClose }) {
       }}>
       <div className="inbox-head">
         <h2 className="inbox-title"><InboxIcon /> Входящие</h2>
-        <button type="button" className="inbox-head-btn" title="Закрыть" aria-label="Закрыть" onClick={onClose}>
+        <button type="button" className="btn btn-small btn-icon-only" title="Закрыть" aria-label="Закрыть"
+          onClick={onClose}>
           <CloseIcon />
         </button>
       </div>
-      <form className="inbox-add" onSubmit={add}>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="+ Добавить карточку"
+      <form className="add-card inbox-add" onSubmit={add}>
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="+ Быстро записать дело"
           aria-label="Новое дело" maxLength={500} />
       </form>
       {cards.length ? (
@@ -101,7 +89,6 @@ export default function InboxPanel({ folders, onOpen, onClose }) {
               <button type="button" className="inbox-card-title" onClick={() => onOpen(card.id)}>
                 {card.title ? <Markdown text={card.title} inline /> : <em className="muted">Без названия</em>}
               </button>
-              <InboxBadges card={card} />
               <span className="inbox-card-actions">
                 <button type="button" className="btn btn-small btn-icon-only" title="На доску…" aria-label="На доску"
                   disabled={!folders.length} onClick={() => setMoving(card.id)}>
@@ -116,15 +103,11 @@ export default function InboxPanel({ folders, onOpen, onClose }) {
           ))}
         </ul>
       ) : (
-        <div className="inbox-empty">
-          <span className="inbox-empty-icon"><InboxIcon /></span>
-          <strong>Все дела в одном месте</strong>
-          <p>
-            Записывайте сюда дела, не думая, куда их деть. Потом перетащите каждое в колонку доски
-            или перенесите кнопкой «На доску». Карточку с доски можно вернуть сюда перетаскиванием
-            или пунктом «Во „Входящие“» в её меню.
-          </p>
-        </div>
+        <p className="inbox-empty muted">
+          Записывайте сюда дела, не думая, куда их деть. Потом перетащите каждое в колонку доски
+          или перенесите кнопкой «На доску». Карточку с доски можно вернуть сюда перетаскиванием
+          или пунктом «Во „Входящие“» в её меню.
+        </p>
       )}
       {moving && createPortal(
         <FolderPickerDialog title="На доску" folders={folders} value={null}

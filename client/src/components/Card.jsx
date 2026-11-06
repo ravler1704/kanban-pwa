@@ -95,7 +95,7 @@ function CardChecklist({ card, readOnly }) {
   );
 }
 
-export function ClipIcon() {
+function ClipIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25"
       strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
