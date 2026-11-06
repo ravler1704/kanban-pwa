@@ -37,29 +37,42 @@ export function useHoverShortcuts(ref, items) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return undefined;
-    let hovered = false;
-    const enter = () => { hovered = true; };
-    const leave = () => { hovered = false; };
-    const onKey = (e) => {
-      if (!hovered || e.defaultPrevented || e.repeat) return;
-      if (e.target.closest?.('input, textarea, select, [contenteditable="true"]')) return;
-      if (document.querySelector('.context-menu')) return;
-      const dialogs = document.querySelectorAll('[role="dialog"]');
-      if (dialogs.length && !dialogs[dialogs.length - 1].contains(el)) return;
-      const item = itemForKey(latest.current, e);
-      if (!item) return;
-      e.preventDefault();
-      item.run();
-    };
+    const entry = { el, hovered: false, items: () => latest.current };
+    const enter = () => { entry.hovered = true; };
+    const leave = () => { entry.hovered = false; };
     el.addEventListener('mouseenter', enter);
     el.addEventListener('mouseleave', leave);
-    window.addEventListener('keydown', onKey);
+    hoverEntries.add(entry);
+    if (hoverEntries.size === 1) window.addEventListener('keydown', onHoverKey);
     return () => {
       el.removeEventListener('mouseenter', enter);
       el.removeEventListener('mouseleave', leave);
-      window.removeEventListener('keydown', onKey);
+      hoverEntries.delete(entry);
+      if (!hoverEntries.size) window.removeEventListener('keydown', onHoverKey);
     };
   }, [ref]);
+}
+
+const hoverEntries = new Set();
+
+// One listener for all hovered elements: the innermost one (a card in a column) gets the key first.
+function onHoverKey(e) {
+  if (e.defaultPrevented || e.repeat) return;
+  if (e.target.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+  if (document.querySelector('.context-menu')) return;
+  const dialogs = document.querySelectorAll('[role="dialog"]');
+  const top = dialogs[dialogs.length - 1];
+  const hovered = [...hoverEntries]
+    .filter((h) => h.hovered && h.el.isConnected && (!top || top.contains(h.el)))
+    .sort((a, b) => (a.el.contains(b.el) ? 1 : b.el.contains(a.el) ? -1 : 0));
+  for (const h of hovered) {
+    const item = itemForKey(h.items(), e);
+    if (item) {
+      e.preventDefault();
+      item.run();
+      return;
+    }
+  }
 }
 
 const Icon = ({ d }) => (
