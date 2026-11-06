@@ -1598,3 +1598,4 @@ button.cp-chip:hover { color: var(--text); }
 .btn-link-icon { display: inline-flex; padding: 0.15rem; border: none; background: none; color: var(--muted); cursor: pointer; border-radius: 999px; }
 .btn-link-icon:hover { color: var(--danger, #ef4444); }
 .draft-column .btn.active { color: var(--accent); border-color: var(--accent); }
+.add-card-btn { flex: none; width: 2.5rem; }

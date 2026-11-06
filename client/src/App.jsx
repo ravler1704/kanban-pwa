@@ -116,6 +116,7 @@ export default function App() {
   const [selection, select] = useSelection();
   const [openCardId, setOpenCardId] = useState(null);
   const [managing, setManaging] = useState(false);
+  // The new card form: false closed, true open, or the column preselected in it.
   const [addingCard, setAddingCard] = useState(false);
   // The chats window: null closed, '' the list, 'folder:<id>' or 'dm:<user id>' a conversation.
   const [chat, setChat] = useState(null);
@@ -451,7 +452,7 @@ export default function App() {
             holderFilter={publicToken ? null : personFilter(holderFilter, changeHolderFilter, holderOf)}
             view={view}
             onView={changeView}
-            onAddCard={readOnly ? null : () => setAddingCard(true)}
+            onAddCard={readOnly || view === 'board' ? null : () => setAddingCard(true)}
           >
             {!publicToken && <PeopleBar folders={shownFolders} allFolders={folders} onChat={setChat} />}
           </FolderBar>
@@ -511,6 +512,7 @@ export default function App() {
                   onOpen={setOpenCardId}
                   onOpenGroup={openGroup}
                   edit={columnEdit}
+                  onNewCard={() => setAddingCard(col)}
                 />
               ))}
             </main>
@@ -533,7 +535,8 @@ export default function App() {
 
       {addingCard && (
         <NewCardDialog folders={usable} columnsOfFolder={model.columnsOfFolder}
-          target={target ?? targetIn(usable)} onClose={() => setAddingCard(false)} />
+          target={addingCard === true ? target ?? targetIn(usable) : boardTarget ?? target ?? targetIn(usable)}
+          column={addingCard === true ? null : addingCard} onClose={() => setAddingCard(false)} />
       )}
 
       {editingColumns && (

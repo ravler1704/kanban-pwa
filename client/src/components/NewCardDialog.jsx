@@ -8,14 +8,14 @@ import TitleField from './TitleField.jsx';
 
 /**
  * `folders` are the folders a card can be added to and `target` the one preselected (an id; else the
- * first folder).
+ * first folder); `column`, when set, is the column preselected.
  */
-export default function NewCardDialog({ folders, columnsOfFolder, target, onClose }) {
+export default function NewCardDialog({ folders, columnsOfFolder, target, column: initialColumn, onClose }) {
   const [folderId, setFolderId] = useState(() => (folders.some((f) => f.id === target) ? target : folders[0]?.id) ?? '');
   // The folder's column set decides the choice. New cards land in «Входящие» (the default
   // backlog column) or the first column; a picked column is kept by name across sets.
   const columns = folderId ? columnsOfFolder(folderId) : [];
-  const [picked, setPicked] = useState(null);
+  const [picked, setPicked] = useState(initialColumn ?? null);
   const column = columns.find((c) => c.id === picked?.id)
     ?? (picked && columns.find((c) => c.name === picked.name))
     ?? columns.find((c) => c.id === 'backlog')

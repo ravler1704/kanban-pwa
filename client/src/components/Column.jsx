@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createCard, moveCard, moveCardsToColumn, moveCardToColumn } from '../actions.js';
 import ColumnMenu from './ColumnMenu.jsx';
+import { PlusIcon } from './FolderBar.jsx';
 import Card, { ALL_LEFT, ALL_RIGHT, draggedCardHeight, draggedCardId, MoveIcon } from './Card.jsx';
 
 function positionBefore(cards, targetId) {
@@ -18,10 +19,11 @@ function positionAtEnd(cards) {
  * `target` (a folder id) is where new cards go; `targetName`, when set, is said in the add field.
  * `cardLabel(card)` returns the folder shown on the card, or null for none.
  * `edit` (see ColumnMenu), when set, lets the columns be changed from the column's menu.
+ * `onNewCard()` opens the full new card form for the column.
  */
 export default function Column({
   target, targetName, column, prevColumn, nextColumn, cards, cardLabel, activeTags, onTag, readOnly, onOpen, onOpenGroup,
-  edit,
+  edit, onNewCard,
 }) {
   const [title, setTitle] = useState('');
   // While a card is dragged over the column: the id of the card it would land before, or null for the end.
@@ -133,7 +135,12 @@ export default function Column({
           placeholder={targetName ? `+ Новая карточка в «${targetName}»` : '+ Новая карточка'}
           maxLength={500}
         />
-        {title.trim() && <button type="submit" className="btn btn-primary btn-small">Добавить</button>}
+        <button type={title.trim() ? 'submit' : 'button'} className={`btn btn-small btn-icon-only add-card-btn ${title.trim() ? 'btn-primary' : ''}`}
+          title={title.trim() ? 'Добавить карточку' : 'Новая карточка: описание, напоминания, исполнитель'}
+          aria-label={title.trim() ? 'Добавить карточку' : `Новая карточка в «${column.name}»`}
+          onClick={title.trim() ? undefined : onNewCard}>
+          <PlusIcon />
+        </button>
       </form>}
     </section>
   );

@@ -17,7 +17,7 @@ export function SettingsIcon() {
   );
 }
 
-function PlusIcon() {
+export function PlusIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25"
       strokeLinecap="round" aria-hidden="true">
@@ -74,7 +74,7 @@ const VIEWS = [
 /**
  * `folderFilter` is { selected, indeterminate, onToggle, onSetFolder, onSetAll, onClear, summary } over the ids of
  * `folders` (all live folders). `conflictsByFolder` is { [folderId]: number of cards
- * with a conflict }. Without `onManage` / `onAddCard` (read only) their buttons are not shown.
+ * with a conflict }. Without `onAddCard` (read only, or the board, where each column has one) its button is not shown.
  */
 export default function FolderBar({
   folders, folderFilter, conflictsByFolder, columnSets, columnSetId, onSelectColumnSet, tagFilter, authorFilter, holderFilter,
