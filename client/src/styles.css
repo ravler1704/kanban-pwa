@@ -904,7 +904,7 @@ body {
 .card-conflict { border-color: var(--warn); }
 .card-conflict:hover { border-color: var(--warn); box-shadow: inset 0 0 0 1px var(--warn); }
 .card-deleted { opacity: 0.6; border-style: dashed; }
-.card-title { font-weight: 600; word-break: break-word; }
+.card-title { font-weight: 500; word-break: break-word; }
 .card-desc {
   margin-top: 0.3rem;
   color: var(--muted);
