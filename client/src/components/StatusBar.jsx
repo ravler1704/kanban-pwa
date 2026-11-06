@@ -1,11 +1,12 @@
 import { useState, useSyncExternalStore } from 'react';
-import { authState } from '../auth.js';
+import { authState, renameSpace } from '../auth.js';
 import { boardName, currentBoard, publicToken, switchBoard } from '../board.js';
 import { usePublicLink } from '../public.js';
 import { sync, syncStatus } from '../sync.js';
 import { pushState } from '../push.js';
 import AccountDialog, { NotificationSettings } from './AccountDialog.jsx';
 import Avatar from './Avatar.jsx';
+import EditableName from './EditableName.jsx';
 import Modal from './Modal.jsx';
 import { ChatButton } from './People.jsx';
 
@@ -95,20 +96,31 @@ export default function StatusBar({ pending, conflicts, folders, onChat, search,
   const boards = user?.boards ?? [];
   // On someone else's board, the header shows whose it is.
   const boardOwner = currentBoard ? boards.find((b) => b.id === currentBoard) : null;
+  const ownName = user?.spaceName || 'Моё пространство';
+  const spaceTitle = currentBoard
+    ? boardOwner?.spaceName || boardOwner?.name || boardOwner?.email || 'Общее пространство'
+    : user?.spaceName || user?.name || user?.email || 'Канбан';
+  const rename = (name) => renameSpace(name).catch((err) => alert(err.message));
 
   return (
     <header className="statusbar">
       {publicToken ? <PublicTitle /> : <div className="statusbar-user">
         {user && <Avatar user={boardOwner ?? user} />}
-        {boards.length > 0 || currentBoard ? (
-          <select className="select board-select" aria-label="Пространство" value={currentBoard ?? ''}
-            title={user?.name || user?.email || undefined} onChange={(e) => switchBoard(e.target.value || null)}>
-            <option value="">Моё пространство</option>
-            {boards.map((b) => <option key={b.id} value={b.id}>{boardName(b)}</option>)}
-            {currentBoard && !boards.some((b) => b.id === currentBoard) && <option value={currentBoard}>Общее пространство</option>}
-          </select>
-        ) : (
-          <h1 className="statusbar-title" title={user?.email || undefined}>{user?.name || user?.email || 'Канбан'}</h1>
+        <h1 className="statusbar-title" title={boardOwner ? `Владелец: ${boardOwner.name || boardOwner.email}` : undefined}>
+          {user && !currentBoard && s.online
+            ? <EditableName value={spaceTitle} label="Название пространства" maxLength={100} onSave={rename} />
+            : spaceTitle}
+        </h1>
+        {(boards.length > 0 || currentBoard) && (
+          <label className="btn btn-small btn-icon-only board-switch" title="Другое пространство">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25"
+              strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+            <select aria-label="Пространство" value={currentBoard ?? ''} onChange={(e) => switchBoard(e.target.value || null)}>
+              <option value="">{ownName}</option>
+              {boards.map((b) => <option key={b.id} value={b.id}>{boardName(b)}</option>)}
+              {currentBoard && !boards.some((b) => b.id === currentBoard) && <option value={currentBoard}>Общее пространство</option>}
+            </select>
+          </label>
         )}
       </div>}
       {onSearch && (

@@ -81,7 +81,9 @@ body {
   color: var(--on-accent);
   font-weight: 600;
 }
-.board-select { min-width: 0; max-width: 100%; font-size: 1.1rem; font-weight: 600; text-overflow: ellipsis; }
+.statusbar-title:has(.editable-name-edit) { overflow: visible; }
+.board-switch { position: relative; flex: none; }
+.board-switch select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 1rem; }
 .status { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; font-size: 0.9rem; }
 
 .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
