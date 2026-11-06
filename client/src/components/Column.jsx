@@ -95,6 +95,9 @@ export default function Column({
         <h2>
           {edit
             ? <EditableName value={column.name} label="Название колонки" maxLength={100}
+              note={edit.boards.length > 1
+                ? `Набор «${edit.setName}» используют доски: ${edit.boards.map((b) => `«${b}»`).join(', ')}. Изменение применится ко всем.`
+                : null}
               onSave={(name) => renameColumn(column.id, name)} />
             : column.name} <span className="count">{cards.filter((c) => !c.deleted).length}</span>
         </h2>

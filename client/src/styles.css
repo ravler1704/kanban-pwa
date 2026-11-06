@@ -1618,3 +1618,8 @@ button.cp-chip:hover { color: var(--text); }
   border-radius: 2px; outline: 2px solid var(--accent); outline-offset: 2px;
 }
 .crumb-current { color: var(--text); font-weight: 600; }
+.editable-name-note {
+  position: fixed; z-index: 1000; padding: 0.5rem 0.7rem; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--panel); box-shadow: 0 8px 24px rgb(0 0 0 / 0.25);
+  color: var(--muted); font-size: 0.82rem; font-weight: normal; line-height: 1.4; white-space: normal;
+}
