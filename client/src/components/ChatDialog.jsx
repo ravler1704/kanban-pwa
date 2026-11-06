@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { cardColor, folderBackground } from '../appearance.js';
 import { authState } from '../auth.js';
 import { messageText, useCardNumbers } from '../chatEvents.jsx';
 import { db } from '../db.js';
@@ -124,27 +125,30 @@ function ChatListItem({ avatar, title, subtitle, last, text, unread, active, onC
   );
 }
 
-/** A round avatar of a folder's or card's chat, its color fixed by `seed`. */
-function ChatIcon({ seed = '', size = 46, children }) {
+/**
+ * The avatar of a folder's or card's chat: the board's background or the card's cover (`background`),
+ * else a colour fixed by `seed`.
+ */
+function ChatIcon({ seed = '', background, size = 46, children }) {
   let hash = 0;
   for (const ch of seed) hash = (hash * 31 + ch.codePointAt(0)) % 360;
   return (
     <span className="avatar avatar-letter avatar-chat" aria-hidden="true"
-      style={{ width: size, height: size, '--chat-hue': hash }}>
+      style={{ width: size, height: size, '--chat-hue': hash, ...(background && { '--chat-icon': background }) }}>
       <svg width={size * 0.45} height={size * 0.45} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
         strokeLinecap="round" strokeLinejoin="round">{children}</svg>
     </span>
   );
 }
 
-const FolderAvatar = ({ id, size }) => (
-  <ChatIcon seed={id} size={size}>
+const FolderAvatar = ({ id, background, size }) => (
+  <ChatIcon seed={id} background={background} size={size}>
     <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
   </ChatIcon>
 );
 
-const CardAvatar = ({ id, size }) => (
-  <ChatIcon seed={id} size={size}>
+const CardAvatar = ({ id, background, size }) => (
+  <ChatIcon seed={id} background={background} size={size}>
     <rect x="4" y="4" width="16" height="16" rx="2" />
     <path d="M8 9h8M8 13h5" />
   </ChatIcon>
@@ -230,6 +234,9 @@ export default function ChatDialog({ folders, thread: initialThread, onOpenCard,
     setShowMembers(false);
   };
   const folderName = new Map(folders.map((f) => [f.id, f.name]));
+  const boardBg = folder ? folderBackground(folder, folders) : null;
+  const cardFolder = card ? folders.find((f) => f.id === card.folderId) : null;
+  const paneBg = boardBg ?? (cardFolder ? folderBackground(cardFolder, folders) : null);
   // «Работа / Проект» for a folder below the top level.
   const parentName = (f) => {
     const path = folderPath(f, folders);
@@ -239,11 +246,13 @@ export default function ChatDialog({ folders, thread: initialThread, onOpenCard,
   // All chats in one list: the latest message first, those without messages after them.
   const items = [
     ...folders.map((f) => ({
-      thread: `folder:${f.id}`, avatar: <FolderAvatar id={f.id} />, title: f.name, subtitle: parentName(f),
+      thread: `folder:${f.id}`, avatar: <FolderAvatar id={f.id} background={folderBackground(f, folders)} />,
+      title: f.name, subtitle: parentName(f),
       last: chats.folders[f.id]?.last ?? null, unread: chats.folders[f.id]?.unread ?? 0,
     })),
     ...chats.cards.filter((c) => folderName.has(c.card.folderId)).map((c) => ({
-      thread: `card:${c.card.id}`, avatar: <CardAvatar id={c.card.id} />, title: cardTitle(c.card),
+      thread: `card:${c.card.id}`, avatar: <CardAvatar id={c.card.id} background={cardColor(c.card)} />,
+      title: cardTitle(c.card),
       subtitle: folders.length > 1 ? folderName.get(c.card.folderId) : null,
       last: c.last, unread: c.unread,
     })),
@@ -279,7 +288,8 @@ export default function ChatDialog({ folders, thread: initialThread, onOpenCard,
             {query && found.length === 0 && <p className="muted chat-list-note">Ничего не найдено.</p>}
           </div>
         </nav>
-        <section className="chat-pane">
+        <section className={`chat-pane ${paneBg ? 'has-board-bg' : ''}`}
+          style={paneBg ? { '--chat-board': paneBg } : undefined}>
           {open ? (
             <>
               <header className="chat-pane-head">
@@ -288,8 +298,8 @@ export default function ChatDialog({ folders, thread: initialThread, onOpenCard,
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25"
                     strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 18 9 12l6-6" /></svg>
                 </button>
-                {folder && <FolderAvatar id={folder.id} size={40} />}
-                {card && <CardAvatar id={card.id} size={40} />}
+                {folder && <FolderAvatar id={folder.id} background={boardBg} size={40} />}
+                {card && <CardAvatar id={card.id} background={cardColor(card)} size={40} />}
                 {peer && <Avatar user={peer} size={40} />}
                 <span className="chat-pane-heading">
                   <strong className="chat-pane-title">
