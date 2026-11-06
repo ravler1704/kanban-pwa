@@ -2,6 +2,7 @@ import { Fragment, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { publicToken } from '../board.js';
 import ColumnSetFilter from './ColumnSetFilter.jsx';
+import ContextMenu, { useMenuButton } from './ContextMenu.jsx';
 import FolderFilter, { FilterNav } from './FolderFilter.jsx';
 import Modal from './Modal.jsx';
 import PersonFilter from './PersonFilter.jsx';
@@ -26,35 +27,6 @@ export function PlusIcon() {
   );
 }
 
-function BoardIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="4" width="18" height="16" rx="2" />
-      <path d="M9 4v16M15 4v16" />
-    </svg>
-  );
-}
-
-function CalendarIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="5" width="18" height="16" rx="2" />
-      <path d="M3 10h18M8 3v4M16 3v4" />
-    </svg>
-  );
-}
-
-function ListIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" />
-    </svg>
-  );
-}
-
 function FilterIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
@@ -66,10 +38,30 @@ function FilterIcon() {
 
 // The filters behind the toggle are shown while it is on; the main ones always are.
 const VIEWS = [
-  { id: 'board', label: 'Колонки', Icon: BoardIcon },
-  { id: 'calendar', label: 'Календарь', Icon: CalendarIcon },
-  { id: 'list', label: 'Список', Icon: ListIcon },
+  { id: 'board', label: 'Колонки', icon: 'M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2ZM9 4v16M15 4v16' },
+  { id: 'calendar', label: 'Календарь', icon: 'M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2ZM3 10h18M8 3v4M16 3v4' },
+  { id: 'list', label: 'Список', icon: 'M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01' },
 ];
+
+const VIEW_MENU_WIDTH = 180;
+
+function ViewSwitch({ view, onView }) {
+  const [menu, , closeMenu, buttonProps] = useMenuButton(VIEW_MENU_WIDTH);
+  const current = VIEWS.find((v) => v.id === view) ?? VIEWS[0];
+  return (
+    <>
+      <button type="button" className="btn btn-small btn-icon-only view-toggle"
+        title={`Вид: ${current.label}`} aria-label={`Вид: ${current.label}`} {...buttonProps}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={current.icon} /></svg>
+      </button>
+      {menu && (
+        <ContextMenu x={menu.x} y={menu.y} onClose={closeMenu}
+          items={VIEWS.map(({ id, label, icon }) => ({ label, icon, active: id === view, run: () => onView(id) }))} />
+      )}
+    </>
+  );
+}
 
 /**
  * `folderFilter` is { selected, indeterminate, onToggle, onSetFolder, onSetAll, onClear, summary } over the ids of
@@ -150,14 +142,7 @@ export default function FolderBar({
       <div className="projectbar-row projectbar-actions">
         {children}
 
-        <div className="view-switch" role="group" aria-label="Вид">
-          {VIEWS.map(({ id, label, Icon }) => (
-            <button key={id} type="button" className={`view-switch-btn ${view === id ? 'active' : ''}`}
-              title={label} aria-label={label} aria-pressed={view === id} onClick={() => onView(id)}>
-              <Icon />
-            </button>
-          ))}
-        </div>
+        <ViewSwitch view={view} onView={onView} />
         {onAddCard && (
           <button className="btn btn-primary btn-small btn-icon-only btn-add-card" title="Новая карточка" aria-label="Новая карточка"
             onClick={onAddCard}>

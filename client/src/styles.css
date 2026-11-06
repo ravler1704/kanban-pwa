@@ -259,28 +259,6 @@ body {
 .tag:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
 .tag-active { background: var(--accent); color: var(--bg); }
 .tag-active:hover { background: var(--accent); }
-.view-switch {
-  align-self: stretch;
-  display: flex;
-  gap: 2px;
-  padding: 3px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-}
-.view-switch-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 0.65rem;
-  border: none;
-  border-radius: 6px;
-  background: none;
-  color: var(--muted);
-  cursor: pointer;
-}
-.view-switch-btn:hover { color: var(--text); }
-.view-switch-btn.active { background: var(--card); color: var(--text); }
 .projectbar-row > .btn-add-card { margin-left: auto; }
 .modal.filters-dialog {
   /* The same size on every screen of it, so switching screens moves nothing. */
