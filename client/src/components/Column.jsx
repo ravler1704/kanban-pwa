@@ -54,10 +54,18 @@ export default function Column({
   }, []);
 
   // A click toggles the column, a double click keeps only it expanded: the single click waits to see which it is.
+  // Clicks that start by taking the focus out of a text field only do that.
   const clickTimer = useRef(null);
+  const blurClick = useRef(false);
   useEffect(() => () => clearTimeout(clickTimer.current), []);
+  const noteBlur = (e) => {
+    if (e.detail <= 1) {
+      blurClick.current = Boolean(document.activeElement?.closest('input, textarea, select, [contenteditable="true"]'));
+    }
+  };
   function handleClicks(e) {
     clearTimeout(clickTimer.current);
+    if (blurClick.current && e.detail > 0) return;
     if (e.detail === 0) {
       onToggleCollapsed();
     } else if (e.detail === 1) {
@@ -165,6 +173,7 @@ export default function Column({
       <section
         ref={section}
         className={`column column-collapsed ${columnClasses}`}
+        onMouseDownCapture={noteBlur}
         onDragOver={readOnly ? undefined : handleDragOver}
         onDragLeave={(e) => {
           if (e.currentTarget.contains(e.relatedTarget)) return;
@@ -188,6 +197,7 @@ export default function Column({
     <section
       ref={section}
       className={`column ${columnClasses}`}
+      onMouseDownCapture={noteBlur}
       onClick={(e) => {
         // Clicks from menus portaled out of the column bubble here too.
         if (!e.currentTarget.contains(e.target)) return;
