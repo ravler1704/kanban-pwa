@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from 'react';
+import { useRef, useState, useSyncExternalStore } from 'react';
 import { authState, createSpace, deleteSpace, renameSpace } from '../auth.js';
 import { boardName, boardOwnerName, currentBoard, switchBoard } from '../board.js';
 import { ICONS } from '../menuIcons.js';
@@ -120,6 +120,7 @@ export function SpaceSettings() {
   const [name, setName] = useState(own?.name ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const sent = useRef(null);
   if (!own) return null;
 
   async function run(action) {
@@ -134,10 +135,17 @@ export function SpaceSettings() {
     }
   }
 
+  // Enter saves, and so does leaving the field: the same name is sent once.
   const save = () => {
     const next = name.trim();
     if (!next) setName(own.name);
-    else if (next !== own.name) run(() => renameSpace(own.id, next));
+    else if (next !== own.name && next !== sent.current) {
+      sent.current = next;
+      run(() => renameSpace(own.id, next).catch((err) => {
+        sent.current = null;
+        throw err;
+      }));
+    }
   };
 
   function remove() {
@@ -153,7 +161,10 @@ export function SpaceSettings() {
         <input className="manage-input" value={name} maxLength={100} disabled={!online || busy}
           onChange={(e) => setName(e.target.value)} onBlur={save}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') e.currentTarget.blur();
+            if (e.key === 'Enter') {
+              save();
+              e.currentTarget.blur();
+            }
             if (e.key === 'Escape') setName(own.name);
           }} />
       </label>

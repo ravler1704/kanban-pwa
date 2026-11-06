@@ -1,11 +1,11 @@
 import crypto from 'node:crypto';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import {
-  addMember, boardMemberEmails, boardOwner, boardSummary, countEmailCodeAttempt, createSession, createSpace, deleteIdentity,
+  addMember, boardMemberEmails, boardOwner, boardSummary, countEmailCodeAttempt, createSession, createSpace, customName, deleteIdentity,
   deleteMember, deletePublicLink, deleteSession, deleteSpace, deleteUser, findUserByEmail, getEmailCode, getIdentityUser,
   getPublicLink, getRecord, getSession, isInvited, leaveBoard, listIdentities, listMembers, listPublicLinks, memberProjects,
   mergeUsers, ownerFileIds, ownSpaces, pruneEmailCodes, renameSpace, saveEmailCode, saveIdentity, savePublicLink,
-  sharedBoards, useEmailCode, userFileIds, usersWithEmail,
+  setCustomName, sharedBoards, useEmailCode, userFileIds, usersWithEmail,
 } from './db.js';
 import { broadcast, disconnect, disconnectUser, notifyUser } from './events.js';
 import { removeFiles } from './files.js';
@@ -86,7 +86,10 @@ function publicUser(session) {
   return {
     id: session.user_id,
     email: session.email,
-    name: session.name,
+    name: customName(session.user_id) ?? session.name,
+    // The name of the account signed in with, shown when the user's own name is cleared.
+    accountName: session.name ?? null,
+    customName: customName(session.user_id),
     picture: session.picture,
     identities: listIdentities(session.user_id).map(publicIdentity),
     spaces: ownSpaces(session.user_id),
@@ -611,6 +614,18 @@ export function registerAuthRoutes(app) {
     if (authEnabled && !googleClientId && !yandexClientId) return res.status(409).json({ error: 'last sign-in way' });
     clearMailSettings();
     res.json(mailSettings());
+  });
+
+  // The user's own name; empty: back to the name of the linked account.
+  app.post('/api/auth/name', (req, res) => {
+    const session = authEnabled && currentSession(req);
+    if (!session) return res.status(401).json({ error: 'unauthorized' });
+    const raw = req.body?.name;
+    if (raw != null && typeof raw !== 'string') return res.status(400).json({ error: 'invalid name' });
+    const name = (raw ?? '').replace(/\s+/g, ' ').trim();
+    if (name.length > 100) return res.status(400).json({ error: 'invalid name' });
+    setCustomName(session.user_id, name || null);
+    res.json({ user: publicUser(session) });
   });
 
   app.post('/api/auth/delete-account', (req, res) => {

@@ -1,5 +1,5 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
-import { authState, deleteAccount, linkAccount, signOut, unlinkAccount } from '../auth.js';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { authState, deleteAccount, linkAccount, renameUser, signOut, unlinkAccount } from '../auth.js';
 import { disablePush, enablePush, PUSH_HINTS, pushState } from '../push.js';
 import { syncStatus } from '../sync.js';
 import { getTheme, setTheme } from '../theme.js';
@@ -255,6 +255,57 @@ function ServerAdmin() {
 }
 const TAB_KEY = 'accountDialogTab';
 
+/** The user's name: shown in the header under the space's name, to the people they share boards with and in chats. */
+function ProfileName() {
+  const { user } = useSyncExternalStore(authState.subscribe, authState.get);
+  const { online } = useSyncExternalStore(syncStatus.subscribe, syncStatus.get);
+  const { busy, error, run } = useAction();
+  const current = user?.name ?? '';
+  const [name, setName] = useState(current);
+  const sent = useRef(null);
+  useEffect(() => setName(current), [current]);
+
+  // Enter saves, and so does leaving the field: the same name is sent once.
+  const save = () => {
+    const next = name.replace(/\s+/g, ' ').trim();
+    if (next === current) setName(current);
+    else if (next !== sent.current) {
+      sent.current = next;
+      run(() => renameUser(next).catch((err) => {
+        sent.current = null;
+        throw err;
+      }));
+    }
+  };
+
+  return (
+    <div className="manage account-profile">
+      <div className="account-profile-row">
+        {user && <Avatar user={user} size={44} />}
+        <label className="field manage-field account-profile-name">
+          <span className="field-label">Имя</span>
+          <input className="manage-input" value={name} maxLength={100} disabled={!online || busy}
+            placeholder={user?.accountName || user?.email || 'Как вас называть'}
+            onChange={(e) => setName(e.target.value)} onBlur={save}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                save();
+                e.currentTarget.blur();
+              }
+              if (e.key === 'Escape') setName(current);
+            }} />
+        </label>
+      </div>
+      <p className="muted account-hint">
+        {online ? 'Видно вверху экрана, участникам ваших досок и в чатах.' : 'Изменить имя можно только при подключении к интернету.'}
+        {user?.customName && user.accountName && user.accountName !== user.customName
+          && ` Очистите поле, чтобы вернуть имя из аккаунта (${user.accountName}).`}
+      </p>
+      {error && <p className="login-error">{error}</p>}
+    </div>
+  );
+}
+
 export default function AccountDialog({ onClose }) {
   const { online } = useSyncExternalStore(syncStatus.subscribe, syncStatus.get);
   const { user } = useSyncExternalStore(authState.subscribe, authState.get);
@@ -273,6 +324,7 @@ export default function AccountDialog({ onClose }) {
 
   return (
     <Modal title="Аккаунт" onClose={onClose}>
+      <ProfileName />
       <div className="tabs-bar">
         <div className="tabs" role="tablist">
           {TABS.map((t) => (

@@ -200,6 +200,14 @@ db.exec(`
   );
 `);
 
+// The name a user gave themselves; without it the name of their first linked account is shown.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_names (
+    user_id     TEXT    PRIMARY KEY,
+    name        TEXT    NOT NULL
+  );
+`);
+
 // Spaces: boards of a user besides the main one, whose id is the user's id (so boards from before
 // spaces keep their records). A row with the user's own id only names the main space.
 db.exec(`
@@ -474,6 +482,8 @@ export function mergeUsers(from, to) {
     db.prepare('UPDATE OR IGNORE dm_cleared SET user_id = ? WHERE user_id = ?').run(to, from);
     db.prepare('UPDATE OR IGNORE dm_cleared SET peer = ? WHERE peer = ?').run(to, from);
     db.prepare('DELETE FROM dm_cleared WHERE user_id = ? OR peer = ? OR user_id = peer').run(from, from);
+    db.prepare('UPDATE OR IGNORE user_names SET user_id = ? WHERE user_id = ?').run(to, from);
+    db.prepare('DELETE FROM user_names WHERE user_id = ?').run(from);
     // The other spaces come along as they are; the main one has just been merged.
     db.prepare('UPDATE spaces SET owner = ? WHERE owner = ? AND id != ?').run(to, from, from);
     db.prepare('DELETE FROM spaces WHERE id = ?').run(from);
@@ -503,6 +513,7 @@ export function deleteUser(userId) {
     db.prepare('DELETE FROM direct_messages WHERE sender = ? OR recipient = ?').run(userId, userId);
     db.prepare('DELETE FROM dm_reads WHERE user_id = ? OR peer = ?').run(userId, userId);
     db.prepare('DELETE FROM dm_cleared WHERE user_id = ? OR peer = ?').run(userId, userId);
+    db.prepare('DELETE FROM user_names WHERE user_id = ?').run(userId);
     const usedElsewhere = db.prepare('SELECT 1 FROM identities WHERE lower(email) = ?');
     for (const email of emails) {
       db.prepare('DELETE FROM email_codes WHERE email = ?').run(email);
@@ -535,7 +546,10 @@ db.exec(`
 const LIVE_FOLDER = `JOIN records r ON r.owner = m.board AND r.id = m.folder AND r.type = 'folder' AND json_extract(r.data, '$.deleted') = 0`;
 const selectMembers = db.prepare(`
   SELECT m.email, m.folder, MIN(m.added_at) OVER (PARTITION BY m.email) AS first_added,
-    (SELECT i.name FROM identities i WHERE i.email = m.email ORDER BY i.linked_at LIMIT 1) AS name,
+    COALESCE(
+      (SELECT n.name FROM identities i JOIN user_names n ON n.user_id = i.user_id WHERE i.email = m.email
+        ORDER BY i.linked_at LIMIT 1),
+      (SELECT i.name FROM identities i WHERE i.email = m.email ORDER BY i.linked_at LIMIT 1)) AS name,
     (SELECT i.picture FROM identities i WHERE i.email = m.email AND i.picture IS NOT NULL
       ORDER BY i.linked_at LIMIT 1) AS picture,
     EXISTS (SELECT 1 FROM identities i WHERE i.email = m.email) AS joined
@@ -561,9 +575,27 @@ const selectFolderUsers = db.prepare(`
   WHERE m.board = ? AND m.folder = ?
 `);
 const selectInvited = db.prepare('SELECT 1 FROM folder_members WHERE email = ? LIMIT 1');
-const selectOwnerProfile = db.prepare(
-  'SELECT email, name, picture FROM identities WHERE user_id = ? ORDER BY linked_at LIMIT 1',
-);
+const selectOwnerProfile = db.prepare(`
+  SELECT i.email, COALESCE(n.name, i.name) AS name, i.picture FROM identities i
+  LEFT JOIN user_names n ON n.user_id = i.user_id
+  WHERE i.user_id = ? ORDER BY i.linked_at LIMIT 1
+`);
+const selectUserName = db.prepare('SELECT name FROM user_names WHERE user_id = ?');
+const upsertUserName = db.prepare(`
+  INSERT INTO user_names (user_id, name) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET name = excluded.name
+`);
+const deleteUserName = db.prepare('DELETE FROM user_names WHERE user_id = ?');
+
+/** The name the user gave themselves, null if none. */
+export function customName(userId) {
+  return selectUserName.get(userId)?.name ?? null;
+}
+
+/** `name` null: back to the name of the linked account. */
+export function setCustomName(userId, name) {
+  if (name) upsertUserName.run(userId, name);
+  else deleteUserName.run(userId);
+}
 const removeUserMemberships = db.prepare(`
   DELETE FROM folder_members WHERE board = ? AND email IN (SELECT email FROM identities WHERE user_id = ?)
 `);

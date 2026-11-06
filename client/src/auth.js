@@ -294,6 +294,13 @@ async function postJson(url, body, { board = false } = {}) {
   return { status: res.status, body: await res.json().catch(() => ({})) };
 }
 
+/** The user's own name (shown in the header and to others); empty: the linked account's name again. */
+export async function renameUser(name) {
+  const res = await postJson('/api/auth/name', { name }).catch(() => ({ status: 0, body: {} }));
+  if (res.status !== 200) throw new Error('Не удалось сохранить имя. Проверьте интернет и попробуйте ещё раз.');
+  setState({ user: res.body.user });
+}
+
 // ---- the user's spaces ----
 
 function spacesError(res, action) {
