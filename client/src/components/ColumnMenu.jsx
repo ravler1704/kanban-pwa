@@ -92,7 +92,7 @@ function MoreIcon() {
  * with the pointer over it. A `collapsed` column has no «⋯» button, only the right click.
  */
 export default function ColumnMenu({ column, prevColumn, nextColumn, moveAll, edit, collapsed, onCollapse, hoverRef }) {
-  const [menu, setMenu, closeMenu, menuButton, menuHover] = useMenuButton(280);
+  const [menu, setMenu, closeMenu, menuButton] = useMenuButton(280);
   const [dialog, setDialog] = useState(null);
   const closeDialog = () => setDialog(null);
   const columns = edit?.columns ?? [];
@@ -176,7 +176,7 @@ export default function ColumnMenu({ column, prevColumn, nextColumn, moveAll, ed
         title="Действия с колонкой (их клавиши работают и при наведении на колонку)" aria-label={`Действия с колонкой «${column.name}»`} {...menuButton}>
         <MoreIcon />
       </button>}
-      {menu && <ContextMenu x={menu.x} y={menu.y} items={items} onClose={closeMenu} {...menuHover} />}
+      {menu && <ContextMenu x={menu.x} y={menu.y} items={items} onClose={closeMenu} />}
       {dialog?.kind === 'add' && (
         <NameDialog title="Новая колонка" value="" submitLabel="Добавить" edit={edit}
           onSave={(name) => insertColumn(edit.setId, name, dialog.at)} onClose={closeDialog} />

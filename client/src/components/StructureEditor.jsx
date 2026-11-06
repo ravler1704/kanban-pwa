@@ -98,7 +98,7 @@ function FolderRow({ folder, index, count, ctx }) {
     columnsSynced && setName && `«${setName}»${own || isRoot ? '' : ' (как у родителя)'}`,
   ].filter(Boolean).join(' · ');
   const togglePanel = (name) => setPanel(panel === name ? null : name);
-  const [menu, setMenu, closeMenu, menuButton, menuHover] = useMenuButton(260);
+  const [menu, setMenu, closeMenu, menuButton] = useMenuButton(260);
   const menuItems = [
     { label: 'Открыть', icon: ICONS.open, shortcut: 'KeyO', run: () => onOpen(folder.id) },
     canShare && {
@@ -139,7 +139,7 @@ function FolderRow({ folder, index, count, ctx }) {
           <MoreIcon />
         </button>
       </div>
-      {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={closeMenu} {...menuHover} />}
+      {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={closeMenu} />}
       {panel === 'access' && canShare && (
         <div className="tree-body"><FolderMembers folder={folder} folders={folders} /></div>
       )}

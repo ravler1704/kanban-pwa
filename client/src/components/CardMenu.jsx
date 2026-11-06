@@ -36,7 +36,7 @@ function MoreIcon() {
  * its shortcuts work with the pointer over the card.
  */
 export default function CardMenu({ card, prevColumn, nextColumn, readOnly, onOpen, hoverRef }) {
-  const [menu, setMenu, closeMenu, menuButton, menuHover] = useMenuButton(260);
+  const [menu, setMenu, closeMenu, menuButton] = useMenuButton(260);
   const [copied, setCopied] = useState(false);
   const editable = !readOnly && !card.conflict;
 
@@ -95,7 +95,7 @@ export default function CardMenu({ card, prevColumn, nextColumn, readOnly, onOpe
         aria-label="Действия с карточкой" {...menuButton}>
         <MoreIcon />
       </button>
-      {menu && <ContextMenu x={menu.x} y={menu.y} items={items} onClose={closeMenu} {...menuHover} />}
+      {menu && <ContextMenu x={menu.x} y={menu.y} items={items} onClose={closeMenu} />}
     </>
   );
 }

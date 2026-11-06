@@ -108,43 +108,22 @@ function swallowNextClick() {
 }
 
 /**
- * A «⋯» button's menu, `width` wide under its right edge: it opens with the pointer over the button and
- * closes once the pointer has left both; a click keeps it open until the next one. Returns
- * [menu, setMenu (for right clicks), closeMenu, the button's props, the ContextMenu's hover props].
+ * A «⋯» button's menu, `width` wide under its right edge, opened and closed by clicking the button.
+ * Returns [menu, setMenu (for right clicks), closeMenu, the button's props].
  */
 export function useMenuButton(width) {
   const [menu, setMenu] = useState(null);
   const closeMenu = useCallback(() => setMenu(null), []);
-  const timer = useRef(null);
-  useEffect(() => () => clearTimeout(timer.current), []);
-  const stay = () => clearTimeout(timer.current);
-  const leave = () => {
-    stay();
-    timer.current = setTimeout(() => setMenu((m) => (m?.hover ? null : m)), 300);
-  };
-  const place = (el, hover) => {
-    const r = el.getBoundingClientRect();
-    return { x: r.right - width, y: r.bottom + 4, hover };
-  };
   const button = {
     'aria-haspopup': 'menu',
     'aria-expanded': Boolean(menu),
-    onMouseEnter: (e) => {
-      stay();
-      if (menu || !matchMedia('(hover: hover)').matches) return;
-      const el = e.currentTarget;
-      timer.current = setTimeout(() => setMenu((m) => m ?? place(el, true)), 150);
-    },
-    onMouseLeave: leave,
     onMouseDown: (e) => menu && e.stopPropagation(),
     onClick: (e) => {
-      stay();
-      if (menu?.hover) setMenu({ ...menu, hover: false });
-      else setMenu(menu ? null : place(e.currentTarget, false));
+      const r = e.currentTarget.getBoundingClientRect();
+      setMenu(menu ? null : { x: r.right - width, y: r.bottom + 4 });
     },
   };
-  const hover = menu?.hover ? { onMouseEnter: stay, onMouseLeave: leave } : {};
-  return [menu, setMenu, closeMenu, button, hover];
+  return [menu, setMenu, closeMenu, button];
 }
 
 /** Keeps the menu inside the window once its size is known. */
@@ -166,7 +145,7 @@ export function useMenuPosition(x, y) {
  * active? }, null for a separator. ↑ and ↓ move between the items, a shortcut runs its item.
  * Closes on a pick, Escape, a click outside, scrolling or resizing.
  */
-export default function ContextMenu({ x, y, items, onClose, onMouseEnter, onMouseLeave }) {
+export default function ContextMenu({ x, y, items, onClose }) {
   const [ref, pos] = useMenuPosition(x, y);
 
   useEffect(() => {
@@ -210,8 +189,7 @@ export default function ContextMenu({ x, y, items, onClose, onMouseEnter, onMous
   }, [items, onClose, ref]);
 
   return createPortal(
-    <div ref={ref} className="context-menu" role="menu" style={pos} onMouseDown={(e) => e.stopPropagation()}
-      onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
+    <div ref={ref} className="context-menu" role="menu" style={pos} onMouseDown={(e) => e.stopPropagation()}>
       <MenuItems items={items} onPick={(item) => {
         onClose();
         item.run();
