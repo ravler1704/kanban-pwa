@@ -115,6 +115,12 @@ body {
 }
 .badge-pending { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
 .badge-conflict { background: color-mix(in srgb, var(--warn) 15%, transparent); color: var(--warn); }
+.status .badge { display: inline-flex; align-items: center; gap: 0.25rem; white-space: nowrap; }
+.badge-icon { display: none; flex: none; }
+@media (max-width: 700px) {
+  .status .badge-text { display: none; }
+  .status .badge-icon { display: block; }
+}
 
 .projectbar {
   display: flex;
