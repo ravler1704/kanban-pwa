@@ -38,6 +38,9 @@ export default function InboxPanel({ folders, onOpen, onClose }) {
   const cards = useInboxCards() ?? [];
   const [title, setTitle] = useState('');
   const [moving, setMoving] = useState(null);
+  // A card of the board dragged over the panel: it goes back to «Входящие» on the drop.
+  const [dropping, setDropping] = useState(false);
+  const fromBoard = (e) => e.dataTransfer.types.includes('text/card-id') && !e.dataTransfer.types.includes('text/inbox');
 
   function add(e) {
     e.preventDefault();
@@ -48,7 +51,19 @@ export default function InboxPanel({ folders, onOpen, onClose }) {
   }
 
   return (
-    <aside className="inbox" aria-label="Входящие">
+    <aside className={`inbox ${dropping ? 'inbox-drop' : ''}`} aria-label="Входящие"
+      onDragOver={(e) => {
+        if (!fromBoard(e)) return;
+        e.preventDefault();
+        setDropping(true);
+      }}
+      onDragLeave={(e) => !e.currentTarget.contains(e.relatedTarget) && setDropping(false)}
+      onDrop={(e) => {
+        setDropping(false);
+        if (!fromBoard(e)) return;
+        e.preventDefault();
+        moveCardTo(e.dataTransfer.getData('text/card-id'), INBOX_ID);
+      }}>
       <div className="inbox-head">
         <h2 className="inbox-title"><InboxIcon /> Входящие</h2>
         <button type="button" className="btn btn-small btn-icon-only" title="Закрыть" aria-label="Закрыть"
@@ -90,7 +105,8 @@ export default function InboxPanel({ folders, onOpen, onClose }) {
       ) : (
         <p className="inbox-empty muted">
           Записывайте сюда дела, не думая, куда их деть. Потом перетащите каждое в колонку доски
-          или перенесите кнопкой «На доску».
+          или перенесите кнопкой «На доску». Карточку с доски можно вернуть сюда перетаскиванием
+          или пунктом «Во „Входящие“» в её меню.
         </p>
       )}
       {moving && createPortal(

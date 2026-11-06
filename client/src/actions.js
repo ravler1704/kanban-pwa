@@ -541,11 +541,12 @@ export async function moveCardToFolder(id, folderId) {
 
 /**
  * Moves the card to the folder and column, first or last as the column is set up; into «Входящие» it goes last.
- * Without `columnId`, the column like the card's present one.
+ * Without `columnId`, the column like the card's present one (in «Входящие», that very one).
  */
 export async function moveCardTo(id, folderId, columnId = null) {
   const card = await db.cards.get(id);
   if (!card) return;
+  if (!columnId && folderId === INBOX_ID) columnId = card.columnId;
   if (!columnId) {
     const folders = liveFolders(await db.folders.toArray(), { standIn: false });
     const model = columnModel(await db.columnSets.toArray(), await db.columns.toArray(), folders);
