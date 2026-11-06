@@ -1728,6 +1728,10 @@ a.btn { display: inline-block; text-decoration: none; }
 .chat-list-subtitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.75rem; }
 .chat-pane-empty { margin: auto; }
 .chat-back { display: none; }
+/* The × is top right: in the open chat's header, over the empty pane, or (phone) after the search. */
+.chat-pane { position: relative; }
+.chat-close-side { display: none; }
+.chat-close-float { position: absolute; top: 0.55rem; right: 0.6rem; background: var(--chat-bar); }
 
 .people-bar { display: flex; align-items: center; gap: 0.5rem; }
 .avatar-stack {
@@ -1765,6 +1769,7 @@ a.btn { display: inline-block; text-decoration: none; }
   .chat-dialog-open .chat-side { display: none; }
   .chat-dialog:not(.chat-dialog-open) .chat-pane { display: none; }
   .chat-back { display: inline-flex; }
+  .chat-close-side { display: inline-flex; }
 }
 .tree-chevron {
   flex: none;

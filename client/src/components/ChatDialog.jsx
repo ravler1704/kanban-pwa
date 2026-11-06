@@ -232,6 +232,15 @@ function MembersList({ people, me, onWrite }) {
   );
 }
 
+function CloseButton({ className, onClose }) {
+  return (
+    <button type="button" className={`chat-head-btn ${className}`} onClick={onClose} aria-label="Закрыть" title="Закрыть">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25"
+        strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+    </button>
+  );
+}
+
 const byRole = (a, b) => Number(b.owner) - Number(a.owner) || personName(a).localeCompare(personName(b), 'ru');
 
 const cardTitle = (card) => `${card.number ? `#${card.number} ` : ''}${withoutLinks(card.title).trim() || 'Без названия'}`;
@@ -312,12 +321,9 @@ export default function ChatDialog({ folders, thread: initialThread, onOpenCard,
       <div className={`chat-dialog ${open ? 'chat-dialog-open' : ''}`}>
         <nav className="chat-side" aria-label="Чаты">
           <div className="chat-side-head">
-            <button type="button" className="chat-head-btn" onClick={onClose} aria-label="Закрыть" title="Закрыть">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25"
-                strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
-            </button>
             <input className="chat-search" type="search" placeholder="Поиск" aria-label="Поиск по чатам"
               value={search} onChange={(e) => setSearch(e.target.value)} />
+            <CloseButton className="chat-close-side" onClose={onClose} />
           </div>
           <div className="chat-list">
             {found.map((i) => (
@@ -373,6 +379,7 @@ export default function ChatDialog({ folders, thread: initialThread, onOpenCard,
                     </button>
                   </span>
                 )}
+                <CloseButton className="chat-close-pane" onClose={onClose} />
               </header>
               {membersShown && (
                 <MembersList people={members} me={user?.id ?? ''} onWrite={(p) => openThread(`dm:${p.id}`)} />
@@ -385,7 +392,10 @@ export default function ChatDialog({ folders, thread: initialThread, onOpenCard,
               {peer && <DmThread key={peer.id} peer={peer} />}
             </>
           ) : (
-            <p className="chat-pane-empty"><span>Выберите, кому хотели бы написать</span></p>
+            <>
+              <CloseButton className="chat-close-float" onClose={onClose} />
+              <p className="chat-pane-empty"><span>Выберите, кому хотели бы написать</span></p>
+            </>
           )}
         </section>
       </div>
