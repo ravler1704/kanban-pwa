@@ -1,8 +1,6 @@
 import { Fragment, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { backgroundItems } from '../appearance.js';
 import { publicToken } from '../board.js';
-import { ICONS } from '../menuIcons.js';
 import ColumnSetFilter from './ColumnSetFilter.jsx';
 import ContextMenu, { useMenuButton } from './ContextMenu.jsx';
 import FolderFilter, { FilterNav } from './FolderFilter.jsx';
@@ -51,7 +49,7 @@ const VIEW_MENU_WIDTH = 180;
  * One button with the current view's icon; its menu lists the views. With `sets` ({ sets: [{ id, name, count (cards in
  * view), boards (names) }], value, onChange }) the board's item has a submenu of the column sets.
  */
-function ViewSwitch({ view, onView, sets, backgroundFolder }) {
+function ViewSwitch({ view, onView, sets }) {
   const [menu, , closeMenu, buttonProps] = useMenuButton(VIEW_MENU_WIDTH);
   const current = VIEWS.find((v) => v.id === view) ?? VIEWS[0];
   const currentSet = sets && (sets.sets.find((s) => s.id === sets.value) ?? sets.sets[0]);
@@ -65,23 +63,17 @@ function ViewSwitch({ view, onView, sets, backgroundFolder }) {
       </button>
       {menu && (
         <ContextMenu x={menu.x} y={menu.y} onClose={closeMenu}
-          items={[
-            ...VIEWS.map(({ id, label: name, icon }) => (id === 'board' && sets ? {
-              label: name, icon, active: id === view,
-              submenu: sets.sets.map((s) => ({
-                label: s.name, hint: s.count, title: `Доски: ${s.boards.join(', ')}`,
-                active: view === 'board' && s.id === sets.value,
-                run: () => {
-                  sets.onChange(s.id);
-                  onView('board');
-                },
-              })),
-            } : { label: name, icon, active: id === view, run: () => onView(id) })),
-            ...(backgroundFolder ? [null, {
-              label: 'Фон доски', icon: ICONS.palette, title: `Фон доски «${backgroundFolder.name}»`,
-              submenu: backgroundItems(backgroundFolder),
-            }] : []),
-          ]} />
+          items={VIEWS.map(({ id, label: name, icon }) => (id === 'board' && sets ? {
+            label: name, icon, active: id === view,
+            submenu: sets.sets.map((s) => ({
+              label: s.name, hint: s.count, title: `Доски: ${s.boards.join(', ')}`,
+              active: view === 'board' && s.id === sets.value,
+              run: () => {
+                sets.onChange(s.id);
+                onView('board');
+              },
+            })),
+          } : { label: name, icon, active: id === view, run: () => onView(id) }))} />
       )}
     </>
   );
@@ -92,11 +84,11 @@ function ViewSwitch({ view, onView, sets, backgroundFolder }) {
  * `folders` (all live folders). `conflictsByFolder` is { [folderId]: number of cards
  * with a conflict }. Without `onAddCard` (read only, or the board, where each column has one) its button is not shown.
  * `title` goes beside the filters button; `children` go on the right of the same row. `setSwitch` ({ sets, value, onChange }, see
- * ViewSwitch) picks the column set the board shows. With `backgroundFolder` the view menu sets that board's background.
+ * ViewSwitch) picks the column set the board shows.
  */
 export default function FolderBar({
   folders, folderFilter, conflictsByFolder, columnSets, columnSetId, onSelectColumnSet, tagFilter, authorFilter, holderFilter,
-  view, onView, onAddCard, title, setSwitch, backgroundFolder, children,
+  view, onView, onAddCard, title, setSwitch, children,
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   // A filter opened inside the filters dialog: its screen replaces the list of filters.
@@ -154,7 +146,7 @@ export default function FolderBar({
   return (
     <nav className="projectbar">
       <div className="projectbar-row projectbar-head">
-        <ViewSwitch view={view} onView={onView} sets={setSwitch} backgroundFolder={backgroundFolder} />
+        <ViewSwitch view={view} onView={onView} sets={setSwitch} />
         <button type="button" className="btn btn-small btn-icon-only filters-toggle" aria-haspopup="dialog"
           onClick={() => setFiltersOpen(true)}
           title={filtered ? 'Фильтры (включены)' : 'Фильтры'} aria-label="Фильтры">

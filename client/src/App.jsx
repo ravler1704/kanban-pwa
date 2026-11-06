@@ -7,6 +7,8 @@ import { useReadOnly } from './public.js';
 import { db, DEFAULT_FOLDER_ID, INBOX_ID } from './db.js';
 import { columnModel } from './columnSets.js';
 import { folderBackground } from './appearance.js';
+import { ICONS } from './menuIcons.js';
+import ContextMenu from './components/ContextMenu.jsx';
 import { renameFolder } from './actions.js';
 import StatusBar from './components/StatusBar.jsx';
 import FolderBar from './components/FolderBar.jsx';
@@ -131,6 +133,8 @@ export default function App() {
   const [chat, setChat] = useState(null);
   const [search, setSearch] = useState('');
   const [editingColumns, setEditingColumns] = useState(false);
+  // The menu of a right click on the board itself (not a column or a card): { x, y }.
+  const [boardMenu, setBoardMenu] = useState(null);
   const [inboxOpen, setInboxOpen] = useState(() => localStorage.getItem(INBOX_OPEN_KEY) === '1');
   const toggleInbox = () => {
     localStorage.setItem(INBOX_OPEN_KEY, inboxOpen ? '0' : '1');
@@ -367,7 +371,6 @@ export default function App() {
   const columnsFolder = boardTops.length === 1 ? tree.byId.get(boardTops[0]) : null;
   // The board's background is that board's (or its parent's); «Входящие» beside it keeps its own look.
   const background = view === 'board' && !searching && columnsFolder ? folderBackground(columnsFolder, folders) : null;
-  const backgroundFolder = !readOnly && !publicToken ? columnsFolder : null;
   const canEditColumns = isOwnBoard && !readOnly && data.columns.length > 0;
   const columnEdit = canEditColumns ? {
     setId: boardSetId,
@@ -436,6 +439,25 @@ export default function App() {
   // The title names the shown boards (maybe without some inside them): each name there renames its board.
   const titleRenamable = !readOnly && !allChecked && titleBoards.some((f) => usable.includes(f));
 
+  const allCollapsed = columns.every((c) => collapsed.includes(c.id));
+  const boardMenuItems = [
+    !readOnly && { label: 'Новая карточка…', icon: ICONS.add, shortcut: 'KeyN', run: () => setAddingCard(true) },
+    null,
+    {
+      label: allCollapsed ? 'Развернуть все колонки' : 'Свернуть все колонки',
+      icon: allCollapsed ? ICONS.expand : ICONS.collapse,
+      run: () => changeCollapsed((list) => {
+        const elsewhere = list.filter((id) => !columns.some((c) => c.id === id));
+        return allCollapsed ? elsewhere : [...elsewhere, ...columns.map((c) => c.id)];
+      }),
+    },
+    columnEdit && { label: 'Набор колонок…', icon: ICONS.settings, shortcut: 'KeyK', run: () => setEditingColumns(true) },
+    null,
+    !readOnly && !publicToken && {
+      label: 'Настройки пространства…', icon: ICONS.gear, run: () => setManaging(true),
+    },
+  ].filter((item, i, list) => item !== false && (item !== null || (i > 0 && list[i - 1] && list.slice(i + 1).some(Boolean))));
+
   return (
     <div className="app">
       <StatusBar pending={data.pending} conflicts={data.conflicted.length} folders={chatFolders} onChat={setChat}
@@ -501,7 +523,6 @@ export default function App() {
                 </div>
                 )}
                 setSwitch={!searching && setTabs ? { sets: setTabs, value: boardSetId, onChange: changeAllFoldersSet } : null}
-            backgroundFolder={backgroundFolder}
               >
                 {!publicToken && <PeopleBar folders={shownFolders} allFolders={folders} onChat={setChat} />}
               </FolderBar>
@@ -521,6 +542,10 @@ export default function App() {
               ) : (
                 <main className="board" style={{
                   '--tracks': columns.map((c) => (collapsed.includes(c.id) ? 'var(--column-collapsed)' : 'var(--column-width)')).join(' '),
+                }} onContextMenu={(e) => {
+                  if (e.target.closest('.column, .card, a, input, textarea')) return;
+                  e.preventDefault();
+                  setBoardMenu({ x: e.clientX, y: e.clientY });
                 }}>
                   {columns.map((col, index) => (
                     <Column
@@ -555,6 +580,8 @@ export default function App() {
           )}
         </div>
       </div>
+
+      {boardMenu && <ContextMenu x={boardMenu.x} y={boardMenu.y} items={boardMenuItems} onClose={() => setBoardMenu(null)} />}
 
       {openCard && (openCard.conflict
         ? <ConflictDialog card={openCard} onClose={() => setOpenCardId(null)} />
