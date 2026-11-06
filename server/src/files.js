@@ -2,9 +2,9 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
-import { DB_DIR, findCardByFile, keptFileIds, userProfile } from './db.js';
+import { DB_DIR, findCardByFile, foldersWithBackground, keptFileIds, userProfile } from './db.js';
 import { broadcast } from './events.js';
-import { changeAttachments, visibleCard } from './sync.js';
+import { changeAttachments, visibleCard, visibleFolder } from './sync.js';
 
 // Files attached to cards, one file per attachment id. The card's `attachments` list them;
 // access to a file is access to its card (owner, member of its project, public link).
@@ -29,6 +29,11 @@ function contentDisposition(kind, name) {
   const ascii = name.replace(/[^\x20-\x7e]|["\\]/g, '_');
   return `${kind}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(name)}`;
 }
+
+// Board backgrounds: JPEG images (the client converts and shrinks them), up to this size.
+const MAX_BACKGROUND_BYTES = 8 * 1024 ** 2;
+// Uploaded backgrounds no folder has yet (the folder change is still on its way): `id → board`.
+const freshBackgrounds = new Map();
 
 const canWrite = (access) => !access?.readOnly;
 const actorOf = (req) => (req.user == null ? null : userProfile(req.user));
@@ -100,6 +105,51 @@ export function registerFileRoutes(app) {
     removeFiles([fileId]);
     broadcast(req.owner, { seq, from: null });
     res.json({ ok: true });
+  });
+
+  // The body is the image itself (image/jpeg); the folder then gets `background: 'file-<id>'` by a sync.
+  app.post('/api/backgrounds', async (req, res) => {
+    if (!canWrite(req.access)) return res.status(403).json({ error: 'read only' });
+    const expected = Number(req.get('content-length')) || 0;
+    if (expected > MAX_BACKGROUND_BYTES) return res.status(413).json({ error: 'too large' });
+    if (await freeBytes() - expected < MIN_FREE_BYTES) return res.status(507).json({ error: 'disk full' });
+
+    const chunks = [];
+    let size = 0;
+    try {
+      for await (const chunk of req) {
+        size += chunk.length;
+        if (size > MAX_BACKGROUND_BYTES) return res.status(413).json({ error: 'too large' });
+        chunks.push(chunk);
+      }
+    } catch {
+      return res.status(400).json({ error: 'upload failed' });
+    }
+    const body = Buffer.concat(chunks);
+    if (body.length < 3 || body[0] !== 0xff || body[1] !== 0xd8 || body[2] !== 0xff) {
+      return res.status(415).json({ error: 'not a jpeg' });
+    }
+    const id = crypto.randomUUID();
+    await fs.promises.writeFile(filePath(id), body);
+    freshBackgrounds.set(id, req.owner);
+    setTimeout(() => freshBackgrounds.delete(id), GRACE_MS).unref();
+    res.json({ background: `file-${id}` });
+  });
+
+  app.get('/api/backgrounds/:fileId', (req, res) => {
+    const { fileId } = req.params;
+    const allowed = FILE_ID.test(fileId) && (freshBackgrounds.get(fileId) === req.owner
+      || foldersWithBackground(req.owner, fileId).some((id) => visibleFolder(req.owner, id, req.access)));
+    if (!allowed) return res.status(404).json({ error: 'not found' });
+    res.set({
+      'Content-Type': 'image/jpeg',
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Security-Policy': "sandbox; default-src 'none'",
+      'Cache-Control': 'private, max-age=31536000, immutable',
+    });
+    res.sendFile(filePath(fileId), { cacheControl: false }, (err) => {
+      if (err && !res.headersSent) res.status(404).json({ error: 'not found' });
+    });
   });
 
   // `?download` saves the file instead of showing it.

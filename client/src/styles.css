@@ -977,6 +977,8 @@ body {
   position: fixed;
   z-index: 1000;
   min-width: 200px;
+  max-height: calc(100dvh - 1rem);
+  overflow-y: auto;
   padding: 0.3rem;
   background: var(--panel);
   border: 1px solid var(--border);

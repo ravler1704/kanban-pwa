@@ -300,17 +300,32 @@ const selectKeptFiles = db.prepare(`
 `);
 const selectOwnerFiles = db.prepare(`SELECT json_extract(j.value, '$.id') AS id ${CARD_FILES} AND r.owner = ?`);
 
+// Board backgrounds uploaded by users: a folder's `background` is `file-<file id>`.
+const BACKGROUND_PREFIX = 'file-';
+const FOLDER_BACKGROUNDS = `FROM records WHERE type = 'folder' AND json_extract(data, '$.background') LIKE '${BACKGROUND_PREFIX}%'`;
+const BACKGROUND_ID = `substr(json_extract(data, '$.background'), ${BACKGROUND_PREFIX.length + 1})`;
+const selectFoldersByBackground = db.prepare(`SELECT id ${FOLDER_BACKGROUNDS} AND owner = ? AND json_extract(data, '$.background') = ?`);
+const selectKeptBackgrounds = db.prepare(`
+  SELECT ${BACKGROUND_ID} AS id ${FOLDER_BACKGROUNDS} AND (json_extract(data, '$.deleted') = 0 OR updated_at > ?)
+`);
+const selectOwnerBackgrounds = db.prepare(`SELECT ${BACKGROUND_ID} AS id ${FOLDER_BACKGROUNDS} AND owner = ?`);
+
 export function findCardByFile(owner, fileId) {
   return selectCardByFile.get(owner, fileId)?.id ?? null;
 }
 
-/** Files of live cards and of cards deleted after `deletedSince` (they may still be restored). */
+/** Folders of the board whose background is the uploaded image `fileId`. */
+export function foldersWithBackground(owner, fileId) {
+  return selectFoldersByBackground.all(owner, `${BACKGROUND_PREFIX}${fileId}`).map((r) => r.id);
+}
+
+/** Files of live cards and folders, and of those deleted after `deletedSince` (they may still be restored). */
 export function keptFileIds(deletedSince) {
-  return new Set(selectKeptFiles.all(deletedSince).map((r) => r.id));
+  return new Set([...selectKeptFiles.all(deletedSince), ...selectKeptBackgrounds.all(deletedSince)].map((r) => r.id));
 }
 
 export function ownerFileIds(owner) {
-  return selectOwnerFiles.all(owner).map((r) => r.id);
+  return [...selectOwnerFiles.all(owner), ...selectOwnerBackgrounds.all(owner)].map((r) => r.id);
 }
 
 /** Files of all the user's spaces. */

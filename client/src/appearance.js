@@ -1,4 +1,5 @@
 import { setFolderBackground, updateCard } from './actions.js';
+import { backgroundUrl, isUploadedBackground, uploadBackground } from './files.js';
 import { folderPath } from './folders.js';
 
 /** Cover colours of cards (as in Trello); the same in both themes. */
@@ -15,7 +16,12 @@ export const CARD_COLORS = [
   { id: 'gray', name: 'Серый', value: '#8590a2' },
 ];
 
-/** Board backgrounds: plain colours and gradients, dark enough for light text over them. */
+const UPLOAD_ICON = 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12';
+
+// A picture covering the board; the colour shows while it loads.
+const picture = (url) => `url("${url}") center / cover no-repeat, #1e293b`;
+
+/** Board backgrounds: plain colours, gradients and pictures, dark enough for light text over them. */
 export const BOARD_BACKGROUNDS = [
   { id: 'blue', name: 'Синий', value: '#1d4ed8' },
   { id: 'green', name: 'Зелёный', value: '#15803d' },
@@ -34,14 +40,30 @@ export const BOARD_BACKGROUNDS = [
   { id: 'night', name: 'Ночь', value: 'linear-gradient(135deg, #1e293b, #020617)' },
 ];
 
+/** Pictures shipped with the app (public/backgrounds). */
+export const BOARD_PICTURES = [
+  { id: 'img-mountains', name: 'Горы', value: picture('/backgrounds/mountains.jpg') },
+  { id: 'img-forest', name: 'Туманный лес', value: picture('/backgrounds/forest.jpg') },
+  { id: 'img-sea', name: 'Море', value: picture('/backgrounds/sea.jpg') },
+  { id: 'img-stars', name: 'Звёзды', value: picture('/backgrounds/stars.jpg') },
+  { id: 'img-lake', name: 'Озеро', value: picture('/backgrounds/lake.jpg') },
+  { id: 'img-waves', name: 'Волны', value: picture('/backgrounds/waves.jpg') },
+];
+
 export const cardColor = (card) => CARD_COLORS.find((c) => c.id === card.color)?.value ?? null;
+
+/** The CSS background of a folder's `background` (a preset or an uploaded picture), null for none. */
+function backgroundValue(id) {
+  if (isUploadedBackground(id)) return picture(backgroundUrl(id));
+  return [...BOARD_BACKGROUNDS, ...BOARD_PICTURES].find((b) => b.id === id)?.value ?? null;
+}
 
 /** The board's background: the folder's own or the nearest ancestor's ('none' stops it). */
 export function folderBackground(folder, folders) {
   const path = folderPath(folder, folders);
   for (let i = path.length - 1; i >= 0; i -= 1) {
     const id = path[i].background;
-    if (id) return BOARD_BACKGROUNDS.find((b) => b.id === id)?.value ?? null;
+    if (id) return backgroundValue(id);
   }
   return null;
 }
@@ -55,9 +77,27 @@ export const cardColorItems = (card) => [
   })),
 ];
 
+/** Asks for a picture and makes it the folder's background. */
+function pickPicture(folderId) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.addEventListener('change', () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    uploadBackground(file)
+      .then((background) => setFolderBackground(folderId, background))
+      .catch((err) => alert(err.message));
+  });
+  input.click();
+}
+
 /** Menu items that set the folder's background; a folder inside another may take the parent's. */
 export function backgroundItems(folder) {
   const own = folder.background ?? null;
+  const item = (b) => ({
+    label: b.name, swatch: b.value, active: own === b.id, run: () => setFolderBackground(folder.id, b.id),
+  });
   return [
     ...(folder.parentId
       ? [{ label: 'Как у родительской', active: own === null, run: () => setFolderBackground(folder.id, null) }]
@@ -67,8 +107,11 @@ export function backgroundItems(folder) {
       run: () => setFolderBackground(folder.id, folder.parentId ? 'none' : null),
     },
     null,
-    ...BOARD_BACKGROUNDS.map((b) => ({
-      label: b.name, swatch: b.value, active: own === b.id, run: () => setFolderBackground(folder.id, b.id),
-    })),
+    ...BOARD_BACKGROUNDS.map(item),
+    null,
+    ...BOARD_PICTURES.map(item),
+    null,
+    ...(isUploadedBackground(own) ? [{ label: 'Своя картинка', swatch: backgroundValue(own), active: true, run: () => {} }] : []),
+    { label: 'Загрузить картинку…', icon: UPLOAD_ICON, run: () => pickPicture(folder.id) },
   ];
 }

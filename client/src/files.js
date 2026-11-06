@@ -96,6 +96,47 @@ function uploadFile(cardId, file, onProgress) {
   });
 }
 
+// ---- board backgrounds uploaded by users (a folder's `background` is `file-<id>`) ----
+
+const BACKGROUND_PREFIX = 'file-';
+// Larger pictures are shrunk to this many pixels along the long side before the upload.
+const BACKGROUND_MAX_SIDE = 2560;
+
+export const isUploadedBackground = (background) => typeof background === 'string' && background.startsWith(BACKGROUND_PREFIX);
+
+export const backgroundUrl = (background) => `/api/backgrounds/${background.slice(BACKGROUND_PREFIX.length)}${boardQuery()}`;
+
+/** Shrinks the picture, uploads it as JPEG and gives the folder's `background` for it. */
+export async function uploadBackground(file) {
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    throw new Error('Это не картинка или её формат не поддерживается.');
+  }
+  const scale = Math.min(1, BACKGROUND_MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#0f172a';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+  const res = await fetch('/api/backgrounds', {
+    method: 'POST',
+    headers: { ...boardHeaders(), 'Content-Type': 'image/jpeg' },
+    body: blob,
+  }).catch(() => null);
+  if (!res) throw new Error('Картинку можно загрузить только при связи с сервером.');
+  if (!res.ok) {
+    throw new Error({ 403: ERRORS[403], 413: 'Картинка слишком большая.', 507: ERRORS[507] }[res.status]
+      ?? `Не удалось загрузить картинку (ошибка ${res.status}).`);
+  }
+  return (await res.json()).background;
+}
+
 export async function removeFile(cardId, fileId) {
   const res = await fetch(`/api/cards/${encodeURIComponent(cardId)}/files/${fileId}/delete`, {
     method: 'POST',

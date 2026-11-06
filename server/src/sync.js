@@ -58,8 +58,8 @@ export const SCHEMAS = {
       position: number,
       deleted: boolean,
       hidden: boolean,
-      // Background of the board (an id of the client's presets); null → the parent's.
-      background: optionalKey,
+      // Background of the board: an id of the client's presets or `file-<id>` (an uploaded image); null → the parent's.
+      background: (v) => optionalKey(v) || (typeof v === 'string' && /^file-[0-9a-f-]{36}$/.test(v)),
     },
     defaults: {
       parentId: null, columnSetId: null, name: '', position: 0, deleted: false, hidden: false, background: null,
@@ -537,6 +537,13 @@ function applyChange(owner, deviceId, { type, id, baseVersion, fields, base }, a
 }
 
 /** The live card, or null; with `access` only one of its folders. */
+/** Whether the folder is a live one of the board that `access` (null: the owner's) may see. */
+export function visibleFolder(owner, folderId, access) {
+  const folder = withDefaults(getRecord(owner, folderId));
+  if (folder?.type !== 'folder' || folder.deleted) return false;
+  return !access || visibleTo(access, folder);
+}
+
 export function visibleCard(owner, cardId, access) {
   const card = withDefaults(getRecord(owner, cardId));
   if (card?.type !== 'card' || card.deleted) return null;

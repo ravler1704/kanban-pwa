@@ -26,7 +26,7 @@ app.get('/api/health', (_req, res) => {
 });
 
 registerAuthRoutes(app);
-app.use(['/api/sync', '/api/events', '/api/cards', '/api/files'], requireAuthOrPublic);
+app.use(['/api/sync', '/api/events', '/api/cards', '/api/files', '/api/backgrounds'], requireAuthOrPublic);
 registerFileRoutes(app);
 startFileCleanup();
 app.use('/api/push', requireAuth);

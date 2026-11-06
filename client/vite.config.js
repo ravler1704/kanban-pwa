@@ -39,6 +39,16 @@ export default defineConfig({
         importScripts: ['push-sw.js'],
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//],
+        // Board pictures are kept once seen, so the board looks the same offline.
+        runtimeCaching: [{
+          urlPattern: ({ url }) => url.pathname.startsWith('/backgrounds/') || url.pathname.startsWith('/api/backgrounds/'),
+          handler: 'CacheFirst',
+          options: {
+            cacheName: 'board-backgrounds',
+            expiration: { maxEntries: 60 },
+            cacheableResponse: { statuses: [200] },
+          },
+        }],
       },
       devOptions: {
         enabled: true,
