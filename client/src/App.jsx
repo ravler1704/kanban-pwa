@@ -462,10 +462,7 @@ export default function App() {
             view={view}
             onView={changeView}
             onAddCard={readOnly || view === 'board' ? null : () => setAddingCard(true)}
-          >
-            {!publicToken && <PeopleBar folders={shownFolders} allFolders={folders} onChat={setChat} />}
-          </FolderBar>
-          {!searching && (checkedIds.length > 0 || !readOnly) && !(publicToken && folders.length === 1) && (
+            title={!searching && (checkedIds.length > 0 || !readOnly) && !(publicToken && folders.length === 1) && (
             <div className="board-head">
               {checkedIds.length > 0 && (
                 <h2 className="board-title" title={titleRenamable ? undefined : folderFilter.summary}>
@@ -491,8 +488,8 @@ export default function App() {
                 </button>
               )}
             </div>
-          )}
-          {!searching && setTabs && (
+            )}
+            note={!searching && setTabs && (
             <div className="set-tabs" role="tablist" aria-label="Наборы колонок">
               <span className="set-tabs-label">Наборы колонок:</span>
               {setTabs.map((s) => (
@@ -503,7 +500,10 @@ export default function App() {
                 </button>
               ))}
             </div>
-          )}
+            )}
+          >
+            {!publicToken && <PeopleBar folders={shownFolders} allFolders={folders} onChat={setChat} />}
+          </FolderBar>
           {searching ? (
             <ListView cards={visible} query={search} folders={folders} targets={usable} readOnly={readOnly}
               columnsOfFolder={model.columnsOfFolder}

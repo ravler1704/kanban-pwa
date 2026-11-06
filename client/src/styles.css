@@ -114,7 +114,7 @@ body {
   gap: 0.5rem;
 }
 .projectbar-row:empty { display: none; }
-.board-head { display: flex; align-items: center; gap: 0.5rem; min-width: 0; padding: 0.9rem 1.25rem 0; }
+.board-head { display: flex; flex: 1; align-items: center; gap: 0.5rem; min-width: 0; }
 .board-title {
   margin: -0.25em -4px;
   padding: 0.25em 4px;
@@ -124,7 +124,7 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.set-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; padding: 0.6rem 1.25rem 0; }
+.set-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
 .set-tabs-label { color: var(--muted); font-size: 0.85rem; }
 .set-tab {
   display: inline-flex;
@@ -166,7 +166,8 @@ body {
 .apply-option input { margin: 0.2rem 0 0; accent-color: var(--accent); }
 .apply-option > span { display: flex; flex-direction: column; gap: 0.25rem; }
 .apply-option .muted { font-size: 0.85rem; }
-.projectbar-actions { min-height: 2.25rem; }
+.projectbar-actions, .projectbar-head { min-height: 2.25rem; }
+.projectbar-head { flex-wrap: nowrap; }
 .picker { position: relative; display: inline-flex; min-width: 0; }
 .picker .select-empty { color: var(--muted); font-weight: normal; }
 .picker-label {

@@ -75,10 +75,11 @@ const VIEWS = [
  * `folderFilter` is { selected, indeterminate, onToggle, onSetFolder, onSetAll, onClear, summary } over the ids of
  * `folders` (all live folders). `conflictsByFolder` is { [folderId]: number of cards
  * with a conflict }. Without `onAddCard` (read only, or the board, where each column has one) its button is not shown.
+ * `title` goes beside the filters button and `note` right under them; `children` start the row below.
  */
 export default function FolderBar({
   folders, folderFilter, conflictsByFolder, columnSets, columnSetId, onSelectColumnSet, tagFilter, authorFilter, holderFilter,
-  view, onView, onAddCard, children,
+  view, onView, onAddCard, title, note, children,
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   // A filter opened inside the filters dialog: its screen replaces the list of filters.
@@ -135,7 +136,7 @@ export default function FolderBar({
 
   return (
     <nav className="projectbar">
-      <div className="projectbar-row projectbar-actions">
+      <div className="projectbar-row projectbar-head">
         <button type="button" className="btn btn-small btn-icon-only filters-toggle" aria-haspopup="dialog"
           onClick={() => setFiltersOpen(true)}
           title={filtered ? 'Фильтры (включены)' : 'Фильтры'} aria-label="Фильтры">
@@ -143,6 +144,10 @@ export default function FolderBar({
           {filtered && <span className="filters-dot" aria-hidden="true" />}
         </button>
 
+        {title}
+      </div>
+      {note}
+      <div className="projectbar-row projectbar-actions">
         {children}
 
         <div className="view-switch" role="group" aria-label="Вид">
