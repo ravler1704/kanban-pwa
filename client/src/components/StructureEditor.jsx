@@ -115,11 +115,8 @@ function FolderRow({ folder, index, count, ctx }) {
   const [panel, setPanel] = useState(null);
   const [renaming, setRenaming] = useState(false);
   const isRoot = !tree.parentOf(folder);
-  const parent = tree.byId.get(tree.parentOf(folder));
   const own = Boolean(folder.columnSetId);
-  const setId = folderColumnSetId(folder, folders);
   const setName = model.sets.find((s) => s.id === model.setIdOf(folder))?.name;
-  const parentSetName = parent && model.sets.find((s) => s.id === model.setIdOf(parent))?.name;
   // While searching, where the folder is matters more than what is inside it.
   const where = needle && folderPath(folder, folders).slice(0, -1).map((f) => f.name).join(' › ');
   const meta = [
@@ -134,7 +131,6 @@ function FolderRow({ folder, index, count, ctx }) {
     { label: 'Открыть', run: () => onOpen(folder.id) },
     { label: 'Переименовать', run: () => setRenaming(true) },
     canShare && { label: 'Доступ', active: panel === 'access', run: () => togglePanel('access') },
-    columnsSynced && isOwnBoard && { label: 'Набор колонок', active: panel === 'columns', run: () => togglePanel('columns') },
     { label: 'Перенести…', run: () => ctx.onMove(folder) },
     !needle && null,
     !needle && { label: 'Выше', disabled: index === 0, run: () => reorderFolder(folder.id, -1) },
@@ -177,21 +173,6 @@ function FolderRow({ folder, index, count, ctx }) {
       {panel === 'access' && canShare && (
         <div className="tree-body"><FolderMembers folder={folder} folders={folders} /></div>
       )}
-      {panel === 'columns' && columnsSynced && isOwnBoard && (
-        <div className="tree-body">
-          <label className="field">
-            <span className="field-label">Набор колонок</span>
-            <select className="select" value={own || isRoot ? setId : TOP}
-              onChange={(e) => ctx.onChangeSet(folder, e.target.value || null)}>
-              {!isRoot && <option value={TOP}>Как у родителя{parentSetName ? ` («${parentSetName}»)` : ''}</option>}
-              {model.sets.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </label>
-          <p className="muted account-hint">
-            Колонки набора общие для доски и вложенных в неё досок, у которых нет своего набора.
-          </p>
-        </div>
-      )}
     </section>
   );
 }
@@ -207,11 +188,11 @@ function FolderIcon() {
 
 /**
  * The folders of the board, one level at a time: breadcrumbs lead back up, a folder opens on click.
- * Names, order, access and column sets; a folder moves to another place with everything in it.
+ * Names, order and access; a folder moves to another place with everything in it.
  * `writable` (a set of ids, or null for all) are the folders a member may touch.
  */
 export default function StructureEditor({
-  model, folders, synced, columnsSynced, writable, onChangeSet, onRemoveFolder,
+  model, folders, synced, columnsSynced, writable, onRemoveFolder,
 }) {
   const canShare = useCanShare();
   const tree = folderTree(folders);
@@ -234,7 +215,7 @@ export default function StructureEditor({
   };
   const ctx = {
     model, folders, columnsSynced, canShare, needle, onOpen: open,
-    onMove: setMoving, onChangeSet, onRemove: onRemoveFolder,
+    onMove: setMoving, onRemove: onRemoveFolder,
   };
   const canAddHere = current ? true : isOwnBoard;
   return (

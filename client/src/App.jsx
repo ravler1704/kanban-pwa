@@ -531,7 +531,7 @@ export default function App() {
       )}
 
       {editingColumns && (
-        <ColumnsDraftDialog model={model} setId={boardSetId} folder={columnsFolder} folders={folders}
+        <ColumnsDraftDialog key={boardSetId} model={model} setId={boardSetId} folder={columnsFolder} folders={folders}
           onClose={() => setEditingColumns(false)} />
       )}
 
@@ -539,7 +539,6 @@ export default function App() {
         <ManageDialog
           model={model}
           columnsSynced={data.columns.length > 0}
-          initialSetId={boardSetId}
           folders={folders}
           foldersSynced={data.folders.some((f) => !f.deleted)}
           writable={writable}

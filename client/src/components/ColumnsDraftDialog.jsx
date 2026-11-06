@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { editColumnSet, forkColumnSet } from '../actions.js';
+import {
+  changeFolderColumnSet, countInheritingCards, deleteColumnSet, editColumnSet, forkColumnSet, renameColumnSet,
+} from '../actions.js';
 import { db } from '../db.js';
-import { inheritingFolders } from '../folders.js';
+import { folderColumnSetId, inheritingFolders } from '../folders.js';
+import ChangeSetDialog from './ChangeSetDialog.jsx';
 import Modal from './Modal.jsx';
 
 const svg = (d) => (
@@ -12,6 +15,8 @@ const svg = (d) => (
 const UP = 'm6 15 6-6 6 6';
 const DOWN = 'm6 9 6 6 6-6';
 const REMOVE = 'M18 6 6 18M6 6l12 12';
+const TO_TOP = 'M5 4h14M12 20V9m-5 5 5-5 5 5';
+const TO_BOTTOM = 'M5 20h14M12 4v11m-5-5 5 5 5-5';
 
 let lastKey = 0;
 const rowOf = (c) => ({ key: c.id, id: c.id, name: c.name, addToTop: !!c.addToTop });
@@ -20,6 +25,7 @@ const quoted = (folders) => folders.map((f) => `«${f.name}»`).join(', ');
 /**
  * Edits the columns of the board's set (`setId`) as a draft; on saving, the changes go either into the set
  * (every board using it) or into a new set for `folder` (null: only the first is possible).
+ * `folder` can also be switched to another set right away.
  */
 export default function ColumnsDraftDialog({ model, setId, folder, folders, onClose }) {
   const set = model.sets.find((s) => s.id === setId);
@@ -30,6 +36,8 @@ export default function ColumnsDraftDialog({ model, setId, folder, folders, onCl
   const [step, setStep] = useState('edit');
   const [mode, setMode] = useState('set');
   const [setName, setSetName] = useState(() => (folder ? folder.name : `${set?.name ?? 'Набор'} — копия`));
+  const [title, setTitle] = useState(set?.name ?? '');
+  const [switching, setSwitching] = useState(undefined);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -51,7 +59,11 @@ export default function ColumnsDraftDialog({ model, setId, folder, folders, onCl
   const targetOf = (c) => (rows.some((r) => r.key === moves[c.id]) ? moves[c.id] : rows[0]?.key);
   const valid = rows.length > 0 && rows.every((r) => r.name.trim());
   const changed = removed.length > 0 || rows.length !== original.length
-    || rows.some((r, i) => r.id !== original[i]?.id || r.name.trim() !== original[i].name);
+    || rows.some((r, i) => r.id !== original[i]?.id || r.name.trim() !== original[i].name
+      || r.addToTop !== Boolean(original[i].addToTop));
+  const renamed = title.trim() !== '' && title.trim() !== set?.name;
+  const parent = folder?.parentId ? folders.find((f) => f.id === folder.parentId) : null;
+  const unused = model.sets.filter((s) => s.id !== setId && model.foldersOf(s.id).length === 0);
 
   const patch = (key, p) => setRows((list) => list.map((r) => (r.key === key ? { ...r, ...p } : r)));
   const move = (i, d) => setRows((list) => {
@@ -69,14 +81,42 @@ export default function ColumnsDraftDialog({ model, setId, folder, folders, onCl
     setNewName('');
   }
 
+  async function pickSet(next) {
+    setError(null);
+    try {
+      const nextSetId = folderColumnSetId({ ...folder, columnSetId: next }, folders);
+      if (nextSetId !== setId && await countInheritingCards(folder.id)) setSwitching(next);
+      else await changeFolderColumnSet(folder.id, next, {});
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function removeSet(s) {
+    if (!confirm(`Удалить набор «${s.name}» вместе с его колонками?`)) return;
+    try {
+      await deleteColumnSet(s.id);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function save() {
+    if (changed) return setStep('apply');
+    await renameColumnSet(setId, title.trim().slice(0, 100));
+    return onClose();
+  }
+
   async function apply() {
     const clean = rows.map((r) => ({ ...r, name: r.name.trim().slice(0, 100) }));
     const chosen = Object.fromEntries(removed.map((c) => [c.id, targetOf(c)]));
     setSaving(true);
     setError(null);
     try {
-      if (mode === 'set') await editColumnSet(setId, clean, chosen);
-      else await forkColumnSet(folder.id, setName.trim().slice(0, 100), setId, clean, chosen);
+      if (mode === 'set') {
+        await editColumnSet(setId, clean, chosen);
+        if (renamed) await renameColumnSet(setId, title.trim().slice(0, 100));
+      } else await forkColumnSet(folder.id, setName.trim().slice(0, 100), setId, clean, chosen);
       onClose();
     } catch (err) {
       setError(err.message);
@@ -91,7 +131,7 @@ export default function ColumnsDraftDialog({ model, setId, folder, folders, onCl
           <label className={`apply-option ${mode === 'set' ? 'apply-option-on' : ''}`}>
             <input type="radio" name="apply" checked={mode === 'set'} onChange={() => setMode('set')} />
             <span>
-              <strong>Изменить набор «{set?.name}»</strong>
+              <strong>Изменить набор «{renamed ? title.trim() : set?.name}»</strong>
               <span className="muted">
                 {others.length
                   ? `Колонки изменятся везде, где используется этот набор: ${quoted(users)}.`
@@ -130,14 +170,51 @@ export default function ColumnsDraftDialog({ model, setId, folder, folders, onCl
 
   return (
     <Modal title="Колонки доски" onClose={onClose} className="columns-draft" closeButton>
+      {folder && (
+        <label className="field manage-field">
+          <span className="field-label">Набор колонок доски «{folder.name}»</span>
+          <select className="select" value={folder.columnSetId || !parent ? setId : ''} disabled={changed || renamed}
+            title={changed || renamed ? 'Сначала сохраните или отмените изменения' : undefined}
+            onChange={(e) => pickSet(e.target.value || null)}>
+            {parent && (
+              <option value="">
+                Как у «{parent.name}» («{model.sets.find((s) => s.id === model.setIdOf(parent))?.name}»)
+              </option>
+            )}
+            {model.sets.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </label>
+      )}
+      {unused.length > 0 && (
+        <div className="draft-unused">
+          <span className="muted">Наборы без досок:</span>
+          {unused.map((s) => (
+            <span key={s.id} className="draft-unused-set">
+              {s.name}
+              <button type="button" className="btn-link-icon" title={`Удалить набор «${s.name}»`}
+                aria-label={`Удалить набор «${s.name}»`} onClick={() => removeSet(s)}>{svg(REMOVE)}</button>
+            </span>
+          ))}
+        </div>
+      )}
+      <label className="field manage-field">
+        <span className="field-label">Название набора</span>
+        <input className="manage-input" value={title} maxLength={100} onChange={(e) => setTitle(e.target.value)} />
+      </label>
       <p className="muted columns-draft-hint">
-        Набор «{set?.name}». Изменения применятся, когда вы нажмёте «Сохранить» и выберете, к чему их применить.
+        {users.length > 1 ? `Набор используют доски: ${quoted(users)}. ` : ''}
+        Стрелка у колонки — куда ставить новые карточки: в начало или в конец.
+        Изменения применятся, когда вы нажмёте «Сохранить».
       </p>
       <ol className="draft-columns">
         {rows.map((r, i) => (
           <li key={r.key} className="draft-column">
             <input className="manage-input" value={r.name} maxLength={100} aria-label={`Название колонки ${i + 1}`}
               onChange={(e) => patch(r.key, { name: e.target.value })} />
+            <button type="button" className={`btn btn-small btn-icon-only ${r.addToTop ? 'active' : ''}`}
+              title={r.addToTop ? 'Новые карточки — в начало колонки' : 'Новые карточки — в конец колонки'}
+              aria-label={r.addToTop ? 'Новые карточки в начало' : 'Новые карточки в конец'} aria-pressed={r.addToTop}
+              onClick={() => patch(r.key, { addToTop: !r.addToTop })}>{svg(r.addToTop ? TO_TOP : TO_BOTTOM)}</button>
             <button type="button" className="btn btn-small btn-icon-only" title="Выше (левее на доске)" aria-label="Выше"
               disabled={i === 0} onClick={() => move(i, -1)}>{svg(UP)}</button>
             <button type="button" className="btn btn-small btn-icon-only" title="Ниже (правее на доске)" aria-label="Ниже"
@@ -167,10 +244,15 @@ export default function ColumnsDraftDialog({ model, setId, folder, folders, onCl
       )}
       <div className="actions">
         <button type="button" className="btn" onClick={onClose}>Отмена</button>
-        <button type="button" className="btn btn-primary" disabled={!valid || !changed}
+        <button type="button" className="btn btn-primary" disabled={!valid || !(changed || renamed)}
           title={!valid ? 'У каждой колонки должно быть название' : undefined}
-          onClick={() => setStep('apply')}>Сохранить</button>
+          onClick={save}>Сохранить</button>
       </div>
+      {error && step === 'edit' && <p className="login-error">{error}</p>}
+      {switching !== undefined && (
+        <ChangeSetDialog model={model} folder={folder} folders={folders} setId={switching}
+          onClose={() => setSwitching(undefined)} />
+      )}
     </Modal>
   );
 }

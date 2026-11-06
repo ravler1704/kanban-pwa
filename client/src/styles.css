@@ -1593,3 +1593,8 @@ button.cp-chip:hover { color: var(--text); }
 .notifications-off { color: var(--muted); }
 .notifications-dialog { width: min(440px, 100%); }
 .people-access { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
+.draft-unused { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; margin: 0.25rem 0 0.75rem; font-size: 0.85rem; }
+.draft-unused-set { display: inline-flex; align-items: center; gap: 0.2rem; padding: 0.15rem 0.3rem 0.15rem 0.6rem; border: 1px solid var(--border); border-radius: 999px; }
+.btn-link-icon { display: inline-flex; padding: 0.15rem; border: none; background: none; color: var(--muted); cursor: pointer; border-radius: 999px; }
+.btn-link-icon:hover { color: var(--danger, #ef4444); }
+.draft-column .btn.active { color: var(--accent); border-color: var(--accent); }
