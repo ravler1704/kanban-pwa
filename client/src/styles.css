@@ -1608,6 +1608,13 @@ button.cp-chip:hover { color: var(--text); }
 .add-card-btn { flex: none; width: 2.5rem; }
 .editable-name { cursor: text; border-radius: 4px; text-decoration: underline dashed transparent; text-underline-offset: 0.2em; }
 .editable-name:hover, .editable-name:focus-visible { text-decoration-color: var(--muted); outline: none; }
-.editable-name-input { font: inherit; padding: 0.1rem 0.35rem; min-width: 0; max-width: 100%; }
-.column-head h2 .editable-name-input { width: 100%; }
+.editable-name-edit { position: relative; display: inline-block; max-width: 100%; vertical-align: top; }
+.editable-name-sizer, .editable-name-input {
+  margin: 0; padding: 0; border: 0; font: inherit; letter-spacing: inherit; line-height: inherit; white-space: pre;
+}
+.editable-name-sizer { display: block; visibility: hidden; overflow: hidden; }
+.editable-name-input {
+  position: absolute; inset: 0; width: 100%; height: 100%; min-width: 0; background: transparent; color: inherit;
+  border-radius: 2px; outline: 2px solid var(--accent); outline-offset: 2px;
+}
 .crumb-current { color: var(--text); font-weight: 600; }

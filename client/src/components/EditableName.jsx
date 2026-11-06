@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useOutsidePress } from './ManageFields.jsx';
 
 /** The field the name turns into: Enter, leaving it or a press outside saves, Escape cancels. */
-function NameField({ value, label, maxLength, onSave, onDone }) {
+function NameField({ value, label, maxLength, className, onSave, onDone }) {
   const [draft, setDraft] = useState(value);
   const input = useRef(null);
   const done = useRef(false);
@@ -19,17 +19,20 @@ function NameField({ value, label, maxLength, onSave, onDone }) {
     input.current.focus();
     input.current.select();
   }, []);
+  // The field lies over an invisible copy of the text, so it takes the size the name had and nothing around moves.
   return (
-    <input ref={input} className="manage-input editable-name-input" value={draft} maxLength={maxLength} aria-label={label}
-      size={Math.max(8, draft.length + 1)}
-      onClick={(e) => e.stopPropagation()}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={() => finish(true)}
-      onKeyDown={(e) => {
-        e.stopPropagation();
-        if (e.key === 'Enter') finish(true);
-        if (e.key === 'Escape') finish(false);
-      }} />
+    <span className={`editable-name-edit ${className}`}>
+      <span className="editable-name-sizer" aria-hidden="true">{draft || ' '}</span>
+      <input ref={input} className="editable-name-input" value={draft} maxLength={maxLength} aria-label={label}
+        onClick={(e) => e.stopPropagation()}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => finish(true)}
+        onKeyDown={(e) => {
+          e.stopPropagation();
+          if (e.key === 'Enter') finish(true);
+          if (e.key === 'Escape') finish(false);
+        }} />
+    </span>
   );
 }
 
@@ -37,7 +40,10 @@ function NameField({ value, label, maxLength, onSave, onDone }) {
 export default function EditableName({ value, label, maxLength = 200, className = '', onSave }) {
   const [editing, setEditing] = useState(false);
   if (editing) {
-    return <NameField value={value} label={label} maxLength={maxLength} onSave={onSave} onDone={() => setEditing(false)} />;
+    return (
+      <NameField value={value} label={label} maxLength={maxLength} className={className} onSave={onSave}
+        onDone={() => setEditing(false)} />
+    );
   }
   return (
     <span role="button" tabIndex={0} className={`editable-name ${className}`} title="Нажмите, чтобы переименовать"
