@@ -159,6 +159,11 @@ export default function Column({
     <section
       ref={section}
       className={`column ${columnClasses}`}
+      onDoubleClick={(e) => {
+        if (e.target.closest('.card, a, button, input, textarea, form, [role="button"], .column-grip')) return;
+        window.getSelection()?.removeAllRanges();
+        onToggleCollapsed();
+      }}
       onDragOver={readOnly ? undefined : handleDragOver}
       onDragLeave={(e) => {
         if (e.currentTarget.contains(e.relatedTarget)) return;
