@@ -53,7 +53,7 @@ const TAB_KEY = 'manageDialogTab';
 
 /**
  * The folders of the board (`folders`, live) and who has access to them; `writable` are the ids a member may change (null: all),
- * members arrange those they have access to. Columns are edited from the board («Изменить колонки»).
+ * members arrange those they have access to. A board's columns are edited from its menu here or from the board.
  */
 export default function ManageDialog({ model, columnsSynced, folders, foldersSynced, writable, onClose }) {
   const [deleting, setDeleting] = useState(null);

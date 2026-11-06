@@ -4,6 +4,7 @@ import { backgroundItems } from '../appearance.js';
 import { isOwnBoard } from '../board.js';
 import { childrenOf, descendants, flattenFolders, folderColumnSetId, folderPath, folderTree } from '../folders.js';
 import { ICONS } from '../menuIcons.js';
+import ColumnsDraftDialog from './ColumnsDraftDialog.jsx';
 import ContextMenu, { useHoverShortcuts, useMenuButton } from './ContextMenu.jsx';
 import FolderSelect from './FolderSelect.jsx';
 import EditableName from './EditableName.jsx';
@@ -106,6 +107,7 @@ function FolderRow({ folder, index, count, ctx }) {
       label: 'Доступ', icon: ICONS.access, shortcut: 'KeyA', active: panel === 'access', run: () => togglePanel('access'),
     },
     { label: 'Перенести…', icon: ICONS.move, shortcut: 'KeyM', run: () => ctx.onMove(folder) },
+    ctx.onColumns ? { label: 'Набор колонок…', icon: ICONS.settings, shortcut: 'KeyK', run: () => ctx.onColumns(folder.id) } : false,
     { label: 'Фон', icon: ICONS.palette, submenu: backgroundItems(folder) },
     !needle && null,
     !needle && {
@@ -174,6 +176,7 @@ export default function StructureEditor({
   const path = current ? folderPath(current, folders) : [];
   const list = childrenOf(folders, current?.id ?? null);
   const [moving, setMoving] = useState(null);
+  const [editingColumns, setEditingColumns] = useState(null);
   const [query, setQuery] = useState('');
 
   const needle = query.trim().toLowerCase();
@@ -188,6 +191,7 @@ export default function StructureEditor({
   const ctx = {
     model, folders, columnsSynced, canShare, needle, onOpen: open,
     onMove: setMoving, onRemove: onRemoveFolder,
+    onColumns: isOwnBoard && columnsSynced ? setEditingColumns : null,
   };
   const canAddHere = current ? true : isOwnBoard;
   return (
@@ -236,6 +240,11 @@ export default function StructureEditor({
 
       {moving && (
         <MoveDialog folder={moving} folders={folders} model={model} writable={writable} onClose={() => setMoving(null)} />
+      )}
+      {editingColumns && tree.byId.has(editingColumns) && (
+        <ColumnsDraftDialog key={`${editingColumns}:${model.setIdOf(tree.byId.get(editingColumns))}`} model={model}
+          setId={model.setIdOf(tree.byId.get(editingColumns))} folder={tree.byId.get(editingColumns)} folders={folders}
+          onClose={() => setEditingColumns(null)} />
       )}
     </div>
   );
