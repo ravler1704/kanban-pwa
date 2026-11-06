@@ -159,6 +159,10 @@ body {
 .set-tab-count { color: var(--muted); font-variant-numeric: tabular-nums; }
 .board-head .btn { flex: none; color: var(--muted); }
 .board-head .btn:hover { color: var(--text); }
+.board-head .board-settings, .board-head .board-settings:hover:not(:disabled) {
+  padding: 0.3rem; border-color: transparent; background: none;
+}
+.board-head .board-settings:hover:not(:disabled) { background: var(--card); }
 .columns-draft { width: min(480px, 100%); }
 .columns-draft-hint { margin: 0 0 0.75rem; font-size: 0.85rem; }
 .draft-columns { display: flex; flex-direction: column; gap: 0.4rem; margin: 0; padding: 0; list-style: none; }

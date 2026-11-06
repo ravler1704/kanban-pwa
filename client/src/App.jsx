@@ -482,7 +482,7 @@ export default function App() {
                 </h2>
               )}
               {!readOnly && (
-                <button type="button" className="btn btn-small btn-icon-only" title="Настройки пространства"
+                <button type="button" className="btn btn-small btn-icon-only board-settings" title="Настройки пространства"
                   aria-label="Настройки пространства" onClick={() => setManaging(true)}>
                   <SettingsIcon />
                 </button>
