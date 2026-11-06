@@ -3,7 +3,7 @@ import {
   boardOwner, cardCreators, cardIdsInOrder, commentIdsOfCard, getMaxSeq, getMeta, getRecord, getRecordsSince, saveRecord,
   setMeta, transaction, userProfile,
 } from './db.js';
-import { folderAncestors, folderColumnSet, INBOX_ID } from './folders.js';
+import { folderAncestors, folderColumnSet, isInbox, isMemberInbox, memberInboxId } from './folders.js';
 import { cardReminders, isReminderList, nextTime } from './reminders.js';
 import { textDiff } from './textDiff.js';
 
@@ -185,9 +185,10 @@ const withDefaults = (record) => (record && SCHEMAS[record.type] ? { ...SCHEMAS[
 /**
  * What a member may see: `folders` (invited folder + descendants), `ancestors` (parents of those,
  * shown in the tree without their cards), `sets` (column sets in use). `key` changes whenever any
- * of them changes (member epoch). With `readOnly` nothing may be changed.
+ * of them changes (member epoch). With `readOnly` nothing may be changed. `userId` (a member, not a
+ * public link) also has `inbox`: their own «Входящие» on this board.
  */
-export function memberAccess(owner, folderIds, { readOnly = false } = {}) {
+export function memberAccess(owner, folderIds, { readOnly = false, userId = null } = {}) {
   const folders = new Set(folderIds);
   const ancestors = new Set();
   const sets = new Set();
@@ -201,14 +202,22 @@ export function memberAccess(owner, folderIds, { readOnly = false } = {}) {
     .update(JSON.stringify([[...folders].sort(), [...ancestors].sort(), [...sets].sort()]))
     .digest('hex').slice(0, 16);
   // `projects` alias kept for older call sites during the switch.
-  return { folders, ancestors, sets, projects: folders, key, readOnly };
+  const inbox = userId && !readOnly ? memberInboxId(userId) : null;
+  return { folders, ancestors, sets, projects: folders, key, readOnly, inbox };
 }
+
+/** Cards (and their comments) in a member's own «Входящие» are not the owner's to see. */
+const hiddenFromOwner = (record) => Boolean(record) && (record.type === 'card' || record.type === 'comment')
+  && isMemberInbox(record.folderId);
+
+/** Cards and comments the member may see and change: in their folders or their own «Входящие». */
+const holdsCards = (access, folderId) => access.folders.has(folderId) || (access.inbox != null && folderId === access.inbox);
 
 function visibleTo(access, record) {
   switch (record.type) {
     case 'folder': return access.folders.has(record.id) || access.ancestors.has(record.id);
-    case 'card': return access.folders.has(record.folderId);
-    case 'comment': return access.folders.has(record.folderId);
+    case 'card': return holdsCards(access, record.folderId);
+    case 'comment': return holdsCards(access, record.folderId);
     case 'columnSet': return access.sets.has(record.id);
     case 'column': return access.sets.has(record.setId);
     default: return false;
@@ -233,8 +242,8 @@ function tombstone(type, id, record) {
 function memberMayChange(access, type, current, fields) {
   if (access.readOnly || (type !== 'card' && type !== 'folder')) return false;
   if (type === 'card') {
-    if (current && !access.folders.has(current.folderId)) return false;
-    return access.folders.has(fields.folderId ?? current?.folderId);
+    if (current && !holdsCards(access, current.folderId)) return false;
+    return holdsCards(access, fields.folderId ?? current?.folderId);
   }
   // New folder: parent must be accessible; root folders are the owner's.
   const parentId = fields.parentId !== undefined ? fields.parentId : current?.parentId;
@@ -275,7 +284,7 @@ function applyComment(owner, deviceId, { id, fields }, access, actor) {
     } else if (!ref(folderId) || getRecord(owner, folderId)?.type !== 'folder') {
       return reject();
     }
-    if (access && !access.folders.has(folderId)) return reject();
+    if (access ? !holdsCards(access, folderId) : isMemberInbox(folderId)) return reject();
     const now = Date.now();
     const record = save({
       ...data,
@@ -289,7 +298,7 @@ function applyComment(owner, deviceId, { id, fields }, access, actor) {
     return result('applied', record, { created: true });
   }
   if (current.type !== 'comment') throw new ValidationError(`record ${id} is not a comment`);
-  if (current.event || (access && !visibleTo(access, current))) return reject();
+  if (current.event || (access ? !visibleTo(access, current) : isMemberInbox(current.folderId))) return reject();
 
   const own = current.authorId === actor.id;
   const next = { ...current };
@@ -314,7 +323,7 @@ let lastEventAt = 0;
 
 /** A note in the chat of a folder ({ folderId }). */
 function addEvent(owner, folderId, actor, event) {
-  if (folderId === INBOX_ID) return;
+  if (isInbox(folderId)) return;
   const who = actor ?? GUEST;
   lastEventAt = Math.max(Date.now(), lastEventAt + 1);
   saveRecord(owner, 'comment', crypto.randomUUID(), pickData(SCHEMAS.comment, {
@@ -328,7 +337,7 @@ function addEvent(owner, folderId, actor, event) {
   }), { version: 1, deviceId: 'server' });
 }
 
-const nameOf = (owner, id) => (id === INBOX_ID ? 'Входящие'
+const nameOf = (owner, id) => (isInbox(id) ? 'Входящие'
   : id ? withDefaults(getRecord(owner, id))?.name ?? null : null);
 
 /**
@@ -465,6 +474,10 @@ function applyChange(owner, deviceId, { type, id, baseVersion, fields, base }, a
     // Not applied; the device takes back what the member may see.
     return result('merged', current && visibleTo(access, current) ? current : tombstone(type, id, current));
   }
+  // Members' own «Входящие» are theirs alone, also on the owner's board.
+  if (!access && type === 'card' && (hiddenFromOwner(current) || isMemberInbox(fields.folderId))) {
+    return result('merged', current && !hiddenFromOwner(current) ? current : tombstone(type, id, current));
+  }
 
   if (!current) {
     const data = { ...schema.defaults, ...fields };
@@ -527,7 +540,8 @@ function applyChange(owner, deviceId, { type, id, baseVersion, fields, base }, a
 export function visibleCard(owner, cardId, access) {
   const card = withDefaults(getRecord(owner, cardId));
   if (card?.type !== 'card' || card.deleted) return null;
-  return access && !access.folders.has(card.folderId) ? null : card;
+  if (access) return holdsCards(access, card.folderId) ? card : null;
+  return isMemberInbox(card.folderId) ? null : card;
 }
 
 /**
@@ -636,12 +650,11 @@ export function pull(owner, since, limit = 500, access = null) {
   const hasMore = records.length > limit;
   if (hasMore) records.pop();
   const seq = records.length ? records[records.length - 1].seq : Math.max(since, 0);
-  if (access) {
-    // A device downloading from scratch has nothing to hide yet.
-    records = records.flatMap((r) => {
-      if (visibleTo(access, r)) return [r];
-      return since > 0 && ['card', 'folder', 'comment'].includes(r.type) ? [tombstone(r.type, r.id, r)] : [];
-    });
-  }
+  // A device downloading from scratch has nothing to hide yet.
+  const hide = (r) => (since > 0 && ['card', 'folder', 'comment'].includes(r.type) ? [tombstone(r.type, r.id, r)] : []);
+  records = records.flatMap((r) => {
+    if (access ? visibleTo(access, r) : !hiddenFromOwner(r)) return [r];
+    return hide(r);
+  });
   return { records, seq, hasMore };
 }

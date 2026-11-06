@@ -334,8 +334,8 @@ export default function App() {
     .filter((c) => !holderFilter.length || holderFilter.includes(holderOf(c)))
     .sort(byPosition);
   // A card found in the list may be in a folder that is not shown.
-  // «Входящие» is the own board's alone: there it is a panel next to the board.
-  const inboxOn = isOwnBoard && !publicToken && !readOnly;
+  // «Входящие» is a panel next to the board; on someone else's space the user has their own, not a public link.
+  const inboxOn = !publicToken && !readOnly;
   const openCard = cards.find((c) => c.id === openCardId) ?? (openRecord && tree.byId.has(openRecord.folderId)
     ? { ...openRecord, columnId: folderColumnIds.get(openRecord.folderId).includes(openRecord.columnId)
       ? openRecord.columnId : folderColumnIds.get(openRecord.folderId)[0] }

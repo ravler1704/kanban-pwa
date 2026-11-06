@@ -48,6 +48,9 @@ export const isOwnSpace = (board) => !board || (cachedUser()?.spaces ?? []).some
 /** One of the own spaces: neither someone else's space nor a public link. */
 export const isOwnBoard = !publicToken && isOwnSpace(currentBoard);
 
+/** «Входящие» of this board: the own space's, or on someone else's space the user's own, seen by them only. */
+export const inboxId = isOwnBoard || publicToken ? 'inbox' : `inbox:${ownUserId() ?? ''}`;
+
 /** `board` is one of `user.boards`: { id, space (its name), name, email, picture (of its owner) }. */
 export const boardName = (board) => board.space || 'Общее пространство';
 

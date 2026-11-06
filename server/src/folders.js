@@ -4,6 +4,11 @@ export const DEFAULT_FOLDER_ID = 'personal';
 export const DEFAULT_SET_ID = 'default';
 // «Входящие» of the owner: cards not on any board yet. No folder has this id; it has no chat.
 export const INBOX_ID = 'inbox';
+// A member's own «Входящие» on someone else's board: seen by that member only.
+const MEMBER_INBOX_PREFIX = 'inbox:';
+export const memberInboxId = (userId) => `${MEMBER_INBOX_PREFIX}${userId}`;
+export const isMemberInbox = (folderId) => typeof folderId === 'string' && folderId.startsWith(MEMBER_INBOX_PREFIX);
+export const isInbox = (folderId) => folderId === INBOX_ID || isMemberInbox(folderId);
 
 /** Live folder, or null. */
 export function folderOf(owner, id) {

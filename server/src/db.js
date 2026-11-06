@@ -660,6 +660,8 @@ export function memberProjects(board, userId) {
 
 /** Users who see the folder: the board's owner and everyone invited (via this folder or an ancestor). */
 export function folderUsers(board, folder) {
+  // A member's own «Входящие» (see folders.js): that member only.
+  if (typeof folder === 'string' && folder.startsWith('inbox:')) return [folder.slice('inbox:'.length)];
   const owner = boardOwner(board);
   return [...new Set([...(owner == null ? [] : [owner]), ...selectFolderUsers.all(board, folder).map((r) => r.user_id)])];
 }

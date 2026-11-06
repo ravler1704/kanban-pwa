@@ -1,5 +1,5 @@
 import Dexie from 'dexie';
-import { dbName } from './board.js';
+import { dbName, inboxId } from './board.js';
 
 /**
  * Every synced record (folder, card, comment, column set, column) stores:
@@ -137,9 +137,9 @@ db.version(10).stores({
 
 // v11: spaces, the top level of the board. Projects synced before them are in «Личное».
 export const DEFAULT_FOLDER_ID = 'personal';
-// «Входящие» of the own board: cards dumped there quickly, not on any board yet. No folder record has this id,
-// so the cards stay out of boards, filters and sharing; the server knows the id too.
-export const INBOX_ID = 'inbox';
+// «Входящие»: cards dumped there quickly, not on any board yet. No folder record has this id, so the cards
+// stay out of boards, filters and sharing; the server knows the id too (on someone else's space it is the user's own).
+export const INBOX_ID = inboxId;
 
 db.version(11)
   .stores({

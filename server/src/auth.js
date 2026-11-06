@@ -118,7 +118,7 @@ export function requireAuth(req, res, next) {
   if (board && boardOwner(board) !== req.user) {
     const projects = memberProjects(board, req.user);
     if (projects.length === 0) return res.status(403).json({ error: 'no access' });
-    req.access = memberAccess(board, projects);
+    req.access = memberAccess(board, projects, { userId: req.user });
   }
   req.owner = board || req.user;
   next();

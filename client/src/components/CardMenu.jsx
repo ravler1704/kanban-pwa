@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { deleteCard, duplicateCard, moveCardTo, moveCardToColumn, moveCardToEdge } from '../actions.js';
 import { authState } from '../auth.js';
-import { currentBoard, isOwnBoard, publicToken } from '../board.js';
+import { currentBoard, publicToken } from '../board.js';
 import { INBOX_ID } from '../db.js';
 import { cardColorItems } from '../appearance.js';
 import { ICONS } from '../menuIcons.js';
@@ -63,7 +63,7 @@ export default function CardMenu({ card, prevColumn, nextColumn, readOnly, onOpe
     editable && { label: 'В конец колонки', icon: ICONS.toBottom, shortcut: 'Shift+ArrowDown', run: () => moveCardToEdge(card.id, false) },
     null,
     editable && { label: 'Цвет', icon: ICONS.palette, submenu: cardColorItems(card) },
-    editable && isOwnBoard && {
+    editable && !publicToken && {
       label: 'Во «Входящие»', icon: ICONS.inbox, shortcut: 'KeyI', run: () => moveCardTo(card.id, INBOX_ID),
     },
     null,

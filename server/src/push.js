@@ -4,7 +4,7 @@ import {
   markReminderSent,
   pruneRemindersSent, savePushSubscription, setMeta,
 } from './db.js';
-import { folderAncestors, INBOX_ID } from './folders.js';
+import { folderAncestors, isInbox } from './folders.js';
 import { cardReminders, nextTime } from './reminders.js';
 import { onSettingsChange, settings } from './settings.js';
 
@@ -89,7 +89,7 @@ function reminderPayload(owner, { id, card }) {
     const record = recordId ? getRecord(owner, recordId) : null;
     return record && !record.deleted ? record.name : null;
   };
-  const path = card.folderId === INBOX_ID ? 'Входящие' : [...folderAncestors(owner, card.folderId).reverse(), card.folderId]
+  const path = isInbox(card.folderId) ? 'Входящие' : [...folderAncestors(owner, card.folderId).reverse(), card.folderId]
     .map(name).filter(Boolean).join(' / ');
   const title = withoutLinks(card.title);
   return {
