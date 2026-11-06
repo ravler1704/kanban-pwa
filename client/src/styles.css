@@ -115,7 +115,30 @@ body {
   color: var(--on-accent);
   font-weight: 600;
 }
-.board-select { min-width: 0; max-width: 100%; font-size: 1.1rem; font-weight: 600; text-overflow: ellipsis; }
+/* The open space's name, the user's name in small type under it; a click lists the spaces. */
+.space-switch {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  max-width: 100%;
+  margin: -0.2rem -0.4rem;
+  padding: 0.2rem 0.4rem;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.space-switch:hover, .space-switch[aria-expanded="true"] { background: color-mix(in srgb, var(--muted) 14%, transparent); }
+.space-switch-text { display: flex; flex-direction: column; min-width: 0; }
+.space-switch-name, .space-switch-user { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.space-switch-name { font-size: 1.2rem; font-weight: 700; line-height: 1.2; }
+.space-switch-user { font-size: 0.75rem; line-height: 1.2; color: var(--muted); }
+.space-switch-chevron { flex: none; color: var(--muted); }
+.space-settings .manage-field { display: block; margin-bottom: 0.4rem; }
 .status { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; font-size: 0.9rem; }
 .status-state {
   position: relative; display: inline-flex; align-items: center; gap: 0.6rem;

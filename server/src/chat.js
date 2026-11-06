@@ -1,5 +1,5 @@
 import {
-  addDm, changeDm, contactIds, dmConversations, dmThread, folderInvitees, folderUsers, getDm, getRecord,
+  addDm, boardOwner, changeDm, contactIds, dmConversations, dmThread, folderInvitees, folderUsers, getDm, getRecord,
   liveFolderIds, markDmRead, userProfile,
 } from './db.js';
 import { notifyUser } from './events.js';
@@ -18,12 +18,13 @@ const preview = (text) => {
 /** Who sees the folders of the board: [{ id, name, email, picture, owner, folders }]. */
 function boardPeople(owner, access) {
   const folders = access ? [...access.folders] : liveFolderIds(owner);
+  const ownerId = boardOwner(owner);
   const people = new Map();
   const add = (id) => {
-    if (!people.has(id)) people.set(id, { ...userProfile(id), owner: id === owner, folders: [] });
+    if (!people.has(id)) people.set(id, { ...userProfile(id), owner: id === ownerId, folders: [] });
     return people.get(id);
   };
-  add(owner);
+  if (ownerId != null) add(ownerId);
   for (const folder of folders) {
     for (const id of folderUsers(owner, folder)) add(id).folders.push(folder);
   }

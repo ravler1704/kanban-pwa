@@ -1,20 +1,21 @@
 import Dexie from 'dexie';
 
-// Which board this device shows: null for the user's own, otherwise the owner's user id
-// (a board someone shared). Each board has its own local database, so switching keeps
-// unsynced changes and works offline; a switch reloads the page to open the other one.
+// Which board (space) this device shows: null for the user's main space, otherwise its id: another
+// space of the user, or a space someone shared. Each board has its own local database, so switching
+// keeps unsynced changes and works offline; a switch reloads the page to open the other one.
 
 const BOARD_KEY = 'board';
 const OWN_DB = 'kanban';
 const SHARED_DB_PREFIX = 'kanban-board:';
 
-const ownUserId = () => {
+const cachedUser = () => {
   try {
-    return JSON.parse(localStorage.getItem('authUser'))?.id ?? null;
+    return JSON.parse(localStorage.getItem('authUser'));
   } catch {
     return null;
   }
 };
+const ownUserId = () => cachedUser()?.id ?? null;
 
 const normalize = (board) => (board && board !== ownUserId() ? board : null);
 
@@ -41,11 +42,16 @@ export const publicToken = location.pathname.match(/^\/p\/([\w-]{8,64})\/?$/)?.[
 export const currentBoard = publicToken ? null : initialBoard();
 export const dbName = publicToken ? `${PUBLIC_DB_PREFIX}${publicToken}`
   : currentBoard ? `${SHARED_DB_PREFIX}${currentBoard}` : OWN_DB;
-/** The own board: neither someone else's board nor a public link. */
-export const isOwnBoard = !currentBoard && !publicToken;
+/** Whether `board` (null: the main space) is one of the user's own spaces. */
+export const isOwnSpace = (board) => !board || (cachedUser()?.spaces ?? []).some((s) => s.id === board);
 
-/** `board` is one of `user.boards`: { id, name, email, picture } of its owner. */
-export const boardName = (board) => `Пространство: ${board.name || board.email || 'без имени'}`;
+/** One of the own spaces: neither someone else's space nor a public link. */
+export const isOwnBoard = !publicToken && isOwnSpace(currentBoard);
+
+/** `board` is one of `user.boards`: { id, space (its name), name, email, picture (of its owner) }. */
+export const boardName = (board) => board.space || 'Общее пространство';
+
+export const boardOwnerName = (board) => board.name || board.email || 'без имени';
 
 export const isCurrentBoard = (board) => normalize(board) === currentBoard;
 

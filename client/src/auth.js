@@ -1,5 +1,5 @@
 import Dexie from 'dexie';
-import { currentBoard, deleteSharedBoards, dropCurrentBoard, switchBoard } from './board.js';
+import { boardHeaders, currentBoard, deleteSharedBoards, dropCurrentBoard, switchBoard } from './board.js';
 import { clearLocalData, db } from './db.js';
 import { disablePush, refreshPush } from './push.js';
 import { resume, stopEvents } from './sync.js';
@@ -84,8 +84,8 @@ export async function checkAuth() {
       const wasSignedOut = state.status !== 'signedIn';
       const { user } = me.body;
       setState({ status: 'signedIn', user });
-      if (currentBoard && !(user.boards ?? []).some((b) => b.id === currentBoard)) {
-        // Signed in as the board's owner, or no longer invited to it.
+      if (currentBoard && ![...(user.boards ?? []), ...(user.spaces ?? [])].some((b) => b.id === currentBoard)) {
+        // Signed in as the board's owner, no longer invited to it, or the space was deleted.
         if (currentBoard === user.id) switchBoard(null);
         else await dropCurrentBoard();
         return;
@@ -284,13 +284,46 @@ export async function deleteAccount() {
 
 // ---- sharing the own board ----
 
-async function postJson(url, body) {
+/** `board`: the request is about the open space (members, links of its folders). */
+async function postJson(url, body, { board = false } = {}) {
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(board && boardHeaders()) },
     body: JSON.stringify(body),
   });
   return { status: res.status, body: await res.json().catch(() => ({})) };
+}
+
+// ---- the user's spaces ----
+
+function spacesError(res, action) {
+  if (res.status === 409 && res.body.error === 'too many') return new Error('Пространств уже слишком много.');
+  return new Error(`Не удалось ${action}. Проверьте интернет и попробуйте ещё раз.`);
+}
+
+const setSpaces = (spaces) => setState({ user: { ...state.user, spaces } });
+
+/** Creates a space and opens it. */
+export async function createSpace(name) {
+  const res = await postJson('/api/spaces', { name }).catch(() => ({ status: 0, body: {} }));
+  if (res.status !== 200) throw spacesError(res, 'создать пространство');
+  setSpaces(res.body.spaces);
+  switchBoard(res.body.id);
+}
+
+export async function renameSpace(id, name) {
+  const res = await postJson('/api/spaces/rename', { id, name }).catch(() => ({ status: 0, body: {} }));
+  if (res.status !== 200) throw spacesError(res, 'переименовать пространство');
+  setSpaces(res.body.spaces);
+}
+
+/** Deletes a space other than the main one with everything in it; the main space opens if it was this one. */
+export async function deleteSpace(id) {
+  const res = await postJson('/api/spaces/delete', { id }).catch(() => ({ status: 0, body: {} }));
+  if (res.status !== 200) throw spacesError(res, 'удалить пространство');
+  setSpaces(res.body.spaces);
+  await Dexie.delete(`kanban-board:${id}`).catch(() => {});
+  if (currentBoard === id) switchBoard(null);
 }
 
 // People invited to folders of the own board: [{ email, name, joined, folders: [folderId] }] (the folders
@@ -313,14 +346,14 @@ export const membersState = {
 };
 
 export async function loadMembers() {
-  const res = await fetch('/api/members', { cache: 'no-store' });
+  const res = await fetch('/api/members', { headers: boardHeaders(), cache: 'no-store' });
   if (!res.ok) throw new Error('Не удалось загрузить список участников.');
   setMembers((await res.json()).members);
 }
 
 /** To a folder and everything in it, also what is added later: `{ folder }` (the folder's id). */
 export async function inviteMember(email, { folder }) {
-  const res = await postJson('/api/members', { email, folder });
+  const res = await postJson('/api/members', { email, folder }, { board: true });
   if (res.status === 400 && res.body.error === 'own email') throw new Error('Это адрес вашего аккаунта.');
   if (res.status === 400) throw new Error('Проверьте адрес почты.');
   if (res.status === 404) throw new Error('Доска ещё не сохранена на сервере — подождите синхронизации.');
@@ -330,7 +363,7 @@ export async function inviteMember(email, { folder }) {
 
 /** From a folder (`{ folder }`); with none, from everything. */
 export async function removeMember(email, { folder } = {}) {
-  const res = await postJson('/api/members/remove', { email, folder });
+  const res = await postJson('/api/members/remove', { email, folder }, { board: true });
   if (res.status !== 200) throw new Error('Не удалось убрать участника. Попробуйте ещё раз.');
   setMembers(res.body.members);
 }

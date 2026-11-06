@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { publicToken } from './board.js';
+import { boardHeaders, publicToken } from './board.js';
 
 // What the public link this page was opened with gives: { project: { id, name }, mode, owner }; `project`
 // is the folder (the wire name is historical). mode: 'view' (read only) or 'edit' (cards and folders). Cached so the page opens offline.
@@ -73,7 +73,7 @@ export const usePublicLinks = () => useSyncExternalStore(linksState.subscribe, l
 export const publicUrl = (token) => `${location.origin}/p/${token}`;
 
 export async function loadPublicLinks() {
-  const res = await fetch('/api/public-links', { cache: 'no-store' });
+  const res = await fetch('/api/public-links', { headers: boardHeaders(), cache: 'no-store' });
   if (!res.ok) throw new Error('Не удалось загрузить публичные ссылки.');
   setLinks((await res.json()).links);
 }
@@ -81,7 +81,7 @@ export async function loadPublicLinks() {
 async function postLinks(url, body) {
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...boardHeaders() },
     body: JSON.stringify(body),
   });
   if (res.status === 404 && url === '/api/public-links') {

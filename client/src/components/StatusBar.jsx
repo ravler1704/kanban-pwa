@@ -1,6 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { authState } from '../auth.js';
-import { boardName, currentBoard, publicToken, switchBoard } from '../board.js';
+import { currentBoard, publicToken } from '../board.js';
 import { usePublicLink } from '../public.js';
 import { sync, syncStatus } from '../sync.js';
 import { pushState } from '../push.js';
@@ -10,6 +10,7 @@ import { SettingsIcon } from './FolderBar.jsx';
 import { InboxIcon } from './InboxPanel.jsx';
 import Modal from './Modal.jsx';
 import { ChatButton } from './People.jsx';
+import { SpaceSwitcher } from './Spaces.jsx';
 
 function SyncIcon({ spinning }) {
   return (
@@ -129,24 +130,14 @@ export default function StatusBar({ pending, conflicts, folders, onChat, search,
     label = 'Сервер недоступен';
   }
 
-  const boards = user?.boards ?? [];
-  // On someone else's board, the header shows whose it is.
-  const boardOwner = currentBoard ? boards.find((b) => b.id === currentBoard) : null;
+  // On someone else's space, the avatar is its owner's.
+  const boardOwner = currentBoard ? (user?.boards ?? []).find((b) => b.id === currentBoard) : null;
 
   return (
     <header className="statusbar">
       {publicToken ? <PublicTitle /> : <div className="statusbar-user">
         {user && <Avatar user={boardOwner ?? user} />}
-        {boards.length > 0 || currentBoard ? (
-          <select className="select board-select" aria-label="Пространство" value={currentBoard ?? ''}
-            title={user?.name || user?.email || undefined} onChange={(e) => switchBoard(e.target.value || null)}>
-            <option value="">Моё пространство</option>
-            {boards.map((b) => <option key={b.id} value={b.id}>{boardName(b)}</option>)}
-            {currentBoard && !boards.some((b) => b.id === currentBoard) && <option value={currentBoard}>Общее пространство</option>}
-          </select>
-        ) : (
-          <h1 className="statusbar-title" title={user?.email || undefined}>{user?.name || user?.email || 'Канбан'}</h1>
-        )}
+        {user ? <SpaceSwitcher /> : <h1 className="statusbar-title">Канбан</h1>}
         {onSettings && (
           <button type="button" className="btn btn-small btn-icon-only space-settings" title="Настройки пространства"
             aria-label="Настройки пространства" onClick={onSettings}>

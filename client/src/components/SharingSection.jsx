@@ -1,7 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { authState, inviteMember, leaveCurrentBoard, loadMembers, membersState, removeMember } from '../auth.js';
-import { boardName, currentBoard, isOwnBoard } from '../board.js';
+import { boardName, boardOwnerName, currentBoard, isOwnBoard } from '../board.js';
 import { db } from '../db.js';
 import { childrenOf, descendants, flattenFolders, folderPath, folderTree, liveFolders, topFolderIds } from '../folders.js';
 import { folderIdsOf, peopleStore } from '../people.js';
@@ -130,9 +130,9 @@ export function FolderMembers({ folder, folders }) {
 export default function SharingSection() {
   const { user } = useSyncExternalStore(authState.subscribe, authState.get);
   const folders = useLiveQuery(async () => liveFolders(await db.folders.toArray(), { standIn: false }), []);
-  return currentBoard
-    ? <SharedBoard board={user?.boards?.find((b) => b.id === currentBoard)} folders={folders} />
-    : <OwnBoard folders={folders ?? []} />;
+  return isOwnBoard
+    ? <OwnBoard folders={folders ?? []} />
+    : <SharedBoard board={user?.boards?.find((b) => b.id === currentBoard)} folders={folders} />;
 }
 
 function SharedBoard({ board, folders }) {
@@ -161,7 +161,9 @@ function SharedBoard({ board, folders }) {
     <>
       <h4 className="manage-heading">Это пространство</h4>
       <div className="manage-row account-row">
-        <span className="account-email">{board ? boardName(board) : 'Общее пространство'}</span>
+        <span className="account-email">
+          {board ? `${boardName(board)} · владелец ${boardOwnerName(board)}` : 'Общее пространство'}
+        </span>
         <button className="btn btn-small btn-danger" disabled={busy || !online} onClick={leave}>Покинуть</button>
       </div>
       <p className="muted account-hint">

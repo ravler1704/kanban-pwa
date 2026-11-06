@@ -193,6 +193,18 @@ db.exec(`
   );
 `);
 
+// Spaces: boards of a user besides the main one, whose id is the user's id (so boards from before
+// spaces keep their records). A row with the user's own id only names the main space.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS spaces (
+    id          TEXT PRIMARY KEY,
+    owner       TEXT    NOT NULL,
+    name        TEXT    NOT NULL,
+    created_at  INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS idx_spaces_owner ON spaces(owner);
+`);
+
 // Identifies this database instance. Clients holding data from another epoch
 // (e.g. after the database was wiped or restored) discard it and resync.
 db.prepare('INSERT OR IGNORE INTO meta (key, value) VALUES (?, ?)').run('epoch', crypto.randomUUID());
@@ -284,6 +296,11 @@ export function keptFileIds(deletedSince) {
 
 export function ownerFileIds(owner) {
   return selectOwnerFiles.all(owner).map((r) => r.id);
+}
+
+/** Files of all the user's spaces. */
+export function userFileIds(userId) {
+  return ownSpaces(userId).flatMap((s) => ownerFileIds(s.id));
 }
 
 // Once: «Завершено» of the template sets puts cards first unless the user chose otherwise.
@@ -447,6 +464,9 @@ export function mergeUsers(from, to) {
     db.prepare('UPDATE OR IGNORE dm_reads SET user_id = ? WHERE user_id = ?').run(to, from);
     db.prepare('UPDATE OR IGNORE dm_reads SET peer = ? WHERE peer = ?').run(to, from);
     db.prepare('DELETE FROM dm_reads WHERE user_id = ? OR peer = ? OR user_id = peer').run(from, from);
+    // The other spaces come along as they are; the main one has just been merged.
+    db.prepare('UPDATE spaces SET owner = ? WHERE owner = ? AND id != ?').run(to, from, from);
+    db.prepare('DELETE FROM spaces WHERE id = ?').run(from);
     return seq;
   });
 }
@@ -460,6 +480,8 @@ export function deleteUser(userId) {
   transaction(() => {
     const emails = db.prepare('SELECT DISTINCT lower(email) AS email FROM identities WHERE user_id = ? AND email IS NOT NULL')
       .all(userId).map((r) => r.email);
+    for (const space of ownSpaces(userId)) deleteBoardData(space.id);
+    db.prepare('DELETE FROM spaces WHERE owner = ?').run(userId);
     db.prepare('DELETE FROM records WHERE owner = ?').run(userId);
     db.prepare('DELETE FROM identities WHERE user_id = ?').run(userId);
     db.prepare('DELETE FROM sessions WHERE user_id = ?').run(userId);
@@ -568,11 +590,18 @@ export function deleteMember(board, email, { folder, project, space } = {}) {
   return removeMember.run(board, email).changes > 0;
 }
 
-/** Other people's boards the user was invited to, with the owner's name, e-mail and photo. */
+/**
+ * Other people's spaces the user was invited to: the owner's name, e-mail and photo, and `space` (its name).
+ */
 export function sharedBoards(userId) {
-  return selectUserBoards.all(userId, userId).map(({ board }) => {
-    const owner = selectOwnerProfile.get(board);
-    return { id: board, name: owner?.name ?? null, email: owner?.email ?? null, picture: owner?.picture ?? null };
+  return selectUserBoards.all(userId, userId).flatMap(({ board }) => {
+    const ownerId = boardOwner(board);
+    if (!ownerId || ownerId === userId) return [];
+    const owner = selectOwnerProfile.get(ownerId);
+    return [{
+      id: board, name: owner?.name ?? null, email: owner?.email ?? null, picture: owner?.picture ?? null,
+      space: spaceName(board),
+    }];
   });
 }
 
@@ -588,7 +617,8 @@ export function memberProjects(board, userId) {
 
 /** Users who see the folder: the board's owner and everyone invited (via this folder or an ancestor). */
 export function folderUsers(board, folder) {
-  return [...new Set([board, ...selectFolderUsers.all(board, folder).map((r) => r.user_id)])];
+  const owner = boardOwner(board);
+  return [...new Set([...(owner == null ? [] : [owner]), ...selectFolderUsers.all(board, folder).map((r) => r.user_id)])];
 }
 
 /** @deprecated use folderUsers */
@@ -615,6 +645,78 @@ export function isInvited(email) {
 
 export function leaveBoard(board, userId) {
   return removeUserMemberships.run(board, userId).changes > 0;
+}
+
+// ---- spaces ----
+
+export const MAIN_SPACE_NAME = 'Моё пространство';
+const SPACE_PREFIX = 's:';
+const selectSpace = db.prepare('SELECT * FROM spaces WHERE id = ?');
+const selectOwnSpaces = db.prepare('SELECT id, name FROM spaces WHERE owner = ? ORDER BY created_at, id');
+const insertSpace = db.prepare('INSERT INTO spaces (id, owner, name, created_at) VALUES (?, ?, ?, ?)');
+const upsertMainSpace = db.prepare(`
+  INSERT INTO spaces (id, owner, name, created_at) VALUES (?, ?, ?, ?)
+  ON CONFLICT(id) DO UPDATE SET name = excluded.name
+`);
+const updateSpaceName = db.prepare('UPDATE spaces SET name = ? WHERE id = ? AND owner = ?');
+
+/** The user who owns the board: the board id itself for main spaces, null for a space that is gone. */
+export function boardOwner(board) {
+  if (typeof board !== 'string' || !board.startsWith(SPACE_PREFIX)) return board;
+  return selectSpace.get(board)?.owner ?? null;
+}
+
+/** The user's spaces, the main one first: [{ id, name, main? }]. */
+export function ownSpaces(userId) {
+  const rows = selectOwnSpaces.all(userId);
+  const main = rows.find((r) => r.id === userId);
+  return [
+    { id: userId, name: main?.name ?? MAIN_SPACE_NAME, main: true },
+    ...rows.filter((r) => r.id !== userId).map((r) => ({ id: r.id, name: r.name })),
+  ];
+}
+
+export function spaceName(board) {
+  return selectSpace.get(board)?.name ?? (boardOwner(board) === board ? MAIN_SPACE_NAME : null);
+}
+
+export function createSpace(owner, name) {
+  const id = `${SPACE_PREFIX}${crypto.randomUUID()}`;
+  insertSpace.run(id, owner, name, Date.now());
+  return id;
+}
+
+/** False if the space is not the user's. */
+export function renameSpace(owner, id, name) {
+  if (id === owner) {
+    upsertMainSpace.run(id, owner, name, 0);
+    return true;
+  }
+  return updateSpaceName.run(name, id, owner).changes > 0;
+}
+
+/** Everything of a board: records, invitations, links, sent reminders and its counters. */
+function deleteBoardData(board) {
+  db.prepare('DELETE FROM records WHERE owner = ?').run(board);
+  db.prepare('DELETE FROM folder_members WHERE board = ?').run(board);
+  db.prepare('DELETE FROM public_links WHERE board = ?').run(board);
+  db.prepare('DELETE FROM reminders_sent WHERE owner = ?').run(board);
+  db.prepare('DELETE FROM meta WHERE key LIKE ?').run(`%:${board}`);
+}
+
+/** Deletes one of the user's spaces other than the main one; false if there is no such space. */
+export function deleteSpace(owner, id) {
+  if (id === owner || boardOwner(id) !== owner) return false;
+  transaction(() => {
+    deleteBoardData(id);
+    db.prepare('DELETE FROM spaces WHERE id = ?').run(id);
+  });
+  return true;
+}
+
+/** E-mails invited to the board's folders. */
+export function boardMemberEmails(board) {
+  return db.prepare('SELECT DISTINCT email FROM folder_members WHERE board = ?').all(board).map((r) => r.email);
 }
 
 /** { id, name, email, picture } from the user's first linked account. */
@@ -677,9 +779,10 @@ const selectContactsOnOtherBoards = db.prepare(`
 `);
 
 export function contactIds(userId) {
-  const ids = new Set(selectContactsOnOwnBoard.all(userId).map((r) => r.id));
+  const ids = new Set(ownSpaces(userId).flatMap((s) => selectContactsOnOwnBoard.all(s.id).map((r) => r.id)));
   for (const { owner, member } of selectContactsOnOtherBoards.all(userId)) {
-    ids.add(owner);
+    const ownerId = boardOwner(owner);
+    if (ownerId) ids.add(ownerId);
     if (member) ids.add(member);
   }
   ids.delete(userId);
@@ -783,7 +886,7 @@ const removePublicLink = db.prepare('DELETE FROM public_links WHERE board = ? AN
 export function getPublicLink(token) {
   const link = selectPublicLink.get(token);
   if (!link) return null;
-  const owner = selectOwnerProfile.get(link.board);
+  const owner = selectOwnerProfile.get(boardOwner(link.board));
   return { ...link, owner: { name: owner?.name ?? null, picture: owner?.picture ?? null } };
 }
 

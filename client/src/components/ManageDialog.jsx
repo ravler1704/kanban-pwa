@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { deleteFolder, folderStats } from '../actions.js';
+import { authState } from '../auth.js';
+import { isOwnBoard } from '../board.js';
 import FolderSelect from './FolderSelect.jsx';
 import Modal from './Modal.jsx';
 import SharingSection from './SharingSection.jsx';
+import { SpaceSettings } from './Spaces.jsx';
 import StructureEditor from './StructureEditor.jsx';
 
 /** Deleting a folder that has something in it: delete it all, or keep the cards and the folders inside. */
@@ -45,10 +48,6 @@ function DeleteFolderDialog({ folder, stats, folders, onClose }) {
   );
 }
 
-const TABS = [
-  { id: 'folders', label: 'Доски' },
-  { id: 'sharing', label: 'Доступ' },
-];
 const TAB_KEY = 'manageDialogTab';
 
 /**
@@ -57,8 +56,14 @@ const TAB_KEY = 'manageDialogTab';
  */
 export default function ManageDialog({ model, columnsSynced, folders, foldersSynced, writable, onClose }) {
   const [deleting, setDeleting] = useState(null);
+  const { user } = useSyncExternalStore(authState.subscribe, authState.get);
+  const tabs = [
+    ...(isOwnBoard && user ? [{ id: 'space', label: 'Пространство' }] : []),
+    { id: 'folders', label: 'Доски' },
+    { id: 'sharing', label: 'Доступ' },
+  ];
   const [picked, setTab] = useState(() => localStorage.getItem(TAB_KEY));
-  const tab = TABS.some((t) => t.id === picked) ? picked : TABS[0].id;
+  const tab = tabs.some((t) => t.id === picked) ? picked : 'folders';
 
   function selectTab(id) {
     setTab(id);
@@ -75,7 +80,7 @@ export default function ManageDialog({ model, columnsSynced, folders, foldersSyn
     <Modal title="Настройки пространства" onClose={onClose}>
       <div className="tabs-bar">
         <div className="tabs" role="tablist">
-          {TABS.map((t) => (
+          {tabs.map((t) => (
             <button key={t.id} type="button" role="tab" aria-selected={tab === t.id}
               className={`tab ${tab === t.id ? 'tab-active' : ''}`} onClick={() => selectTab(t.id)}>
               {t.label}
@@ -84,7 +89,9 @@ export default function ManageDialog({ model, columnsSynced, folders, foldersSyn
         </div>
       </div>
       <div role="tabpanel">
-        {tab === 'sharing' ? <div className="manage"><SharingSection /></div> : (
+        {tab === 'space' && <SpaceSettings />}
+        {tab === 'sharing' && <div className="manage"><SharingSection /></div>}
+        {tab === 'folders' && (
           <StructureEditor model={model} folders={folders} synced={foldersSynced} columnsSynced={columnsSynced}
             writable={writable} onRemoveFolder={removeFolder} />
         )}

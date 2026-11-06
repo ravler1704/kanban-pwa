@@ -88,7 +88,7 @@ const Icon = ({ d }) => (
 export function MenuItems({ items, onPick, onSub, openSub }) {
   const icons = items.some((item) => item?.icon || item?.swatch);
   return items.map((item, i) => (item ? (
-    <button key={item.label} type="button" role="menuitem" disabled={item.disabled}
+    <button key={item.key ?? item.label} type="button" role="menuitem" disabled={item.disabled}
       aria-keyshortcuts={item.shortcut} title={item.title}
       aria-haspopup={item.submenu ? 'menu' : undefined} aria-expanded={item.submenu ? openSub === item : undefined}
       className={`context-menu-item ${item.danger ? 'context-menu-danger' : ''} ${item.active ? 'context-menu-active' : ''}
@@ -176,7 +176,7 @@ export function useMenuPosition(x, y) {
 /**
  * A menu at `x`, `y` (viewport) of `items`: { label, run, icon? (an SVG path), swatch? (a CSS background shown instead
  * of the icon; 'none' — an empty crossed-out one), shortcut?, hint? (muted, on the right),
- * title?, danger?, disabled?, active?, submenu? (items, instead of run) }, null for a separator. ↑ and ↓ move between
+ * title?, danger?, disabled?, active?, submenu? (items, instead of run), key? (when labels repeat) }, null for a separator. ↑ and ↓ move between
  * the items, → and ← open and leave a submenu, a shortcut runs its item.
  * Closes on a pick, Escape, a click outside, scrolling or resizing.
  */

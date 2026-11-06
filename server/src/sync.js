@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import {
-  cardCreators, cardIdsInOrder, commentIdsOfCard, getMaxSeq, getMeta, getRecord, getRecordsSince, saveRecord, setMeta,
-  transaction, userProfile,
+  boardOwner, cardCreators, cardIdsInOrder, commentIdsOfCard, getMaxSeq, getMeta, getRecord, getRecordsSince, saveRecord,
+  setMeta, transaction, userProfile,
 } from './db.js';
 import { folderAncestors, folderColumnSet, INBOX_ID } from './folders.js';
 import { cardReminders, isReminderList, nextTime } from './reminders.js';
@@ -295,7 +295,7 @@ function applyComment(owner, deviceId, { id, fields }, access, actor) {
   const next = { ...current };
   if (fields.deleted === true) {
     if (current.deleted) return result('applied', current);
-    if (!own && actor.id !== owner) return reject();
+    if (!own && actor.id !== boardOwner(owner)) return reject();
     next.deleted = true;
     next.text = '';
   } else if ('text' in fields && fields.text !== current.text) {
@@ -443,7 +443,7 @@ function numberCards(owner) {
       for (const id of cardIdsInOrder(owner)) {
         const card = withDefaults(getRecord(owner, id));
         if (card.authorId) continue;
-        const authorId = creators.get(id) || owner || null;
+        const authorId = creators.get(id) || boardOwner(owner) || null;
         if (!authorId) continue;
         saveRecord(owner, 'card', id, pickData(SCHEMAS.card, { ...card, authorId }), {
           version: card.version + 1, deviceId: 'server',
@@ -473,7 +473,7 @@ function applyChange(owner, deviceId, { type, id, baseVersion, fields, base }, a
     }
     if (type === 'card') {
       data.number = nextCardNumber(owner);
-      if (!data.authorId) data.authorId = actor?.id ?? (owner || null);
+      if (!data.authorId) data.authorId = actor?.id ?? (boardOwner(owner) || null);
     }
     return result('applied', save(data, 1));
   }
@@ -591,9 +591,9 @@ const SIMPLE_COLUMNS = [
 const seeded = new Set();
 
 /**
- * Creates the root folder «Личное» and the column set templates once per board.
+ * Creates the root folder (`rootName`, «Личное» in the main space) and the column set templates once per board.
  */
-export function seedColumns(owner) {
+export function seedColumns(owner, { rootName = 'Личное' } = {}) {
   if (seeded.has(owner)) return;
   const flag = owner ? `columnsSeeded:${owner}` : 'columnsSeeded';
   const simpleFlag = `simpleSetSeeded:${owner}`;
@@ -606,7 +606,7 @@ export function seedColumns(owner) {
   transaction(() => {
     if (!getRecord(owner, DEFAULT_FOLDER_ID)) {
       saveRecord(owner, 'folder', DEFAULT_FOLDER_ID, {
-        parentId: null, columnSetId: DEFAULT_SET_ID, name: 'Личное', position: 1, deleted: false, hidden: false,
+        parentId: null, columnSetId: DEFAULT_SET_ID, name: rootName, position: 1, deleted: false, hidden: false,
       }, server);
     }
     if (!getRecord(owner, DEFAULT_SET_ID)) {

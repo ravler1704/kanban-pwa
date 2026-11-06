@@ -1,10 +1,11 @@
 import crypto from 'node:crypto';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import {
-  addMember, addSpaceMember, boardSummary, countEmailCodeAttempt, createSession, deleteIdentity, deleteMember, deletePublicLink,
-  deleteSession, deleteUser, findUserByEmail, getEmailCode, getIdentityUser, getPublicLink, getRecord, getSession, isInvited,
-  leaveBoard, listIdentities, listMembers, listPublicLinks, memberProjects, mergeUsers, ownerFileIds, pruneEmailCodes,
-  saveEmailCode, saveIdentity, savePublicLink, sharedBoards, useEmailCode, usersWithEmail,
+  addMember, boardMemberEmails, boardOwner, boardSummary, countEmailCodeAttempt, createSession, createSpace, deleteIdentity,
+  deleteMember, deletePublicLink, deleteSession, deleteSpace, deleteUser, findUserByEmail, getEmailCode, getIdentityUser,
+  getPublicLink, getRecord, getSession, isInvited, leaveBoard, listIdentities, listMembers, listPublicLinks, memberProjects,
+  mergeUsers, ownerFileIds, ownSpaces, pruneEmailCodes, renameSpace, saveEmailCode, saveIdentity, savePublicLink,
+  sharedBoards, useEmailCode, userFileIds, usersWithEmail,
 } from './db.js';
 import { broadcast, disconnect, disconnectUser, notifyUser } from './events.js';
 import { removeFiles } from './files.js';
@@ -12,7 +13,7 @@ import {
   clearMailSettings, mailEnabled, mailSettings, saveMailSettings, sendMail,
 } from './mail.js';
 import { cleanSettings, envAdminEmails, saveSettings, settings, SettingsError } from './settings.js';
-import { memberAccess } from './sync.js';
+import { memberAccess, seedColumns } from './sync.js';
 
 // Sign-in with Google, Yandex and/or a code sent by e-mail. A user may link several accounts and
 // gets one board; the owner may invite others to its projects by e-mail.
@@ -88,6 +89,7 @@ function publicUser(session) {
     name: session.name,
     picture: session.picture,
     identities: listIdentities(session.user_id).map(publicIdentity),
+    spaces: ownSpaces(session.user_id),
     boards: sharedBoards(session.user_id),
     admin: isAdmin(session.user_id),
   };
@@ -110,7 +112,7 @@ export function requireAuth(req, res, next) {
   if (!session) return res.status(401).json({ error: 'unauthorized' });
   req.user = session.user_id;
   const board = req.get('x-board') || req.query.board;
-  if (board && board !== req.user) {
+  if (board && boardOwner(board) !== req.user) {
     const projects = memberProjects(board, req.user);
     if (projects.length === 0) return res.status(403).json({ error: 'no access' });
     req.access = memberAccess(board, projects);
@@ -415,67 +417,111 @@ export function registerAuthRoutes(app) {
     res.json({ user: publicUser(session) });
   });
 
-  // People invited to projects of the signed-in user's own board.
-  app.get('/api/members', requireAuth, (req, res) => {
+  // Sharing is the owner's: the space chosen with X-Board must be one of the user's own.
+  const requireOwnSpace = (req, res, next) => {
+    if (req.access) return res.status(403).json({ error: 'not owner' });
+    next();
+  };
+
+  // People invited to folders of the open space.
+  app.get('/api/members', requireAuth, requireOwnSpace, (req, res) => {
     if (!authEnabled) return res.status(404).json({ error: 'auth disabled' });
-    res.json({ members: listMembers(req.user) });
+    res.json({ members: listMembers(req.owner) });
   });
 
-  app.post('/api/members', requireAuth, (req, res) => {
+  app.post('/api/members', requireAuth, requireOwnSpace, (req, res) => {
     if (!authEnabled) return res.status(404).json({ error: 'auth disabled' });
     const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
     // To a folder (and its descendants). `project` / `space` accepted as aliases for `folder`.
     const id = req.body?.folder ?? req.body?.project ?? req.body?.space;
     if (email.length > 254 || !EMAIL.test(email)) return res.status(400).json({ error: 'invalid email' });
     if (listIdentities(req.user).some((i) => i.email === email)) return res.status(400).json({ error: 'own email' });
-    const record = typeof id === 'string' ? getRecord(req.user, id) : null;
+    const record = typeof id === 'string' ? getRecord(req.owner, id) : null;
     if (record?.type !== 'folder' || record.deleted) return res.status(404).json({ error: 'no folder' });
-    addMember(req.user, id, email);
+    addMember(req.owner, id, email);
     // Open streams of members belong to the old access; reconnecting picks up the new one.
-    disconnect(req.user, { except: req.user });
+    disconnect(req.owner, { except: req.user });
     notifyBoardsChanged(email);
-    res.json({ members: listMembers(req.user) });
+    res.json({ members: listMembers(req.owner) });
   });
 
   /** `project` and `space` omitted: from every project and space. */
-  app.post('/api/members/remove', requireAuth, (req, res) => {
+  app.post('/api/members/remove', requireAuth, requireOwnSpace, (req, res) => {
     if (!authEnabled) return res.status(404).json({ error: 'auth disabled' });
     const { email, folder, project, space } = req.body ?? {};
     if (typeof email !== 'string'
       || ([folder, project, space].some((v) => v != null && typeof v !== 'string'))
-      || !deleteMember(req.user, email, {
+      || !deleteMember(req.owner, email, {
         folder: folder ?? project ?? space ?? undefined,
       })) {
       return res.status(404).json({ error: 'not found' });
     }
-    disconnect(req.user, { except: req.user });
+    disconnect(req.owner, { except: req.user });
     notifyBoardsChanged(email);
-    res.json({ members: listMembers(req.user) });
+    res.json({ members: listMembers(req.owner) });
   });
 
-  // Public links to projects of the signed-in user's own board.
-  app.get('/api/public-links', requireAuth, (req, res) => {
-    res.json({ links: listPublicLinks(req.user) });
+  // Public links to folders of the open space.
+  app.get('/api/public-links', requireAuth, requireOwnSpace, (req, res) => {
+    res.json({ links: listPublicLinks(req.owner) });
   });
 
-  app.post('/api/public-links', requireAuth, (req, res) => {
+  app.post('/api/public-links', requireAuth, requireOwnSpace, (req, res) => {
     const { project, mode } = req.body ?? {};
     if (mode !== 'view' && mode !== 'edit') return res.status(400).json({ error: 'invalid mode' });
-    const record = typeof project === 'string' ? getRecord(req.user, project) : null;
+    const record = typeof project === 'string' ? getRecord(req.owner, project) : null;
     if (record?.type !== 'folder' || record.deleted) return res.status(404).json({ error: 'no folder' });
-    savePublicLink(req.user, project, mode);
+    savePublicLink(req.owner, project, mode);
     // Open streams of visitors belong to the old mode; reconnecting picks up the new one.
-    disconnect(req.user, { except: req.user });
-    res.json({ links: listPublicLinks(req.user) });
+    disconnect(req.owner, { except: req.user });
+    res.json({ links: listPublicLinks(req.owner) });
   });
 
-  app.post('/api/public-links/remove', requireAuth, (req, res) => {
+  app.post('/api/public-links/remove', requireAuth, requireOwnSpace, (req, res) => {
     const { project } = req.body ?? {};
-    if (typeof project !== 'string' || !deletePublicLink(req.user, project)) {
+    if (typeof project !== 'string' || !deletePublicLink(req.owner, project)) {
       return res.status(404).json({ error: 'not found' });
     }
-    disconnect(req.user, { except: req.user });
-    res.json({ links: listPublicLinks(req.user) });
+    disconnect(req.owner, { except: req.user });
+    res.json({ links: listPublicLinks(req.owner) });
+  });
+
+  // The user's spaces: the main one always stays, others are created, renamed and deleted.
+  const cleanSpaceName = (v) => (typeof v === 'string' && v.trim().length > 0 && v.trim().length <= 100 ? v.trim() : null);
+
+  app.post('/api/spaces', requireAuth, (req, res) => {
+    if (!authEnabled) return res.status(404).json({ error: 'auth disabled' });
+    const name = cleanSpaceName(req.body?.name);
+    if (!name) return res.status(400).json({ error: 'invalid name' });
+    if (ownSpaces(req.user).length >= 50) return res.status(409).json({ error: 'too many' });
+    const id = createSpace(req.user, name);
+    seedColumns(id, { rootName: 'Общее' });
+    res.json({ id, spaces: ownSpaces(req.user) });
+  });
+
+  app.post('/api/spaces/rename', requireAuth, (req, res) => {
+    if (!authEnabled) return res.status(404).json({ error: 'auth disabled' });
+    const name = cleanSpaceName(req.body?.name);
+    const { id } = req.body ?? {};
+    if (!name || typeof id !== 'string') return res.status(400).json({ error: 'invalid name' });
+    if (!renameSpace(req.user, id, name)) return res.status(404).json({ error: 'not found' });
+    for (const email of boardMemberEmails(id)) notifyBoardsChanged(email);
+    res.json({ spaces: ownSpaces(req.user) });
+  });
+
+  app.post('/api/spaces/delete', requireAuth, (req, res) => {
+    if (!authEnabled) return res.status(404).json({ error: 'auth disabled' });
+    const { id } = req.body ?? {};
+    if (typeof id !== 'string' || id === req.user || boardOwner(id) !== req.user) {
+      return res.status(404).json({ error: 'not found' });
+    }
+    const emails = boardMemberEmails(id);
+    const files = ownerFileIds(id);
+    deleteSpace(req.user, id);
+    removeFiles(files);
+    disconnect(id);
+    for (const email of emails) notifyBoardsChanged(email);
+    res.json({ spaces: ownSpaces(req.user) });
   });
 
   // What a public link opens; asked by visitors, who are not signed in.
@@ -570,11 +616,12 @@ export function registerAuthRoutes(app) {
   app.post('/api/auth/delete-account', (req, res) => {
     const session = authEnabled && currentSession(req);
     if (!session) return res.status(401).json({ error: 'unauthorized' });
-    const files = ownerFileIds(session.user_id);
+    const files = userFileIds(session.user_id);
+    const spaces = ownSpaces(session.user_id);
     deleteUser(session.user_id);
     removeFiles(files);
-    // Members' and visitors' streams of the board, then the user's own on any board.
-    disconnect(session.user_id);
+    // Members' and visitors' streams of the spaces, then the user's own on any board.
+    for (const space of spaces) disconnect(space.id);
     disconnectUser(session.user_id);
     res.clearCookie(COOKIE, cookieOptions(req));
     res.json({ ok: true });
