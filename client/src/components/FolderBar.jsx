@@ -83,7 +83,7 @@ function ViewSwitch({ view, onView, sets }) {
  * `folderFilter` is { selected, indeterminate, onToggle, onSetFolder, onSetAll, onClear, summary } over the ids of
  * `folders` (all live folders). `conflictsByFolder` is { [folderId]: number of cards
  * with a conflict }. Without `onAddCard` (read only, or the board, where each column has one) its button is not shown.
- * `title` goes beside the filters button; `children` start the row below. `setSwitch` ({ sets, value, onChange }, see
+ * `title` goes beside the filters button; `children` go on the right of the same row. `setSwitch` ({ sets, value, onChange }, see
  * ViewSwitch) picks the column set the board shows.
  */
 export default function FolderBar({
@@ -146,6 +146,7 @@ export default function FolderBar({
   return (
     <nav className="projectbar">
       <div className="projectbar-row projectbar-head">
+        <ViewSwitch view={view} onView={onView} sets={setSwitch} />
         <button type="button" className="btn btn-small btn-icon-only filters-toggle" aria-haspopup="dialog"
           onClick={() => setFiltersOpen(true)}
           title={filtered ? 'Фильтры (включены)' : 'Фильтры'} aria-label="Фильтры">
@@ -154,17 +155,15 @@ export default function FolderBar({
         </button>
 
         {title}
-      </div>
-      <div className="projectbar-row projectbar-actions">
-        {children}
-
-        <ViewSwitch view={view} onView={onView} sets={setSwitch} />
-        {onAddCard && (
-          <button className="btn btn-primary btn-small btn-icon-only btn-add-card" title="Новая карточка" aria-label="Новая карточка"
-            onClick={onAddCard}>
-            <PlusIcon />
-          </button>
-        )}
+        <div className="projectbar-end">
+          {children}
+          {onAddCard && (
+            <button className="btn btn-primary btn-small btn-icon-only btn-add-card" title="Новая карточка" aria-label="Новая карточка"
+              onClick={onAddCard}>
+              <PlusIcon />
+            </button>
+          )}
+        </div>
       </div>
 
       {filtersDialog}

@@ -165,7 +165,7 @@ body {
 .apply-option input { margin: 0.2rem 0 0; accent-color: var(--accent); }
 .apply-option > span { display: flex; flex-direction: column; gap: 0.25rem; }
 .apply-option .muted { font-size: 0.85rem; }
-.projectbar-actions, .projectbar-head { min-height: 2.25rem; }
+.projectbar-head { min-height: 2.25rem; }
 .projectbar-head { flex-wrap: nowrap; }
 .picker { position: relative; display: inline-flex; min-width: 0; }
 .picker .select-empty { color: var(--muted); font-weight: normal; }
@@ -241,7 +241,8 @@ body {
 .tag:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
 .tag-active { background: var(--accent); color: var(--bg); }
 .tag-active:hover { background: var(--accent); }
-.projectbar-row > .btn-add-card { margin-left: auto; }
+.projectbar-end { display: flex; flex: none; align-self: stretch; align-items: center; gap: 0.5rem; margin-left: auto; }
+.projectbar-end > .btn-icon-only { align-self: stretch; padding: 0 0.8rem; }
 .modal.filters-dialog {
   /* The same size on every screen of it, so switching screens moves nothing. */
   display: flex;
