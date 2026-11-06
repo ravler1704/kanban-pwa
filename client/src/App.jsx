@@ -440,6 +440,7 @@ export default function App() {
         inbox={inboxOn ? { count: inboxCards?.length ?? 0, open: inboxOpen, onToggle: toggleInbox } : null} />
 
       <div className="app-body">
+        {inboxOn && inboxOpen && <InboxPanel folders={usable} onOpen={setOpenCardId} onClose={toggleInbox} />}
         <div className="app-main">
           {folders.length === 0 ? (
             !isOwnBoard ? (
@@ -548,7 +549,6 @@ export default function App() {
             </>
           )}
         </div>
-        {inboxOn && inboxOpen && <InboxPanel folders={usable} onOpen={setOpenCardId} onClose={toggleInbox} />}
       </div>
 
       {openCard && (openCard.conflict
