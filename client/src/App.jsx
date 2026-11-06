@@ -8,7 +8,7 @@ import { db, DEFAULT_FOLDER_ID } from './db.js';
 import { columnModel } from './columnSets.js';
 import { renameFolder } from './actions.js';
 import StatusBar from './components/StatusBar.jsx';
-import FolderBar, { SettingsIcon } from './components/FolderBar.jsx';
+import FolderBar from './components/FolderBar.jsx';
 import Column from './components/Column.jsx';
 import CardEditor from './components/CardEditor.jsx';
 import ConflictDialog from './components/ConflictDialog.jsx';
@@ -425,7 +425,8 @@ export default function App() {
   return (
     <div className="app">
       <StatusBar pending={data.pending} conflicts={data.conflicted.length} folders={chatFolders} onChat={setChat}
-        search={search} onSearch={folders.length ? setSearch : null} />
+        search={search} onSearch={folders.length ? setSearch : null}
+        onSettings={readOnly || !folders.length ? null : () => setManaging(true)} />
 
       {folders.length === 0 ? (
         !isOwnBoard ? (
@@ -462,9 +463,8 @@ export default function App() {
             view={view}
             onView={changeView}
             onAddCard={readOnly || view === 'board' ? null : () => setAddingCard(true)}
-            title={!searching && (checkedIds.length > 0 || !readOnly) && !(publicToken && folders.length === 1) && (
+            title={!searching && checkedIds.length > 0 && !(publicToken && folders.length === 1) && (
             <div className="board-head">
-              {checkedIds.length > 0 && (
                 <h2 className="board-title" title={titleRenamable ? undefined : folderFilter.summary}>
                   {titleRenamable ? (
                     <>
@@ -480,13 +480,6 @@ export default function App() {
                     </>
                   ) : folderFilter.summary}
                 </h2>
-              )}
-              {!readOnly && (
-                <button type="button" className="btn btn-small btn-icon-only board-settings" title="Настройки пространства"
-                  aria-label="Настройки пространства" onClick={() => setManaging(true)}>
-                  <SettingsIcon />
-                </button>
-              )}
             </div>
             )}
             note={!searching && setTabs && (

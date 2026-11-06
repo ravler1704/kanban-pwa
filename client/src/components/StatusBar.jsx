@@ -6,6 +6,7 @@ import { sync, syncStatus } from '../sync.js';
 import { pushState } from '../push.js';
 import AccountDialog, { NotificationSettings } from './AccountDialog.jsx';
 import Avatar from './Avatar.jsx';
+import { SettingsIcon } from './FolderBar.jsx';
 import Modal from './Modal.jsx';
 import { ChatButton } from './People.jsx';
 
@@ -71,8 +72,11 @@ function PublicTitle() {
   );
 }
 
-/** `search` is the text of the search through all cards; `onSearch(text)` changes it. */
-export default function StatusBar({ pending, conflicts, folders, onChat, search, onSearch }) {
+/**
+ * `search` is the text of the search through all cards; `onSearch(text)` changes it.
+ * `onSettings()`, when set, opens the space's settings.
+ */
+export default function StatusBar({ pending, conflicts, folders, onChat, search, onSearch, onSettings }) {
   const s = useSyncExternalStore(syncStatus.subscribe, syncStatus.get);
   const { user } = useSyncExternalStore(authState.subscribe, authState.get);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -121,6 +125,12 @@ export default function StatusBar({ pending, conflicts, folders, onChat, search,
           </select>
         ) : (
           <h1 className="statusbar-title" title={user?.email || undefined}>{user?.name || user?.email || 'Канбан'}</h1>
+        )}
+        {onSettings && (
+          <button type="button" className="btn btn-small btn-icon-only space-settings" title="Настройки пространства"
+            aria-label="Настройки пространства" onClick={onSettings}>
+            <SettingsIcon />
+          </button>
         )}
       </div>}
       {onSearch && (

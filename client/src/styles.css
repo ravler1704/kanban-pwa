@@ -157,12 +157,10 @@ body {
 .set-tab:hover { color: var(--text); border-color: var(--muted); }
 .set-tab-active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--text); }
 .set-tab-count { color: var(--muted); font-variant-numeric: tabular-nums; }
-.board-head .btn { flex: none; color: var(--muted); }
-.board-head .btn:hover { color: var(--text); }
-.board-head .board-settings, .board-head .board-settings:hover:not(:disabled) {
-  padding: 0.3rem; border-color: transparent; background: none;
+.statusbar .space-settings, .statusbar .space-settings:hover:not(:disabled) {
+  flex: none; padding: 0.3rem; border-color: transparent; background: none; color: var(--muted);
 }
-.board-head .board-settings:hover:not(:disabled) { background: var(--card); }
+.statusbar .space-settings:hover:not(:disabled) { background: var(--card); color: var(--text); }
 .columns-draft { width: min(480px, 100%); }
 .columns-draft-hint { margin: 0 0 0.75rem; font-size: 0.85rem; }
 .draft-columns { display: flex; flex-direction: column; gap: 0.4rem; margin: 0; padding: 0; list-style: none; }
