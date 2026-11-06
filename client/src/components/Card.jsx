@@ -5,14 +5,6 @@ import { splitTags, tagKey } from '../tags.js';
 import CardMenu from './CardMenu.jsx';
 import Markdown from './Markdown.jsx';
 
-/** Arrows of the move buttons on cards: `d` is the path, pointing left or right. */
-const MoveIcon = ({ d }) => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25"
-    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg>
-);
-export const ARROW_LEFT = 'M19 12H5m6-6-6 6 6 6';
-export const ARROW_RIGHT = 'M5 12h14m-6-6 6 6-6 6';
-
 function formatReminder(ts) {
   const d = new Date(ts);
   const now = new Date();
@@ -118,7 +110,7 @@ export let draggedCardId = null;
 export let draggedCardHeight = 0;
 
 export default function Card({
-  card, label, activeTags, onTag, readOnly, onOpen, onOpenLabel, prevColumn, nextColumn, onMoveLeft, onMoveRight,
+  card, label, activeTags, onTag, readOnly, onOpen, onOpenLabel, prevColumn, nextColumn,
 }) {
   const ref = useRef(null);
   const classes = ['card'];
@@ -181,16 +173,6 @@ export default function Card({
         </div>
         {!card.conflict && (
           <div className="card-moves" onClick={(e) => e.stopPropagation()}>
-            {onMoveLeft && (
-              <button className="btn btn-icon" title="Влево" aria-label="Влево" onClick={onMoveLeft}>
-                <MoveIcon d={ARROW_LEFT} />
-              </button>
-            )}
-            {onMoveRight && (
-              <button className="btn btn-icon" title="Вправо" aria-label="Вправо" onClick={onMoveRight}>
-                <MoveIcon d={ARROW_RIGHT} />
-              </button>
-            )}
             <CardMenu card={card} prevColumn={prevColumn} nextColumn={nextColumn} readOnly={readOnly}
               onOpen={onOpen} hoverRef={ref} />
           </div>

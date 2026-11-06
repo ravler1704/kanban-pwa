@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { createCard, moveCard, moveCardsToColumn, moveCardToColumn, renameColumn } from '../actions.js';
+import { createCard, moveCard, moveCardsToColumn, renameColumn } from '../actions.js';
 import ColumnMenu from './ColumnMenu.jsx';
 import EditableName from './EditableName.jsx';
 import { PlusIcon } from './FolderBar.jsx';
@@ -124,8 +124,6 @@ export default function Column({
             onOpenLabel={() => onOpenGroup(card)}
             prevColumn={prevColumn}
             nextColumn={nextColumn}
-            onMoveLeft={!readOnly && prevColumn && (() => moveCardToColumn(card.id, prevColumn.id))}
-            onMoveRight={!readOnly && nextColumn && (() => moveCardToColumn(card.id, nextColumn.id))}
           />,
         ])}
         {showIndicator && index === cards.length && slot}
