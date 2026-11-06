@@ -53,18 +53,27 @@ export default function Column({
     return () => window.removeEventListener('dragend', reset);
   }, []);
 
-  // A double click keeps only this column expanded; a single one does nothing, but from the keyboard it toggles.
+  // A double click keeps only this column expanded. A single one expands a collapsed column (waiting to see whether
+  // it is a double one) and does nothing to an expanded one; from the keyboard it toggles.
   // Clicks that start by taking the focus out of a text field only do that.
+  const clickTimer = useRef(null);
   const blurClick = useRef(false);
+  useEffect(() => () => clearTimeout(clickTimer.current), []);
   const noteBlur = (e) => {
     if (e.detail <= 1) {
       blurClick.current = Boolean(document.activeElement?.closest('input, textarea, select, [contenteditable="true"]'));
     }
   };
   function handleClicks(e) {
+    clearTimeout(clickTimer.current);
     if (e.detail === 0) {
       onToggleCollapsed();
-    } else if (e.detail === 2 && !blurClick.current) {
+      return;
+    }
+    if (blurClick.current) return;
+    if (e.detail === 1) {
+      if (collapsed) clickTimer.current = setTimeout(onToggleCollapsed, 250);
+    } else if (e.detail === 2) {
       window.getSelection()?.removeAllRanges();
       onCollapseOthers();
     }
@@ -178,7 +187,7 @@ export default function Column({
       >
         {menu}
         <button type="button" className="column-expand" onClick={handleClicks} {...columnDrag}
-          title={`Развернуть колонку «${column.name}» — двойной клик`} aria-label={`Развернуть колонку «${column.name}»`} aria-expanded="false">
+          title={`Развернуть колонку «${column.name}»`} aria-label={`Развернуть колонку «${column.name}»`} aria-expanded="false">
           <span className="column-expand-title">
             <span className="column-expand-name">{column.name}</span> <span className="count">{count}</span>
           </span>
