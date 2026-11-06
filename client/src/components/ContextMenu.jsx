@@ -95,6 +95,18 @@ export function MenuItems({ items, onPick }) {
   ) : <hr key={i} className="context-menu-sep" />));
 }
 
+/** The click that closes a menu only closes it, as in system menus: it doesn't reach the page under it. */
+function swallowNextClick() {
+  const swallow = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+  };
+  window.addEventListener('click', swallow, true);
+  window.addEventListener('mouseup', () => setTimeout(() => window.removeEventListener('click', swallow, true)), {
+    capture: true, once: true,
+  });
+}
+
 /** Keeps the menu inside the window once its size is known. */
 export function useMenuPosition(x, y) {
   const ref = useRef(null);
@@ -141,13 +153,17 @@ export default function ContextMenu({ x, y, items, onClose }) {
       onClose();
       item.run();
     };
+    const onOutside = () => {
+      onClose();
+      swallowNextClick();
+    };
     window.addEventListener('keydown', onKey, true);
-    window.addEventListener('mousedown', onClose);
+    window.addEventListener('mousedown', onOutside);
     window.addEventListener('resize', onClose);
     window.addEventListener('scroll', onClose, true);
     return () => {
       window.removeEventListener('keydown', onKey, true);
-      window.removeEventListener('mousedown', onClose);
+      window.removeEventListener('mousedown', onOutside);
       window.removeEventListener('resize', onClose);
       window.removeEventListener('scroll', onClose, true);
     };
