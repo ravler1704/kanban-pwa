@@ -184,6 +184,20 @@ export async function moveColumn(id, direction) {
   requestSync();
 }
 
+/** Puts the column at `index` among its set's columns (counted without it). */
+export async function moveColumnTo(id, index) {
+  await db.transaction('rw', db.columns, async () => {
+    const column = await db.columns.get(id);
+    if (!column) return;
+    const others = (await liveColumns(setOfColumn(column))).filter((c) => c.id !== id);
+    const order = [...others.slice(0, index), column, ...others.slice(index)];
+    for (const [i, c] of order.entries()) {
+      if (c.position !== i + 1) await update('column', c.id, { position: i + 1 });
+    }
+  });
+  requestSync();
+}
+
 const resolveRow = (rows, ids, key) => ids.get(key) ?? ids.get(rows[0].key);
 
 /**

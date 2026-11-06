@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { createCard, moveCard, moveCardsToColumn, renameColumn } from '../actions.js';
+import { createCard, moveCard, moveCardsToColumn, moveColumnTo, renameColumn } from '../actions.js';
 import ColumnMenu from './ColumnMenu.jsx';
 import EditableName from './EditableName.jsx';
 import { PlusIcon } from './FolderBar.jsx';
 import Card, { draggedCardHeight, draggedCardId } from './Card.jsx';
+
+/** The id of the column being dragged by its head: `dataTransfer` can't be read until the drop. */
+let draggedColumnId = null;
 
 function positionBefore(cards, targetId) {
   const index = cards.findIndex((c) => c.id === targetId);
@@ -33,14 +36,46 @@ export default function Column({
   const list = useRef(null);
   const section = useRef(null);
   const dragOver = dropBefore !== undefined;
+  // While another column of the set is dragged over this one: which side of it it would land on.
+  const [columnDrop, setColumnDrop] = useState(null);
+  const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
-    const reset = () => setDropBefore(undefined);
+    const reset = () => {
+      setDropBefore(undefined);
+      setColumnDrop(null);
+      setDragging(false);
+    };
     window.addEventListener('dragend', reset);
     return () => window.removeEventListener('dragend', reset);
   }, []);
 
+  // The head (or the collapsed strip) drags the column, when the set's columns can be changed here.
+  const columnDrag = !readOnly && edit ? {
+    draggable: true,
+    onDragStart: (e) => {
+      if (e.currentTarget.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') {
+        e.preventDefault();
+        return;
+      }
+      draggedColumnId = column.id;
+      e.dataTransfer.setData('text/column-id', column.id);
+      e.dataTransfer.effectAllowed = 'move';
+      setDragging(true);
+    },
+    onDragEnd: () => {
+      draggedColumnId = null;
+    },
+  } : {};
+
   function handleDragOver(e) {
+    if (draggedColumnId) {
+      if (draggedColumnId === column.id || !edit?.columns.some((c) => c.id === draggedColumnId)) return;
+      e.preventDefault();
+      const r = e.currentTarget.getBoundingClientRect();
+      setColumnDrop(e.clientX < r.left + r.width / 2 ? 'before' : 'after');
+      return;
+    }
     e.preventDefault();
     if (!list.current) {
       setDropBefore(null);
@@ -55,6 +90,13 @@ export default function Column({
 
   function handleDrop(e) {
     e.preventDefault();
+    if (draggedColumnId) {
+      const ids = edit.columns.map((c) => c.id).filter((id) => id !== draggedColumnId);
+      moveColumnTo(draggedColumnId, ids.indexOf(column.id) + (columnDrop === 'after' ? 1 : 0));
+      draggedColumnId = null;
+      setColumnDrop(null);
+      return;
+    }
     const beforeId = dropBefore ?? null;
     setDropBefore(undefined);
     const id = e.dataTransfer.getData('text/card-id');
@@ -89,17 +131,22 @@ export default function Column({
   }
 
   const count = cards.filter((c) => !c.deleted).length;
+  const columnClasses = [
+    dragOver && 'column-dragover', columnDrop && `column-drop-${columnDrop}`, dragging && 'column-dragging',
+  ].filter(Boolean).join(' ');
   if (collapsed) {
     return (
       <section
-        className={`column column-collapsed ${dragOver ? 'column-dragover' : ''}`}
+        className={`column column-collapsed ${columnClasses}`}
         onDragOver={readOnly ? undefined : handleDragOver}
         onDragLeave={(e) => {
-          if (!e.currentTarget.contains(e.relatedTarget)) setDropBefore(undefined);
+          if (e.currentTarget.contains(e.relatedTarget)) return;
+          setDropBefore(undefined);
+          setColumnDrop(null);
         }}
         onDrop={readOnly ? undefined : handleDrop}
       >
-        <button type="button" className="column-expand" onClick={onToggleCollapsed}
+        <button type="button" className="column-expand" onClick={onToggleCollapsed} {...columnDrag}
           title={`Развернуть колонку «${column.name}»`} aria-label={`Развернуть колонку «${column.name}»`} aria-expanded="false">
           <span className="count">{count}</span>
           <span className="column-expand-name">{column.name}</span>
@@ -111,14 +158,17 @@ export default function Column({
   return (
     <section
       ref={section}
-      className={`column ${dragOver ? 'column-dragover' : ''}`}
+      className={`column ${columnClasses}`}
       onDragOver={readOnly ? undefined : handleDragOver}
       onDragLeave={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget)) setDropBefore(undefined);
+        if (e.currentTarget.contains(e.relatedTarget)) return;
+          setDropBefore(undefined);
+          setColumnDrop(null);
       }}
       onDrop={readOnly ? undefined : handleDrop}
     >
-      <div className="column-head">
+      <div className="column-head" {...columnDrag}
+        title={columnDrag.draggable ? 'Перетащите, чтобы переставить колонку' : undefined}>
         <h2>
           {edit
             ? <EditableName value={column.name} label="Название колонки" maxLength={100}

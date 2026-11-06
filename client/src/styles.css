@@ -627,6 +627,14 @@ body {
   transition: border-color 0.15s;
 }
 .column-dragover { border-color: var(--accent); }
+.column { position: relative; }
+.column-head[draggable="true"] { cursor: grab; }
+.column-dragging { opacity: 0.5; }
+.column-drop-before::before, .column-drop-after::before {
+  content: ''; position: absolute; top: 0; bottom: 0; width: 4px; border-radius: 2px; background: var(--accent);
+}
+.column-drop-before::before { left: calc(-0.5rem - 3px); }
+.column-drop-after::before { right: calc(-0.5rem - 3px); }
 .column h2 { margin: 0.25rem 0.25rem 0.5rem; font-size: 1rem; }
 .column-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; }
 .column-moves { display: flex; gap: 0.25rem; margin: 0.15rem 0.25rem 0 0; }
