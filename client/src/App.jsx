@@ -539,6 +539,10 @@ export default function App() {
                   edit={columnEdit}
                   collapsed={collapsed.includes(col.id)}
                   onToggleCollapsed={() => toggleCollapsed(col.id)}
+                  onCollapseOthers={() => changeCollapsed((list) => [
+                    ...list.filter((id) => id !== col.id && !columns.some((c) => c.id === id)),
+                    ...columns.filter((c) => c.id !== col.id).map((c) => c.id),
+                  ])}
                   onNewCard={() => setAddingCard(col)}
                 />
               ))}

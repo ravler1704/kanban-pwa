@@ -25,10 +25,11 @@ function positionAtEnd(cards) {
  * `edit` (see ColumnMenu), when set, lets the columns be changed from the column's menu.
  * `onNewCard()` opens the full new card form for the column.
  * `collapsed`: shown as a narrow strip with its name, `onToggleCollapsed()` switches it.
+ * `onCollapseOthers()` expands this column and collapses the rest of the board.
  */
 export default function Column({
   target, targetName, column, prevColumn, nextColumn, cards, cardLabel, activeTags, onTag, readOnly, onOpen, onOpenGroup,
-  edit, onNewCard, collapsed, onToggleCollapsed,
+  edit, onNewCard, collapsed, onToggleCollapsed, onCollapseOthers,
 }) {
   const [title, setTitle] = useState('');
   // While a card is dragged over the column: the id of the card it would land before, or null for the end.
@@ -49,6 +50,21 @@ export default function Column({
     window.addEventListener('dragend', reset);
     return () => window.removeEventListener('dragend', reset);
   }, []);
+
+  // A click toggles the column, a double click keeps only it expanded: the single click waits to see which it is.
+  const clickTimer = useRef(null);
+  useEffect(() => () => clearTimeout(clickTimer.current), []);
+  function handleClicks(e) {
+    clearTimeout(clickTimer.current);
+    if (e.detail === 0) {
+      onToggleCollapsed();
+    } else if (e.detail === 1) {
+      clickTimer.current = setTimeout(onToggleCollapsed, 250);
+    } else {
+      window.getSelection()?.removeAllRanges();
+      onCollapseOthers();
+    }
+  }
 
   // The bar along the top (or the collapsed strip) drags the column, when the set's columns can be changed here.
   const columnDrag = !readOnly && edit ? {
@@ -146,7 +162,7 @@ export default function Column({
         }}
         onDrop={readOnly ? undefined : handleDrop}
       >
-        <button type="button" className="column-expand" onClick={onToggleCollapsed} {...columnDrag}
+        <button type="button" className="column-expand" onClick={handleClicks} {...columnDrag}
           title={`Развернуть колонку «${column.name}»`} aria-label={`Развернуть колонку «${column.name}»`} aria-expanded="false">
           <span className="count">{count}</span>
           <span className="column-expand-name">{column.name}</span>
@@ -159,10 +175,12 @@ export default function Column({
     <section
       ref={section}
       className={`column ${columnClasses}`}
-      onDoubleClick={(e) => {
-        if (e.target.closest('.card, a, button, input, textarea, form, [role="button"], .column-bar')) return;
-        window.getSelection()?.removeAllRanges();
-        onToggleCollapsed();
+      onClick={(e) => {
+        // Clicks from menus portaled out of the column bubble here too.
+        if (!e.currentTarget.contains(e.target)) return;
+        if (e.target.closest('.card, a, button, input, textarea, form, [role="button"]')) return;
+        if (e.detail === 1 && !window.getSelection()?.isCollapsed) return;
+        handleClicks(e);
       }}
       onDragOver={readOnly ? undefined : handleDragOver}
       onDragLeave={(e) => {
