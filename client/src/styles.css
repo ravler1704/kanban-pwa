@@ -628,7 +628,16 @@ body {
 }
 .column-dragover { border-color: var(--accent); }
 .column { position: relative; }
-.column-head[draggable="true"] { cursor: grab; }
+.column-grip {
+  position: absolute; top: 0.4rem; left: 0.15rem; display: flex; align-items: center; justify-content: center;
+  width: 0.7rem; height: 1.4rem; border-radius: 4px; color: var(--muted); cursor: grab;
+}
+.column-grip:hover { color: var(--text); background: color-mix(in srgb, var(--text) 8%, transparent); }
+@media (hover: hover) {
+  .column-grip { opacity: 0; }
+  .column:hover .column-grip { opacity: 1; }
+}
+@media (hover: none) { .column-grip { display: none; } }
 .column-dragging { opacity: 0.5; }
 .column-drop-before::before, .column-drop-after::before {
   content: ''; position: absolute; top: 0; bottom: 0; width: 4px; border-radius: 2px; background: var(--accent);

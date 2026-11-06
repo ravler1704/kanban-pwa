@@ -50,16 +50,16 @@ export default function Column({
     return () => window.removeEventListener('dragend', reset);
   }, []);
 
-  // The head (or the collapsed strip) drags the column, when the set's columns can be changed here.
+  // The grip in the corner (or the collapsed strip) drags the column, when the set's columns can be changed here.
   const columnDrag = !readOnly && edit ? {
     draggable: true,
     onDragStart: (e) => {
-      if (e.currentTarget.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') {
-        e.preventDefault();
-        return;
-      }
       draggedColumnId = column.id;
       e.dataTransfer.setData('text/column-id', column.id);
+      if (section.current) {
+        const r = section.current.getBoundingClientRect();
+        e.dataTransfer.setDragImage(section.current, e.clientX - r.left, e.clientY - r.top);
+      }
       e.dataTransfer.effectAllowed = 'move';
       setDragging(true);
     },
@@ -167,8 +167,15 @@ export default function Column({
       }}
       onDrop={readOnly ? undefined : handleDrop}
     >
-      <div className="column-head" {...columnDrag}
-        title={columnDrag.draggable ? 'Перетащите, чтобы переставить колонку' : undefined}>
+      {columnDrag.draggable && (
+        <span className="column-grip" {...columnDrag} title="Перетащите, чтобы переставить колонку" aria-hidden="true">
+          <svg width="6" height="10" viewBox="0 0 6 10" fill="currentColor">
+            <circle cx="1" cy="1" r="1" /><circle cx="5" cy="1" r="1" /><circle cx="1" cy="5" r="1" />
+            <circle cx="5" cy="5" r="1" /><circle cx="1" cy="9" r="1" /><circle cx="5" cy="9" r="1" />
+          </svg>
+        </span>
+      )}
+      <div className="column-head">
         <h2>
           {edit
             ? <EditableName value={column.name} label="Название колонки" maxLength={100}
