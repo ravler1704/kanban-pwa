@@ -25,7 +25,6 @@ function CardComments({ card }) {
 function ColorField({ value, onChange }) {
   return (
     <div className="field">
-      <span className="field-label">Цвет</span>
       <div className="color-swatches" role="radiogroup" aria-label="Цвет карточки">
         <button type="button" role="radio" aria-checked={!value} title="Без цвета" aria-label="Без цвета"
           className={`color-swatch color-swatch-none ${!value ? 'color-swatch-on' : ''}`} onClick={() => onChange(null)} />
