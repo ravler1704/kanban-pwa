@@ -122,6 +122,8 @@ export default function Column({
             readOnly={readOnly}
             onOpen={() => onOpen(card.id)}
             onOpenLabel={() => onOpenGroup(card)}
+            prevColumn={prevColumn}
+            nextColumn={nextColumn}
             onMoveLeft={!readOnly && prevColumn && (() => moveCardToColumn(card.id, prevColumn.id))}
             onMoveRight={!readOnly && nextColumn && (() => moveCardToColumn(card.id, nextColumn.id))}
           />,

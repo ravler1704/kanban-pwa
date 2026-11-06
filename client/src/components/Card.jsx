@@ -1,7 +1,8 @@
-import { useSyncExternalStore } from 'react';
+import { useRef, useSyncExternalStore } from 'react';
 import { uploadStore } from '../files.js';
 import { cardReminders, nextReminder } from '../reminders.js';
 import { splitTags, tagKey } from '../tags.js';
+import CardMenu from './CardMenu.jsx';
 import Markdown from './Markdown.jsx';
 
 /** Arrows of the move buttons on cards: `d` is the path, pointing left or right. */
@@ -117,14 +118,16 @@ export let draggedCardId = null;
 export let draggedCardHeight = 0;
 
 export default function Card({
-  card, label, activeTags, onTag, readOnly, onOpen, onOpenLabel, onMoveLeft, onMoveRight,
+  card, label, activeTags, onTag, readOnly, onOpen, onOpenLabel, prevColumn, nextColumn, onMoveLeft, onMoveRight,
 }) {
+  const ref = useRef(null);
   const classes = ['card'];
   if (card.conflict) classes.push('card-conflict');
   if (card.deleted) classes.push('card-deleted');
 
   return (
     <article
+      ref={ref}
       className={classes.join(' ')}
       data-card-id={card.id}
       draggable={!card.conflict && !readOnly}
@@ -188,6 +191,8 @@ export default function Card({
                 <MoveIcon d={ARROW_RIGHT} />
               </button>
             )}
+            <CardMenu card={card} prevColumn={prevColumn} nextColumn={nextColumn} readOnly={readOnly}
+              onOpen={onOpen} hoverRef={ref} />
           </div>
         )}
       </div>

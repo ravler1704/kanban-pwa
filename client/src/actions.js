@@ -464,6 +464,26 @@ export async function moveCardToColumn(id, columnId) {
   return moveCard(id, columnId, await arrivalPosition(columnId, id));
 }
 
+/** Moves the card to the top (`top`) or the bottom of its column. */
+export async function moveCardToEdge(id, top) {
+  const card = await db.cards.get(id);
+  if (!card) return;
+  const others = (await db.cards.filter((c) => c.columnId === card.columnId && c.id !== id).toArray()).filter(alive);
+  if (!others.length) return;
+  const position = top
+    ? Math.min(...others.map((c) => c.position)) - 1
+    : Math.max(...others.map((c) => c.position)) + 1;
+  await moveCard(id, card.columnId, position);
+}
+
+/** A new card with the title, description, reminders and assignee of the card `id`, in its column. */
+export async function duplicateCard(id) {
+  const card = await db.cards.get(id);
+  if (!card) return;
+  await createCard({ folderId: card.folderId }, card.columnId, card.title, card.description ?? '',
+    card.reminders ?? [], { assigneeId: card.assigneeId ?? null });
+}
+
 /** Moves the cards (`ids`, in their order) to another column, keeping that order. */
 export async function moveCardsToColumn(ids, columnId) {
   await db.transaction('rw', db.cards, db.columns, async () => {
