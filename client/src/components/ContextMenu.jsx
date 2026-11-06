@@ -85,11 +85,12 @@ export function MenuItems({ items, onPick }) {
   const icons = items.some((item) => item?.icon);
   return items.map((item, i) => (item ? (
     <button key={item.label} type="button" role="menuitem" disabled={item.disabled}
-      aria-keyshortcuts={item.shortcut}
+      aria-keyshortcuts={item.shortcut} title={item.title}
       className={`context-menu-item ${item.danger ? 'context-menu-danger' : ''} ${item.active ? 'context-menu-active' : ''}`}
       onClick={() => onPick(item)}>
       {icons && <span className="context-menu-icon">{item.icon && <Icon d={item.icon} />}</span>}
       <span className="context-menu-label">{item.label}</span>
+      {item.hint != null && <span className="context-menu-hint">{item.hint}</span>}
       {item.shortcut && <kbd className="context-menu-key">{shortcutLabel(item.shortcut)}</kbd>}
     </button>
   ) : <hr key={i} className="context-menu-sep" />));
@@ -141,8 +142,8 @@ export function useMenuPosition(x, y) {
 }
 
 /**
- * A menu at `x`, `y` (viewport) of `items`: { label, run, icon? (an SVG path), shortcut?, danger?, disabled?,
- * active? }, null for a separator. ↑ and ↓ move between the items, a shortcut runs its item.
+ * A menu at `x`, `y` (viewport) of `items`: { label, run, icon? (an SVG path), shortcut?, hint? (muted, on the right),
+ * title?, danger?, disabled?, active? }, null for a separator. ↑ and ↓ move between the items, a shortcut runs its item.
  * Closes on a pick, Escape, a click outside, scrolling or resizing.
  */
 export default function ContextMenu({ x, y, items, onClose }) {

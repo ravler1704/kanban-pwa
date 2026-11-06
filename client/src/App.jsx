@@ -482,18 +482,7 @@ export default function App() {
                 </h2>
             </div>
             )}
-            note={!searching && setTabs && (
-            <div className="set-tabs" role="tablist" aria-label="Наборы колонок">
-              <span className="set-tabs-label">Наборы колонок:</span>
-              {setTabs.map((s) => (
-                <button key={s.id} type="button" role="tab" aria-selected={s.id === boardSetId}
-                  className={`set-tab ${s.id === boardSetId ? 'set-tab-active' : ''}`}
-                  title={`Доски: ${s.boards.join(', ')}`} onClick={() => changeAllFoldersSet(s.id)}>
-                  {s.name}<span className="set-tab-count">{s.count}</span>
-                </button>
-              ))}
-            </div>
-            )}
+            setSwitch={!searching && setTabs ? { sets: setTabs, value: boardSetId, onChange: changeAllFoldersSet } : null}
           >
             {!publicToken && <PeopleBar folders={shownFolders} allFolders={folders} onChat={setChat} />}
           </FolderBar>

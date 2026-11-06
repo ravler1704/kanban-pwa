@@ -139,24 +139,9 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.set-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
-.set-tabs-label { color: var(--muted); font-size: 0.85rem; }
-.set-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.3rem 0.7rem;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: none;
-  color: var(--muted);
-  font: inherit;
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-.set-tab:hover { color: var(--text); border-color: var(--muted); }
-.set-tab-active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--text); }
-.set-tab-count { color: var(--muted); font-variant-numeric: tabular-nums; }
+.btn.set-toggle { display: inline-flex; align-items: center; gap: 0.4rem; min-width: 0; max-width: 14rem; }
+.set-toggle svg { flex: none; }
+.set-toggle-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .statusbar .space-settings, .statusbar .space-settings:hover:not(:disabled) {
   flex: none; padding: 0.3rem; border-color: transparent; background: none; color: var(--muted);
 }
@@ -839,6 +824,7 @@ body {
 .context-menu-label { flex: 1; white-space: nowrap; }
 .context-menu-key { margin-left: 1.25rem; color: var(--muted); font: inherit; font-size: 0.78rem; letter-spacing: 0.02em; }
 @media (pointer: coarse) { .context-menu-key { display: none; } }
+.context-menu-hint { margin-left: 1.25rem; color: var(--muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
 .context-menu-sep { margin: 0.25rem 0; border: none; border-top: 1px solid var(--border); }
 a.link { color: var(--accent); overflow-wrap: anywhere; }
 .field-adds { display: flex; flex-wrap: wrap; gap: 0.5rem; }
