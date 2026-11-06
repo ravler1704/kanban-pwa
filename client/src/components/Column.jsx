@@ -53,24 +53,18 @@ export default function Column({
     return () => window.removeEventListener('dragend', reset);
   }, []);
 
-  // A click toggles the column, a double click keeps only it expanded: the single click waits to see which it is.
+  // A double click keeps only this column expanded; a single one does nothing, but from the keyboard it toggles.
   // Clicks that start by taking the focus out of a text field only do that.
-  const clickTimer = useRef(null);
   const blurClick = useRef(false);
-  useEffect(() => () => clearTimeout(clickTimer.current), []);
   const noteBlur = (e) => {
     if (e.detail <= 1) {
       blurClick.current = Boolean(document.activeElement?.closest('input, textarea, select, [contenteditable="true"]'));
     }
   };
   function handleClicks(e) {
-    clearTimeout(clickTimer.current);
-    if (blurClick.current && e.detail > 0) return;
     if (e.detail === 0) {
       onToggleCollapsed();
-    } else if (e.detail === 1) {
-      clickTimer.current = setTimeout(onToggleCollapsed, 250);
-    } else {
+    } else if (e.detail === 2 && !blurClick.current) {
       window.getSelection()?.removeAllRanges();
       onCollapseOthers();
     }
@@ -184,7 +178,7 @@ export default function Column({
       >
         {menu}
         <button type="button" className="column-expand" onClick={handleClicks} {...columnDrag}
-          title={`Развернуть колонку «${column.name}»`} aria-label={`Развернуть колонку «${column.name}»`} aria-expanded="false">
+          title={`Развернуть колонку «${column.name}» — двойной клик`} aria-label={`Развернуть колонку «${column.name}»`} aria-expanded="false">
           <span className="column-expand-title">
             <span className="column-expand-name">{column.name}</span> <span className="count">{count}</span>
           </span>
@@ -202,7 +196,6 @@ export default function Column({
         // Clicks from menus portaled out of the column bubble here too.
         if (!e.currentTarget.contains(e.target)) return;
         if (e.target.closest('.card, a, button, input, textarea, form, [role="button"]')) return;
-        if (e.detail === 1 && !window.getSelection()?.isCollapsed) return;
         handleClicks(e);
       }}
       onDragOver={readOnly ? undefined : handleDragOver}
