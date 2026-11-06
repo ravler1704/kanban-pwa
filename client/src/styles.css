@@ -771,7 +771,7 @@ body {
   flex-direction: column;
   gap: 0.6rem;
   min-height: 0;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.15s;
 }
 /* A tinted column, as Trello's list colours: the cards stay as they are on it. */
 .column-colored {
@@ -779,7 +779,7 @@ body {
   border-color: color-mix(in srgb, var(--column-color) 50%, var(--panel));
 }
 .column-colored .count { color: color-mix(in srgb, var(--text) 70%, var(--column-color)); }
-.column-dragover { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.column-dragover { border-color: var(--accent); }
 .column { position: relative; }
 .column-head h2 { flex: 1; min-width: 0; }
 .column-dragging { opacity: 0.5; }
@@ -821,10 +821,8 @@ body {
   padding: 0.6rem 0.75rem;
   cursor: pointer;
   user-select: none;
-  transition: border-color 0.12s, box-shadow 0.12s;
 }
-/* 2px rings (border + inset shadow) don't shift the layout and aren't clipped by scrolling lists. */
-.card:hover { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.card:hover { border-color: var(--muted); }
 /* The colour band across the top of the card, as Trello's cover. */
 .card-cover { height: 0.5rem; margin: -0.6rem -0.75rem 0.5rem; border-radius: 9px 9px 0 0; }
 .color-swatches { display: flex; flex-wrap: wrap; gap: 0.4rem; }
@@ -851,7 +849,6 @@ body {
   pointer-events: none;
 }
 .card-conflict { border-color: var(--warn); }
-.card-conflict:hover { border-color: var(--warn); box-shadow: inset 0 0 0 1px var(--warn); }
 .card-deleted { opacity: 0.6; border-style: dashed; }
 .card-title { font-weight: 500; word-break: break-word; }
 .card-desc {
@@ -903,10 +900,7 @@ body {
   border: 1px dashed var(--border);
   border-radius: 8px;
 }
-.attachments-drop {
-  border-color: var(--accent); border-style: solid; box-shadow: inset 0 0 0 1px var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
-}
+.attachments-drop { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .attachments-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 .attachments-title { color: var(--muted); font-size: 0.85rem; font-weight: 600; }
 .attachments-head .btn { cursor: pointer; }
@@ -1161,14 +1155,6 @@ a.link { color: var(--accent); overflow-wrap: anywhere; }
 }
 .add-card input:focus, .editor input:focus, .editor textarea:focus,
 .conflict-field input:focus, .conflict-field textarea:focus { outline: none; border-color: var(--accent); }
-/* A field being typed in gets a 2px ring, as the card under the pointer. */
-.add-card input:focus, .editor input:not([type="checkbox"]):focus, .editor textarea:focus, .editor .select:focus,
-.conflict-field input:focus, .conflict-field textarea:focus, .picker .select:focus, .check-search:focus,
-.manage-search:focus, .manage-input:focus, .email-input:focus, .rem-time-input:focus, .lt-input:focus, .lt-select:focus,
-.chat-composer textarea:focus, .chat-search:focus, .fp-search:focus-within {
-  border-color: var(--accent);
-  box-shadow: inset 0 0 0 1px var(--accent);
-}
 .editor input, .editor .select {
   height: 2.5rem;
   line-height: 1.25;
@@ -1282,7 +1268,7 @@ a.btn { display: inline-block; text-decoration: none; }
   gap: 0.25rem;
   font: inherit;
 }
-.version-selected { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.version-selected { border-color: var(--accent); }
 .version-label { font-size: 0.75rem; color: var(--muted); }
 .version-text { white-space: pre-wrap; word-break: break-word; }
 
@@ -1440,9 +1426,7 @@ a.btn { display: inline-block; text-decoration: none; }
   text-align: left;
   cursor: pointer;
 }
-.cal-card:hover, .cal-card:focus-visible {
-  border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); outline: none;
-}
+.cal-card:hover { border-color: var(--muted); border-left-color: var(--accent); }
 .cal-card-past { opacity: 0.6; border-left-color: var(--muted); }
 .cal-card-time { color: var(--accent); font-variant-numeric: tabular-nums; }
 .cal-card-past .cal-card-time { color: var(--muted); }
