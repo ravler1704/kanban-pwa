@@ -116,7 +116,8 @@ body {
 .projectbar-row:empty { display: none; }
 .board-head { display: flex; align-items: center; gap: 0.5rem; min-width: 0; padding: 0.9rem 1.25rem 0; }
 .board-title {
-  margin: 0;
+  margin: -0.25em -4px;
+  padding: 0.25em 4px;
   min-width: 0;
   overflow: hidden;
   font-size: 1.25rem;
