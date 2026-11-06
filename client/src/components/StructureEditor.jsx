@@ -1,9 +1,9 @@
-import { useCallback, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { createFolder, moveFolder, renameFolder, reorderFolder } from '../actions.js';
 import { isOwnBoard } from '../board.js';
 import { childrenOf, descendants, flattenFolders, folderColumnSetId, folderPath, folderTree } from '../folders.js';
 import { ICONS } from '../menuIcons.js';
-import ContextMenu, { useHoverShortcuts } from './ContextMenu.jsx';
+import ContextMenu, { useHoverShortcuts, useMenuButton } from './ContextMenu.jsx';
 import FolderSelect from './FolderSelect.jsx';
 import EditableName from './EditableName.jsx';
 import { AddButton, Chevron, plural } from './ManageFields.jsx';
@@ -98,8 +98,7 @@ function FolderRow({ folder, index, count, ctx }) {
     columnsSynced && setName && `«${setName}»${own || isRoot ? '' : ' (как у родителя)'}`,
   ].filter(Boolean).join(' · ');
   const togglePanel = (name) => setPanel(panel === name ? null : name);
-  const [menu, setMenu] = useState(null);
-  const closeMenu = useCallback(() => setMenu(null), []);
+  const [menu, setMenu, closeMenu, menuButton, menuHover] = useMenuButton(260);
   const menuItems = [
     { label: 'Открыть', icon: ICONS.open, shortcut: 'KeyO', run: () => onOpen(folder.id) },
     canShare && {
@@ -136,17 +135,11 @@ function FolderRow({ folder, index, count, ctx }) {
           <Chevron />
         </button>
         <button type="button" className={`btn btn-small btn-icon-only tree-more ${menu ? 'active' : ''}`}
-          title="Действия (их клавиши работают и при наведении на доску)" aria-label="Действия с доской" aria-haspopup="menu" aria-expanded={Boolean(menu)}
-          onMouseDown={(e) => menu && e.stopPropagation()}
-          onClick={(e) => {
-            if (menu) return setMenu(null);
-            const r = e.currentTarget.getBoundingClientRect();
-            return setMenu({ x: r.right - 260, y: r.bottom + 4 });
-          }}>
+          title="Действия (их клавиши работают и при наведении на доску)" aria-label="Действия с доской" {...menuButton}>
           <MoreIcon />
         </button>
       </div>
-      {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={closeMenu} />}
+      {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={closeMenu} {...menuHover} />}
       {panel === 'access' && canShare && (
         <div className="tree-body"><FolderMembers folder={folder} folders={folders} /></div>
       )}

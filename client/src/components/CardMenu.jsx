@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { deleteCard, duplicateCard, moveCardToColumn, moveCardToEdge } from '../actions.js';
 import { authState } from '../auth.js';
 import { currentBoard, publicToken } from '../board.js';
 import { ICONS } from '../menuIcons.js';
-import ContextMenu, { useHoverShortcuts } from './ContextMenu.jsx';
+import ContextMenu, { useHoverShortcuts, useMenuButton } from './ContextMenu.jsx';
 
 /** A link that opens the card (on its board) for anyone with access to it. */
 function cardLink(id) {
@@ -36,9 +36,8 @@ function MoreIcon() {
  * its shortcuts work with the pointer over the card.
  */
 export default function CardMenu({ card, prevColumn, nextColumn, readOnly, onOpen, hoverRef }) {
-  const [menu, setMenu] = useState(null);
+  const [menu, setMenu, closeMenu, menuButton, menuHover] = useMenuButton(260);
   const [copied, setCopied] = useState(false);
-  const closeMenu = useCallback(() => setMenu(null), []);
   const editable = !readOnly && !card.conflict;
 
   useEffect(() => {
@@ -93,16 +92,10 @@ export default function CardMenu({ card, prevColumn, nextColumn, readOnly, onOpe
       {copied && <span className="card-copied" role="status">Ссылка скопирована</span>}
       <button type="button" className={`btn btn-icon card-menu-btn ${menu ? 'active' : ''}`}
         title="Действия с карточкой (их клавиши работают и при наведении на карточку)"
-        aria-label="Действия с карточкой" aria-haspopup="menu" aria-expanded={Boolean(menu)}
-        onMouseDown={(e) => menu && e.stopPropagation()}
-        onClick={(e) => {
-          if (menu) return setMenu(null);
-          const r = e.currentTarget.getBoundingClientRect();
-          return setMenu({ x: r.right - 260, y: r.bottom + 4 });
-        }}>
+        aria-label="Действия с карточкой" {...menuButton}>
         <MoreIcon />
       </button>
-      {menu && <ContextMenu x={menu.x} y={menu.y} items={items} onClose={closeMenu} />}
+      {menu && <ContextMenu x={menu.x} y={menu.y} items={items} onClose={closeMenu} {...menuHover} />}
     </>
   );
 }

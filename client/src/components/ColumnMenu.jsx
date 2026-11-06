@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   countColumnCards, deleteColumn, insertColumn, moveColumn, setColumnAddToTop,
 } from '../actions.js';
 import { ICONS } from '../menuIcons.js';
-import ContextMenu, { useHoverShortcuts } from './ContextMenu.jsx';
+import ContextMenu, { useHoverShortcuts, useMenuButton } from './ContextMenu.jsx';
 import Modal from './Modal.jsx';
 
 const quoted = (names) => names.map((n) => `«${n}»`).join(', ');
@@ -92,9 +92,8 @@ function MoreIcon() {
  * with the pointer over it.
  */
 export default function ColumnMenu({ column, prevColumn, nextColumn, moveAll, edit, onCollapse, hoverRef }) {
-  const [menu, setMenu] = useState(null);
+  const [menu, setMenu, closeMenu, menuButton, menuHover] = useMenuButton(280);
   const [dialog, setDialog] = useState(null);
-  const closeMenu = useCallback(() => setMenu(null), []);
   const closeDialog = () => setDialog(null);
   const columns = edit?.columns ?? [];
   const index = columns.findIndex((c) => c.id === column.id);
@@ -172,17 +171,10 @@ export default function ColumnMenu({ column, prevColumn, nextColumn, moveAll, ed
   return (
     <>
       <button type="button" className={`btn btn-icon column-menu-btn ${menu ? 'active' : ''}`}
-        title="Действия с колонкой (их клавиши работают и при наведении на колонку)" aria-label={`Действия с колонкой «${column.name}»`} aria-haspopup="menu"
-        aria-expanded={Boolean(menu)}
-        onMouseDown={(e) => menu && e.stopPropagation()}
-        onClick={(e) => {
-          if (menu) return setMenu(null);
-          const r = e.currentTarget.getBoundingClientRect();
-          return setMenu({ x: r.right - 280, y: r.bottom + 4 });
-        }}>
+        title="Действия с колонкой (их клавиши работают и при наведении на колонку)" aria-label={`Действия с колонкой «${column.name}»`} {...menuButton}>
         <MoreIcon />
       </button>
-      {menu && <ContextMenu x={menu.x} y={menu.y} items={items} onClose={closeMenu} />}
+      {menu && <ContextMenu x={menu.x} y={menu.y} items={items} onClose={closeMenu} {...menuHover} />}
       {dialog?.kind === 'add' && (
         <NameDialog title="Новая колонка" value="" submitLabel="Добавить" edit={edit}
           onSave={(name) => insertColumn(edit.setId, name, dialog.at)} onClose={closeDialog} />
