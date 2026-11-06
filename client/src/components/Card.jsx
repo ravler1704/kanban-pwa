@@ -1,4 +1,5 @@
-import { useRef, useSyncExternalStore } from 'react';
+import { useRef, useState, useSyncExternalStore } from 'react';
+import { updateCard } from '../actions.js';
 import { cardColor } from '../appearance.js';
 import { uploadStore } from '../files.js';
 import { cardReminders, nextReminder } from '../reminders.js';
@@ -53,17 +54,44 @@ function CheckIcon() {
   );
 }
 
-/** Done of all subtasks, if the card has any. */
-export function ChecklistBadge({ card }) {
+/** Done of all subtasks, if the card has any; with `onToggle` a button that shows or hides them (`open`). */
+export function ChecklistBadge({ card, open = false, onToggle }) {
   const items = card.checklist ?? [];
   if (!items.length) return null;
   const done = items.filter((i) => i.done).length;
+  const className = `card-checklist${done === items.length ? ' card-checklist-done' : ''}`;
+  const content = <><CheckIcon />{done}/{items.length}</>;
+  if (!onToggle) {
+    return <span className={className} title={`Подзадачи: выполнено ${done} из ${items.length}`}>{content}</span>;
+  }
   return (
-    <span className={`card-checklist${done === items.length ? ' card-checklist-done' : ''}`}
-      title={`Подзадачи: выполнено ${done} из ${items.length}`}>
-      <CheckIcon />
-      {done}/{items.length}
-    </span>
+    <button type="button" className={`${className} card-checklist-toggle`} aria-expanded={open}
+      title={`Подзадачи: выполнено ${done} из ${items.length}. ${open ? 'Свернуть' : 'Показать'} список`}
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle();
+      }}>
+      {content}
+    </button>
+  );
+}
+
+/** The card's subtasks right on the board; ticking one saves it (unless `readOnly`). */
+function CardChecklist({ card, readOnly }) {
+  const toggle = (id) => updateCard(card.id, {
+    checklist: card.checklist.map((item) => (item.id === id ? { ...item, done: !item.done } : item)),
+  });
+  return (
+    <ul className="card-checklist-list" onClick={(e) => e.stopPropagation()}>
+      {card.checklist.map((item) => (
+        <li key={item.id} className={item.done ? 'card-checklist-item-done' : undefined}>
+          <label>
+            <input type="checkbox" checked={item.done} disabled={readOnly} onChange={() => toggle(item.id)} />
+            <span>{item.text ? <Markdown text={item.text} inline /> : <em className="muted">Без текста</em>}</span>
+          </label>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -141,6 +169,7 @@ export default function Card({
   card, label, activeTags, onTag, readOnly, onOpen, onOpenLabel, prevColumn, nextColumn,
 }) {
   const ref = useRef(null);
+  const [checklistOpen, setChecklistOpen] = useState(false);
   const classes = ['card'];
   if (card.conflict) classes.push('card-conflict');
   if (card.deleted) classes.push('card-deleted');
@@ -183,7 +212,7 @@ export default function Card({
         <div className="card-badges">
           {card.number && <span className="card-number" title="Номер карточки">#{card.number}</span>}
           <ReminderBadge card={card} />
-          <ChecklistBadge card={card} />
+          <ChecklistBadge card={card} open={checklistOpen} onToggle={() => setChecklistOpen(!checklistOpen)} />
           <UploadBadge cardId={card.id} />
           {card.attachments?.length > 0 && (
             <span className="card-files" title="Прикреплённые файлы">
@@ -208,6 +237,9 @@ export default function Card({
           </div>
         )}
       </div>
+      {checklistOpen && card.checklist?.length > 0 && (
+        <CardChecklist card={card} readOnly={readOnly || Boolean(card.conflict) || card.deleted} />
+      )}
     </article>
   );
 }
