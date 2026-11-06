@@ -683,11 +683,16 @@ body {
 .card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 0.4rem; min-height: 1.6rem; }
 .card-badges { display: flex; gap: 0.3rem; flex-wrap: wrap; align-items: center; }
 .card-moves { display: flex; gap: 0.25rem; }
-.card .card-menu-btn, .card .card-menu-btn:hover:not(:disabled) { border-color: transparent; background: transparent; color: var(--muted); }
-.card .card-menu-btn:hover:not(:disabled), .card .card-menu-btn.active { color: var(--text); }
+.card .card-menu-btn, .card .card-menu-btn:hover:not(:disabled),
+.column .column-menu-btn, .column .column-menu-btn:hover:not(:disabled) {
+  border-color: transparent; background: transparent; color: var(--muted);
+}
+.card .card-menu-btn:hover:not(:disabled), .card .card-menu-btn.active,
+.column .column-menu-btn:hover:not(:disabled), .column .column-menu-btn.active { color: var(--text); }
 @media (hover: hover) {
-  .card-menu-btn { opacity: 0; }
-  .card:hover .card-menu-btn, .card-menu-btn:focus-visible, .card-menu-btn.active { opacity: 1; }
+  .card-menu-btn, .column-menu-btn { opacity: 0; }
+  .card:hover .card-menu-btn, .card-menu-btn:focus-visible, .card-menu-btn.active,
+  .column:hover .column-menu-btn, .column-menu-btn:focus-visible, .column-menu-btn.active { opacity: 1; }
 }
 .card-copied { align-self: center; color: var(--accent); font-size: 0.75rem; white-space: nowrap; }
 .card-reminder { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; color: var(--accent); }
