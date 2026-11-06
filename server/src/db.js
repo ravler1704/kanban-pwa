@@ -171,14 +171,6 @@ if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'boa
   `);
 }
 
-// The name the owner gave to their space; without one, the space is called after its owner.
-db.exec(`
-  CREATE TABLE IF NOT EXISTS space_names (
-    owner       TEXT    PRIMARY KEY,
-    name        TEXT    NOT NULL
-  );
-`);
-
 // Direct messages between users who share a project (they may be on different boards), and
 // until when each user has read their conversation with each peer.
 db.exec(`
@@ -576,31 +568,11 @@ export function deleteMember(board, email, { folder, project, space } = {}) {
   return removeMember.run(board, email).changes > 0;
 }
 
-const selectSpaceName = db.prepare('SELECT name FROM space_names WHERE owner = ?');
-const upsertSpaceName = db.prepare(
-  'INSERT INTO space_names (owner, name) VALUES (?, ?) ON CONFLICT (owner) DO UPDATE SET name = excluded.name',
-);
-const deleteSpaceName = db.prepare('DELETE FROM space_names WHERE owner = ?');
-
-/** The name of the owner's space, null when it has none. */
-export function getSpaceName(owner) {
-  return selectSpaceName.get(owner)?.name ?? null;
-}
-
-/** An empty `name` takes the name away. */
-export function setSpaceName(owner, name) {
-  if (name) upsertSpaceName.run(owner, name);
-  else deleteSpaceName.run(owner);
-}
-
-/** Other people's boards the user was invited to, with the space's name and the owner's name, e-mail and photo. */
+/** Other people's boards the user was invited to, with the owner's name, e-mail and photo. */
 export function sharedBoards(userId) {
   return selectUserBoards.all(userId, userId).map(({ board }) => {
     const owner = selectOwnerProfile.get(board);
-    return {
-      id: board, spaceName: getSpaceName(board),
-      name: owner?.name ?? null, email: owner?.email ?? null, picture: owner?.picture ?? null,
-    };
+    return { id: board, name: owner?.name ?? null, email: owner?.email ?? null, picture: owner?.picture ?? null };
   });
 }
 

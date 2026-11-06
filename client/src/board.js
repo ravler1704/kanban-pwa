@@ -45,7 +45,7 @@ export const dbName = publicToken ? `${PUBLIC_DB_PREFIX}${publicToken}`
 export const isOwnBoard = !currentBoard && !publicToken;
 
 /** `board` is one of `user.boards`: { id, name, email, picture } of its owner. */
-export const boardName = (board) => board.spaceName || `Пространство: ${board.name || board.email || 'без имени'}`;
+export const boardName = (board) => `Пространство: ${board.name || board.email || 'без имени'}`;
 
 export const isCurrentBoard = (board) => normalize(board) === currentBoard;
 

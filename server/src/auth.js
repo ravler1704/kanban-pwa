@@ -2,10 +2,9 @@ import crypto from 'node:crypto';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import {
   addMember, addSpaceMember, boardSummary, countEmailCodeAttempt, createSession, deleteIdentity, deleteMember, deletePublicLink,
-  deleteSession, deleteUser, findUserByEmail, getEmailCode, getIdentityUser, getPublicLink, getRecord, getSession,
-  getSpaceName, isInvited,
+  deleteSession, deleteUser, findUserByEmail, getEmailCode, getIdentityUser, getPublicLink, getRecord, getSession, isInvited,
   leaveBoard, listIdentities, listMembers, listPublicLinks, memberProjects, mergeUsers, ownerFileIds, pruneEmailCodes,
-  saveEmailCode, saveIdentity, savePublicLink, setSpaceName, sharedBoards, useEmailCode, usersWithEmail,
+  saveEmailCode, saveIdentity, savePublicLink, sharedBoards, useEmailCode, usersWithEmail,
 } from './db.js';
 import { broadcast, disconnect, disconnectUser, notifyUser } from './events.js';
 import { removeFiles } from './files.js';
@@ -91,7 +90,6 @@ function publicUser(session) {
     picture: session.picture,
     identities: listIdentities(session.user_id).map(publicIdentity),
     boards: sharedBoards(session.user_id),
-    spaceName: getSpaceName(session.user_id),
     admin: isAdmin(session.user_id),
   };
 }
@@ -452,16 +450,6 @@ export function registerAuthRoutes(app) {
     disconnect(req.user, { except: req.user });
     notifyBoardsChanged(email);
     res.json({ members: listMembers(req.user) });
-  });
-
-  // The name of the signed-in user's own space; the members' apps reload their list of spaces.
-  app.post('/api/space/name', requireAuth, (req, res) => {
-    if (!authEnabled) return res.status(404).json({ error: 'auth disabled' });
-    const name = typeof req.body?.name === 'string' ? req.body.name.trim() : null;
-    if (name === null || name.length > 100) return res.status(400).json({ error: 'invalid name' });
-    setSpaceName(req.user, name);
-    for (const email of new Set(listMembers(req.user).map((m) => m.email))) notifyBoardsChanged(email);
-    res.json({ spaceName: getSpaceName(req.user) });
   });
 
   // Public links to projects of the signed-in user's own board.

@@ -336,13 +336,6 @@ export async function removeMember(email, { folder } = {}) {
 }
 
 /** Leaves the shared board that is open now; the own board opens. */
-/** Names the own space; an empty name goes back to the owner's. */
-export async function renameSpace(name) {
-  const res = await postJson('/api/space/name', { name });
-  if (res.status !== 200) throw new Error('Не удалось переименовать пространство. Проверьте интернет и попробуйте ещё раз.');
-  if (state.user) setState({ user: { ...state.user, spaceName: res.body.spaceName } });
-}
-
 export async function leaveCurrentBoard() {
   const res = await postJson('/api/boards/leave', { board: currentBoard });
   if (res.status !== 200 && res.status !== 404) throw new Error('Не удалось покинуть пространство. Попробуйте ещё раз.');
