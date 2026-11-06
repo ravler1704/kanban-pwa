@@ -645,7 +645,9 @@ body {
   padding: 0.85rem 0; border: 0; border-radius: inherit; background: none; color: var(--text); font: inherit; cursor: pointer;
 }
 .column-expand:hover { background: color-mix(in srgb, var(--text) 5%, transparent); }
-.column-expand-name { writing-mode: vertical-rl; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-height: 0; }
+.column-expand-title { writing-mode: vertical-rl; display: flex; gap: 0.3em; min-height: 0; white-space: nowrap; }
+.column-expand-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; min-inline-size: 0; }
+.column-expand-title .count { flex: none; }
 
 .add-card { display: flex; gap: 0.4rem; }
 .cards {

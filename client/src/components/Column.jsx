@@ -169,8 +169,9 @@ export default function Column({
       >
         <button type="button" className="column-expand" onClick={handleClicks} {...columnDrag}
           title={`Развернуть колонку «${column.name}»`} aria-label={`Развернуть колонку «${column.name}»`} aria-expanded="false">
-          <span className="count">{count}</span>
-          <span className="column-expand-name">{column.name}</span>
+          <span className="column-expand-title">
+            <span className="column-expand-name">{column.name}</span> <span className="count">{count}</span>
+          </span>
         </button>
       </section>
     );
