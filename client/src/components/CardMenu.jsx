@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { deleteCard, duplicateCard, moveCardTo, moveCardToColumn, moveCardToEdge } from '../actions.js';
+import { deleteCard, duplicateCard, moveCardTo, moveCardToColumn, moveCardToEdge, setCardDone } from '../actions.js';
 import { authState } from '../auth.js';
 import { currentBoard, publicToken } from '../board.js';
 import { INBOX_ID } from '../db.js';
@@ -50,6 +50,10 @@ export default function CardMenu({ card, prevColumn, nextColumn, readOnly, onOpe
 
   const items = tidy([
     { label: 'Открыть', icon: ICONS.open, run: onOpen },
+    editable && {
+      label: card.done ? 'Снять отметку «Выполнена»' : 'Отметить выполненной', icon: ICONS.done, shortcut: 'KeyX',
+      active: Boolean(card.done), run: () => setCardDone(card.id, !card.done),
+    },
     null,
     editable && prevColumn && {
       label: `В «${prevColumn.name}»`, icon: ICONS.left, shortcut: 'Shift+ArrowLeft',

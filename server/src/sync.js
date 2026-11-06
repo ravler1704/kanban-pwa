@@ -88,10 +88,13 @@ export const SCHEMAS = {
       number: (v) => v === null || (Number.isInteger(v) && v > 0),
       // Cover colour (an id of the client's palette), or null.
       color: optionalKey,
+      // Marked complete (as Trello's), wherever the card is.
+      done: (v) => v === null || boolean(v),
     },
     defaults: {
       columnId: 'todo', title: '', description: '', position: 0, deleted: false, remindAt: null,
       reminders: [], authorId: null, assigneeId: null, attachments: [], checklist: [], number: null, color: null,
+      done: false,
     },
     textFields: ['title', 'description'],
     serverFields: ['attachments', 'number'],
@@ -363,6 +366,7 @@ function recordEvents(owner, actor, type, before, after) {
       note(at, { k: 'card.column', card, from: nameOf(owner, before.columnId), to: nameOf(owner, after.columnId) });
     }
     if (after.title !== before.title) note(at, { k: 'card.rename', card, from: before.title });
+    if (Boolean(after.done) !== Boolean(before.done)) note(at, { k: 'card.done', card, done: Boolean(after.done) });
     if (after.description !== before.description) {
       const diff = textDiff(before.description, after.description, 3000 - JSON.stringify(card).length);
       note(at, { k: 'card.description', card, ...(diff && { diff }) });

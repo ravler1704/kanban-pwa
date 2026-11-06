@@ -16,6 +16,7 @@ async function insert(type, fields) {
   // which is the order cards get their numbers in.
   lastCreated = Math.max(Date.now(), lastCreated + 1);
   const record = { id: newId(), ...fields, deleted: false, server: null, conflict: null, createdLocally: lastCreated };
+  if (type === 'card') record.done ??= false;
   record.dirty = isDirty(type, record);
   await tableOf(type).add(record);
   return record;
@@ -494,6 +495,11 @@ export async function createInboxCard(title) {
     position: inbox.reduce((max, c) => Math.max(max, c.position), 0) + 1,
   });
   requestSync();
+}
+
+/** Marks the card complete (as Trello's) or not. */
+export function setCardDone(id, done) {
+  return updateCard(id, { done });
 }
 
 export async function updateCard(id, patch, base = null) {

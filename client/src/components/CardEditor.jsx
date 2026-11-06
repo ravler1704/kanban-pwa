@@ -3,6 +3,7 @@ import { deleteCard, moveCardTo, moveCardToColumn, moveCardToFolder, updateCard 
 import { CARD_COLORS } from '../appearance.js';
 import { INBOX_ID } from '../db.js';
 import Attachments from './Attachments.jsx';
+import { DoneButton } from './Card.jsx';
 import CardExtraFields from './CardExtraFields.jsx';
 import Checklist from './Checklist.jsx';
 import CardPeople from './CardPeople.jsx';
@@ -46,6 +47,7 @@ function CardView({ card, columnsOfFolder, folders, onClose }) {
     <Modal title={card.number ? `Карточка #${card.number}` : 'Карточка'} onClose={onClose}>
       <div className="editor card-view">
         <h3 className="card-view-title">
+          {card.done && <DoneButton card={card} readOnly className="card-view-done" />}
           {card.title ? <Markdown text={card.title} inline /> : <em className="muted">Без названия</em>}
         </h3>
         <p className="muted">
@@ -139,7 +141,10 @@ function CardForm({ card, columnsOfFolder, folders, inbox, onClose }) {
             пересекающиеся правки попадут в окно разрешения конфликта.
           </p>
         )}
-        <TitleField value={title} onChange={setTitle} />
+        <div className="editor-title-row">
+          <DoneButton card={card} readOnly={card.conflict} className="editor-done-btn" />
+          <TitleField value={title} onChange={setTitle} />
+        </div>
         {folderId !== INBOX_ID && (
           <label className="field">
             <span className="field-label">Статус</span>

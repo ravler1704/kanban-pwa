@@ -1,5 +1,5 @@
-import { useRef, useState, useSyncExternalStore } from 'react';
-import { updateCard } from '../actions.js';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { setCardDone, updateCard } from '../actions.js';
 import { cardColor } from '../appearance.js';
 import { uploadStore } from '../files.js';
 import { cardReminders, nextReminder } from '../reminders.js';
@@ -72,6 +72,33 @@ export function ChecklistBadge({ card, open = false, onToggle }) {
         onToggle();
       }}>
       {content}
+    </button>
+  );
+}
+
+/** Trello's «mark complete» circle: green with a tick when the card is done; it pops when ticked here. */
+export function DoneButton({ card, readOnly, className = '' }) {
+  const [popping, setPopping] = useState(false);
+  useEffect(() => {
+    if (!popping) return undefined;
+    const timer = setTimeout(() => setPopping(false), 700);
+    return () => clearTimeout(timer);
+  }, [popping]);
+  const done = Boolean(card.done);
+  const label = done ? 'Выполнена — снять отметку' : 'Отметить выполненной';
+  return (
+    <button type="button" role="checkbox" aria-checked={done} disabled={readOnly}
+      className={`done-btn${done ? ' done-btn-on' : ''}${popping ? ' done-btn-pop' : ''} ${className}`}
+      title={readOnly ? (done ? 'Выполнена' : 'Не выполнена') : label} aria-label={label}
+      onClick={(e) => {
+        e.stopPropagation();
+        setPopping(!done);
+        setCardDone(card.id, !done);
+      }}>
+      <svg viewBox="0 0 16 16" aria-hidden="true">
+        <circle className="done-ring" cx="8" cy="8" r="6.75" />
+        <path className="done-tick" d="M4.9 8.2 7 10.3l4.2-4.5" />
+      </svg>
     </button>
   );
 }
@@ -200,10 +227,15 @@ export default function Card({
           {label}
         </button>
       )}
-      <div className="card-title">
-        {card.title
-          ? <TaggedText text={card.title} inline activeTags={activeTags} onTag={onTag} />
-          : <em className="muted">Без названия</em>}
+      <div className="card-title-row">
+        {!card.conflict && (!readOnly || card.done) && (
+          <DoneButton card={card} readOnly={readOnly || card.deleted} className="card-done-btn" />
+        )}
+        <div className="card-title">
+          {card.title
+            ? <TaggedText text={card.title} inline activeTags={activeTags} onTag={onTag} />
+            : <em className="muted">Без названия</em>}
+        </div>
       </div>
       {card.description && (
         <div className="card-desc"><TaggedText text={card.description} activeTags={activeTags} onTag={onTag} /></div>
