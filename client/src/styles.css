@@ -1488,7 +1488,7 @@ a.btn { display: inline-block; text-decoration: none; }
   cursor: pointer;
 }
 .avatar-stack .avatar { box-shadow: 0 0 0 2px var(--bg); }
-.avatar-stack .avatar + .avatar { margin-left: -8px; }
+.avatar-stack .avatar:not(:first-child) { margin-left: -8px; }
 .avatar-more { width: 28px; height: 28px; font-size: 0.7rem; background: var(--card); color: var(--text); }
 .chat-button { position: relative; }
 .chat-unread-dot { position: absolute; top: -6px; right: -6px; min-width: 1.1rem; height: 1.1rem; line-height: 1.1rem; font-size: 0.65rem; }
