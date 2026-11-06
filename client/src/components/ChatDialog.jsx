@@ -94,6 +94,7 @@ function DmThread({ peer }) {
   return (
     <ChatThread
       className="chat-full"
+      direct
       messages={messages}
       me={me}
       empty={thread ? 'Сообщений пока нет — напишите первым.' : 'Загрузка…'}
@@ -123,27 +124,38 @@ function ChatListItem({ avatar, title, subtitle, last, text, unread, active, onC
   );
 }
 
-function FolderAvatar() {
+/** A round avatar of a folder's or card's chat, its color fixed by `seed`. */
+function ChatIcon({ seed = '', size = 46, children }) {
+  let hash = 0;
+  for (const ch of seed) hash = (hash * 31 + ch.codePointAt(0)) % 360;
   return (
-    <span className="avatar avatar-letter avatar-project" aria-hidden="true">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-        strokeLinecap="round" strokeLinejoin="round">
-        <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
-      </svg>
+    <span className="avatar avatar-letter avatar-chat" aria-hidden="true"
+      style={{ width: size, height: size, '--chat-hue': hash }}>
+      <svg width={size * 0.45} height={size * 0.45} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+        strokeLinecap="round" strokeLinejoin="round">{children}</svg>
     </span>
   );
 }
 
-function CardAvatar() {
-  return (
-    <span className="avatar avatar-letter avatar-project" aria-hidden="true">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-        strokeLinecap="round" strokeLinejoin="round">
-        <rect x="4" y="4" width="16" height="16" rx="2" />
-        <path d="M8 9h8M8 13h5" />
-      </svg>
-    </span>
-  );
+const FolderAvatar = ({ id, size }) => (
+  <ChatIcon seed={id} size={size}>
+    <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
+  </ChatIcon>
+);
+
+const CardAvatar = ({ id, size }) => (
+  <ChatIcon seed={id} size={size}>
+    <rect x="4" y="4" width="16" height="16" rx="2" />
+    <path d="M8 9h8M8 13h5" />
+  </ChatIcon>
+);
+
+function plural(n, one, few, many) {
+  const tens = n % 100;
+  const units = n % 10;
+  if (tens >= 11 && tens <= 14) return many;
+  if (units === 1) return one;
+  return units >= 2 && units <= 4 ? few : many;
 }
 
 const MEMBERS_STACK = 3;
@@ -227,16 +239,16 @@ export default function ChatDialog({ folders, thread: initialThread, onOpenCard,
   // All chats in one list: the latest message first, those without messages after them.
   const items = [
     ...folders.map((f) => ({
-      thread: `folder:${f.id}`, avatar: <FolderAvatar />, title: f.name, subtitle: parentName(f),
+      thread: `folder:${f.id}`, avatar: <FolderAvatar id={f.id} />, title: f.name, subtitle: parentName(f),
       last: chats.folders[f.id]?.last ?? null, unread: chats.folders[f.id]?.unread ?? 0,
     })),
     ...chats.cards.filter((c) => folderName.has(c.card.folderId)).map((c) => ({
-      thread: `card:${c.card.id}`, avatar: <CardAvatar />, title: cardTitle(c.card),
+      thread: `card:${c.card.id}`, avatar: <CardAvatar id={c.card.id} />, title: cardTitle(c.card),
       subtitle: folders.length > 1 ? folderName.get(c.card.folderId) : null,
       last: c.last, unread: c.unread,
     })),
     ...contacts.map((c) => ({
-      thread: `dm:${c.id}`, avatar: <Avatar user={c} size={36} />, title: personName(c),
+      thread: `dm:${c.id}`, avatar: <Avatar user={c} size={46} />, title: personName(c),
       last: c.last && !c.last.deleted ? c.last : null, unread: c.unread,
     })),
   ].sort((a, b) => (b.last?.createdAt ?? 0) - (a.last?.createdAt ?? 0) || a.title.localeCompare(b.title, 'ru'));
@@ -247,11 +259,17 @@ export default function ChatDialog({ folders, thread: initialThread, onOpenCard,
     : items;
 
   return (
-    <Modal title="Чаты" onClose={onClose} className="modal-chat" closeButton>
+    <Modal title="Чаты" onClose={onClose} className="modal-chat" header={false}>
       <div className={`chat-dialog ${open ? 'chat-dialog-open' : ''}`}>
         <nav className="chat-side" aria-label="Чаты">
-          <input className="check-search chat-search" type="search" placeholder="Поиск по чатам"
-            value={search} onChange={(e) => setSearch(e.target.value)} />
+          <div className="chat-side-head">
+            <button type="button" className="chat-head-btn" onClick={onClose} aria-label="Закрыть" title="Закрыть">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25"
+                strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+            </button>
+            <input className="chat-search" type="search" placeholder="Поиск" aria-label="Поиск по чатам"
+              value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
           <div className="chat-list">
             {found.map((i) => (
               <ChatListItem key={i.thread} avatar={i.avatar} title={i.title} subtitle={i.subtitle}
@@ -265,25 +283,37 @@ export default function ChatDialog({ folders, thread: initialThread, onOpenCard,
           {open ? (
             <>
               <header className="chat-pane-head">
-                <button type="button" className="btn btn-small chat-back" onClick={() => openThread('')}
-                  aria-label="К списку чатов">←</button>
-                {folder && <><FolderAvatar /><strong className="chat-pane-title">{folder.name}</strong></>}
+                <button type="button" className="chat-head-btn chat-back" onClick={() => openThread('')}
+                  aria-label="К списку чатов" title="К списку чатов">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25"
+                    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 18 9 12l6-6" /></svg>
+                </button>
+                {folder && <FolderAvatar id={folder.id} size={40} />}
+                {card && <CardAvatar id={card.id} size={40} />}
+                {peer && <Avatar user={peer} size={40} />}
+                <span className="chat-pane-heading">
+                  <strong className="chat-pane-title">
+                    {folder ? folder.name : card ? cardTitle(card) : personName(peer)}
+                  </strong>
+                  <span className="chat-pane-subtitle muted">
+                    {folder && (members.length
+                      ? `${members.length} ${plural(members.length, 'участник', 'участника', 'участников')}`
+                      : parentName(folder) ?? 'Чат папки')}
+                    {card && (folderName.get(card.folderId) ?? 'Чат карточки')}
+                    {peer && (peer.email || 'Личные сообщения')}
+                  </span>
+                </span>
                 {members.length > 0 && (
                   <MembersButton people={members} open={membersShown} onToggle={() => setShowMembers(!showMembers)} />
                 )}
                 {card && (
-                  <>
-                    <CardAvatar />
-                    <strong className="chat-pane-title">{cardTitle(card)}</strong>
-                    <span className="chat-pane-actions">
-                      <HistoryToggle />
-                      <button type="button" className="btn btn-small" onClick={() => onOpenCard(card.id)}>
-                        Открыть карточку
-                      </button>
-                    </span>
-                  </>
+                  <span className="chat-pane-actions">
+                    <HistoryToggle />
+                    <button type="button" className="btn btn-small" onClick={() => onOpenCard(card.id)}>
+                      Открыть карточку
+                    </button>
+                  </span>
                 )}
-                {peer && <><Avatar user={peer} size={28} /><strong>{personName(peer)}</strong></>}
               </header>
               {membersShown && (
                 <MembersList people={members} me={user?.id ?? ''} onWrite={(p) => openThread(`dm:${p.id}`)} />
@@ -296,7 +326,7 @@ export default function ChatDialog({ folders, thread: initialThread, onOpenCard,
               {peer && <DmThread key={peer.id} peer={peer} />}
             </>
           ) : (
-            <p className="muted chat-pane-empty">Выберите чат слева.</p>
+            <p className="chat-pane-empty"><span>Выберите, кому хотели бы написать</span></p>
           )}
         </section>
       </div>

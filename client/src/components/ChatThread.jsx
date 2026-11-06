@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { EventDiff, EventText, parseEvent, useCardNumbers } from '../chatEvents.jsx';
 import { pasteAsLink } from '../links.js';
 import Avatar from './Avatar.jsx';
@@ -10,6 +10,29 @@ const coarsePointer = () => window.matchMedia?.('(pointer: coarse)').matches;
 const GROUP_MS = 5 * 60 * 1000;
 
 const time = (ts) => new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+
+const sameDay = (a, b) => new Date(a).toDateString() === new Date(b).toDateString();
+
+/** Whether `m` goes on in the same bubble group as `prev`: one author, within minutes, the same day. */
+const continues = (prev, m) => Boolean(prev && m && !prev.event && !m.event && prev.authorId === m.authorId
+  && m.createdAt - prev.createdAt < GROUP_MS && sameDay(prev.createdAt, m.createdAt));
+
+/** The same hue as the person's letter avatar, so a name matches its avatar. */
+function nameHue(name) {
+  let hash = 0;
+  for (const ch of name) hash = (hash * 31 + ch.codePointAt(0)) % 360;
+  return hash;
+}
+
+function Ticks({ pending }) {
+  return pending ? (
+    <svg className="chat-ticks" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2.25" strokeLinecap="round" aria-label="Не отправлено"><circle cx="12" cy="12" r="8" /><path d="M12 8v4l2.5 2" /></svg>
+  ) : (
+    <svg className="chat-ticks" width="16" height="14" viewBox="0 0 24 20" fill="none" stroke="currentColor"
+      strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" aria-label="Отправлено"><path d="m4 11 5 5L20 5" /></svg>
+  );
+}
 
 function dayLabel(ts) {
   const d = new Date(ts);
@@ -111,11 +134,12 @@ function Composer({ editing, onSubmit, onCancelEdit, placeholder, disabled }) {
  * Messages as a chat. `messages`: [{ id, authorId, authorName, authorPicture, text, createdAt, editedAt,
  * pending }] oldest first; the user's own (`me`) are on the right. Without `onSend` there is no input;
  * `hint` explains why sending is off (`disabled`). `canDelete(message)` defaults to the user's own.
- * Messages with `event` are notes of changes; their card opens with `onOpenCard(id)`.
+ * Messages with `event` are notes of changes; their card opens with `onOpenCard(id)`. `direct`: a chat of
+ * two, without the other person's avatar and name at their messages.
  */
 export default function ChatThread({
   messages, me, onSend, onEdit, onDelete, canDelete, onOpenCard, disabled, hint, placeholder = 'Сообщение', empty,
-  className = '',
+  className = '', direct = false,
 }) {
   const list = useRef(null);
   const atBottom = useRef(true);
@@ -141,12 +165,12 @@ export default function ChatThread({
         {messages.length === 0 && empty && <p className="chat-empty muted">{empty}</p>}
         {messages.map((m, i) => {
           const prev = messages[i - 1];
-          const newDay = !prev || new Date(prev.createdAt).toDateString() !== new Date(m.createdAt).toDateString();
+          const newDay = !prev || !sameDay(prev.createdAt, m.createdAt);
           const event = m.event && parseEvent(m.event);
           if (event) {
             return (
-              <div key={m.id}>
-                {newDay && <div className="chat-day">{dayLabel(m.createdAt)}</div>}
+              <Fragment key={m.id}>
+                {newDay && <div className="chat-day"><span>{dayLabel(m.createdAt)}</span></div>}
                 <div className="chat-event">
                   <Avatar user={{ name: m.authorName, picture: m.authorPicture }} size={18} />
                   <span className="chat-event-text">
@@ -156,29 +180,35 @@ export default function ChatThread({
                   </span>
                   <span className="chat-time" title={new Date(m.createdAt).toLocaleString('ru-RU')}>{time(m.createdAt)}</span>
                 </div>
-              </div>
+              </Fragment>
             );
           }
-          const grouped = !newDay && !prev.event && prev.authorId === m.authorId && m.createdAt - prev.createdAt < GROUP_MS;
+          const grouped = continues(prev, m);
+          const last = !continues(m, messages[i + 1]);
           const mine = m.authorId === me;
+          const withAuthor = !mine && !direct;
           const actions = selected === m.id && (mine && onEdit || mayDelete(m) && onDelete);
+          const name = m.authorName || 'Без имени';
           return (
-            <div key={m.id}>
-              {newDay && <div className="chat-day">{dayLabel(m.createdAt)}</div>}
-              <div className={`chat-msg ${mine ? 'chat-msg-mine' : ''} ${grouped ? 'chat-msg-grouped' : ''}`}>
-                {!mine && (grouped
-                  ? <span className="chat-avatar-space" />
-                  : <Avatar user={{ name: m.authorName, picture: m.authorPicture }} size={28} />)}
+            <Fragment key={m.id}>
+              {newDay && <div className="chat-day"><span>{dayLabel(m.createdAt)}</span></div>}
+              <div className={`chat-msg ${mine ? 'chat-msg-mine' : ''} ${grouped ? 'chat-msg-grouped' : ''} ${last ? 'chat-msg-tail' : ''}`}>
+                {withAuthor && (last
+                  ? <Avatar user={{ name: m.authorName, picture: m.authorPicture }} size={34} />
+                  : <span className="chat-avatar-space" />)}
                 <div className="chat-bubble-wrap">
-                  {!mine && !grouped && <div className="chat-author">{m.authorName || 'Без имени'}</div>}
                   <div className={`chat-bubble ${m.pending ? 'chat-bubble-pending' : ''}`}
                     onClick={(e) => {
                       if (e.target.closest('a')) return;
                       setSelected(selected === m.id ? null : m.id);
                     }}>
+                    {withAuthor && !grouped && (
+                      <div className="chat-author" style={{ '--author-hue': nameHue(m.authorName || '') }}>{name}</div>
+                    )}
                     <div className="chat-text"><Markdown text={m.text} /></div>
                     <span className="chat-time" title={new Date(m.createdAt).toLocaleString('ru-RU')}>
-                      {m.editedAt ? 'изм. ' : ''}{time(m.createdAt)}{m.pending ? ' · не отправлено' : ''}
+                      {m.editedAt ? 'изм. ' : ''}{time(m.createdAt)}
+                      {mine && <Ticks pending={m.pending} />}
                     </span>
                   </div>
                   {actions && (
@@ -204,7 +234,7 @@ export default function ChatThread({
                   )}
                 </div>
               </div>
-            </div>
+            </Fragment>
           );
         })}
       </div>
