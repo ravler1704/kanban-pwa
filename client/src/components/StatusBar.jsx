@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { authState } from '../auth.js';
 import { boardName, currentBoard, publicToken, switchBoard } from '../board.js';
 import { usePublicLink } from '../public.js';
@@ -78,6 +78,18 @@ export default function StatusBar({ pending, conflicts, folders, onChat, search,
   const [accountOpen, setAccountOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [push, setPush] = useState(pushState);
+  // On a phone the state shows as a dot only; a tap on it tells the state and the last sync.
+  const [stateOpen, setStateOpen] = useState(false);
+  useEffect(() => {
+    if (!stateOpen) return undefined;
+    const close = () => setStateOpen(false);
+    const timer = setTimeout(close, 4000);
+    window.addEventListener('pointerdown', close);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('pointerdown', close);
+    };
+  }, [stateOpen]);
 
   let state = 'online';
   let label = 'Онлайн';
@@ -120,11 +132,17 @@ export default function StatusBar({ pending, conflicts, folders, onChat, search,
         </label>
       )}
       <div className="status">
-        <span className={`dot dot-${state}`} />
-        <span>{label}</span>
+        <button type="button" className="status-state" aria-expanded={stateOpen}
+          title={`${label}. Синхр.: ${formatTime(s.lastSyncAt)}`} onClick={() => setStateOpen(!stateOpen)}>
+          <span className={`dot dot-${state}`} />
+          <span className="status-label">{label}</span>
+          {stateOpen && (
+            <span className="status-pop" role="status">{label}<br />Синхр.: {formatTime(s.lastSyncAt)}</span>
+          )}
+        </button>
         {pending > 0 && <span className="badge badge-pending">Не синхронизировано: {pending}</span>}
         {conflicts > 0 && <span className="badge badge-conflict">Конфликты: {conflicts}</span>}
-        <span className="muted">Синхр.: {formatTime(s.lastSyncAt)}</span>
+        <span className="muted status-time">Синхр.: {formatTime(s.lastSyncAt)}</span>
         <button className="btn btn-small btn-icon-only" onClick={sync} disabled={!s.online || s.syncing}
           title="Синхронизировать" aria-label="Синхронизировать">
           <SyncIcon spinning={s.syncing} />
