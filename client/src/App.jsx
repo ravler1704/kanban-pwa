@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { Fragment, useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { authState } from './auth.js';
 import { isUnread, seenStore } from './seen.js';
@@ -394,13 +394,12 @@ export default function App() {
     saveChecked(on ? [...new Set([...checkedIds, ...ids])] : checkedIds.filter((x) => !ids.includes(x)));
   };
   // «Дела, Работа · кроме Фильмы»: the checked folders and the unchecked ones right inside checked ones.
-  const filterSummary = () => {
-    const included = topFolderIds(checkedIds, folders).map((id) => tree.byId.get(id)?.name);
-    const excluded = folders
-      .filter((f) => !checkedIds.includes(f.id) && f.parentId && checkedIds.includes(f.parentId))
-      .map((f) => f.name);
-    return excluded.length ? `${included.join(', ')} · кроме ${excluded.join(', ')}` : included.join(', ');
-  };
+  const titleBoards = topFolderIds(checkedIds, folders).map((id) => tree.byId.get(id)).filter(Boolean);
+  const excludedNames = folders
+    .filter((f) => !checkedIds.includes(f.id) && f.parentId && checkedIds.includes(f.parentId))
+    .map((f) => f.name);
+  const excludedSuffix = excludedNames.length ? ` · кроме ${excludedNames.join(', ')}` : '';
+  const filterSummary = () => titleBoards.map((f) => f.name).join(', ') + excludedSuffix;
   const folderFilter = {
     selected: checkedIds,
     indeterminate: partial,
@@ -414,11 +413,8 @@ export default function App() {
     summary: allChecked ? 'Все доски' : checkedIds.length ? filterSummary() : 'Не выбраны',
   };
   const openGroup = (card) => saveChecked([card.folderId]);
-  // The title names one board (maybe without some inside it): its name there renames it.
-  const titleTops = topFolderIds(checkedIds, folders);
-  const titleFolder = titleTops.length === 1 ? tree.byId.get(titleTops[0]) : null;
-  const renamable = !readOnly && titleFolder && folderFilter.summary.startsWith(titleFolder.name)
-    && usable.includes(titleFolder) ? titleFolder : null;
+  // The title names the shown boards (maybe without some inside them): each name there renames its board.
+  const titleRenamable = !readOnly && !allChecked && titleBoards.some((f) => usable.includes(f));
 
   return (
     <div className="app">
@@ -466,12 +462,18 @@ export default function App() {
           {!searching && (checkedIds.length > 0 || !readOnly) && !(publicToken && folders.length === 1) && (
             <div className="board-head">
               {checkedIds.length > 0 && (
-                <h2 className="board-title" title={renamable ? undefined : folderFilter.summary}>
-                  {renamable ? (
+                <h2 className="board-title" title={titleRenamable ? undefined : folderFilter.summary}>
+                  {titleRenamable ? (
                     <>
-                      <EditableName value={renamable.name} label="Название доски"
-                        onSave={(name) => renameFolder(renamable.id, name)} />
-                      {folderFilter.summary.slice(renamable.name.length)}
+                      {titleBoards.map((f, i) => (
+                        <Fragment key={f.id}>
+                          {i > 0 && ', '}
+                          {usable.includes(f)
+                            ? <EditableName value={f.name} label="Название доски" onSave={(name) => renameFolder(f.id, name)} />
+                            : f.name}
+                        </Fragment>
+                      ))}
+                      {excludedSuffix}
                     </>
                   ) : folderFilter.summary}
                 </h2>
