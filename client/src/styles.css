@@ -547,6 +547,19 @@ body {
   border-top: 1px solid var(--border);
 }
 .account-delete > .btn { align-self: flex-start; }
+.server-admin {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+  padding: 0.9rem 1rem;
+  border: 1px dashed color-mix(in srgb, var(--warn) 60%, var(--border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--warn) 6%, transparent);
+}
+.server-admin .manage-heading { margin: 0; color: var(--warn); }
+.server-admin-note { margin-bottom: 1rem; }
 .account-delete .manage-input { width: 100%; box-sizing: border-box; }
 .account-row { align-items: center; }
 .account-provider { min-width: 5.5rem; color: var(--muted); font-size: 0.85rem; }

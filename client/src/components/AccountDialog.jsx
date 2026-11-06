@@ -229,17 +229,38 @@ function AppearanceTab() {
 const TABS = [
   { id: 'signin', label: 'Вход', Content: SignInTab },
   { id: 'appearance', label: 'Тема', Content: AppearanceTab },
-  { id: 'server', label: 'Сервер', Content: MailSettings, admin: true },
 ];
+
+/** The server's settings, for its administrator: apart from the account's, they apply to everyone. */
+function ServerAdmin() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <div className="server-admin">
+        <h4 className="manage-heading">Администрирование сервера</h4>
+        <p className="muted account-hint">Вы администратор: эти настройки действуют для всех пользователей сервера.</p>
+        <button type="button" className="btn btn-small" onClick={() => setOpen(true)}>Настройки сервера…</button>
+      </div>
+      {open && (
+        <Modal title="Настройки сервера" onClose={() => setOpen(false)}>
+          <p className="muted account-hint server-admin-note">Действуют для всех пользователей сервера.</p>
+          <MailSettings />
+          <div className="actions">
+            <button className="btn btn-primary" onClick={() => setOpen(false)}>Готово</button>
+          </div>
+        </Modal>
+      )}
+    </>
+  );
+}
 const TAB_KEY = 'accountDialogTab';
 
 export default function AccountDialog({ onClose }) {
   const { online } = useSyncExternalStore(syncStatus.subscribe, syncStatus.get);
   const { user } = useSyncExternalStore(authState.subscribe, authState.get);
-  const tabs = TABS.filter((t) => !t.admin || user?.admin);
   const [picked, setTab] = useState(() => localStorage.getItem(TAB_KEY));
-  const tab = tabs.some((t) => t.id === picked) ? picked : tabs[0].id;
-  const { Content } = tabs.find((t) => t.id === tab);
+  const tab = TABS.some((t) => t.id === picked) ? picked : TABS[0].id;
+  const { Content } = TABS.find((t) => t.id === tab);
 
   function selectTab(id) {
     setTab(id);
@@ -254,7 +275,7 @@ export default function AccountDialog({ onClose }) {
     <Modal title="Аккаунт" onClose={onClose}>
       <div className="tabs-bar">
         <div className="tabs" role="tablist">
-          {tabs.map((t) => (
+          {TABS.map((t) => (
             <button key={t.id} type="button" role="tab" aria-selected={tab === t.id}
               className={`tab ${tab === t.id ? 'tab-active' : ''}`} onClick={() => selectTab(t.id)}>
               {t.label}
@@ -263,6 +284,7 @@ export default function AccountDialog({ onClose }) {
         </div>
       </div>
       <div role="tabpanel"><Content /></div>
+      {user?.admin && <ServerAdmin />}
       <div className="actions">
         <button className="btn btn-danger" onClick={logout} disabled={!online}
           title={online ? 'Данные этого пространства будут удалены с устройства' : 'Для выхода нужен интернет'}>
