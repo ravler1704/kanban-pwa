@@ -13,6 +13,7 @@ export const ICONS = {
   addRight: 'M10 4v16M14 12h6M17 9v6M6 4H4v16h2',
   settings: 'M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6',
   collapse: 'M4 4v16M20 4v16M15 8l-4 4 4 4',
+  expand: 'M4 4v16M20 4v16M11 8l-3 4 3 4M13 8l3 4-3 4',
   trash: 'M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6',
   open: 'M5 12h14M12 5l7 7-7 7',
   access: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',

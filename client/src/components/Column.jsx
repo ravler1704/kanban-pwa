@@ -155,9 +155,15 @@ export default function Column({
   const columnClasses = [
     dragOver && 'column-dragover', columnDrop && `column-drop-${columnDrop}`, dragging && 'column-dragging',
   ].filter(Boolean).join(' ');
+  const menu = (
+    <ColumnMenu column={column} prevColumn={readOnly ? null : prevColumn} nextColumn={readOnly ? null : nextColumn}
+      moveAll={!readOnly && movable.length ? moveAll : null} edit={readOnly ? null : edit}
+      collapsed={collapsed} onCollapse={onToggleCollapsed} hoverRef={section} />
+  );
   if (collapsed) {
     return (
       <section
+        ref={section}
         className={`column column-collapsed ${columnClasses}`}
         onDragOver={readOnly ? undefined : handleDragOver}
         onDragLeave={(e) => {
@@ -167,6 +173,7 @@ export default function Column({
         }}
         onDrop={readOnly ? undefined : handleDrop}
       >
+        <div className="column-collapsed-menu">{menu}</div>
         <button type="button" className="column-expand" onClick={handleClicks} {...columnDrag}
           title={`Развернуть колонку «${column.name}»`} aria-label={`Развернуть колонку «${column.name}»`} aria-expanded="false">
           <span className="column-expand-title">
@@ -209,11 +216,7 @@ export default function Column({
               onSave={(name) => renameColumn(column.id, name)} />
             : column.name} <span className="count">{count}</span>
         </h2>
-        <div className="column-moves">
-          <ColumnMenu column={column} prevColumn={readOnly ? null : prevColumn} nextColumn={readOnly ? null : nextColumn}
-            moveAll={!readOnly && movable.length ? moveAll : null} edit={readOnly ? null : edit}
-            onCollapse={onToggleCollapsed} hoverRef={section} />
-        </div>
+        <div className="column-moves">{menu}</div>
       </div>
       <div className="cards" ref={list}>
         {cards.map((card, i) => [
