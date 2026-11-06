@@ -133,10 +133,12 @@ export default function Column({
     setDropBefore(undefined);
     const id = e.dataTransfer.getData('text/card-id');
     if (!id || id === beforeId) return;
+    const fromInbox = e.dataTransfer.types.includes('text/inbox');
+    if (fromInbox && !target) return;
 
     const others = cards.filter((c) => c.id !== id);
     const position = beforeId ? positionBefore(others, beforeId) : positionAtEnd(others);
-    moveCard(id, column.id, position);
+    moveCard(id, column.id, position, fromInbox ? target : null);
   }
 
   // Dropping right before or after the dragged card itself wouldn't move it.

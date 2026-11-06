@@ -7,6 +7,7 @@ import { pushState } from '../push.js';
 import AccountDialog, { NotificationSettings } from './AccountDialog.jsx';
 import Avatar from './Avatar.jsx';
 import { SettingsIcon } from './FolderBar.jsx';
+import { InboxIcon } from './InboxPanel.jsx';
 import Modal from './Modal.jsx';
 import { ChatButton } from './People.jsx';
 
@@ -75,8 +76,9 @@ function PublicTitle() {
 /**
  * `search` is the text of the search through all cards; `onSearch(text)` changes it.
  * `onSettings()`, when set, opens the space's settings.
+ * `inbox`, when set, is the «Входящие» button: { count, open, onToggle }.
  */
-export default function StatusBar({ pending, conflicts, folders, onChat, search, onSearch, onSettings }) {
+export default function StatusBar({ pending, conflicts, folders, onChat, search, onSearch, onSettings, inbox }) {
   const s = useSyncExternalStore(syncStatus.subscribe, syncStatus.get);
   const { user } = useSyncExternalStore(authState.subscribe, authState.get);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -133,6 +135,14 @@ export default function StatusBar({ pending, conflicts, folders, onChat, search,
           </button>
         )}
       </div>}
+      {inbox && (
+        <button type="button" className={`btn btn-small inbox-button ${inbox.open ? 'btn-active' : ''}`}
+          aria-pressed={inbox.open} title="Входящие: дела, ещё не разложенные по доскам" onClick={inbox.onToggle}>
+          <InboxIcon />
+          <span className="inbox-button-label">Входящие</span>
+          {inbox.count > 0 && <span className="inbox-count">{inbox.count}</span>}
+        </button>
+      )}
       {onSearch && (
         <label className="fp-search header-search">
           <SearchIcon />

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { deleteCard, moveCardToColumn, moveCardToFolder, updateCard } from '../actions.js';
+import { deleteCard, moveCardTo, moveCardToColumn, moveCardToFolder, updateCard } from '../actions.js';
+import { INBOX_ID } from '../db.js';
 import Attachments from './Attachments.jsx';
 import CardExtraFields from './CardExtraFields.jsx';
 import Checklist from './Checklist.jsx';
@@ -49,14 +50,14 @@ function CardView({ card, columnsOfFolder, folders, onClose }) {
 }
 
 /**
- * `folders` are the folders the card can be moved to.
+ * `folders` are the folders the card can be moved to; with `inbox`, «Входящие» too.
  * `readOnly`: the card is only shown.
  */
 export default function CardEditor({ readOnly, ...props }) {
   return readOnly ? <CardView {...props} /> : <CardForm {...props} />;
 }
 
-function CardForm({ card, columnsOfFolder, folders, onClose }) {
+function CardForm({ card, columnsOfFolder, folders, inbox, onClose }) {
   // Snapshot of the card when the editor opened, used to detect concurrent remote edits.
   const [base] = useState(() => ({ title: card.title, description: card.description }));
   const [title, setTitle] = useState(card.title);
@@ -94,8 +95,12 @@ function CardForm({ card, columnsOfFolder, folders, onClose }) {
     if (authorId !== (card.authorId ?? null)) patch.authorId = authorId;
     if (assigneeId !== (card.assigneeId ?? null)) patch.assigneeId = assigneeId;
     if (Object.keys(patch).length) await updateCard(card.id, patch, base);
-    await moveCardToFolder(card.id, folderId);
-    if (columnId !== card.columnId) await moveCardToColumn(card.id, columnId);
+    if (folderId !== card.folderId && (folderId === INBOX_ID || card.folderId === INBOX_ID)) {
+      await moveCardTo(card.id, folderId, columnId);
+    } else {
+      await moveCardToFolder(card.id, folderId);
+      if (columnId !== card.columnId) await moveCardToColumn(card.id, columnId);
+    }
     onClose();
   }
 
@@ -115,12 +120,14 @@ function CardForm({ card, columnsOfFolder, folders, onClose }) {
           </p>
         )}
         <TitleField value={title} onChange={setTitle} />
-        <label className="field">
-          <span className="field-label">Статус</span>
-          <select className="select" value={columnId} onChange={(e) => setColumnId(e.target.value)}>
-            {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </label>
+        {folderId !== INBOX_ID && (
+          <label className="field">
+            <span className="field-label">Статус</span>
+            <select className="select" value={columnId} onChange={(e) => setColumnId(e.target.value)}>
+              {columns.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </label>
+        )}
         <CardExtraFields
           description={description}
           onDescription={setDescription}
@@ -128,8 +135,11 @@ function CardForm({ card, columnsOfFolder, folders, onClose }) {
           onReminders={setReminders}
           card={card}
         />
-        <FolderSelect folders={folders} value={folderId} onChange={changeFolder} />
-        {otherSet && (
+        {inbox ? (
+          <FolderSelect folders={folders} value={folderId === INBOX_ID ? '' : folderId} topLabel="Входящие"
+            onChange={(next) => changeFolder(next || INBOX_ID)} />
+        ) : <FolderSelect folders={folders} value={folderId} onChange={changeFolder} />}
+        {otherSet && folderId !== INBOX_ID && card.folderId !== INBOX_ID && (
           <p className="notice">
             У этой доски другой набор колонок — проверьте статус, в который попадёт карточка.
           </p>

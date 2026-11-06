@@ -3,7 +3,7 @@ import {
   cardCreators, cardIdsInOrder, commentIdsOfCard, getMaxSeq, getMeta, getRecord, getRecordsSince, saveRecord, setMeta,
   transaction, userProfile,
 } from './db.js';
-import { folderAncestors, folderColumnSet } from './folders.js';
+import { folderAncestors, folderColumnSet, INBOX_ID } from './folders.js';
 import { cardReminders, isReminderList, nextTime } from './reminders.js';
 import { textDiff } from './textDiff.js';
 
@@ -309,6 +309,7 @@ let lastEventAt = 0;
 
 /** A note in the chat of a folder ({ folderId }). */
 function addEvent(owner, folderId, actor, event) {
+  if (folderId === INBOX_ID) return;
   const who = actor ?? GUEST;
   lastEventAt = Math.max(Date.now(), lastEventAt + 1);
   saveRecord(owner, 'comment', crypto.randomUUID(), pickData(SCHEMAS.comment, {
@@ -322,7 +323,8 @@ function addEvent(owner, folderId, actor, event) {
   }), { version: 1, deviceId: 'server' });
 }
 
-const nameOf = (owner, id) => (id ? withDefaults(getRecord(owner, id))?.name ?? null : null);
+const nameOf = (owner, id) => (id === INBOX_ID ? 'Входящие'
+  : id ? withDefaults(getRecord(owner, id))?.name ?? null : null);
 
 /**
  * Notes in the folder's chat of what `actor` changed (`before` → `after`). Reordering is not noted.

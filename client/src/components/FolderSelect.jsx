@@ -39,7 +39,7 @@ const countLabel = (n) => `${n} ${plural(n, 'доска', 'доски', 'дос�
  * click, one without them is picked at once; the button at the bottom picks the open folder (the top level
  * with `topLabel`). Folders in `exclude` can't be picked but can be opened when something inside them can.
  */
-function FolderPickerDialog({ title, folders, value, exclude, topLabel, onPick, onClose }) {
+export function FolderPickerDialog({ title, folders, value, exclude, topLabel, onPick, onClose }) {
   const tree = folderTree(folders);
   const selected = value ? tree.byId.get(value) : null;
   const [currentId, setCurrentId] = useState(() => (selected ? tree.parentOf(selected) : null));

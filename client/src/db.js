@@ -137,6 +137,9 @@ db.version(10).stores({
 
 // v11: spaces, the top level of the board. Projects synced before them are in «Личное».
 export const DEFAULT_FOLDER_ID = 'personal';
+// «Входящие» of the own board: cards dumped there quickly, not on any board yet. No folder record has this id,
+// so the cards stay out of boards, filters and sharing; the server knows the id too.
+export const INBOX_ID = 'inbox';
 
 db.version(11)
   .stores({

@@ -2,6 +2,8 @@ import { getRecord } from './db.js';
 
 export const DEFAULT_FOLDER_ID = 'personal';
 export const DEFAULT_SET_ID = 'default';
+// «Входящие» of the owner: cards not on any board yet. No folder has this id; it has no chat.
+export const INBOX_ID = 'inbox';
 
 /** Live folder, or null. */
 export function folderOf(owner, id) {

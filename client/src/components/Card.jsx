@@ -131,6 +131,10 @@ function Tags({ text, activeTags, onTag }) {
 /** Id and height of the card being dragged: `dataTransfer` can't be read until the drop. */
 export let draggedCardId = null;
 export let draggedCardHeight = 0;
+export function setDraggedCard(id, height = draggedCardHeight) {
+  draggedCardId = id;
+  draggedCardHeight = height;
+}
 
 export default function Card({
   card, label, activeTags, onTag, readOnly, onOpen, onOpenLabel, prevColumn, nextColumn,

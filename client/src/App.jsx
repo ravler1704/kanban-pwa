@@ -4,7 +4,7 @@ import { authState } from './auth.js';
 import { isUnread, seenStore } from './seen.js';
 import { dbName, isCurrentBoard, isOwnBoard, publicToken, switchBoard } from './board.js';
 import { useReadOnly } from './public.js';
-import { db, DEFAULT_FOLDER_ID } from './db.js';
+import { db, DEFAULT_FOLDER_ID, INBOX_ID } from './db.js';
 import { columnModel } from './columnSets.js';
 import { renameFolder } from './actions.js';
 import StatusBar from './components/StatusBar.jsx';
@@ -20,6 +20,7 @@ import CalendarView from './components/CalendarView.jsx';
 import ListView from './components/ListView.jsx';
 import ChatDialog from './components/ChatDialog.jsx';
 import PeopleBar from './components/People.jsx';
+import InboxPanel, { useInboxCards } from './components/InboxPanel.jsx';
 import { tagKey, tagNames, tagsOf } from './tags.js';
 import { descendants, flattenFolders, folderPath, folderTree, liveFolders, topFolderIds } from './folders.js';
 import { folderIdsOf, peopleStore } from './people.js';
@@ -32,6 +33,7 @@ const AUTHOR_FILTER_KEY = `authorFilter:${dbName}`;
 const HOLDER_FILTER_KEY = `holderFilter:${dbName}`;
 // Column ids collapsed into a narrow strip on this device.
 const COLLAPSED_KEY = `collapsedColumns:${dbName}`;
+const INBOX_OPEN_KEY = 'inboxOpen';
 const holderOf = (card) => card.assigneeId || card.authorId || null;
 const byPosition = (a, b) => a.position - b.position || a.id.localeCompare(b.id);
 
@@ -128,6 +130,12 @@ export default function App() {
   const [chat, setChat] = useState(null);
   const [search, setSearch] = useState('');
   const [editingColumns, setEditingColumns] = useState(false);
+  const [inboxOpen, setInboxOpen] = useState(() => localStorage.getItem(INBOX_OPEN_KEY) === '1');
+  const toggleInbox = () => {
+    localStorage.setItem(INBOX_OPEN_KEY, inboxOpen ? '0' : '1');
+    setInboxOpen(!inboxOpen);
+  };
+  const inboxCards = useInboxCards();
   const searching = search.trim() !== '';
   const [view, setView] = useState(() => (['calendar', 'list'].includes(localStorage.getItem(VIEW_KEY))
     ? localStorage.getItem(VIEW_KEY) : 'board'));
@@ -321,10 +329,12 @@ export default function App() {
     .filter((c) => !holderFilter.length || holderFilter.includes(holderOf(c)))
     .sort(byPosition);
   // A card found in the list may be in a folder that is not shown.
+  // «Входящие» is the own board's alone: there it is a panel next to the board.
+  const inboxOn = isOwnBoard && !publicToken && !readOnly;
   const openCard = cards.find((c) => c.id === openCardId) ?? (openRecord && tree.byId.has(openRecord.folderId)
     ? { ...openRecord, columnId: folderColumnIds.get(openRecord.folderId).includes(openRecord.columnId)
       ? openRecord.columnId : folderColumnIds.get(openRecord.folderId)[0] }
-    : null);
+    : inboxOn && openRecord?.folderId === INBOX_ID ? openRecord : null);
 
   // Where new cards go among `list`: the folder the view is narrowed to (with what is inside it), else
   // «Личное», else the first in the tree.
@@ -426,118 +436,124 @@ export default function App() {
     <div className="app">
       <StatusBar pending={data.pending} conflicts={data.conflicted.length} folders={chatFolders} onChat={setChat}
         search={search} onSearch={folders.length ? setSearch : null}
-        onSettings={readOnly || !folders.length ? null : () => setManaging(true)} />
+        onSettings={readOnly || !folders.length ? null : () => setManaging(true)}
+        inbox={inboxOn ? { count: inboxCards?.length ?? 0, open: inboxOpen, onToggle: toggleInbox } : null} />
 
-      {folders.length === 0 ? (
-        !isOwnBoard ? (
-          <div className="empty">
-            <p>Открытые вам доски появятся здесь после синхронизации.</p>
-          </div>
-        ) : (
-          <div className="empty">
-            <p>Пока нет ни одной доски.</p>
-            <button className="btn btn-primary" onClick={() => setManaging(true)}>Создать доску</button>
-          </div>
-        )
-      ) : (
-        <>
-          <FolderBar
-            folders={folders}
-            folderFilter={folderFilter}
-            conflictsByFolder={conflictsByFolder}
-            columnSets={shownFolders.length !== 1 && view === 'board' && usedSets.length > 1 ? usedSets.map((s) => ({
-              ...s,
-              columns: model.columnsOf(s.id).map((c) => c.name),
-              folders: activeFolders.filter((f) => model.setIdOf(f) === s.id).map((f) => f.name),
-            })) : null}
-            columnSetId={boardSetId}
-            onSelectColumnSet={changeAllFoldersSet}
-            tagFilter={tags.length ? {
-              tags,
-              selected: tagFilter,
-              onToggle: toggleTag,
-              onClear: () => changeTagFilter([]),
-            } : null}
-            authorFilter={publicToken ? null : personFilter(authorFilter, changeAuthorFilter, (c) => c.authorId)}
-            holderFilter={publicToken ? null : personFilter(holderFilter, changeHolderFilter, holderOf)}
-            view={view}
-            onView={changeView}
-            onAddCard={readOnly || view === 'board' ? null : () => setAddingCard(true)}
-            title={!searching && checkedIds.length > 0 && !(publicToken && folders.length === 1) && (
-            <div className="board-head">
-                <h2 className="board-title" title={titleRenamable ? undefined : folderFilter.summary}>
-                  {titleRenamable ? (
-                    <>
-                      {titleBoards.map((f, i) => (
-                        <Fragment key={f.id}>
-                          {i > 0 && ', '}
-                          {usable.includes(f)
-                            ? <EditableName value={f.name} label="Название доски" onSave={(name) => renameFolder(f.id, name)} />
-                            : f.name}
-                        </Fragment>
-                      ))}
-                      {excludedSuffix}
-                    </>
-                  ) : folderFilter.summary}
-                </h2>
-            </div>
-            )}
-            setSwitch={!searching && setTabs ? { sets: setTabs, value: boardSetId, onChange: changeAllFoldersSet } : null}
-          >
-            {!publicToken && <PeopleBar folders={shownFolders} allFolders={folders} onChat={setChat} />}
-          </FolderBar>
-          {searching ? (
-            <ListView cards={visible} query={search} folders={folders} targets={usable} readOnly={readOnly}
-              columnsOfFolder={model.columnsOfFolder}
-              onOpen={setOpenCardId} />
-          ) : shownFolders.length === 0 && view !== 'list' ? (
-            <div className="empty">
-              <p>Не отмечена ни одна доска — отметьте нужные в фильтре «Доски».</p>
-            </div>
-          ) : view === 'list' ? (
-            <ListView cards={visible} folders={folders} targets={usable} readOnly={readOnly}
-              columnsOfFolder={model.columnsOfFolder} onOpen={setOpenCardId} />
-          ) : view === 'calendar' ? (
-            <CalendarView cards={visible} columns={model.columns} cardLabel={cardLabel} onOpen={setOpenCardId} />
+      <div className="app-body">
+        <div className="app-main">
+          {folders.length === 0 ? (
+            !isOwnBoard ? (
+              <div className="empty">
+                <p>Открытые вам доски появятся здесь после синхронизации.</p>
+              </div>
+            ) : (
+              <div className="empty">
+                <p>Пока нет ни одной доски.</p>
+                <button className="btn btn-primary" onClick={() => setManaging(true)}>Создать доску</button>
+              </div>
+            )
           ) : (
-            <main className="board" style={{
-              '--tracks': columns.map((c) => (collapsed.includes(c.id) ? 'var(--column-collapsed)' : 'var(--column-width)')).join(' '),
-            }}>
-              {columns.map((col, index) => (
-                <Column
-                  key={col.id}
-                  target={boardTarget}
-                  targetName={boardFolders.length > 1 ? tree.byId.get(boardTarget)?.name : null}
-                  column={col}
-                  prevColumn={columns[index - 1]}
-                  nextColumn={columns[index + 1]}
-                  cards={boardCards.filter((c) => c.columnId === col.id)}
-                  cardLabel={cardLabel}
-                  activeTags={activeTags}
-                  onTag={toggleTag}
-                  readOnly={readOnly}
-                  onOpen={setOpenCardId}
-                  onOpenGroup={openGroup}
-                  edit={columnEdit}
-                  collapsed={collapsed.includes(col.id)}
-                  onToggleCollapsed={() => toggleCollapsed(col.id)}
-                  onCollapseOthers={() => changeCollapsed((list) => {
-                    const elsewhere = list.filter((id) => !columns.some((c) => c.id === id));
-                    const others = columns.filter((c) => c.id !== col.id).map((c) => c.id);
-                    const alone = !list.includes(col.id) && others.every((id) => list.includes(id));
-                    return alone ? elsewhere : [...elsewhere, ...others];
-                  })}
-                  onNewCard={() => setAddingCard(col)}
-                />
-              ))}
-            </main>
+            <>
+              <FolderBar
+                folders={folders}
+                folderFilter={folderFilter}
+                conflictsByFolder={conflictsByFolder}
+                columnSets={shownFolders.length !== 1 && view === 'board' && usedSets.length > 1 ? usedSets.map((s) => ({
+                  ...s,
+                  columns: model.columnsOf(s.id).map((c) => c.name),
+                  folders: activeFolders.filter((f) => model.setIdOf(f) === s.id).map((f) => f.name),
+                })) : null}
+                columnSetId={boardSetId}
+                onSelectColumnSet={changeAllFoldersSet}
+                tagFilter={tags.length ? {
+                  tags,
+                  selected: tagFilter,
+                  onToggle: toggleTag,
+                  onClear: () => changeTagFilter([]),
+                } : null}
+                authorFilter={publicToken ? null : personFilter(authorFilter, changeAuthorFilter, (c) => c.authorId)}
+                holderFilter={publicToken ? null : personFilter(holderFilter, changeHolderFilter, holderOf)}
+                view={view}
+                onView={changeView}
+                onAddCard={readOnly || view === 'board' ? null : () => setAddingCard(true)}
+                title={!searching && checkedIds.length > 0 && !(publicToken && folders.length === 1) && (
+                <div className="board-head">
+                    <h2 className="board-title" title={titleRenamable ? undefined : folderFilter.summary}>
+                      {titleRenamable ? (
+                        <>
+                          {titleBoards.map((f, i) => (
+                            <Fragment key={f.id}>
+                              {i > 0 && ', '}
+                              {usable.includes(f)
+                                ? <EditableName value={f.name} label="Название доски" onSave={(name) => renameFolder(f.id, name)} />
+                                : f.name}
+                            </Fragment>
+                          ))}
+                          {excludedSuffix}
+                        </>
+                      ) : folderFilter.summary}
+                    </h2>
+                </div>
+                )}
+                setSwitch={!searching && setTabs ? { sets: setTabs, value: boardSetId, onChange: changeAllFoldersSet } : null}
+              >
+                {!publicToken && <PeopleBar folders={shownFolders} allFolders={folders} onChat={setChat} />}
+              </FolderBar>
+              {searching ? (
+                <ListView cards={visible} query={search} folders={folders} targets={usable} readOnly={readOnly}
+                  columnsOfFolder={model.columnsOfFolder}
+                  onOpen={setOpenCardId} />
+              ) : shownFolders.length === 0 && view !== 'list' ? (
+                <div className="empty">
+                  <p>Не отмечена ни одна доска — отметьте нужные в фильтре «Доски».</p>
+                </div>
+              ) : view === 'list' ? (
+                <ListView cards={visible} folders={folders} targets={usable} readOnly={readOnly}
+                  columnsOfFolder={model.columnsOfFolder} onOpen={setOpenCardId} />
+              ) : view === 'calendar' ? (
+                <CalendarView cards={visible} columns={model.columns} cardLabel={cardLabel} onOpen={setOpenCardId} />
+              ) : (
+                <main className="board" style={{
+                  '--tracks': columns.map((c) => (collapsed.includes(c.id) ? 'var(--column-collapsed)' : 'var(--column-width)')).join(' '),
+                }}>
+                  {columns.map((col, index) => (
+                    <Column
+                      key={col.id}
+                      target={boardTarget}
+                      targetName={boardFolders.length > 1 ? tree.byId.get(boardTarget)?.name : null}
+                      column={col}
+                      prevColumn={columns[index - 1]}
+                      nextColumn={columns[index + 1]}
+                      cards={boardCards.filter((c) => c.columnId === col.id)}
+                      cardLabel={cardLabel}
+                      activeTags={activeTags}
+                      onTag={toggleTag}
+                      readOnly={readOnly}
+                      onOpen={setOpenCardId}
+                      onOpenGroup={openGroup}
+                      edit={columnEdit}
+                      collapsed={collapsed.includes(col.id)}
+                      onToggleCollapsed={() => toggleCollapsed(col.id)}
+                      onCollapseOthers={() => changeCollapsed((list) => {
+                        const elsewhere = list.filter((id) => !columns.some((c) => c.id === id));
+                        const others = columns.filter((c) => c.id !== col.id).map((c) => c.id);
+                        const alone = !list.includes(col.id) && others.every((id) => list.includes(id));
+                        return alone ? elsewhere : [...elsewhere, ...others];
+                      })}
+                      onNewCard={() => setAddingCard(col)}
+                    />
+                  ))}
+                </main>
+              )}
+            </>
           )}
-        </>
-      )}
+        </div>
+        {inboxOn && inboxOpen && <InboxPanel folders={usable} onOpen={setOpenCardId} onClose={toggleInbox} />}
+      </div>
 
       {openCard && (openCard.conflict
         ? <ConflictDialog card={openCard} onClose={() => setOpenCardId(null)} />
-        : <CardEditor card={openCard} columnsOfFolder={model.columnsOfFolder} folders={usable}
+        : <CardEditor card={openCard} columnsOfFolder={model.columnsOfFolder} folders={usable} inbox={inboxOn}
           readOnly={readOnly} onClose={() => setOpenCardId(null)} />)}
 
       {chat !== null && !publicToken && (

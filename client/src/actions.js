@@ -1,8 +1,8 @@
 import {
-  db, DEFAULT_COLUMNS, DEFAULT_SET_ID, isDirty, newId, pickFields, tableOf, TYPES,
+  db, DEFAULT_COLUMNS, DEFAULT_SET_ID, INBOX_ID, isDirty, newId, pickFields, tableOf, TYPES,
 } from './db.js';
 import { columnModel, matchColumn } from './columnSets.js';
-import { descendants, folderColumnSetId, folderTree, inheritingFolders } from './folders.js';
+import { descendants, folderColumnSetId, folderTree, inheritingFolders, liveFolders } from './folders.js';
 import { authState } from './auth.js';
 import { requestSync } from './sync.js';
 
@@ -462,6 +462,27 @@ export async function createCard(
   requestSync();
 }
 
+/** A card in «Входящие», last in it; its column is the first of the default set, kept for when it goes to a board. */
+export async function createInboxCard(title) {
+  const model = columnModel(await db.columnSets.toArray(), await db.columns.toArray(), []);
+  const columnId = model.columnsOfFolder(INBOX_ID)[0]?.id ?? DEFAULT_COLUMNS[0].id;
+  const inbox = (await db.cards.where('folderId').equals(INBOX_ID).toArray()).filter(alive);
+  await insert('card', {
+    folderId: INBOX_ID,
+    columnId,
+    title,
+    description: '',
+    remindAt: null,
+    reminders: [],
+    authorId: authState.get().user?.id ?? null,
+    assigneeId: null,
+    attachments: [],
+    checklist: [],
+    position: inbox.reduce((max, c) => Math.max(max, c.position), 0) + 1,
+  });
+  requestSync();
+}
+
 export async function updateCard(id, patch, base = null) {
   await db.transaction('rw', db.cards, () => update('card', id, patch, base));
   requestSync();
@@ -471,8 +492,9 @@ export function deleteCard(id) {
   return updateCard(id, { deleted: true });
 }
 
-export function moveCard(id, columnId, position) {
-  return updateCard(id, { columnId, position });
+/** With `folderId` the card goes to that folder too (from «Входящие»). */
+export function moveCard(id, columnId, position, folderId = null) {
+  return updateCard(id, folderId ? { folderId, columnId, position } : { columnId, position });
 }
 
 /** Moves the card to another column, first or last as that column is set up. */
@@ -515,6 +537,26 @@ export async function moveCardToFolder(id, folderId) {
   const card = await db.cards.get(id);
   if (!card || card.folderId === folderId) return;
   return updateCard(id, { folderId });
+}
+
+/**
+ * Moves the card to the folder and column, first or last as the column is set up; into «Входящие» it goes last.
+ * Without `columnId`, the column like the card's present one.
+ */
+export async function moveCardTo(id, folderId, columnId = null) {
+  const card = await db.cards.get(id);
+  if (!card) return;
+  if (!columnId) {
+    const folders = liveFolders(await db.folders.toArray(), { standIn: false });
+    const model = columnModel(await db.columnSets.toArray(), await db.columns.toArray(), folders);
+    const from = model.columns.find((c) => c.id === card.columnId);
+    columnId = matchColumn(from, model.columnsOfFolder(folderId))?.id ?? card.columnId;
+  }
+  const position = folderId === INBOX_ID
+    ? (await db.cards.where('folderId').equals(INBOX_ID).toArray()).filter((c) => alive(c) && c.id !== id)
+      .reduce((max, c) => Math.max(max, c.position), 0) + 1
+    : await arrivalPosition(columnId, id);
+  return updateCard(id, { folderId, columnId, position });
 }
 
 // ---- comments and folder chats ----
