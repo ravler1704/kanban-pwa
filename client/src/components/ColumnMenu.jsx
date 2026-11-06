@@ -91,7 +91,7 @@ function MoreIcon() {
  * A right click on `hoverRef` (the column, apart from its cards) opens it too; the shortcuts also work
  * with the pointer over it.
  */
-export default function ColumnMenu({ column, prevColumn, nextColumn, moveAll, edit, hoverRef }) {
+export default function ColumnMenu({ column, prevColumn, nextColumn, moveAll, edit, onCollapse, hoverRef }) {
   const [menu, setMenu] = useState(null);
   const [dialog, setDialog] = useState(null);
   const closeMenu = useCallback(() => setMenu(null), []);
@@ -150,7 +150,8 @@ export default function ColumnMenu({ column, prevColumn, nextColumn, moveAll, ed
     null,
     { label: 'Удалить колонку', icon: ICONS.trash, shortcut: 'Delete', danger: true, disabled: sole, run: remove },
   ] : [];
-  const items = [...moves, ...(moves.length && changes.length ? [null] : []), ...changes];
+  const collapse = onCollapse ? [{ label: 'Свернуть колонку', icon: ICONS.collapse, shortcut: 'KeyC', run: onCollapse }] : [];
+  const items = [collapse, moves, changes].filter((g) => g.length).flatMap((g, i) => (i ? [null, ...g] : g));
   useHoverShortcuts(hoverRef, items);
 
   const hasItems = items.length > 0;

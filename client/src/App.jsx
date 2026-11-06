@@ -30,6 +30,8 @@ const TAG_FILTER_KEY = 'tagFilter';
 // User ids: only cards made by / held by any of them are shown.
 const AUTHOR_FILTER_KEY = `authorFilter:${dbName}`;
 const HOLDER_FILTER_KEY = `holderFilter:${dbName}`;
+// Column ids collapsed into a narrow strip on this device.
+const COLLAPSED_KEY = `collapsedColumns:${dbName}`;
 const holderOf = (card) => card.assigneeId || card.authorId || null;
 const byPosition = (a, b) => a.position - b.position || a.id.localeCompare(b.id);
 
@@ -78,10 +80,12 @@ function readList(key) {
 
 function useStoredList(key) {
   const [list, setList] = useState(() => readList(key));
-  const change = (next) => {
-    setList(next);
-    localStorage.setItem(key, JSON.stringify(next));
-  };
+  // `next`: the new list, or a function of the current one.
+  const change = (next) => setList((current) => {
+    const value = typeof next === 'function' ? next(current) : next;
+    localStorage.setItem(key, JSON.stringify(value));
+    return value;
+  });
   return [list, change];
 }
 
@@ -147,6 +151,8 @@ export default function App() {
   };
   const [authorFilter, changeAuthorFilter] = useStoredList(AUTHOR_FILTER_KEY);
   const [holderFilter, changeHolderFilter] = useStoredList(HOLDER_FILTER_KEY);
+  const [collapsed, changeCollapsed] = useStoredList(COLLAPSED_KEY);
+  const toggleCollapsed = (id) => changeCollapsed((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]));
   const toggleTag = (name) => {
     const key = tagKey(name);
     changeTagFilter(tagFilter.includes(key) ? tagFilter.filter((k) => k !== key) : [...tagFilter, key]);
@@ -512,7 +518,9 @@ export default function App() {
           ) : view === 'calendar' ? (
             <CalendarView cards={visible} columns={model.columns} cardLabel={cardLabel} onOpen={setOpenCardId} />
           ) : (
-            <main className="board" style={{ '--columns': columns.length }}>
+            <main className="board" style={{
+              '--tracks': columns.map((c) => (collapsed.includes(c.id) ? 'var(--column-collapsed)' : 'var(--column-width)')).join(' '),
+            }}>
               {columns.map((col, index) => (
                 <Column
                   key={col.id}
@@ -529,6 +537,8 @@ export default function App() {
                   onOpen={setOpenCardId}
                   onOpenGroup={openGroup}
                   edit={columnEdit}
+                  collapsed={collapsed.includes(col.id)}
+                  onToggleCollapsed={() => toggleCollapsed(col.id)}
                   onNewCard={() => setAddingCard(col)}
                 />
               ))}

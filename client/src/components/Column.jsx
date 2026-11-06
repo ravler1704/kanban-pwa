@@ -21,10 +21,11 @@ function positionAtEnd(cards) {
  * `cardLabel(card)` returns the folder shown on the card, or null for none.
  * `edit` (see ColumnMenu), when set, lets the columns be changed from the column's menu.
  * `onNewCard()` opens the full new card form for the column.
+ * `collapsed`: shown as a narrow strip with its name, `onToggleCollapsed()` switches it.
  */
 export default function Column({
   target, targetName, column, prevColumn, nextColumn, cards, cardLabel, activeTags, onTag, readOnly, onOpen, onOpenGroup,
-  edit, onNewCard,
+  edit, onNewCard, collapsed, onToggleCollapsed,
 }) {
   const [title, setTitle] = useState('');
   // While a card is dragged over the column: the id of the card it would land before, or null for the end.
@@ -41,6 +42,10 @@ export default function Column({
 
   function handleDragOver(e) {
     e.preventDefault();
+    if (!list.current) {
+      setDropBefore(null);
+      return;
+    }
     const target = [...list.current.querySelectorAll(':scope > .card')].find((el) => {
       const rect = el.getBoundingClientRect();
       return e.clientY < rect.top + rect.height / 2;
@@ -83,6 +88,26 @@ export default function Column({
     setTitle('');
   }
 
+  const count = cards.filter((c) => !c.deleted).length;
+  if (collapsed) {
+    return (
+      <section
+        className={`column column-collapsed ${dragOver ? 'column-dragover' : ''}`}
+        onDragOver={readOnly ? undefined : handleDragOver}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget)) setDropBefore(undefined);
+        }}
+        onDrop={readOnly ? undefined : handleDrop}
+      >
+        <button type="button" className="column-expand" onClick={onToggleCollapsed}
+          title={`Развернуть колонку «${column.name}»`} aria-label={`Развернуть колонку «${column.name}»`} aria-expanded="false">
+          <span className="count">{count}</span>
+          <span className="column-expand-name">{column.name}</span>
+        </button>
+      </section>
+    );
+  }
+
   return (
     <section
       ref={section}
@@ -101,14 +126,13 @@ export default function Column({
                 ? `Набор «${edit.setName}» используют доски: ${edit.boards.map((b) => `«${b}»`).join(', ')}. Изменение применится ко всем.`
                 : null}
               onSave={(name) => renameColumn(column.id, name)} />
-            : column.name} <span className="count">{cards.filter((c) => !c.deleted).length}</span>
+            : column.name} <span className="count">{count}</span>
         </h2>
-        {!readOnly && (
-          <div className="column-moves">
-            <ColumnMenu column={column} prevColumn={prevColumn} nextColumn={nextColumn}
-              moveAll={movable.length ? moveAll : null} edit={edit} hoverRef={section} />
-          </div>
-        )}
+        <div className="column-moves">
+          <ColumnMenu column={column} prevColumn={readOnly ? null : prevColumn} nextColumn={readOnly ? null : nextColumn}
+            moveAll={!readOnly && movable.length ? moveAll : null} edit={readOnly ? null : edit}
+            onCollapse={onToggleCollapsed} hoverRef={section} />
+        </div>
       </div>
       <div className="cards" ref={list}>
         {cards.map((card, i) => [
