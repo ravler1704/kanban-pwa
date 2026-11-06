@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MAX_REMINDERS, REPEAT_LABELS, REPEATS, makeReminder, nextTime } from '../reminders.js';
 import Modal from './Modal.jsx';
@@ -6,9 +6,6 @@ import Modal from './Modal.jsx';
 const pad = (n) => String(n).padStart(2, '0');
 
 const WEEKDAYS = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'];
-const HOURS = Array.from({ length: 24 }, (_, h) => h);
-const MINUTES = Array.from({ length: 60 }, (_, m) => m);
-
 const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 const at = (day, h, m = 0) => new Date(day.getFullYear(), day.getMonth(), day.getDate(), h, m);
@@ -49,85 +46,6 @@ function monthDays(month) {
     ...Array(pads).fill(null),
     ...Array.from({ length: count }, (_, i) => new Date(month.getFullYear(), month.getMonth(), i + 1)),
   ];
-}
-
-const ITEM = 36;
-// Wheel and trackpad: this much scrolling moves the wheel by one item.
-const WHEEL_STEP = 28;
-
-/** An iOS-like wheel: scrolls with snapping; the value is the item in the middle band. */
-function Wheel({ values, value, onChange, label }) {
-  const list = useRef(null);
-  const timer = useRef(null);
-  const wheel = useRef({ target: 0, rest: 0, active: false });
-  const index = values.indexOf(value);
-  const latest = useRef({ values, value, onChange });
-  latest.current = { values, value, onChange };
-
-  useLayoutEffect(() => {
-    const el = list.current;
-    if (!wheel.current.active && Math.round(el.scrollTop / ITEM) !== index) el.scrollTop = index * ITEM;
-  }, [index]);
-
-  const commit = (i) => {
-    const { values: all, value: current, onChange: change } = latest.current;
-    const next = all[Math.min(all.length - 1, Math.max(0, i))];
-    if (next !== current) change(next);
-  };
-
-  // Snapping alone makes trackpads jumpy: the many small deltas are turned into steps of one item.
-  useEffect(() => {
-    const el = list.current;
-    const onWheel = (e) => {
-      e.preventDefault();
-      const w = wheel.current;
-      if (!w.active) {
-        w.active = true;
-        w.target = Math.round(el.scrollTop / ITEM);
-        w.rest = 0;
-      }
-      let delta = e.deltaMode === 1 ? e.deltaY * ITEM : e.deltaY;
-      // A mouse wheel notch: one item.
-      if (Math.abs(delta) >= 50 && Number.isInteger(delta)) delta = Math.sign(delta) * WHEEL_STEP;
-      w.rest += delta;
-      const steps = Math.trunc(w.rest / WHEEL_STEP);
-      if (steps) {
-        w.rest -= steps * WHEEL_STEP;
-        w.target = Math.min(latest.current.values.length - 1, Math.max(0, w.target + steps));
-        el.scrollTo({ top: w.target * ITEM, behavior: 'smooth' });
-      }
-      clearTimeout(timer.current);
-      timer.current = setTimeout(() => {
-        w.active = false;
-        commit(w.target);
-      }, 150);
-    };
-    el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
-  }, []);
-
-  const onScroll = () => {
-    if (wheel.current.active) return;
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => commit(Math.round(list.current.scrollTop / ITEM)), 90);
-  };
-
-  return (
-    <div className="rem-wheel" ref={list} onScroll={onScroll} role="listbox" aria-label={label} tabIndex={0}
-      onKeyDown={(e) => {
-        const step = { ArrowUp: -1, ArrowDown: 1 }[e.key];
-        if (!step) return;
-        e.preventDefault();
-        onChange(values[Math.min(values.length - 1, Math.max(0, index + step))]);
-      }}>
-      {values.map((v, i) => (
-        <div key={v} role="option" aria-selected={v === value} className={`rem-wheel-item${v === value ? ' rem-on' : ''}`}
-          onClick={() => list.current.scrollTo({ top: i * ITEM, behavior: 'smooth' })}>
-          {pad(v)}
-        </div>
-      ))}
-    </div>
-  );
 }
 
 const ChevronIcon = ({ dir = 'right' }) => (
@@ -233,17 +151,16 @@ function ReminderDialog({ value, onSave, onRemove, onClose }) {
         <PickerRow label="Дата" value={dateText} open={open === 'date'} onToggle={() => toggle('date')}>
           <Calendar value={draft} onChange={setDraft} now={now} />
         </PickerRow>
-        <PickerRow label="Время" value={`${pad(draft.getHours())}:${pad(draft.getMinutes())}`} open={open === 'time'}
-          onToggle={() => toggle('time')}>
-          <div className="rem-wheels">
-            <span className="rem-wheel-band" aria-hidden="true" />
-            <Wheel label="Часы" values={HOURS} value={draft.getHours()}
-              onChange={(h) => setDraft((d) => at(d, h, d.getMinutes()))} />
-            <span className="rem-wheel-colon" aria-hidden="true">:</span>
-            <Wheel label="Минуты" values={MINUTES} value={draft.getMinutes()}
-              onChange={(m) => setDraft((d) => at(d, d.getHours(), m))} />
-          </div>
-        </PickerRow>
+        <li className="rem-row">
+          <label className="rem-row-head rem-time">
+            <span className="rem-row-label">Время</span>
+            <input type="time" className="rem-time-input" required value={`${pad(draft.getHours())}:${pad(draft.getMinutes())}`}
+              onChange={(e) => {
+                const [h, m] = e.target.value.split(':').map(Number);
+                if (Number.isInteger(h) && Number.isInteger(m)) setDraft((d) => at(d, h, m));
+              }} />
+          </label>
+        </li>
         <PickerRow label="Повтор" value={repeat ? REPEAT_LABELS[repeat] : 'Никогда'} open={open === 'repeat'}
           onToggle={() => toggle('repeat')}>
           <div className="rem-repeats" role="radiogroup" aria-label="Повтор">

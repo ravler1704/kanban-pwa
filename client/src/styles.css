@@ -952,44 +952,18 @@ a.link { color: var(--accent); overflow-wrap: anywhere; }
 .rem-today { color: var(--accent); }
 .rem-day.rem-on { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent); font-weight: 700; }
 .rem-day.rem-today.rem-on { background: var(--accent); color: var(--on-accent); }
-.rem-wheels { position: relative; display: flex; justify-content: center; align-items: center; gap: 0.25rem; }
-.rem-wheel-band {
-  position: absolute;
-  left: 0.3rem;
-  right: 0.3rem;
-  top: 50%;
-  height: 36px;
-  transform: translateY(-50%);
+.rem-row-head.rem-time { flex-direction: row; align-items: center; justify-content: space-between; cursor: default; }
+.rem-time-input {
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--text) 9%, transparent);
-  pointer-events: none;
-}
-.rem-wheel {
-  position: relative;
-  width: 4.5rem;
-  height: 180px;
-  padding: 72px 0;
-  box-sizing: border-box;
-  overflow-y: auto;
-  scroll-snap-type: y mandatory;
-  scrollbar-width: none;
-  mask-image: linear-gradient(transparent, #000 35%, #000 65%, transparent);
-  outline: none;
-}
-.rem-wheel::-webkit-scrollbar { display: none; }
-.rem-wheel-item {
-  height: 36px;
-  line-height: 36px;
-  scroll-snap-align: center;
-  color: var(--muted);
-  font-size: 1.3rem;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 1.1rem;
   font-variant-numeric: tabular-nums;
-  text-align: center;
-  cursor: pointer;
-  user-select: none;
 }
-.rem-wheel-item.rem-on { color: var(--text); }
-.rem-wheel-colon { position: relative; font-size: 1.3rem; font-weight: 600; }
+.rem-time-input:focus { outline: none; border-color: var(--accent); }
 .rem-past { margin: 0; color: var(--warn); font-size: 0.85rem; text-align: center; }
 .add-card input, .editor input, .editor textarea, .conflict-field input, .conflict-field textarea {
   width: 100%;
