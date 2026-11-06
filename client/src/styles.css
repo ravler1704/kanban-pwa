@@ -628,13 +628,6 @@ body {
 }
 .column-dragover { border-color: var(--accent); }
 .column { position: relative; }
-.column-bar {
-  position: absolute; top: 0; left: 0; right: 0; height: 0.7rem; border-radius: 12px 12px 0 0; cursor: grab;
-}
-.column-bar { background: color-mix(in srgb, var(--text) 4%, transparent); transition: background 0.15s; }
-.column-bar:hover, .column-dragging .column-bar { background: color-mix(in srgb, var(--text) 10%, transparent); }
-.column-bar:active { cursor: grabbing; }
-@media (hover: none) { .column-bar { display: none; } }
 .column-head h2 { flex: 1; min-width: 0; }
 .column-dragging { opacity: 0.5; }
 .column-drop-before::before, .column-drop-after::before {

@@ -40,6 +40,8 @@ export default function Column({
   // While another column of the set is dragged over this one: which side of it it would land on.
   const [columnDrop, setColumnDrop] = useState(null);
   const [dragging, setDragging] = useState(false);
+  // Pressed in a text field: dragging there selects text instead of moving the column.
+  const [typing, setTyping] = useState(false);
 
   useEffect(() => {
     const reset = () => {
@@ -66,10 +68,12 @@ export default function Column({
     }
   }
 
-  // The bar along the top (or the collapsed strip) drags the column, when the set's columns can be changed here.
+  // The column (or the collapsed strip) drags as a whole, when the set's columns can be changed here.
+  // Cards dragged inside it bubble their drag events up and are left alone.
   const columnDrag = !readOnly && edit ? {
     draggable: true,
     onDragStart: (e) => {
+      if (e.target !== e.currentTarget) return;
       draggedColumnId = column.id;
       e.dataTransfer.setData('text/column-id', column.id);
       if (section.current) {
@@ -79,7 +83,8 @@ export default function Column({
       e.dataTransfer.effectAllowed = 'move';
       setDragging(true);
     },
-    onDragEnd: () => {
+    onDragEnd: (e) => {
+      if (e.target !== e.currentTarget) return;
       draggedColumnId = null;
     },
   } : {};
@@ -189,10 +194,10 @@ export default function Column({
           setColumnDrop(null);
       }}
       onDrop={readOnly ? undefined : handleDrop}
+      {...columnDrag}
+      draggable={columnDrag.draggable && !typing}
+      onMouseDown={(e) => setTyping(!!e.target.closest('input, textarea'))}
     >
-      {columnDrag.draggable && (
-        <div className="column-bar" {...columnDrag} title="Перетащите, чтобы переставить колонку" aria-hidden="true" />
-      )}
       <div className="column-head">
         <h2>
           {edit
