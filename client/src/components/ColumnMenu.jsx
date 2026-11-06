@@ -3,7 +3,7 @@ import {
   countColumnCards, deleteColumn, insertColumn, moveColumn, setColumnAddToTop,
 } from '../actions.js';
 import { ICONS } from '../menuIcons.js';
-import ContextMenu from './ContextMenu.jsx';
+import ContextMenu, { useHoverShortcuts } from './ContextMenu.jsx';
 import Modal from './Modal.jsx';
 
 const quoted = (names) => names.map((n) => `«${n}»`).join(', ');
@@ -88,8 +88,9 @@ function MoreIcon() {
  * The «⋯» menu of a board column: moving all its cards (`moveAll(column)` to `prevColumn` / `nextColumn`,
  * null when it has none to move) and, with `edit` ({ setId, setName, columns, boards: [name], onSetSettings }:
  * the set the column belongs to, its columns in order and the boards using it), changing the columns.
+ * The shortcuts also work with the pointer over `hoverRef` (the column).
  */
-export default function ColumnMenu({ column, prevColumn, nextColumn, moveAll, edit }) {
+export default function ColumnMenu({ column, prevColumn, nextColumn, moveAll, edit, hoverRef }) {
   const [menu, setMenu] = useState(null);
   const [dialog, setDialog] = useState(null);
   const closeMenu = useCallback(() => setMenu(null), []);
@@ -149,12 +150,13 @@ export default function ColumnMenu({ column, prevColumn, nextColumn, moveAll, ed
     { label: 'Удалить колонку', icon: ICONS.trash, shortcut: 'Delete', danger: true, disabled: sole, run: remove },
   ] : [];
   const items = [...moves, ...(moves.length && changes.length ? [null] : []), ...changes];
+  useHoverShortcuts(hoverRef, items);
   if (!items.length) return null;
 
   return (
     <>
       <button type="button" className={`btn btn-icon column-menu-btn ${menu ? 'active' : ''}`}
-        title="Действия с колонкой" aria-label={`Действия с колонкой «${column.name}»`} aria-haspopup="menu"
+        title="Действия с колонкой (их клавиши работают и при наведении на колонку)" aria-label={`Действия с колонкой «${column.name}»`} aria-haspopup="menu"
         aria-expanded={Boolean(menu)}
         onMouseDown={(e) => menu && e.stopPropagation()}
         onClick={(e) => {

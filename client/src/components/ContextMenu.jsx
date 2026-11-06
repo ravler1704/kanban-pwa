@@ -27,6 +27,41 @@ function matches(spec, e) {
 /** The keyboard shortcut of `items` (see ContextMenu) pressed in `e`, if any. */
 export const itemForKey = (items, e) => items.find((item) => item && !item.disabled && item.shortcut && matches(item.shortcut, e));
 
+/**
+ * The shortcuts of the menu `items` work while the pointer is over `ref` too: not while typing,
+ * with a menu open (it takes them) or under a dialog that does not contain the element.
+ */
+export function useHoverShortcuts(ref, items) {
+  const latest = useRef(items);
+  latest.current = items;
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    let hovered = false;
+    const enter = () => { hovered = true; };
+    const leave = () => { hovered = false; };
+    const onKey = (e) => {
+      if (!hovered || e.defaultPrevented || e.repeat) return;
+      if (e.target.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+      if (document.querySelector('.context-menu')) return;
+      const dialogs = document.querySelectorAll('[role="dialog"]');
+      if (dialogs.length && !dialogs[dialogs.length - 1].contains(el)) return;
+      const item = itemForKey(latest.current, e);
+      if (!item) return;
+      e.preventDefault();
+      item.run();
+    };
+    el.addEventListener('mouseenter', enter);
+    el.addEventListener('mouseleave', leave);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      el.removeEventListener('mouseenter', enter);
+      el.removeEventListener('mouseleave', leave);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [ref]);
+}
+
 const Icon = ({ d }) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
     strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg>

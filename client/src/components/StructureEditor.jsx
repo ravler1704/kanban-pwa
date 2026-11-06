@@ -1,9 +1,9 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { createFolder, moveFolder, renameFolder, reorderFolder } from '../actions.js';
 import { isOwnBoard } from '../board.js';
 import { childrenOf, descendants, flattenFolders, folderColumnSetId, folderPath, folderTree } from '../folders.js';
 import { ICONS } from '../menuIcons.js';
-import ContextMenu from './ContextMenu.jsx';
+import ContextMenu, { useHoverShortcuts } from './ContextMenu.jsx';
 import FolderSelect from './FolderSelect.jsx';
 import EditableName from './EditableName.jsx';
 import { AddButton, Chevron, plural } from './ManageFields.jsx';
@@ -118,9 +118,11 @@ function FolderRow({ folder, index, count, ctx }) {
     null,
     { label: 'Удалить', icon: ICONS.trash, shortcut: 'Delete', danger: true, run: () => ctx.onRemove(folder) },
   ].filter((item) => item !== false);
+  const node = useRef(null);
+  useHoverShortcuts(node, menuItems);
 
   return (
-    <section className={`tree-node tree-folder ${panel ? 'tree-node-open' : ''}`}>
+    <section ref={node} className={`tree-node tree-folder ${panel ? 'tree-node-open' : ''}`}>
       <div className="tree-head" onContextMenu={(e) => {
         e.preventDefault();
         setMenu({ x: e.clientX, y: e.clientY });
@@ -134,7 +136,7 @@ function FolderRow({ folder, index, count, ctx }) {
           <Chevron />
         </button>
         <button type="button" className={`btn btn-small btn-icon-only tree-more ${menu ? 'active' : ''}`}
-          title="Действия" aria-label="Действия с доской" aria-haspopup="menu" aria-expanded={Boolean(menu)}
+          title="Действия (их клавиши работают и при наведении на доску)" aria-label="Действия с доской" aria-haspopup="menu" aria-expanded={Boolean(menu)}
           onMouseDown={(e) => menu && e.stopPropagation()}
           onClick={(e) => {
             if (menu) return setMenu(null);

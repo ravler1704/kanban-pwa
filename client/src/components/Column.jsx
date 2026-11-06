@@ -30,6 +30,7 @@ export default function Column({
   // While a card is dragged over the column: the id of the card it would land before, or null for the end.
   const [dropBefore, setDropBefore] = useState(undefined);
   const list = useRef(null);
+  const section = useRef(null);
   const dragOver = dropBefore !== undefined;
 
   useEffect(() => {
@@ -84,6 +85,7 @@ export default function Column({
 
   return (
     <section
+      ref={section}
       className={`column ${dragOver ? 'column-dragover' : ''}`}
       onDragOver={readOnly ? undefined : handleDragOver}
       onDragLeave={(e) => {
@@ -104,7 +106,7 @@ export default function Column({
         {!readOnly && (
           <div className="column-moves">
             <ColumnMenu column={column} prevColumn={prevColumn} nextColumn={nextColumn}
-              moveAll={movable.length ? moveAll : null} edit={edit} />
+              moveAll={movable.length ? moveAll : null} edit={edit} hoverRef={section} />
           </div>
         )}
       </div>
