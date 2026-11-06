@@ -2,9 +2,11 @@ import { useEffect, useRef } from 'react';
 
 /**
  * `closeButton`: a × in the corner, for dialogs without their own «Закрыть». `header` false: the
- * content draws its own (the title still names the dialog).
+ * content draws its own (the title still names the dialog). `headerEnd`: shown at the right of the title.
  */
-export default function Modal({ title, onClose, className = '', closeButton = false, header = true, children }) {
+export default function Modal({
+  title, onClose, className = '', closeButton = false, header = true, headerEnd = null, children,
+}) {
   const backdrop = useRef(null);
 
   useEffect(() => {
@@ -21,14 +23,17 @@ export default function Modal({ title, onClose, className = '', closeButton = fa
   return (
     <div className="modal-backdrop" ref={backdrop} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className={`modal ${className}`} role="dialog" aria-label={title}>
-        {!header ? null : closeButton ? (
+        {!header ? null : closeButton || headerEnd ? (
           <div className="modal-head">
             <h3>{title}</h3>
-            <button type="button" className="btn btn-small btn-icon-only modal-close" onClick={onClose}
-              aria-label="Закрыть" title="Закрыть">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
-            </button>
+            {headerEnd}
+            {closeButton && (
+              <button type="button" className="btn btn-small btn-icon-only modal-close" onClick={onClose}
+                aria-label="Закрыть" title="Закрыть">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                  strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              </button>
+            )}
           </div>
         ) : <h3>{title}</h3>}
         {children}

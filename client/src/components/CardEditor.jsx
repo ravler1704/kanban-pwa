@@ -44,10 +44,10 @@ function CardView({ card, columnsOfFolder, folders, onClose }) {
   const column = columnsOfFolder(card.folderId).find((c) => c.id === card.columnId);
   const folder = folders.find((f) => f.id === card.folderId);
   return (
-    <Modal title={card.number ? `Карточка #${card.number}` : 'Карточка'} onClose={onClose}>
+    <Modal title={card.number ? `Карточка #${card.number}` : 'Карточка'} onClose={onClose}
+      headerEnd={card.done && <DoneButton card={card} readOnly className="modal-done-btn" />}>
       <div className="editor card-view">
         <h3 className="card-view-title">
-          {card.done && <DoneButton card={card} readOnly className="card-view-done" />}
           {card.title ? <Markdown text={card.title} inline /> : <em className="muted">Без названия</em>}
         </h3>
         <p className="muted">
@@ -133,7 +133,8 @@ function CardForm({ card, columnsOfFolder, folders, inbox, onClose }) {
   }
 
   return (
-    <Modal title={card.number ? `Карточка #${card.number}` : 'Карточка'} onClose={onClose}>
+    <Modal title={card.number ? `Карточка #${card.number}` : 'Карточка'} onClose={onClose}
+      headerEnd={<DoneButton card={card} readOnly={card.conflict} className="modal-done-btn" />}>
       <form className="editor" onSubmit={save}>
         {changedRemotely && (
           <p className="notice">
@@ -141,10 +142,7 @@ function CardForm({ card, columnsOfFolder, folders, inbox, onClose }) {
             пересекающиеся правки попадут в окно разрешения конфликта.
           </p>
         )}
-        <div className="editor-title-row">
-          <DoneButton card={card} readOnly={card.conflict} className="editor-done-btn" />
-          <TitleField value={title} onChange={setTitle} />
-        </div>
+        <TitleField value={title} onChange={setTitle} />
         {folderId !== INBOX_ID && (
           <label className="field">
             <span className="field-label">Статус</span>

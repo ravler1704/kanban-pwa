@@ -908,10 +908,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .card-done-btn, .card-title-row-done > .card-title { transition: opacity 0.2s; }
 }
-.editor-title-row { display: flex; align-items: flex-start; gap: 0.6rem; }
-.editor-title-row > .field { flex: 1; min-width: 0; }
-.editor-done-btn { width: 1.5rem; height: 1.5rem; margin-top: 1.95rem; }
-.card-view-done { width: 1.1rem; height: 1.1rem; margin-right: 0.4rem; vertical-align: -0.15rem; }
+.modal-done-btn { width: 1.5rem; height: 1.5rem; }
 .card-desc {
   margin-top: 0.3rem;
   color: var(--muted);
