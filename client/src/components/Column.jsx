@@ -167,15 +167,15 @@ export default function Column({
       }}
       onDrop={readOnly ? undefined : handleDrop}
     >
-      {columnDrag.draggable && (
-        <span className="column-grip" {...columnDrag} title="Перетащите, чтобы переставить колонку" aria-hidden="true">
-          <svg width="6" height="10" viewBox="0 0 6 10" fill="currentColor">
-            <circle cx="1" cy="1" r="1" /><circle cx="5" cy="1" r="1" /><circle cx="1" cy="5" r="1" />
-            <circle cx="5" cy="5" r="1" /><circle cx="1" cy="9" r="1" /><circle cx="5" cy="9" r="1" />
-          </svg>
-        </span>
-      )}
       <div className="column-head">
+        {columnDrag.draggable && (
+          <span className="column-grip" {...columnDrag} title="Перетащите, чтобы переставить колонку" aria-hidden="true">
+            <svg width="6" height="10" viewBox="0 0 6 10" fill="currentColor">
+              <circle cx="1" cy="1" r="1" /><circle cx="5" cy="1" r="1" /><circle cx="1" cy="5" r="1" />
+              <circle cx="5" cy="5" r="1" /><circle cx="1" cy="9" r="1" /><circle cx="5" cy="9" r="1" />
+            </svg>
+          </span>
+        )}
         <h2>
           {edit
             ? <EditableName value={column.name} label="Название колонки" maxLength={100}
