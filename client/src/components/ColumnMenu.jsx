@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import {
-  countColumnCards, deleteColumn, insertColumn, moveColumn, renameColumn, setColumnAddToTop,
+  countColumnCards, deleteColumn, insertColumn, moveColumn, setColumnAddToTop,
 } from '../actions.js';
 import { ICONS } from '../menuIcons.js';
 import ContextMenu from './ContextMenu.jsx';
@@ -117,7 +117,6 @@ export default function ColumnMenu({ column, prevColumn, nextColumn, moveAll, ed
     },
   ].filter(Boolean);
   const changes = edit ? [
-    { label: 'Переименовать…', icon: ICONS.rename, shortcut: 'F2', run: () => setDialog({ kind: 'rename' }) },
     {
       label: 'Сдвинуть колонку левее', icon: ICONS.left, shortcut: 'Shift+ArrowLeft', disabled: index <= 0,
       run: () => moveColumn(column.id, -1),
@@ -166,10 +165,6 @@ export default function ColumnMenu({ column, prevColumn, nextColumn, moveAll, ed
         <MoreIcon />
       </button>
       {menu && <ContextMenu x={menu.x} y={menu.y} items={items} onClose={closeMenu} />}
-      {dialog?.kind === 'rename' && (
-        <NameDialog title="Переименовать колонку" value={column.name} submitLabel="Сохранить" edit={edit}
-          onSave={(name) => renameColumn(column.id, name)} onClose={closeDialog} />
-      )}
       {dialog?.kind === 'add' && (
         <NameDialog title="Новая колонка" value="" submitLabel="Добавить" edit={edit}
           onSave={(name) => insertColumn(edit.setId, name, dialog.at)} onClose={closeDialog} />

@@ -1,11 +1,12 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { createFolder, moveFolder, renameFolder, reorderFolder } from '../actions.js';
 import { isOwnBoard } from '../board.js';
 import { childrenOf, descendants, flattenFolders, folderColumnSetId, folderPath, folderTree } from '../folders.js';
 import { ICONS } from '../menuIcons.js';
 import ContextMenu from './ContextMenu.jsx';
 import FolderSelect from './FolderSelect.jsx';
-import { AddButton, Chevron, plural, useOutsidePress } from './ManageFields.jsx';
+import EditableName from './EditableName.jsx';
+import { AddButton, Chevron, plural } from './ManageFields.jsx';
 import Modal from './Modal.jsx';
 import { FolderMembers, useCanShare } from './SharingSection.jsx';
 
@@ -80,41 +81,12 @@ function MoreIcon() {
   );
 }
 
-/** The folder's name edited in place: Enter, leaving the field or a press outside saves, Escape cancels. */
-function InlineName({ value, onSave, onDone }) {
-  const [draft, setDraft] = useState(value);
-  const input = useRef(null);
-  const done = useRef(false);
-  const finish = (save) => {
-    if (done.current) return;
-    done.current = true;
-    const name = draft.trim();
-    if (save && name && name !== value) onSave(name);
-    onDone();
-  };
-  useOutsidePress(input, () => finish(true));
-  return (
-    <input ref={input} className="manage-input tree-rename" value={draft} maxLength={200} aria-label="Название доски"
-      onFocus={(e) => e.currentTarget.select()}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={() => finish(true)}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') finish(true);
-        if (e.key === 'Escape') {
-          e.stopPropagation();
-          finish(false);
-        }
-      }} />
-  );
-}
-
 /** One folder: a row with its name and actions; clicking it opens the folder (its contents are listed instead). */
 function FolderRow({ folder, index, count, ctx }) {
   const { model, folders, columnsSynced, canShare, needle, onOpen } = ctx;
   const tree = folderTree(folders);
   const kids = childrenOf(folders, folder.id);
   const [panel, setPanel] = useState(null);
-  const [renaming, setRenaming] = useState(false);
   const isRoot = !tree.parentOf(folder);
   const own = Boolean(folder.columnSetId);
   const setName = model.sets.find((s) => s.id === model.setIdOf(folder))?.name;
@@ -130,7 +102,6 @@ function FolderRow({ folder, index, count, ctx }) {
   const closeMenu = useCallback(() => setMenu(null), []);
   const menuItems = [
     { label: 'Открыть', icon: ICONS.open, shortcut: 'KeyO', run: () => onOpen(folder.id) },
-    { label: 'Переименовать', icon: ICONS.rename, shortcut: 'F2', run: () => setRenaming(true) },
     canShare && {
       label: 'Доступ', icon: ICONS.access, shortcut: 'KeyA', active: panel === 'access', run: () => togglePanel('access'),
     },
@@ -151,22 +122,17 @@ function FolderRow({ folder, index, count, ctx }) {
   return (
     <section className={`tree-node tree-folder ${panel ? 'tree-node-open' : ''}`}>
       <div className="tree-head" onContextMenu={(e) => {
-        if (renaming) return;
         e.preventDefault();
         setMenu({ x: e.clientX, y: e.clientY });
       }}>
-        {renaming ? (
-          <InlineName value={folder.name} onSave={(name) => renameFolder(folder.id, name)} onDone={() => setRenaming(false)} />
-        ) : (
-          <button type="button" className="tree-toggle" title="Открыть доску" onClick={() => onOpen(folder.id)}>
-            <FolderIcon />
-            <span className="tree-title">
-              <span className="tree-label">{folder.name}</span>
-              {meta && <span className="tree-meta">{meta}</span>}
-            </span>
-            <Chevron />
-          </button>
-        )}
+        <button type="button" className="tree-toggle" title="Открыть доску" onClick={() => onOpen(folder.id)}>
+          <FolderIcon />
+          <span className="tree-title">
+            <span className="tree-label">{folder.name}</span>
+            {meta && <span className="tree-meta">{meta}</span>}
+          </span>
+          <Chevron />
+        </button>
         <button type="button" className={`btn btn-small btn-icon-only tree-more ${menu ? 'active' : ''}`}
           title="Действия" aria-label="Действия с доской" aria-haspopup="menu" aria-expanded={Boolean(menu)}
           onMouseDown={(e) => menu && e.stopPropagation()}
@@ -242,9 +208,14 @@ export default function StructureEditor({
           {path.map((f, i) => (
             <span key={f.id} className="crumb-item">
               <span className="crumb-sep" aria-hidden="true">›</span>
-              <button type="button" className="crumb" disabled={i === path.length - 1} onClick={() => open(f.id)}>
-                {f.name}
-              </button>
+              {i === path.length - 1 && (!writable || writable.has(f.id)) ? (
+                <EditableName value={f.name} label="Название доски" className="crumb crumb-current"
+                  onSave={(name) => renameFolder(f.id, name)} />
+              ) : (
+                <button type="button" className="crumb" disabled={i === path.length - 1} onClick={() => open(f.id)}>
+                  {f.name}
+                </button>
+              )}
             </span>
           ))}
         </nav>

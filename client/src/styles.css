@@ -1606,3 +1606,8 @@ button.cp-chip:hover { color: var(--text); }
 .btn-link-icon:hover { color: var(--danger, #ef4444); }
 .draft-column .btn.active { color: var(--accent); border-color: var(--accent); }
 .add-card-btn { flex: none; width: 2.5rem; }
+.editable-name { cursor: text; border-radius: 4px; text-decoration: underline dashed transparent; text-underline-offset: 0.2em; }
+.editable-name:hover, .editable-name:focus-visible { text-decoration-color: var(--muted); outline: none; }
+.editable-name-input { font: inherit; padding: 0.1rem 0.35rem; min-width: 0; max-width: 100%; }
+.column-head h2 .editable-name-input { width: 100%; }
+.crumb-current { color: var(--text); font-weight: 600; }

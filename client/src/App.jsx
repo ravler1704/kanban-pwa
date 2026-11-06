@@ -6,6 +6,7 @@ import { dbName, isCurrentBoard, isOwnBoard, publicToken, switchBoard } from './
 import { useReadOnly } from './public.js';
 import { db, DEFAULT_FOLDER_ID } from './db.js';
 import { columnModel } from './columnSets.js';
+import { renameFolder } from './actions.js';
 import StatusBar from './components/StatusBar.jsx';
 import FolderBar, { SettingsIcon } from './components/FolderBar.jsx';
 import Column from './components/Column.jsx';
@@ -13,6 +14,7 @@ import CardEditor from './components/CardEditor.jsx';
 import ConflictDialog from './components/ConflictDialog.jsx';
 import ManageDialog from './components/ManageDialog.jsx';
 import ColumnsDraftDialog from './components/ColumnsDraftDialog.jsx';
+import EditableName from './components/EditableName.jsx';
 import NewCardDialog from './components/NewCardDialog.jsx';
 import CalendarView from './components/CalendarView.jsx';
 import ListView from './components/ListView.jsx';
@@ -412,6 +414,11 @@ export default function App() {
     summary: allChecked ? 'Все доски' : checkedIds.length ? filterSummary() : 'Не выбраны',
   };
   const openGroup = (card) => saveChecked([card.folderId]);
+  // The title names one board (maybe without some inside it): its name there renames it.
+  const titleTops = topFolderIds(checkedIds, folders);
+  const titleFolder = titleTops.length === 1 ? tree.byId.get(titleTops[0]) : null;
+  const renamable = !readOnly && titleFolder && folderFilter.summary.startsWith(titleFolder.name)
+    && usable.includes(titleFolder) ? titleFolder : null;
 
   return (
     <div className="app">
@@ -459,7 +466,15 @@ export default function App() {
           {!searching && (checkedIds.length > 0 || !readOnly) && !(publicToken && folders.length === 1) && (
             <div className="board-head">
               {checkedIds.length > 0 && (
-                <h2 className="board-title" title={folderFilter.summary}>{folderFilter.summary}</h2>
+                <h2 className="board-title" title={renamable ? undefined : folderFilter.summary}>
+                  {renamable ? (
+                    <>
+                      <EditableName value={renamable.name} label="Название доски"
+                        onSave={(name) => renameFolder(renamable.id, name)} />
+                      {folderFilter.summary.slice(renamable.name.length)}
+                    </>
+                  ) : folderFilter.summary}
+                </h2>
               )}
               {!readOnly && (
                 <button type="button" className="btn btn-small btn-icon-only" title="Настройки пространства"

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { createCard, moveCard, moveCardsToColumn, moveCardToColumn } from '../actions.js';
+import { createCard, moveCard, moveCardsToColumn, moveCardToColumn, renameColumn } from '../actions.js';
 import ColumnMenu from './ColumnMenu.jsx';
+import EditableName from './EditableName.jsx';
 import { PlusIcon } from './FolderBar.jsx';
 import Card, { draggedCardHeight, draggedCardId } from './Card.jsx';
 
@@ -92,7 +93,10 @@ export default function Column({
     >
       <div className="column-head">
         <h2>
-          {column.name} <span className="count">{cards.filter((c) => !c.deleted).length}</span>
+          {edit
+            ? <EditableName value={column.name} label="Название колонки" maxLength={100}
+              onSave={(name) => renameColumn(column.id, name)} />
+            : column.name} <span className="count">{cards.filter((c) => !c.deleted).length}</span>
         </h2>
         {!readOnly && (
           <div className="column-moves">
