@@ -50,7 +50,7 @@ export default function Column({
     return () => window.removeEventListener('dragend', reset);
   }, []);
 
-  // The grip in the corner (or the collapsed strip) drags the column, when the set's columns can be changed here.
+  // The bar along the top (or the collapsed strip) drags the column, when the set's columns can be changed here.
   const columnDrag = !readOnly && edit ? {
     draggable: true,
     onDragStart: (e) => {
@@ -160,7 +160,7 @@ export default function Column({
       ref={section}
       className={`column ${columnClasses}`}
       onDoubleClick={(e) => {
-        if (e.target.closest('.card, a, button, input, textarea, form, [role="button"], .column-grip')) return;
+        if (e.target.closest('.card, a, button, input, textarea, form, [role="button"], .column-bar')) return;
         window.getSelection()?.removeAllRanges();
         onToggleCollapsed();
       }}
@@ -172,15 +172,10 @@ export default function Column({
       }}
       onDrop={readOnly ? undefined : handleDrop}
     >
+      {columnDrag.draggable && (
+        <div className="column-bar" {...columnDrag} title="Перетащите, чтобы переставить колонку" aria-hidden="true" />
+      )}
       <div className="column-head">
-        {columnDrag.draggable && (
-          <span className="column-grip" {...columnDrag} title="Перетащите, чтобы переставить колонку" aria-hidden="true">
-            <svg width="6" height="10" viewBox="0 0 6 10" fill="currentColor">
-              <circle cx="1" cy="1" r="1" /><circle cx="5" cy="1" r="1" /><circle cx="1" cy="5" r="1" />
-              <circle cx="5" cy="5" r="1" /><circle cx="1" cy="9" r="1" /><circle cx="5" cy="9" r="1" />
-            </svg>
-          </span>
-        )}
         <h2>
           {edit
             ? <EditableName value={column.name} label="Название колонки" maxLength={100}
