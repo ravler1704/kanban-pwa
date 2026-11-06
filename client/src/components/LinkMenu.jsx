@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { linkAt, normalizeAddress } from '../links.js';
+import { ICONS } from '../menuIcons.js';
+import { MenuItems, useMenuPosition } from './ContextMenu.jsx';
 
 const LINK_WORD = 'ссылка';
 
@@ -31,12 +33,13 @@ function askAddress(current = '') {
 function linkItems(el) {
   const { value, selectionStart: start, selectionEnd: end } = el;
   const link = linkAt(value, start, end);
-  const open = (href) => ({ label: 'Открыть ссылку', run: () => window.open(href, '_blank', 'noopener') });
+  const open = (href) => ({ label: 'Открыть ссылку', icon: ICONS.external, run: () => window.open(href, '_blank', 'noopener') });
   if (link && !link.bare) {
     return [
       open(link.href),
       {
         label: 'Изменить адрес…',
+        icon: ICONS.rename,
         run: () => {
           const url = askAddress(link.url);
           if (!url) return;
@@ -46,6 +49,7 @@ function linkItems(el) {
       },
       {
         label: 'Убрать ссылку',
+        icon: ICONS.unlink,
         run: () => replace(el, link.from, link.to, link.label, link.from, link.from + link.label.length),
       },
     ];
@@ -55,6 +59,7 @@ function linkItems(el) {
       open(link.href),
       {
         label: 'Показывать словом',
+        icon: ICONS.word,
         run: () => replace(el, link.from, link.to, `[${LINK_WORD}](${link.url})`,
           link.from + 1, link.from + 1 + LINK_WORD.length),
       },
@@ -64,6 +69,7 @@ function linkItems(el) {
   if (!selected.trim() || selected.includes('\n')) return [];
   return [{
     label: 'Сделать ссылкой…',
+    icon: ICONS.link,
     run: () => {
       const url = askAddress();
       if (!url) return;
@@ -76,10 +82,12 @@ function linkItems(el) {
 function clipboardItems(el) {
   const selected = el.selectionStart !== el.selectionEnd;
   return [
-    selected && { label: 'Вырезать', run: () => { el.focus(); document.execCommand('cut'); } },
-    selected && { label: 'Копировать', run: () => { el.focus(); document.execCommand('copy'); } },
+    selected && { label: 'Вырезать', icon: ICONS.cut, shortcut: 'Mod+KeyX', run: () => { el.focus(); document.execCommand('cut'); } },
+    selected && { label: 'Копировать', icon: ICONS.copy, shortcut: 'Mod+KeyC', run: () => { el.focus(); document.execCommand('copy'); } },
     navigator.clipboard?.readText && {
       label: 'Вставить',
+      icon: ICONS.paste,
+      shortcut: 'Mod+KeyV',
       run: async () => {
         const text = await navigator.clipboard.readText().catch(() => null);
         if (text) replace(el, el.selectionStart, el.selectionEnd, text,
@@ -125,23 +133,21 @@ export function useLinkMenu() {
     setMenu({ x: e.clientX, y: e.clientY, items: [...items, null, ...clipboardItems(el)] });
   }
 
-  const node = menu && createPortal(
-    <div className="context-menu" role="menu"
-      style={{ left: Math.min(menu.x, window.innerWidth - 230), top: Math.min(menu.y, window.innerHeight - 40 * menu.items.length) }}
-      // Keeps the field focused with its selection; the window listener would close the menu first.
-      onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}>
-      {menu.items.map((item, i) => (item ? (
-        <button key={item.label} type="button" role="menuitem" className="context-menu-item"
-          onClick={() => {
-            setMenu(null);
-            item.run();
-          }}>
-          {item.label}
-        </button>
-      ) : <hr key={i} className="context-menu-sep" />))}
-    </div>,
-    document.body,
-  );
+  const node = menu && createPortal(<LinkMenuPopup menu={menu} onClose={() => setMenu(null)} />, document.body);
 
   return { onContextMenu, menu: node };
+}
+
+function LinkMenuPopup({ menu, onClose }) {
+  const [ref, pos] = useMenuPosition(menu.x, menu.y);
+  return (
+    <div ref={ref} className="context-menu" role="menu" style={pos}
+      // Keeps the field focused with its selection; the window listener would close the menu first.
+      onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+      <MenuItems items={menu.items} onPick={(item) => {
+        onClose();
+        item.run();
+      }} />
+    </div>
+  );
 }

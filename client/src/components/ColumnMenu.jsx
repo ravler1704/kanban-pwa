@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import {
   countColumnCards, deleteColumn, insertColumn, moveColumn, renameColumn, setColumnAddToTop,
 } from '../actions.js';
+import { ICONS } from '../menuIcons.js';
 import ContextMenu from './ContextMenu.jsx';
 import Modal from './Modal.jsx';
 
@@ -84,15 +85,16 @@ function MoreIcon() {
 }
 
 /**
- * The «⋯» menu of a board column. `edit` is { setId, setName, columns, boards: [name], onSetSettings }:
- * the set the column belongs to, its columns in order and the boards using it.
+ * The «⋯» menu of a board column: moving all its cards (`moveAll(column)` to `prevColumn` / `nextColumn`,
+ * null when it has none to move) and, with `edit` ({ setId, setName, columns, boards: [name], onSetSettings }:
+ * the set the column belongs to, its columns in order and the boards using it), changing the columns.
  */
-export default function ColumnMenu({ column, edit }) {
+export default function ColumnMenu({ column, prevColumn, nextColumn, moveAll, edit }) {
   const [menu, setMenu] = useState(null);
   const [dialog, setDialog] = useState(null);
   const closeMenu = useCallback(() => setMenu(null), []);
   const closeDialog = () => setDialog(null);
-  const { columns, setId } = edit;
+  const columns = edit?.columns ?? [];
   const index = columns.findIndex((c) => c.id === column.id);
   const sole = columns.length === 1;
 
@@ -104,21 +106,51 @@ export default function ColumnMenu({ column, edit }) {
     return null;
   }
 
-  const items = [
-    { label: 'Переименовать…', run: () => setDialog({ kind: 'rename' }) },
-    { label: 'Сдвинуть левее', disabled: index <= 0, run: () => moveColumn(column.id, -1) },
-    { label: 'Сдвинуть правее', disabled: index >= columns.length - 1, run: () => moveColumn(column.id, 1) },
+  const moves = [
+    prevColumn && {
+      label: `Все карточки в «${prevColumn.name}»`, icon: ICONS.allLeft, shortcut: 'Alt+ArrowLeft',
+      disabled: !moveAll, run: () => moveAll(prevColumn),
+    },
+    nextColumn && {
+      label: `Все карточки в «${nextColumn.name}»`, icon: ICONS.allRight, shortcut: 'Alt+ArrowRight',
+      disabled: !moveAll, run: () => moveAll(nextColumn),
+    },
+  ].filter(Boolean);
+  const changes = edit ? [
+    { label: 'Переименовать…', icon: ICONS.rename, shortcut: 'F2', run: () => setDialog({ kind: 'rename' }) },
+    {
+      label: 'Сдвинуть колонку левее', icon: ICONS.left, shortcut: 'Shift+ArrowLeft', disabled: index <= 0,
+      run: () => moveColumn(column.id, -1),
+    },
+    {
+      label: 'Сдвинуть колонку правее', icon: ICONS.right, shortcut: 'Shift+ArrowRight',
+      disabled: index >= columns.length - 1, run: () => moveColumn(column.id, 1),
+    },
     null,
-    { label: 'Новые карточки — в начало', active: Boolean(column.addToTop), run: () => setColumnAddToTop(column.id, true) },
-    { label: 'Новые карточки — в конец', active: !column.addToTop, run: () => setColumnAddToTop(column.id, false) },
+    {
+      label: 'Новые карточки — в начало', icon: ICONS.toTop, shortcut: 'KeyT', active: Boolean(column.addToTop),
+      run: () => setColumnAddToTop(column.id, true),
+    },
+    {
+      label: 'Новые карточки — в конец', icon: ICONS.toBottom, shortcut: 'KeyB', active: !column.addToTop,
+      run: () => setColumnAddToTop(column.id, false),
+    },
     null,
-    { label: 'Добавить колонку слева…', run: () => setDialog({ kind: 'add', at: index }) },
-    { label: 'Добавить колонку справа…', run: () => setDialog({ kind: 'add', at: index + 1 }) },
+    {
+      label: 'Добавить колонку слева…', icon: ICONS.addLeft, shortcut: 'Shift+KeyN',
+      run: () => setDialog({ kind: 'add', at: index }),
+    },
+    {
+      label: 'Добавить колонку справа…', icon: ICONS.addRight, shortcut: 'KeyN',
+      run: () => setDialog({ kind: 'add', at: index + 1 }),
+    },
     null,
-    { label: 'Набор колонок…', run: edit.onSetSettings },
+    { label: 'Набор колонок…', icon: ICONS.settings, shortcut: 'KeyS', run: edit.onSetSettings },
     null,
-    { label: 'Удалить колонку', danger: true, disabled: sole, run: remove },
-  ];
+    { label: 'Удалить колонку', icon: ICONS.trash, shortcut: 'Delete', danger: true, disabled: sole, run: remove },
+  ] : [];
+  const items = [...moves, ...(moves.length && changes.length ? [null] : []), ...changes];
+  if (!items.length) return null;
 
   return (
     <>
@@ -129,7 +161,7 @@ export default function ColumnMenu({ column, edit }) {
         onClick={(e) => {
           if (menu) return setMenu(null);
           const r = e.currentTarget.getBoundingClientRect();
-          return setMenu({ x: r.right - 220, y: r.bottom + 4 });
+          return setMenu({ x: r.right - 280, y: r.bottom + 4 });
         }}>
         <MoreIcon />
       </button>
@@ -140,7 +172,7 @@ export default function ColumnMenu({ column, edit }) {
       )}
       {dialog?.kind === 'add' && (
         <NameDialog title="Новая колонка" value="" submitLabel="Добавить" edit={edit}
-          onSave={(name) => insertColumn(setId, name, dialog.at)} onClose={closeDialog} />
+          onSave={(name) => insertColumn(edit.setId, name, dialog.at)} onClose={closeDialog} />
       )}
       {dialog?.kind === 'delete' && (
         <DeleteColumnDialog column={column} count={dialog.count} columns={columns} edit={edit} onClose={closeDialog} />

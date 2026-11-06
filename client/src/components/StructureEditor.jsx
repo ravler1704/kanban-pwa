@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { createFolder, moveFolder, renameFolder, reorderFolder } from '../actions.js';
 import { isOwnBoard } from '../board.js';
 import { childrenOf, descendants, flattenFolders, folderColumnSetId, folderPath, folderTree } from '../folders.js';
+import { ICONS } from '../menuIcons.js';
 import ContextMenu from './ContextMenu.jsx';
 import FolderSelect from './FolderSelect.jsx';
 import { AddButton, Chevron, plural, useOutsidePress } from './ManageFields.jsx';
@@ -128,15 +129,23 @@ function FolderRow({ folder, index, count, ctx }) {
   const [menu, setMenu] = useState(null);
   const closeMenu = useCallback(() => setMenu(null), []);
   const menuItems = [
-    { label: 'Открыть', run: () => onOpen(folder.id) },
-    { label: 'Переименовать', run: () => setRenaming(true) },
-    canShare && { label: 'Доступ', active: panel === 'access', run: () => togglePanel('access') },
-    { label: 'Перенести…', run: () => ctx.onMove(folder) },
+    { label: 'Открыть', icon: ICONS.open, shortcut: 'KeyO', run: () => onOpen(folder.id) },
+    { label: 'Переименовать', icon: ICONS.rename, shortcut: 'F2', run: () => setRenaming(true) },
+    canShare && {
+      label: 'Доступ', icon: ICONS.access, shortcut: 'KeyA', active: panel === 'access', run: () => togglePanel('access'),
+    },
+    { label: 'Перенести…', icon: ICONS.move, shortcut: 'KeyM', run: () => ctx.onMove(folder) },
     !needle && null,
-    !needle && { label: 'Выше', disabled: index === 0, run: () => reorderFolder(folder.id, -1) },
-    !needle && { label: 'Ниже', disabled: index >= count - 1, run: () => reorderFolder(folder.id, 1) },
+    !needle && {
+      label: 'Выше', icon: ICONS.up, shortcut: 'Alt+ArrowUp', disabled: index === 0,
+      run: () => reorderFolder(folder.id, -1),
+    },
+    !needle && {
+      label: 'Ниже', icon: ICONS.down, shortcut: 'Alt+ArrowDown', disabled: index >= count - 1,
+      run: () => reorderFolder(folder.id, 1),
+    },
     null,
-    { label: 'Удалить', danger: true, run: () => ctx.onRemove(folder) },
+    { label: 'Удалить', icon: ICONS.trash, shortcut: 'Delete', danger: true, run: () => ctx.onRemove(folder) },
   ].filter((item) => item !== false);
 
   return (
@@ -164,7 +173,7 @@ function FolderRow({ folder, index, count, ctx }) {
           onClick={(e) => {
             if (menu) return setMenu(null);
             const r = e.currentTarget.getBoundingClientRect();
-            return setMenu({ x: r.right - 200, y: r.bottom + 4 });
+            return setMenu({ x: r.right - 260, y: r.bottom + 4 });
           }}>
           <MoreIcon />
         </button>

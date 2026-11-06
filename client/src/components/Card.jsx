@@ -4,15 +4,13 @@ import { cardReminders, nextReminder } from '../reminders.js';
 import { splitTags, tagKey } from '../tags.js';
 import Markdown from './Markdown.jsx';
 
-/** Arrows of the move buttons on cards and columns: `d` is the path, pointing left or right. */
-export const MoveIcon = ({ d }) => (
+/** Arrows of the move buttons on cards: `d` is the path, pointing left or right. */
+const MoveIcon = ({ d }) => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25"
     strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg>
 );
 export const ARROW_LEFT = 'M19 12H5m6-6-6 6 6 6';
 export const ARROW_RIGHT = 'M5 12h14m-6-6 6 6-6 6';
-export const ALL_LEFT = 'm11 17-5-5 5-5m7 10-5-5 5-5';
-export const ALL_RIGHT = 'm6 17 5-5-5-5m7 10 5-5-5-5';
 
 function formatReminder(ts) {
   const d = new Date(ts);

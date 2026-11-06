@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createCard, moveCard, moveCardsToColumn, moveCardToColumn } from '../actions.js';
 import ColumnMenu from './ColumnMenu.jsx';
 import { PlusIcon } from './FolderBar.jsx';
-import Card, { ALL_LEFT, ALL_RIGHT, draggedCardHeight, draggedCardId, MoveIcon } from './Card.jsx';
+import Card, { draggedCardHeight, draggedCardId } from './Card.jsx';
 
 function positionBefore(cards, targetId) {
   const index = cards.findIndex((c) => c.id === targetId);
@@ -94,21 +94,12 @@ export default function Column({
         <h2>
           {column.name} <span className="count">{cards.filter((c) => !c.deleted).length}</span>
         </h2>
-        <div className="column-moves">
-          {!readOnly && movable.length > 0 && (<>
-            {prevColumn && (
-              <button type="button" className="btn btn-icon" onClick={() => moveAll(prevColumn)}
-                title={`Перенести все карточки в «${prevColumn.name}»`}
-                aria-label={`Перенести все карточки в «${prevColumn.name}»`}><MoveIcon d={ALL_LEFT} /></button>
-            )}
-            {nextColumn && (
-              <button type="button" className="btn btn-icon" onClick={() => moveAll(nextColumn)}
-                title={`Перенести все карточки в «${nextColumn.name}»`}
-                aria-label={`Перенести все карточки в «${nextColumn.name}»`}><MoveIcon d={ALL_RIGHT} /></button>
-            )}
-          </>)}
-          {edit && <ColumnMenu column={column} edit={edit} />}
-        </div>
+        {!readOnly && (
+          <div className="column-moves">
+            <ColumnMenu column={column} prevColumn={prevColumn} nextColumn={nextColumn}
+              moveAll={movable.length ? moveAll : null} edit={edit} />
+          </div>
+        )}
       </div>
       <div className="cards" ref={list}>
         {cards.map((card, i) => [
