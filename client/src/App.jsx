@@ -363,7 +363,7 @@ export default function App() {
     onSetSettings: () => setEditingColumns(true),
   } : null;
   // Boards in view with different column sets: the board shows one set, the others are a click away.
-  const setTabs = view === 'board' && usedSets.length > 1 ? usedSets.map((s) => ({
+  const setTabs = usedSets.length > 1 ? usedSets.map((s) => ({
     ...s,
     count: visible.filter((c) => model.setIdOf(tree.byId.get(c.folderId)) === s.id).length,
     boards: activeFolders.filter((f) => model.setIdOf(f) === s.id).map((f) => f.name),

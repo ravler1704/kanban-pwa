@@ -139,9 +139,6 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.btn.set-toggle { display: inline-flex; align-items: center; gap: 0.4rem; min-width: 0; max-width: 14rem; }
-.set-toggle svg { flex: none; }
-.set-toggle-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .statusbar .space-settings, .statusbar .space-settings:hover:not(:disabled) {
   flex: none; padding: 0.3rem; border-color: transparent; background: none; color: var(--muted);
 }
@@ -815,7 +812,8 @@ body {
   text-align: left;
   cursor: pointer;
 }
-.context-menu-item:hover, .context-menu-item:focus-visible { background: var(--card); outline: none; }
+.context-menu-item:hover, .context-menu-item:focus-visible, .context-menu-open { background: var(--card); outline: none; }
+.context-menu-arrow { margin-left: 1rem; color: var(--muted); font-size: 1.1rem; line-height: 1; }
 .context-menu-item:disabled { opacity: 0.4; cursor: default; background: none; }
 .context-menu-danger { color: var(--danger); }
 .context-menu-active { color: var(--accent); font-weight: 600; }

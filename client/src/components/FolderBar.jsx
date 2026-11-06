@@ -45,46 +45,35 @@ const VIEWS = [
 
 const VIEW_MENU_WIDTH = 180;
 
-function ViewSwitch({ view, onView }) {
+/**
+ * One button with the current view's icon; its menu lists the views. With `sets` ({ sets: [{ id, name, count (cards in
+ * view), boards (names) }], value, onChange }) the board's item has a submenu of the column sets.
+ */
+function ViewSwitch({ view, onView, sets }) {
   const [menu, , closeMenu, buttonProps] = useMenuButton(VIEW_MENU_WIDTH);
   const current = VIEWS.find((v) => v.id === view) ?? VIEWS[0];
+  const currentSet = sets && (sets.sets.find((s) => s.id === sets.value) ?? sets.sets[0]);
+  const label = `Вид: ${current.label}${view === 'board' && currentSet ? ` — ${currentSet.name}` : ''}`;
   return (
     <>
-      <button type="button" className="btn btn-small btn-icon-only view-toggle"
-        title={`Вид: ${current.label}`} aria-label={`Вид: ${current.label}`} {...buttonProps}>
+      <button type="button" className="btn btn-small btn-icon-only view-toggle" title={label} aria-label={label}
+        {...buttonProps}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
           strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={current.icon} /></svg>
       </button>
       {menu && (
         <ContextMenu x={menu.x} y={menu.y} onClose={closeMenu}
-          items={VIEWS.map(({ id, label, icon }) => ({ label, icon, active: id === view, run: () => onView(id) }))} />
-      )}
-    </>
-  );
-}
-
-const SET_MENU_WIDTH = 240;
-
-/** `sets`: [{ id, name, count (cards in view), boards (names) }] of the boards in view. */
-function SetSwitch({ sets, value, onChange }) {
-  const [menu, , closeMenu, buttonProps] = useMenuButton(SET_MENU_WIDTH);
-  const current = sets.find((s) => s.id === value) ?? sets[0];
-  return (
-    <>
-      <button type="button" className="btn btn-small set-toggle" title={`Набор колонок: ${current.name}`}
-        aria-label={`Набор колонок: ${current.name}`} {...buttonProps}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-          strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M12 3 2 8l10 5 10-5ZM2 13l10 5 10-5" />
-        </svg>
-        <span className="set-toggle-name">{current.name}</span>
-      </button>
-      {menu && (
-        <ContextMenu x={menu.x} y={menu.y} onClose={closeMenu}
-          items={sets.map((s) => ({
-            label: s.name, hint: s.count, title: `Доски: ${s.boards.join(', ')}`, active: s.id === value,
-            run: () => onChange(s.id),
-          }))} />
+          items={VIEWS.map(({ id, label: name, icon }) => (id === 'board' && sets ? {
+            label: name, icon, active: id === view,
+            submenu: sets.sets.map((s) => ({
+              label: s.name, hint: s.count, title: `Доски: ${s.boards.join(', ')}`,
+              active: view === 'board' && s.id === sets.value,
+              run: () => {
+                sets.onChange(s.id);
+                onView('board');
+              },
+            })),
+          } : { label: name, icon, active: id === view, run: () => onView(id) }))} />
       )}
     </>
   );
@@ -95,7 +84,7 @@ function SetSwitch({ sets, value, onChange }) {
  * `folders` (all live folders). `conflictsByFolder` is { [folderId]: number of cards
  * with a conflict }. Without `onAddCard` (read only, or the board, where each column has one) its button is not shown.
  * `title` goes beside the filters button; `children` start the row below. `setSwitch` ({ sets, value, onChange }, see
- * SetSwitch) picks the column set the board shows.
+ * ViewSwitch) picks the column set the board shows.
  */
 export default function FolderBar({
   folders, folderFilter, conflictsByFolder, columnSets, columnSetId, onSelectColumnSet, tagFilter, authorFilter, holderFilter,
@@ -169,8 +158,7 @@ export default function FolderBar({
       <div className="projectbar-row projectbar-actions">
         {children}
 
-        <ViewSwitch view={view} onView={onView} />
-        {setSwitch && <SetSwitch {...setSwitch} />}
+        <ViewSwitch view={view} onView={onView} sets={setSwitch} />
         {onAddCard && (
           <button className="btn btn-primary btn-small btn-icon-only btn-add-card" title="Новая карточка" aria-label="Новая карточка"
             onClick={onAddCard}>

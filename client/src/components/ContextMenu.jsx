@@ -80,20 +80,46 @@ const Icon = ({ d }) => (
     strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg>
 );
 
-/** The rows of a menu; `onPick(item)` is called on a click. */
-export function MenuItems({ items, onPick }) {
+/**
+ * The rows of a menu; `onPick(item)` is called on a click. An item with a `submenu` calls `onSub(item, its row)`
+ * instead, on a click or the pointer coming over it (with `focus` for a keyboard click); the pointer over another
+ * row calls `onSub(null)`.
+ */
+export function MenuItems({ items, onPick, onSub, openSub }) {
   const icons = items.some((item) => item?.icon);
   return items.map((item, i) => (item ? (
     <button key={item.label} type="button" role="menuitem" disabled={item.disabled}
       aria-keyshortcuts={item.shortcut} title={item.title}
-      className={`context-menu-item ${item.danger ? 'context-menu-danger' : ''} ${item.active ? 'context-menu-active' : ''}`}
-      onClick={() => onPick(item)}>
+      aria-haspopup={item.submenu ? 'menu' : undefined} aria-expanded={item.submenu ? openSub === item : undefined}
+      className={`context-menu-item ${item.danger ? 'context-menu-danger' : ''} ${item.active ? 'context-menu-active' : ''}
+        ${openSub === item ? 'context-menu-open' : ''}`}
+      onMouseEnter={onSub && ((e) => onSub(item.submenu ? item : null, e.currentTarget, false))}
+      data-index={i} onClick={(e) => (item.submenu ? onSub(item, e.currentTarget, e.detail === 0) : onPick(item))}>
       {icons && <span className="context-menu-icon">{item.icon && <Icon d={item.icon} />}</span>}
       <span className="context-menu-label">{item.label}</span>
       {item.hint != null && <span className="context-menu-hint">{item.hint}</span>}
       {item.shortcut && <kbd className="context-menu-key">{shortcutLabel(item.shortcut)}</kbd>}
+      {item.submenu && <span className="context-menu-arrow" aria-hidden="true">›</span>}
     </button>
   ) : <hr key={i} className="context-menu-sep" />));
+}
+
+/** The submenu of the row at `rect`: on its right, or its left if it doesn't fit there. */
+function SubMenu({ rect, items, onPick, menuRef }) {
+  const [pos, setPos] = useState({ left: rect.right, top: rect.top });
+  useLayoutEffect(() => {
+    const { width, height } = menuRef.current.getBoundingClientRect();
+    const left = rect.right + width + 8 <= window.innerWidth ? rect.right + 2 : rect.left - width - 2;
+    setPos({
+      left: Math.max(8, Math.min(left, window.innerWidth - width - 8)),
+      top: Math.max(8, Math.min(rect.top - 5, window.innerHeight - height - 8)),
+    });
+  }, [rect, menuRef]);
+  return (
+    <div ref={menuRef} className="context-menu" role="menu" style={pos} onMouseDown={(e) => e.stopPropagation()}>
+      <MenuItems items={items} onPick={onPick} />
+    </div>
+  );
 }
 
 /** The click that closes a menu only closes it, as in system menus: it doesn't reach the page under it. */
@@ -143,24 +169,53 @@ export function useMenuPosition(x, y) {
 
 /**
  * A menu at `x`, `y` (viewport) of `items`: { label, run, icon? (an SVG path), shortcut?, hint? (muted, on the right),
- * title?, danger?, disabled?, active? }, null for a separator. ↑ and ↓ move between the items, a shortcut runs its item.
+ * title?, danger?, disabled?, active?, submenu? (items, instead of run) }, null for a separator. ↑ and ↓ move between
+ * the items, → and ← open and leave a submenu, a shortcut runs its item.
  * Closes on a pick, Escape, a click outside, scrolling or resizing.
  */
 export default function ContextMenu({ x, y, items, onClose }) {
   const [ref, pos] = useMenuPosition(x, y);
+  const subRef = useRef(null);
+  // The open submenu: { item, row (its element), rect, focus (its first row, when opened from the keyboard) }.
+  const [sub, setSub] = useState(null);
+  const openSub = useCallback((item, row, focus = false) => {
+    setSub((cur) => (!item ? null : cur?.item === item && !focus ? cur : { item, row, rect: row.getBoundingClientRect(), focus }));
+  }, []);
+
+  useEffect(() => {
+    if (sub?.focus) subRef.current?.querySelector('.context-menu-item:not(:disabled)')?.focus();
+  }, [sub]);
 
   useEffect(() => {
     const onKey = (e) => {
+      const inSub = subRef.current?.contains(document.activeElement);
       // Not the modal or the page under the menu.
       if (e.key === 'Escape') {
         e.stopPropagation();
         onClose();
         return;
       }
+      if (e.key === 'ArrowLeft' && inSub) {
+        e.preventDefault();
+        e.stopPropagation();
+        sub.row.focus();
+        setSub(null);
+        return;
+      }
+      if (e.key === 'ArrowRight' && !inSub) {
+        const row = document.activeElement;
+        const item = ref.current.contains(row) && items[row.dataset.index];
+        if (item?.submenu) {
+          e.preventDefault();
+          e.stopPropagation();
+          openSub(item, row, true);
+        }
+        return;
+      }
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault();
         e.stopPropagation();
-        const buttons = [...ref.current.querySelectorAll('.context-menu-item:not(:disabled)')];
+        const buttons = [...(inSub ? subRef : ref).current.querySelectorAll('.context-menu-item:not(:disabled)')];
         const at = buttons.indexOf(document.activeElement);
         const next = e.key === 'ArrowDown' ? (at + 1) % buttons.length : (at <= 0 ? buttons.length : at) - 1;
         buttons[next]?.focus();
@@ -187,15 +242,19 @@ export default function ContextMenu({ x, y, items, onClose }) {
       window.removeEventListener('resize', onClose);
       window.removeEventListener('scroll', onClose, true);
     };
-  }, [items, onClose, ref]);
+  }, [items, onClose, ref, sub, openSub]);
 
+  const pick = (item) => {
+    onClose();
+    item.run();
+  };
   return createPortal(
-    <div ref={ref} className="context-menu" role="menu" style={pos} onMouseDown={(e) => e.stopPropagation()}>
-      <MenuItems items={items} onPick={(item) => {
-        onClose();
-        item.run();
-      }} />
-    </div>,
+    <>
+      <div ref={ref} className="context-menu" role="menu" style={pos} onMouseDown={(e) => e.stopPropagation()}>
+        <MenuItems items={items} onPick={pick} openSub={sub?.item} onSub={openSub} />
+      </div>
+      {sub && <SubMenu rect={sub.rect} items={sub.item.submenu} onPick={pick} menuRef={subRef} />}
+    </>,
     document.body,
   );
 }
