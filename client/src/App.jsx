@@ -6,6 +6,7 @@ import { dbName, isCurrentBoard, isOwnBoard, publicToken, switchBoard } from './
 import { useReadOnly } from './public.js';
 import { db, DEFAULT_FOLDER_ID, INBOX_ID } from './db.js';
 import { columnModel } from './columnSets.js';
+import { folderBackground } from './appearance.js';
 import { renameFolder } from './actions.js';
 import StatusBar from './components/StatusBar.jsx';
 import FolderBar from './components/FolderBar.jsx';
@@ -364,6 +365,9 @@ export default function App() {
   // The board whose columns «Изменить колонки» can give a set of its own: the one at the top of those shown.
   const boardTops = topFolderIds(boardFolders.map((f) => f.id), folders);
   const columnsFolder = boardTops.length === 1 ? tree.byId.get(boardTops[0]) : null;
+  // The board's background is that board's (or its parent's); «Входящие» beside it keeps its own look.
+  const background = view === 'board' && !searching && columnsFolder ? folderBackground(columnsFolder, folders) : null;
+  const backgroundFolder = !readOnly && !publicToken ? columnsFolder : null;
   const canEditColumns = isOwnBoard && !readOnly && data.columns.length > 0;
   const columnEdit = canEditColumns ? {
     setId: boardSetId,
@@ -441,7 +445,7 @@ export default function App() {
 
       <div className="app-body">
         {inboxOn && inboxOpen && <InboxPanel folders={usable} onOpen={setOpenCardId} onClose={toggleInbox} />}
-        <div className="app-main">
+        <div className={`app-main ${background ? 'has-bg' : ''}`} style={background ? { '--board-bg': background } : undefined}>
           {folders.length === 0 ? (
             !isOwnBoard ? (
               <div className="empty">
@@ -497,6 +501,7 @@ export default function App() {
                 </div>
                 )}
                 setSwitch={!searching && setTabs ? { sets: setTabs, value: boardSetId, onChange: changeAllFoldersSet } : null}
+            backgroundFolder={backgroundFolder}
               >
                 {!publicToken && <PeopleBar folders={shownFolders} allFolders={folders} onChat={setChat} />}
               </FolderBar>

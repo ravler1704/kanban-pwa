@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { createFolder, moveFolder, renameFolder, reorderFolder } from '../actions.js';
+import { backgroundItems } from '../appearance.js';
 import { isOwnBoard } from '../board.js';
 import { childrenOf, descendants, flattenFolders, folderColumnSetId, folderPath, folderTree } from '../folders.js';
 import { ICONS } from '../menuIcons.js';
@@ -105,6 +106,7 @@ function FolderRow({ folder, index, count, ctx }) {
       label: 'Доступ', icon: ICONS.access, shortcut: 'KeyA', active: panel === 'access', run: () => togglePanel('access'),
     },
     { label: 'Перенести…', icon: ICONS.move, shortcut: 'KeyM', run: () => ctx.onMove(folder) },
+    { label: 'Фон', icon: ICONS.palette, submenu: backgroundItems(folder) },
     !needle && null,
     !needle && {
       label: 'Выше', icon: ICONS.up, shortcut: 'Alt+ArrowUp', disabled: index === 0,

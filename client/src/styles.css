@@ -608,6 +608,10 @@ body {
   overflow-x: auto;
 }
 
+/* A board's background, a little darkened so light text over it reads in both themes. */
+.app-main.has-bg { background: linear-gradient(rgb(0 0 0 / 0.18), rgb(0 0 0 / 0.18)), var(--board-bg); }
+.has-bg .board-title, .has-bg .empty { color: #f8fafc; text-shadow: 0 1px 2px rgb(0 0 0 / 0.35); }
+
 /* «Входящие» sits beside the board, so its cards can be dragged into the columns. */
 .app-body { flex: 1; min-height: 0; display: flex; }
 .app-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -726,6 +730,19 @@ body {
   user-select: none;
 }
 .card:hover { border-color: var(--muted); }
+/* The colour band across the top of the card, as Trello's cover. */
+.card-cover { height: 0.5rem; margin: -0.6rem -0.75rem 0.5rem; border-radius: 9px 9px 0 0; }
+.color-swatches { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.color-swatch {
+  width: 2.25rem; height: 1.6rem; padding: 0; border: 2px solid transparent; border-radius: 6px; cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.15);
+}
+.color-swatch-none {
+  background: linear-gradient(to top right, transparent calc(50% - 1px), var(--muted) 50%, transparent calc(50% + 1px)), var(--card);
+  border-color: var(--border);
+}
+.color-swatch-on { border-color: var(--text); box-shadow: inset 0 0 0 2px var(--panel); }
+.context-menu-swatch { width: 16px; height: 16px; border-radius: 4px; box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.15); }
 .drop-slot {
   flex: none;
   min-height: 2.5rem;

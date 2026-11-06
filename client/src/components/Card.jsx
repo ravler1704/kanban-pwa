@@ -1,4 +1,5 @@
 import { useRef, useSyncExternalStore } from 'react';
+import { cardColor } from '../appearance.js';
 import { uploadStore } from '../files.js';
 import { cardReminders, nextReminder } from '../reminders.js';
 import { splitTags, tagKey } from '../tags.js';
@@ -161,6 +162,7 @@ export default function Card({
       }}
       onClick={onOpen}
     >
+      {cardColor(card) && <div className="card-cover" style={{ background: cardColor(card) }} />}
       {label && (
         <button className="card-label" title="Открыть" onClick={(e) => {
           e.stopPropagation();

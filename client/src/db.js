@@ -243,9 +243,10 @@ db.version(13).stores({
   meta: 'key',
 });
 
-const FOLDER_FIELDS = ['parentId', 'columnSetId', 'name', 'position', 'deleted', 'hidden'];
+// background (folder), color (card): ids of the presets in appearance.js.
+const FOLDER_FIELDS = ['parentId', 'columnSetId', 'name', 'position', 'deleted', 'hidden', 'background'];
 const CARD_FIELDS = ['folderId', 'columnId', 'title', 'description', 'position', 'deleted', 'remindAt', 'reminders', 'authorId', 'assigneeId',
-  'attachments', 'checklist', 'number'];
+  'attachments', 'checklist', 'number', 'color'];
 
 // Push order matters: columns and sets before the folders that use them, folders before their cards.
 // Folders among themselves go parents first (see sortFolders in sync.js).

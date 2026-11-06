@@ -297,6 +297,12 @@ export async function renameFolder(id, name) {
   requestSync();
 }
 
+/** `background`: an id of BOARD_BACKGROUNDS, 'none', or null (the parent's). */
+export async function setFolderBackground(id, background) {
+  await update('folder', id, { background });
+  requestSync();
+}
+
 /** Swaps the folder with its neighbour among the folders of the same parent; `direction` is -1 (up) or 1 (down). */
 export async function reorderFolder(id, direction) {
   await db.transaction('rw', db.folders, async () => {
@@ -444,9 +450,10 @@ async function arrivalPosition(columnId, cardId = null) {
 
 export async function createCard(
   { folderId }, columnId, title, description = '', reminders = [],
-  { authorId = null, assigneeId = null, checklist = [] } = {},
+  { authorId = null, assigneeId = null, checklist = [], color = null } = {},
 ) {
   await insert('card', {
+    color,
     folderId,
     columnId,
     title,
@@ -519,7 +526,7 @@ export async function duplicateCard(id) {
   const card = await db.cards.get(id);
   if (!card) return;
   await createCard({ folderId: card.folderId }, card.columnId, card.title, card.description ?? '',
-    card.reminders ?? [], { assigneeId: card.assigneeId ?? null, checklist: card.checklist ?? [] });
+    card.reminders ?? [], { assigneeId: card.assigneeId ?? null, checklist: card.checklist ?? [], color: card.color ?? null });
 }
 
 /** Moves the cards (`ids`, in their order) to another column, keeping that order. */

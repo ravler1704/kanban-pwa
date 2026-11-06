@@ -3,6 +3,7 @@ import { deleteCard, duplicateCard, moveCardTo, moveCardToColumn, moveCardToEdge
 import { authState } from '../auth.js';
 import { currentBoard, isOwnBoard, publicToken } from '../board.js';
 import { INBOX_ID } from '../db.js';
+import { cardColorItems } from '../appearance.js';
 import { ICONS } from '../menuIcons.js';
 import ContextMenu, { useHoverShortcuts, useMenuButton } from './ContextMenu.jsx';
 
@@ -60,6 +61,8 @@ export default function CardMenu({ card, prevColumn, nextColumn, readOnly, onOpe
     },
     editable && { label: 'В начало колонки', icon: ICONS.toTop, shortcut: 'Shift+ArrowUp', run: () => moveCardToEdge(card.id, true) },
     editable && { label: 'В конец колонки', icon: ICONS.toBottom, shortcut: 'Shift+ArrowDown', run: () => moveCardToEdge(card.id, false) },
+    null,
+    editable && { label: 'Цвет', icon: ICONS.palette, submenu: cardColorItems(card) },
     editable && isOwnBoard && {
       label: 'Во «Входящие»', icon: ICONS.inbox, shortcut: 'KeyI', run: () => moveCardTo(card.id, INBOX_ID),
     },

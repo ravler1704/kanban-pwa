@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { deleteCard, moveCardTo, moveCardToColumn, moveCardToFolder, updateCard } from '../actions.js';
+import { CARD_COLORS } from '../appearance.js';
 import { INBOX_ID } from '../db.js';
 import Attachments from './Attachments.jsx';
 import CardExtraFields from './CardExtraFields.jsx';
@@ -18,6 +19,24 @@ import TitleField from './TitleField.jsx';
 /** Comments sent right away, apart from the card's «Сохранить», among the notes of what was done with it. */
 function CardComments({ card }) {
   return <Comments card={card} title="Комментарии" className="chat-embedded" />;
+}
+
+/** The cover colour: «none» and the palette. */
+function ColorField({ value, onChange }) {
+  return (
+    <div className="field">
+      <span className="field-label">Цвет</span>
+      <div className="color-swatches" role="radiogroup" aria-label="Цвет карточки">
+        <button type="button" role="radio" aria-checked={!value} title="Без цвета" aria-label="Без цвета"
+          className={`color-swatch color-swatch-none ${!value ? 'color-swatch-on' : ''}`} onClick={() => onChange(null)} />
+        {CARD_COLORS.map((c) => (
+          <button key={c.id} type="button" role="radio" aria-checked={value === c.id} title={c.name} aria-label={c.name}
+            className={`color-swatch ${value === c.id ? 'color-swatch-on' : ''}`} style={{ background: c.value }}
+            onClick={() => onChange(c.id)} />
+        ))}
+      </div>
+    </div>
+  );
 }
 
 /** The card without editing: a view-only public link. */
@@ -67,6 +86,7 @@ function CardForm({ card, columnsOfFolder, folders, inbox, onClose }) {
   const [reminders, setReminders] = useState(() => cardReminders(card));
   const [authorId, setAuthorId] = useState(card.authorId ?? null);
   const [assigneeId, setAssigneeId] = useState(card.assigneeId ?? null);
+  const [color, setColor] = useState(card.color ?? null);
 
   // Another folder may use another column set: the status then is one of its columns.
   const columns = columnsOfFolder(folderId);
@@ -94,6 +114,7 @@ function CardForm({ card, columnsOfFolder, folders, inbox, onClose }) {
     }
     if (authorId !== (card.authorId ?? null)) patch.authorId = authorId;
     if (assigneeId !== (card.assigneeId ?? null)) patch.assigneeId = assigneeId;
+    if (color !== (card.color ?? null)) patch.color = color;
     if (Object.keys(patch).length) await updateCard(card.id, patch, base);
     if (folderId !== card.folderId && (folderId === INBOX_ID || card.folderId === INBOX_ID)) {
       await moveCardTo(card.id, folderId, columnId);
@@ -146,6 +167,7 @@ function CardForm({ card, columnsOfFolder, folders, inbox, onClose }) {
         )}
         <CardPeople folderId={folderId} authorId={authorId} assigneeId={assigneeId}
           onAuthor={setAuthorId} onAssignee={setAssigneeId} />
+        {folderId !== INBOX_ID && <ColorField value={color} onChange={setColor} />}
         <div className="actions">
           <button type="button" className="btn btn-danger" onClick={remove}>Удалить</button>
           <span className="spacer" />

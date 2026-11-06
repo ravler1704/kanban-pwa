@@ -13,6 +13,7 @@ const optionalRef = (v) => v === null || ref(v);
 const number = (v) => typeof v === 'number' && Number.isFinite(v);
 const boolean = (v) => typeof v === 'boolean';
 const optionalTime = (v) => v === null || (Number.isInteger(v) && v > 0);
+const optionalKey = (v) => v === null || (typeof v === 'string' && /^[a-z0-9-]{1,30}$/.test(v));
 const optionalUser = (v) => v === null || (typeof v === 'string' && v.length > 0 && v.length <= 200);
 const attachment = (v) => v !== null && typeof v === 'object' && ref(v.id) && string(255)(v.name)
   && Number.isInteger(v.size) && v.size >= 0 && string(255)(v.type) && Number.isInteger(v.addedAt);
@@ -57,9 +58,11 @@ export const SCHEMAS = {
       position: number,
       deleted: boolean,
       hidden: boolean,
+      // Background of the board (an id of the client's presets); null → the parent's.
+      background: optionalKey,
     },
     defaults: {
-      parentId: null, columnSetId: null, name: '', position: 0, deleted: false, hidden: false,
+      parentId: null, columnSetId: null, name: '', position: 0, deleted: false, hidden: false, background: null,
     },
     textFields: [],
     deleteConflicts: false,
@@ -82,10 +85,12 @@ export const SCHEMAS = {
       // Subtasks: [{ id, text, done }], in order.
       checklist,
       number: (v) => v === null || (Number.isInteger(v) && v > 0),
+      // Cover colour (an id of the client's palette), or null.
+      color: optionalKey,
     },
     defaults: {
       columnId: 'todo', title: '', description: '', position: 0, deleted: false, remindAt: null,
-      reminders: [], authorId: null, assigneeId: null, attachments: [], checklist: [], number: null,
+      reminders: [], authorId: null, assigneeId: null, attachments: [], checklist: [], number: null, color: null,
     },
     textFields: ['title', 'description'],
     serverFields: ['attachments', 'number'],

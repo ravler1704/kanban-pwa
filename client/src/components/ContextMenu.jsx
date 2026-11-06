@@ -86,7 +86,7 @@ const Icon = ({ d }) => (
  * row calls `onSub(null)`.
  */
 export function MenuItems({ items, onPick, onSub, openSub }) {
-  const icons = items.some((item) => item?.icon);
+  const icons = items.some((item) => item?.icon || item?.swatch);
   return items.map((item, i) => (item ? (
     <button key={item.label} type="button" role="menuitem" disabled={item.disabled}
       aria-keyshortcuts={item.shortcut} title={item.title}
@@ -95,7 +95,12 @@ export function MenuItems({ items, onPick, onSub, openSub }) {
         ${openSub === item ? 'context-menu-open' : ''}`}
       onMouseEnter={onSub && ((e) => onSub(item.submenu ? item : null, e.currentTarget, false))}
       data-index={i} onClick={(e) => (item.submenu ? onSub(item, e.currentTarget, e.detail === 0) : onPick(item))}>
-      {icons && <span className="context-menu-icon">{item.icon && <Icon d={item.icon} />}</span>}
+      {icons && (
+        <span className="context-menu-icon">
+          {item.icon && <Icon d={item.icon} />}
+          {item.swatch && <span className="context-menu-swatch" style={{ background: item.swatch }} />}
+        </span>
+      )}
       <span className="context-menu-label">{item.label}</span>
       {item.hint != null && <span className="context-menu-hint">{item.hint}</span>}
       {item.shortcut && <kbd className="context-menu-key">{shortcutLabel(item.shortcut)}</kbd>}
@@ -168,7 +173,8 @@ export function useMenuPosition(x, y) {
 }
 
 /**
- * A menu at `x`, `y` (viewport) of `items`: { label, run, icon? (an SVG path), shortcut?, hint? (muted, on the right),
+ * A menu at `x`, `y` (viewport) of `items`: { label, run, icon? (an SVG path), swatch? (a CSS background shown instead
+ * of the icon), shortcut?, hint? (muted, on the right),
  * title?, danger?, disabled?, active?, submenu? (items, instead of run) }, null for a separator. ↑ and ↓ move between
  * the items, → and ← open and leave a submenu, a shortcut runs its item.
  * Closes on a pick, Escape, a click outside, scrolling or resizing.
