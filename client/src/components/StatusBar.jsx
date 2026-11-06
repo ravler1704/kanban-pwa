@@ -43,16 +43,6 @@ function SearchIcon() {
   );
 }
 
-/** Changes waiting to go to the server; shown instead of the words on a phone. */
-function UploadIcon() {
-  return (
-    <svg className="badge-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 19V5M5 12l7-7 7 7" />
-    </svg>
-  );
-}
-
 function WarnIcon() {
   return (
     <svg className="badge-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
@@ -119,9 +109,11 @@ export default function StatusBar({ pending, conflicts, folders, onChat, search,
 
   let state = 'online';
   let label = 'Онлайн';
+  let shortLabel = null;
   if (!s.online) {
     state = 'offline';
     label = 'Офлайн — изменения сохраняются на устройстве';
+    shortLabel = 'Офлайн';
   } else if (s.syncing) {
     state = 'syncing';
     label = 'Синхронизация…';
@@ -165,7 +157,7 @@ export default function StatusBar({ pending, conflicts, folders, onChat, search,
         <button type="button" className="status-state" aria-expanded={stateOpen}
           title={`${label}. Синхр.: ${formatTime(s.lastSyncAt)}`} onClick={() => setStateOpen(!stateOpen)}>
           <span className={`dot dot-${state}`} />
-          <span className="status-label">{label}</span>
+          <span className="status-label">{shortLabel ?? label}</span>
           {stateOpen && (
             <span className="status-pop" role="status">
               {label}<br />Синхр.: {formatTime(s.lastSyncAt)}
@@ -174,20 +166,17 @@ export default function StatusBar({ pending, conflicts, folders, onChat, search,
             </span>
           )}
         </button>
-        {pending > 0 && (
-          <span className="badge badge-pending" title={`Не синхронизировано: ${pending}`}>
-            <UploadIcon /><span className="badge-text">Не синхронизировано: </span>{pending}
-          </span>
-        )}
         {conflicts > 0 && (
           <span className="badge badge-conflict" title={`Конфликты: ${conflicts}`}>
             <WarnIcon /><span className="badge-text">Конфликты: </span>{conflicts}
           </span>
         )}
         <span className="muted status-time">Синхр.: {formatTime(s.lastSyncAt)}</span>
-        <button className="btn btn-small btn-icon-only" onClick={sync} disabled={!s.online || s.syncing}
-          title="Синхронизировать" aria-label="Синхронизировать">
+        <button className="btn btn-small btn-icon-only sync-button" onClick={sync} disabled={!s.online || s.syncing}
+          title={pending > 0 ? `Синхронизировать (не синхронизировано: ${pending})` : 'Синхронизировать'}
+          aria-label="Синхронизировать">
           <SyncIcon spinning={s.syncing} />
+          {pending > 0 && <span className="sync-count" aria-label={`Не синхронизировано: ${pending}`}>{pending > 99 ? '99+' : pending}</span>}
         </button>
         {publicToken && <a className="btn btn-small" href="/" title="Открыть своё пространство">Мой Канбан</a>}
         {user && !publicToken && (
