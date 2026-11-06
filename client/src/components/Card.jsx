@@ -43,6 +43,29 @@ function BellIcon() {
   );
 }
 
+function CheckIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="3" /><path d="m8 12 3 3 5-6" />
+    </svg>
+  );
+}
+
+/** Done of all subtasks, if the card has any. */
+export function ChecklistBadge({ card }) {
+  const items = card.checklist ?? [];
+  if (!items.length) return null;
+  const done = items.filter((i) => i.done).length;
+  return (
+    <span className={`card-checklist${done === items.length ? ' card-checklist-done' : ''}`}
+      title={`Подзадачи: выполнено ${done} из ${items.length}`}>
+      <CheckIcon />
+      {done}/{items.length}
+    </span>
+  );
+}
+
 function ClipIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25"
@@ -154,6 +177,7 @@ export default function Card({
         <div className="card-badges">
           {card.number && <span className="card-number" title="Номер карточки">#{card.number}</span>}
           <ReminderBadge card={card} />
+          <ChecklistBadge card={card} />
           <UploadBadge cardId={card.id} />
           {card.attachments?.length > 0 && (
             <span className="card-files" title="Прикреплённые файлы">

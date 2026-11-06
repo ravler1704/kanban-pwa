@@ -17,6 +17,8 @@ const optionalUser = (v) => v === null || (typeof v === 'string' && v.length > 0
 const attachment = (v) => v !== null && typeof v === 'object' && ref(v.id) && string(255)(v.name)
   && Number.isInteger(v.size) && v.size >= 0 && string(255)(v.type) && Number.isInteger(v.addedAt);
 const attachments = (v) => Array.isArray(v) && v.length <= 1000 && v.every(attachment);
+const checkItem = (v) => v !== null && typeof v === 'object' && ref(v.id) && string(500)(v.text) && boolean(v.done);
+const checklist = (v) => Array.isArray(v) && v.length <= 200 && v.every(checkItem);
 
 /**
  * textFields — merged field-by-field; concurrent edits of the same field become a
@@ -77,11 +79,13 @@ export const SCHEMAS = {
       authorId: optionalUser,
       assigneeId: optionalUser,
       attachments,
+      // Subtasks: [{ id, text, done }], in order.
+      checklist,
       number: (v) => v === null || (Number.isInteger(v) && v > 0),
     },
     defaults: {
       columnId: 'todo', title: '', description: '', position: 0, deleted: false, remindAt: null,
-      reminders: [], authorId: null, assigneeId: null, attachments: [], number: null,
+      reminders: [], authorId: null, assigneeId: null, attachments: [], checklist: [], number: null,
     },
     textFields: ['title', 'description'],
     serverFields: ['attachments', 'number'],
@@ -358,6 +362,11 @@ function recordEvents(owner, actor, type, before, after) {
     const reminders = cardReminders(after);
     if (JSON.stringify(reminders) !== JSON.stringify(cardReminders(before))) {
       note(at, { k: 'card.remind', card, reminders: reminders.map((r) => ({ at: nextTime(r, Date.now()) ?? r.at, repeat: r.repeat })) });
+    }
+    const wasChecked = new Map((before.checklist ?? []).map((i) => [i.id, i]));
+    for (const item of after.checklist ?? []) {
+      const was = wasChecked.get(item.id);
+      if (was && was.done !== item.done) note(at, { k: 'card.check', card, item: item.text, done: item.done });
     }
   } else if (type === 'folder') {
     const parent = after.parentId;

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { deleteCard, moveCardToColumn, moveCardToFolder, updateCard } from '../actions.js';
 import Attachments from './Attachments.jsx';
 import CardExtraFields from './CardExtraFields.jsx';
+import Checklist from './Checklist.jsx';
 import CardPeople from './CardPeople.jsx';
 import Comments from './Comments.jsx';
 import Markdown from './Markdown.jsx';
@@ -35,6 +36,7 @@ function CardView({ card, columnsOfFolder, folders, onClose }) {
         </p>
         {card.description && <div className="card-view-desc"><Markdown text={card.description} /></div>}
         <CardPeople folderId={card.folderId} authorId={card.authorId} assigneeId={card.assigneeId} />
+        <Checklist card={card} readOnly />
         <Attachments card={card} readOnly />
         <CardComments card={card} />
         <div className="actions">

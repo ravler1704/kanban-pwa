@@ -429,7 +429,8 @@ async function arrivalPosition(columnId, cardId = null) {
 }
 
 export async function createCard(
-  { folderId }, columnId, title, description = '', reminders = [], { authorId = null, assigneeId = null } = {},
+  { folderId }, columnId, title, description = '', reminders = [],
+  { authorId = null, assigneeId = null, checklist = [] } = {},
 ) {
   await insert('card', {
     folderId,
@@ -441,6 +442,7 @@ export async function createCard(
     authorId: authorId ?? authState.get().user?.id ?? null,
     assigneeId,
     attachments: [],
+    checklist,
     position: await arrivalPosition(columnId),
   });
   requestSync();
@@ -481,7 +483,7 @@ export async function duplicateCard(id) {
   const card = await db.cards.get(id);
   if (!card) return;
   await createCard({ folderId: card.folderId }, card.columnId, card.title, card.description ?? '',
-    card.reminders ?? [], { assigneeId: card.assigneeId ?? null });
+    card.reminders ?? [], { assigneeId: card.assigneeId ?? null, checklist: card.checklist ?? [] });
 }
 
 /** Moves the cards (`ids`, in their order) to another column, keeping that order. */

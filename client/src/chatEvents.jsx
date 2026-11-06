@@ -51,6 +51,7 @@ function parts(e) {
       return [list.length > 1 ? 'Напоминания по карточке ' : 'Напоминание по карточке ', card, `: ${times.join(', ')}`];
     }
     case 'card.assignee': return ['Карточка ', card, ` передана: ${e.to ?? 'другому участнику'}`];
+    case 'card.check': return [`${e.done ? 'Выполнена' : 'Снова не выполнена'} подзадача ${q(e.item)} в карточке `, card];
     case 'card.author': return ['Автор карточки ', card, `: ${e.to ?? 'другой участник'}`];
     case 'card.file.add': return [`Прикреплён файл ${q(e.name)} к карточке `, card];
     case 'card.file.remove': return [`Удалён файл ${q(e.name)} из карточки `, card];
