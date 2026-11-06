@@ -7,7 +7,7 @@ import { useReadOnly } from './public.js';
 import { db, DEFAULT_FOLDER_ID } from './db.js';
 import { columnModel } from './columnSets.js';
 import StatusBar from './components/StatusBar.jsx';
-import FolderBar from './components/FolderBar.jsx';
+import FolderBar, { SettingsIcon } from './components/FolderBar.jsx';
 import Column from './components/Column.jsx';
 import CardEditor from './components/CardEditor.jsx';
 import ConflictDialog from './components/ConflictDialog.jsx';
@@ -346,6 +346,13 @@ export default function App() {
   const boardTops = topFolderIds(boardFolders.map((f) => f.id), folders);
   const columnsFolder = boardTops.length === 1 ? tree.byId.get(boardTops[0]) : null;
   const canEditColumns = isOwnBoard && !readOnly && data.columns.length > 0;
+  const columnEdit = canEditColumns ? {
+    setId: boardSetId,
+    setName: model.sets.find((s) => s.id === boardSetId)?.name,
+    columns,
+    boards: model.foldersOf(boardSetId).map((f) => f.name),
+    onSetSettings: () => setEditingColumns(true),
+  } : null;
   // Boards in view with different column sets: the board shows one set, the others are a click away.
   const setTabs = view === 'board' && usedSets.length > 1 ? usedSets.map((s) => ({
     ...s,
@@ -444,21 +451,19 @@ export default function App() {
             holderFilter={publicToken ? null : personFilter(holderFilter, changeHolderFilter, holderOf)}
             view={view}
             onView={changeView}
-            onManage={readOnly ? null : () => setManaging(true)}
             onAddCard={readOnly ? null : () => setAddingCard(true)}
           >
             {!publicToken && <PeopleBar folders={shownFolders} allFolders={folders} onChat={setChat} />}
           </FolderBar>
-          {!searching && checkedIds.length > 0 && !(publicToken && folders.length === 1) && (
+          {!searching && (checkedIds.length > 0 || !readOnly) && !(publicToken && folders.length === 1) && (
             <div className="board-head">
-              <h2 className="board-title" title={folderFilter.summary}>{folderFilter.summary}</h2>
-              {view === 'board' && canEditColumns && shownFolders.length > 0 && (
-                <button type="button" className="btn btn-small btn-icon-only" title="Изменить колонки"
-                  aria-label="Изменить колонки" onClick={() => setEditingColumns(true)}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                    strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                  </svg>
+              {checkedIds.length > 0 && (
+                <h2 className="board-title" title={folderFilter.summary}>{folderFilter.summary}</h2>
+              )}
+              {!readOnly && (
+                <button type="button" className="btn btn-small btn-icon-only" title="Настройки пространства"
+                  aria-label="Настройки пространства" onClick={() => setManaging(true)}>
+                  <SettingsIcon />
                 </button>
               )}
             </div>
@@ -505,6 +510,7 @@ export default function App() {
                   readOnly={readOnly}
                   onOpen={setOpenCardId}
                   onOpenGroup={openGroup}
+                  edit={columnEdit}
                 />
               ))}
             </main>

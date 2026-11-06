@@ -169,7 +169,7 @@ export default function ColumnsDraftDialog({ model, setId, folder, folders, onCl
   }
 
   return (
-    <Modal title="Колонки доски" onClose={onClose} className="columns-draft" closeButton>
+    <Modal title="Набор колонок" onClose={onClose} className="columns-draft" closeButton>
       {folder && (
         <label className="field manage-field">
           <span className="field-label">Набор колонок доски «{folder.name}»</span>

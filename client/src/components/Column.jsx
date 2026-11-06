@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createCard, moveCard, moveCardsToColumn, moveCardToColumn } from '../actions.js';
+import ColumnMenu from './ColumnMenu.jsx';
 import Card, { ALL_LEFT, ALL_RIGHT, draggedCardHeight, draggedCardId, MoveIcon } from './Card.jsx';
 
 function positionBefore(cards, targetId) {
@@ -16,9 +17,11 @@ function positionAtEnd(cards) {
 /**
  * `target` (a folder id) is where new cards go; `targetName`, when set, is said in the add field.
  * `cardLabel(card)` returns the folder shown on the card, or null for none.
+ * `edit` (see ColumnMenu), when set, lets the columns be changed from the column's menu.
  */
 export default function Column({
   target, targetName, column, prevColumn, nextColumn, cards, cardLabel, activeTags, onTag, readOnly, onOpen, onOpenGroup,
+  edit,
 }) {
   const [title, setTitle] = useState('');
   // While a card is dragged over the column: the id of the card it would land before, or null for the end.
@@ -89,8 +92,8 @@ export default function Column({
         <h2>
           {column.name} <span className="count">{cards.filter((c) => !c.deleted).length}</span>
         </h2>
-        {!readOnly && movable.length > 0 && (
-          <div className="column-moves">
+        <div className="column-moves">
+          {!readOnly && movable.length > 0 && (<>
             {prevColumn && (
               <button type="button" className="btn btn-icon" onClick={() => moveAll(prevColumn)}
                 title={`Перенести все карточки в «${prevColumn.name}»`}
@@ -101,8 +104,9 @@ export default function Column({
                 title={`Перенести все карточки в «${nextColumn.name}»`}
                 aria-label={`Перенести все карточки в «${nextColumn.name}»`}><MoveIcon d={ALL_RIGHT} /></button>
             )}
-          </div>
-        )}
+          </>)}
+          {edit && <ColumnMenu column={column} edit={edit} />}
+        </div>
       </div>
       <div className="cards" ref={list}>
         {cards.map((card, i) => [

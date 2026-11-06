@@ -7,7 +7,7 @@ import Modal from './Modal.jsx';
 import PersonFilter from './PersonFilter.jsx';
 import TagFilter from './TagFilter.jsx';
 
-function SettingsIcon() {
+export function SettingsIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
       strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -78,7 +78,7 @@ const VIEWS = [
  */
 export default function FolderBar({
   folders, folderFilter, conflictsByFolder, columnSets, columnSetId, onSelectColumnSet, tagFilter, authorFilter, holderFilter,
-  view, onView, onManage, onAddCard, children,
+  view, onView, onAddCard, children,
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   // A filter opened inside the filters dialog: its screen replaces the list of filters.
@@ -153,12 +153,6 @@ export default function FolderBar({
             </button>
           ))}
         </div>
-        {onManage && (
-          <button className="btn btn-small btn-icon-only" title="Настройки пространства" aria-label="Настройки пространства"
-            onClick={onManage}>
-            <SettingsIcon />
-          </button>
-        )}
         {onAddCard && (
           <button className="btn btn-primary btn-small btn-icon-only btn-add-card" title="Новая карточка" aria-label="Новая карточка"
             onClick={onAddCard}>

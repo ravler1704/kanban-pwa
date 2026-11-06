@@ -145,6 +145,20 @@ export async function createColumn(setId, name) {
   requestSync();
 }
 
+/** A new column at `index` (0: first) of the set. */
+export async function insertColumn(setId, name, index) {
+  await db.transaction('rw', db.columns, async () => {
+    const columns = await liveColumns(setId);
+    const at = Math.max(0, Math.min(index, columns.length));
+    for (const [i, c] of columns.entries()) {
+      const position = i < at ? i + 1 : i + 2;
+      if (c.position !== position) await update('column', c.id, { position });
+    }
+    await insert('column', { setId, name, position: at + 1, addToTop: false });
+  });
+  requestSync();
+}
+
 export async function renameColumn(id, name) {
   await update('column', id, { name });
   requestSync();
