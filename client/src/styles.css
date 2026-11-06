@@ -804,7 +804,8 @@ body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  overscroll-behavior: contain;
+  /* Only vertically: sideways scrolling over the cards must reach the board. */
+  overscroll-behavior-y: contain;
 }
 
 .card {
