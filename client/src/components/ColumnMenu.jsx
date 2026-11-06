@@ -89,7 +89,7 @@ function MoreIcon() {
  * null when it has none to move) and, with `edit` ({ setId, setName, columns, boards: [name], onSetSettings }:
  * the set the column belongs to, its columns in order and the boards using it), changing the columns.
  * A right click on `hoverRef` (the column, apart from its cards) opens it too; the shortcuts also work
- * with the pointer over it.
+ * with the pointer over it. A `collapsed` column has no «⋯» button, only the right click.
  */
 export default function ColumnMenu({ column, prevColumn, nextColumn, moveAll, edit, collapsed, onCollapse, hoverRef }) {
   const [menu, setMenu, closeMenu, menuButton, menuHover] = useMenuButton(280);
@@ -172,10 +172,10 @@ export default function ColumnMenu({ column, prevColumn, nextColumn, moveAll, ed
 
   return (
     <>
-      <button type="button" className={`btn btn-icon column-menu-btn ${menu ? 'active' : ''}`}
+      {!collapsed && <button type="button" className={`btn btn-icon column-menu-btn ${menu ? 'active' : ''}`}
         title="Действия с колонкой (их клавиши работают и при наведении на колонку)" aria-label={`Действия с колонкой «${column.name}»`} {...menuButton}>
         <MoreIcon />
-      </button>
+      </button>}
       {menu && <ContextMenu x={menu.x} y={menu.y} items={items} onClose={closeMenu} {...menuHover} />}
       {dialog?.kind === 'add' && (
         <NameDialog title="Новая колонка" value="" submitLabel="Добавить" edit={edit}

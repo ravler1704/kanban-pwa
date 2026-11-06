@@ -173,7 +173,7 @@ export default function Column({
         }}
         onDrop={readOnly ? undefined : handleDrop}
       >
-        <div className="column-collapsed-menu">{menu}</div>
+        {menu}
         <button type="button" className="column-expand" onClick={handleClicks} {...columnDrag}
           title={`Развернуть колонку «${column.name}»`} aria-label={`Развернуть колонку «${column.name}»`} aria-expanded="false">
           <span className="column-expand-title">
