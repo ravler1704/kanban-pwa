@@ -81,7 +81,7 @@ export function DoneButton({ card, readOnly, className = '' }) {
   const [popping, setPopping] = useState(false);
   useEffect(() => {
     if (!popping) return undefined;
-    const timer = setTimeout(() => setPopping(false), 700);
+    const timer = setTimeout(() => setPopping(false), 1000);
     return () => clearTimeout(timer);
   }, [popping]);
   const done = Boolean(card.done);
@@ -200,6 +200,7 @@ export default function Card({
   const classes = ['card'];
   if (card.conflict) classes.push('card-conflict');
   if (card.deleted) classes.push('card-deleted');
+  const doneShown = !card.conflict && (!readOnly || Boolean(card.done));
 
   return (
     <article
@@ -227,10 +228,8 @@ export default function Card({
           {label}
         </button>
       )}
-      <div className="card-title-row">
-        {!card.conflict && (!readOnly || card.done) && (
-          <DoneButton card={card} readOnly={readOnly || card.deleted} className="card-done-btn" />
-        )}
+      <div className={`card-title-row${doneShown ? ' card-title-row-done' : ''}`}>
+        {doneShown && <DoneButton card={card} readOnly={readOnly || card.deleted} className="card-done-btn" />}
         <div className="card-title">
           {card.title
             ? <TaggedText text={card.title} inline activeTags={activeTags} onTag={onTag} />
