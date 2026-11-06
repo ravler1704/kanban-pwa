@@ -98,7 +98,8 @@ export function MenuItems({ items, onPick, onSub, openSub }) {
       {icons && (
         <span className="context-menu-icon">
           {item.icon && <Icon d={item.icon} />}
-          {item.swatch && <span className="context-menu-swatch" style={{ background: item.swatch }} />}
+          {item.swatch === 'none' && <span className="context-menu-swatch context-menu-swatch-none" />}
+          {item.swatch && item.swatch !== 'none' && <span className="context-menu-swatch" style={{ background: item.swatch }} />}
         </span>
       )}
       <span className="context-menu-label">{item.label}</span>
@@ -174,7 +175,7 @@ export function useMenuPosition(x, y) {
 
 /**
  * A menu at `x`, `y` (viewport) of `items`: { label, run, icon? (an SVG path), swatch? (a CSS background shown instead
- * of the icon), shortcut?, hint? (muted, on the right),
+ * of the icon; 'none' — an empty crossed-out one), shortcut?, hint? (muted, on the right),
  * title?, danger?, disabled?, active?, submenu? (items, instead of run) }, null for a separator. ↑ and ↓ move between
  * the items, → and ← open and leave a submenu, a shortcut runs its item.
  * Closes on a pick, Escape, a click outside, scrolling or resizing.

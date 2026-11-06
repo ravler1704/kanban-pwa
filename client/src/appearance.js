@@ -48,7 +48,7 @@ export function folderBackground(folder, folders) {
 
 /** Menu items (see ContextMenu) that set the card's cover colour. */
 export const cardColorItems = (card) => [
-  { label: 'Без цвета', active: !card.color, run: () => updateCard(card.id, { color: null }) },
+  { label: 'Без цвета', swatch: 'none', active: !card.color, run: () => updateCard(card.id, { color: null }) },
   null,
   ...CARD_COLORS.map((c) => ({
     label: c.name, swatch: c.value, active: card.color === c.id, run: () => updateCard(card.id, { color: c.id }),
@@ -63,7 +63,7 @@ export function backgroundItems(folder) {
       ? [{ label: 'Как у родительской', active: own === null, run: () => setFolderBackground(folder.id, null) }]
       : []),
     {
-      label: 'Без фона', active: folder.parentId ? own === 'none' : !own || own === 'none',
+      label: 'Без фона', swatch: 'none', active: folder.parentId ? own === 'none' : !own || own === 'none',
       run: () => setFolderBackground(folder.id, folder.parentId ? 'none' : null),
     },
     null,
