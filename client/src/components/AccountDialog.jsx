@@ -6,7 +6,7 @@ import { getTheme, setTheme } from '../theme.js';
 import Avatar from './Avatar.jsx';
 import Modal from './Modal.jsx';
 import { EmailCodeForm, GoogleButton, YandexButton } from './ProviderButtons.jsx';
-import MailSettings from './MailSettings.jsx';
+import ServerSettings from './ServerSettings.jsx';
 const PROVIDERS = { google: 'Google', yandex: 'Яндекс', email: 'Почта', dev: 'Тестовый' };
 
 /** `busy` and `error` of one tab's actions; `run` wraps an action with them. */
@@ -244,7 +244,7 @@ function ServerAdmin() {
       {open && (
         <Modal title="Настройки сервера" onClose={() => setOpen(false)}>
           <p className="muted account-hint server-admin-note">Действуют для всех пользователей сервера.</p>
-          <MailSettings />
+          <ServerSettings />
           <div className="actions">
             <button className="btn btn-primary" onClick={() => setOpen(false)}>Готово</button>
           </div>

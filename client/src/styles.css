@@ -560,6 +560,7 @@ body {
 }
 .server-admin .manage-heading { margin: 0; color: var(--warn); }
 .server-admin-note { margin-bottom: 1rem; }
+.settings-list { resize: vertical; min-height: 4.5rem; font: inherit; line-height: 1.4; }
 .account-delete .manage-input { width: 100%; box-sizing: border-box; }
 .account-row { align-items: center; }
 .account-provider { min-width: 5.5rem; color: var(--muted); font-size: 0.85rem; }

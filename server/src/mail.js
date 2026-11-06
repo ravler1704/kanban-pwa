@@ -1,14 +1,11 @@
 import nodemailer from 'nodemailer';
 import { getMeta, setMeta } from './db.js';
 
-// Outgoing mail (sign-in codes) through an SMTP mailbox. Set by an administrator in the app
-// (stored in the database), or by SMTP_URL, which then takes precedence, e.g.
-// SMTP_URL=smtps://login%40yandex.ru:app-password@smtp.yandex.ru:465
+// Outgoing mail (sign-in codes) through an SMTP mailbox, set by an administrator in the app
+// (stored in the database). SMTP_URL, e.g. smtps://login%40yandex.ru:app-password@smtp.yandex.ru:465,
+// with MAIL_FROM, is taken over once when nothing is stored yet.
 // The sender defaults to the mailbox itself (Yandex and Mail.ru reject other senders).
-const SMTP_URL = process.env.SMTP_URL || '';
 const META_KEY = 'smtp';
-
-export const mailFromEnv = Boolean(SMTP_URL);
 
 function stored() {
   try {
@@ -18,15 +15,16 @@ function stored() {
   }
 }
 
-function envSettings() {
-  const url = new URL(SMTP_URL);
-  return {
+if (process.env.SMTP_URL && !stored()) {
+  const url = new URL(process.env.SMTP_URL);
+  setMeta(META_KEY, JSON.stringify({
     host: url.hostname,
     port: Number(url.port) || (url.protocol === 'smtps:' ? 465 : 587),
     secure: url.protocol === 'smtps:',
     user: decodeURIComponent(url.username),
+    pass: decodeURIComponent(url.password),
     from: process.env.MAIL_FROM || '',
-  };
+  }));
 }
 
 const senderOf = (settings) => settings.from || `"Канбан" <${settings.user}>`;
@@ -44,13 +42,11 @@ function createTransport(settings) {
 
 let cached = null;
 function transport() {
-  if (cached) return cached;
-  if (mailFromEnv) cached = { mailer: nodemailer.createTransport(SMTP_URL), from: senderOf(envSettings()) };
-  else if (stored()) cached = { mailer: createTransport(stored()), from: senderOf(stored()) };
+  if (!cached && stored()) cached = { mailer: createTransport(stored()), from: senderOf(stored()) };
   return cached;
 }
 
-export const mailEnabled = () => mailFromEnv || Boolean(stored());
+export const mailEnabled = () => Boolean(stored());
 
 export async function sendMail({ to, subject, text }) {
   const { mailer, from } = transport();
@@ -59,7 +55,6 @@ export async function sendMail({ to, subject, text }) {
 
 /** For the settings form: never includes the password. */
 export function mailSettings() {
-  if (mailFromEnv) return { source: 'env', ...envSettings(), hasPassword: true };
   const settings = stored();
   if (!settings) return { source: null };
   const { pass, ...rest } = settings;

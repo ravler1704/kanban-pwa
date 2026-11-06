@@ -92,7 +92,7 @@ app.use((err, _req, res, _next) => {
 
 const server = app.listen(PORT, HOST, () => {
   console.log(`Kanban server listening on http://${HOST ?? 'localhost'}:${PORT}`);
-  console.log(authEnabled ? 'Sign-in is required' : 'Auth is disabled (no GOOGLE_CLIENT_ID / YANDEX_CLIENT_ID)');
+  console.log(authEnabled ? 'Sign-in is required' : 'Auth is disabled (no Google, Yandex or mail sign-in set up)');
 });
 // Uploads of large files over a slow connection take longer than the default 5 minutes.
 server.requestTimeout = 0;

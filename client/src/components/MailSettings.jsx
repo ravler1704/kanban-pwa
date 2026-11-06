@@ -31,6 +31,9 @@ async function call(url, body) {
   if (data.error === 'smtp failed') throw new Error(`Почтовый сервер не принял настройки: ${data.detail}`);
   if (data.error === 'invalid settings') throw new Error('Проверьте заполнение полей.');
   if (data.error === 'not admin') throw new Error('Настройка доступна только администратору.');
+  if (data.error === 'last sign-in way') {
+    throw new Error('Это последний способ входа: сначала настройте вход через Google или Яндекс.');
+  }
   throw new Error('Не удалось выполнить действие. Попробуйте ещё раз.');
 }
 
@@ -104,9 +107,8 @@ export default function MailSettings() {
   if (!online) return <p className="muted">Для настройки нужен интернет.</p>;
   if (!form) return error ? <p className="login-error">{error}</p> : <p className="muted">Загрузка…</p>;
 
-  const fromEnv = saved.source === 'env';
   const preset = PRESETS.find((p) => p.id === form.preset);
-  const needsPassword = !saved.hasPassword || fromEnv;
+  const needsPassword = !saved.hasPassword;
 
   return (
     <form className="manage mail-settings" onSubmit={save}>
@@ -116,10 +118,7 @@ export default function MailSettings() {
           ? 'Вход по почте включён.'
           : 'Пока ящик не указан, вход по почте выключен.'}
       </p>
-      {fromEnv && (
-        <p className="notice">Почта задана в файле настроек сервера (SMTP_URL) — изменить её можно только там.</p>
-      )}
-      <fieldset className="mail-fields" disabled={fromEnv || busy}>
+      <fieldset className="mail-fields" disabled={busy}>
         <label className="field">
           <span className="field-label">Почтовый сервис</span>
           <select className="select" value={form.preset} onChange={(e) => pickPreset(e.target.value)}>
@@ -162,14 +161,12 @@ export default function MailSettings() {
         </label>
       </fieldset>
       <div className="manage-row mail-actions">
-        {!fromEnv && (
-          <button type="submit" className="btn btn-small btn-primary"
-            disabled={busy || !form.host.trim() || !form.port || !form.user.trim() || (needsPassword && !form.pass)}>
-            Проверить и сохранить
-          </button>
-        )}
+        <button type="submit" className="btn btn-small btn-primary"
+          disabled={busy || !form.host.trim() || !form.port || !form.user.trim() || (needsPassword && !form.pass)}>
+          Проверить и сохранить
+        </button>
         {saved.source && <button type="button" className="btn btn-small" disabled={busy} onClick={test}>Тестовое письмо</button>}
-        {saved.source === 'app' && (
+        {saved.source && (
           <button type="button" className="btn btn-small btn-danger" disabled={busy} onClick={remove}>Удалить</button>
         )}
       </div>

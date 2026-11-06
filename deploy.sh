@@ -27,7 +27,7 @@ rsync -az --delete --exclude node_modules --exclude data server/ "$HOST:$APP_DIR
 rsync -az --delete client/dist/ "$HOST:$APP_DIR/client/dist/"
 rsync -az --delete --exclude kanban.env deploy/ "$HOST:$APP_DIR/deploy/"
 
-# Server settings (Google sign-in) live outside the app directory, readable only by root and the service.
+# ADMIN_EMAILS (and the first settings of a new database) live outside the app directory, readable only by root and the service.
 if [[ -f deploy/kanban.env ]]; then
   echo "==> Uploading settings from deploy/kanban.env"
   ssh "$HOST" "install -d -m 750 -g kanban /etc/kanban && cat > /etc/kanban/env && chgrp kanban /etc/kanban/env && chmod 640 /etc/kanban/env" < deploy/kanban.env

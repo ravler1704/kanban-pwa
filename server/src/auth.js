@@ -9,24 +9,18 @@ import {
 import { broadcast, disconnect, disconnectUser, notifyUser } from './events.js';
 import { removeFiles } from './files.js';
 import {
-  clearMailSettings, mailEnabled, mailFromEnv, mailSettings, saveMailSettings, sendMail,
+  clearMailSettings, mailEnabled, mailSettings, saveMailSettings, sendMail,
 } from './mail.js';
+import { cleanSettings, envAdminEmails, saveSettings, settings, SettingsError } from './settings.js';
 import { memberAccess } from './sync.js';
 
 // Sign-in with Google, Yandex and/or a code sent by e-mail. A user may link several accounts and
 // gets one board; the owner may invite others to its projects by e-mail.
-// ALLOWED_EMAILS optionally limits who may sign in (empty: anyone; invited e-mails may always). Auth is off when no
-// provider is configured (local development), and everyone shares the board of owner ''.
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
-const YANDEX_CLIENT_ID = process.env.YANDEX_CLIENT_ID || '';
-const ALLOWED_EMAILS = new Set(
-  (process.env.ALLOWED_EMAILS || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean),
-);
-// Administrators (e-mails of any of their linked accounts) set up the server in the app, e.g. its mail.
-const ADMIN_EMAILS = new Set(
-  (process.env.ADMIN_EMAILS || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean),
-);
-export const authEnabled = Boolean(GOOGLE_CLIENT_ID || YANDEX_CLIENT_ID || mailFromEnv);
+// The allowed e-mails (settings.js) optionally limit who may sign in (empty: anyone; invited e-mails and
+// administrators may always). Auth is off when no way to sign in is set up at start (local development), and
+// everyone shares the board of owner ''; while it is on, the last way to sign in can't be removed.
+const signInWays = (s = settings()) => Boolean(s.googleClientId || s.yandexClientId || mailEnabled());
+export const authEnabled = signInWays();
 // Local development only: a "test account" button that signs in without a provider. Even when
 // enabled, it is accepted only from this machine (behind Caddy req.ip is the real client).
 const DEV_LOGIN = authEnabled && process.env.DEV_LOGIN === '1';
@@ -34,7 +28,11 @@ const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 const devLoginAllowed = (req) => DEV_LOGIN && LOOPBACK.has(req.ip);
 // Without SMTP the test setup prints sign-in codes to the server log instead of mailing them.
 const emailLoginAllowed = (req) => mailEnabled() || devLoginAllowed(req);
-const isAdmin = (userId) => listIdentities(userId).some((i) => i.email && ADMIN_EMAILS.has(i.email.toLowerCase()));
+// Administrators (e-mails of any of their linked accounts) set up the server in the app.
+const isAdminEmail = (email) => Boolean(email)
+  && (settings().adminEmails.includes(email.toLowerCase()) || envAdminEmails.has(email.toLowerCase()));
+const emailsOf = (userId) => listIdentities(userId).map((i) => i.email).filter(Boolean);
+const isAdmin = (userId) => emailsOf(userId).some(isAdminEmail);
 
 const COOKIE = 'kanban_session';
 // Browsers cap cookie lifetime at 400 days.
@@ -43,8 +41,9 @@ const SESSION_TTL_MS = 400 * 24 * 60 * 60 * 1000;
 const googleKeys = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'));
 
 const hash = (token) => crypto.createHash('sha256').update(token).digest('hex');
-const isAllowed = (email) => ALLOWED_EMAILS.size === 0
-  || (Boolean(email) && ALLOWED_EMAILS.has(email.toLowerCase()))
+const isAllowed = (email) => settings().allowedEmails.length === 0
+  || (Boolean(email) && settings().allowedEmails.includes(email.toLowerCase()))
+  || isAdminEmail(email)
   || isInvited(email);
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -74,7 +73,7 @@ function currentSession(req) {
   const session = getSession(hash(token));
   if (!session) return null;
   if (session.provider === 'dev') return devLoginAllowed(req) ? session : null;
-  // Removing an address from ALLOWED_EMAILS revokes its sessions immediately.
+  // Removing an address from the allowed e-mails revokes its sessions immediately.
   return isAllowed(session.email) ? session : null;
 }
 
@@ -138,14 +137,15 @@ export function requireAuthOrPublic(req, res, next) {
 // --- Providers: each turns the client's proof into a verified identity. ---
 
 async function verifyGoogle(body) {
-  if (!GOOGLE_CLIENT_ID) throw new AuthError(404, 'provider disabled');
+  const { googleClientId } = settings();
+  if (!googleClientId) throw new AuthError(404, 'provider disabled');
   const credential = body?.credential;
   if (typeof credential !== 'string' || credential.length > 4096) throw new AuthError(400, 'invalid credential');
   let claims;
   try {
     ({ payload: claims } = await jwtVerify(credential, googleKeys, {
       issuer: ['https://accounts.google.com', 'accounts.google.com'],
-      audience: GOOGLE_CLIENT_ID,
+      audience: googleClientId,
     }));
   } catch {
     throw new AuthError(401, 'invalid credential');
@@ -166,7 +166,8 @@ async function verifyGoogle(body) {
 // Yandex OAuth implicit flow: the browser gets an access token; Yandex tells which app it
 // was issued to, so a token obtained by another site is rejected.
 async function verifyYandex(body) {
-  if (!YANDEX_CLIENT_ID) throw new AuthError(404, 'provider disabled');
+  const { yandexClientId } = settings();
+  if (!yandexClientId) throw new AuthError(404, 'provider disabled');
   const token = body?.token;
   if (typeof token !== 'string' || token.length > 512) throw new AuthError(400, 'invalid token');
   let info;
@@ -183,7 +184,7 @@ async function verifyYandex(body) {
     console.error('Yandex sign-in failed:', err);
     throw new AuthError(502, 'provider unavailable');
   }
-  if (info.client_id !== YANDEX_CLIENT_ID || typeof info.id !== 'string') throw new AuthError(401, 'invalid token');
+  if (info.client_id !== yandexClientId || typeof info.id !== 'string') throw new AuthError(401, 'invalid token');
   return {
     provider: 'yandex',
     subject: info.id,
@@ -371,8 +372,8 @@ export function registerAuthRoutes(app) {
   app.get('/api/auth/config', (req, res) => {
     res.json({
       enabled: authEnabled,
-      clientId: GOOGLE_CLIENT_ID || null,
-      yandexClientId: YANDEX_CLIENT_ID || null,
+      clientId: settings().googleClientId || null,
+      yandexClientId: settings().yandexClientId || null,
       devLogin: devLoginAllowed(req),
       emailLogin: authEnabled && emailLoginAllowed(req),
     });
@@ -501,10 +502,36 @@ export function registerAuthRoutes(app) {
     next();
   };
 
+  const adminSettings = (session) => ({
+    ...settings(),
+    envAdminEmails: [...envAdminEmails],
+    myEmails: emailsOf(session.user_id).map((e) => e.toLowerCase()),
+  });
+
+  app.get('/api/admin/settings', requireAdmin, (req, res) => res.json(adminSettings(req.session)));
+
+  app.post('/api/admin/settings', requireAdmin, (req, res) => {
+    let cleaned;
+    try {
+      cleaned = cleanSettings(req.body ?? {});
+    } catch (err) {
+      if (!(err instanceof SettingsError)) throw err;
+      return res.status(400).json({ error: 'invalid settings', detail: err.message });
+    }
+    const next = { ...settings(), ...cleaned };
+    if (authEnabled && !signInWays(next)) return res.status(409).json({ error: 'last sign-in way' });
+    // An administrator doesn't take the server out of their own hands.
+    const mine = emailsOf(req.session.user_id).map((e) => e.toLowerCase());
+    if (!mine.some((e) => next.adminEmails.includes(e) || envAdminEmails.has(e))) {
+      return res.status(409).json({ error: 'last admin' });
+    }
+    saveSettings(cleaned);
+    res.json(adminSettings(req.session));
+  });
+
   app.get('/api/admin/mail', requireAdmin, (req, res) => res.json(mailSettings()));
 
   app.post('/api/admin/mail', requireAdmin, async (req, res) => {
-    if (mailFromEnv) return res.status(409).json({ error: 'set in env' });
     const { host, port, secure, user, pass, from } = req.body ?? {};
     const text = (v, max) => typeof v === 'string' && v.trim().length > 0 && v.length <= max;
     if (!text(host, 253) || !Number.isInteger(port) || port < 1 || port > 65535 || typeof secure !== 'boolean'
@@ -534,7 +561,8 @@ export function registerAuthRoutes(app) {
   });
 
   app.post('/api/admin/mail/remove', requireAdmin, (req, res) => {
-    if (mailFromEnv) return res.status(409).json({ error: 'set in env' });
+    const { googleClientId, yandexClientId } = settings();
+    if (authEnabled && !googleClientId && !yandexClientId) return res.status(409).json({ error: 'last sign-in way' });
     clearMailSettings();
     res.json(mailSettings());
   });

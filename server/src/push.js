@@ -6,6 +6,7 @@ import {
 } from './db.js';
 import { folderAncestors } from './folders.js';
 import { cardReminders, nextTime } from './reminders.js';
+import { onSettingsChange, settings } from './settings.js';
 
 // Card reminders delivered with Web Push. The VAPID key pair identifies this server to the
 // browsers' push services; it is generated once and kept in the database, because
@@ -25,7 +26,9 @@ if (!publicKey || !privateKey) {
   setMeta('vapidPrivateKey', privateKey);
 }
 // Apple rejects subjects that are not a real URL or e-mail domain (e.g. localhost).
-webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:kanban@example.com', publicKey, privateKey);
+const applyVapid = () => webpush.setVapidDetails(settings().vapidSubject || 'mailto:kanban@example.com', publicKey, privateKey);
+applyVapid();
+onSettingsChange(applyVapid);
 
 const isBase64Url = (v, max) => typeof v === 'string' && v.length > 0 && v.length <= max && /^[\w-]+=*$/.test(v);
 

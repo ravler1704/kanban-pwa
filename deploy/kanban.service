@@ -11,7 +11,7 @@ Environment=NODE_ENV=production
 Environment=HOST=127.0.0.1
 Environment=PORT=3001
 Environment=DB_PATH=/var/lib/kanban/kanban.db
-# GOOGLE_CLIENT_ID and ALLOWED_EMAILS; uploaded by deploy.sh from deploy/kanban.env.
+# ADMIN_EMAILS (and the first settings of a new database); uploaded by deploy.sh from deploy/kanban.env.
 EnvironmentFile=-/etc/kanban/env
 ExecStart=/usr/bin/node --disable-warning=ExperimentalWarning src/index.js
 Restart=always
