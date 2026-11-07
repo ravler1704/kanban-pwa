@@ -21,6 +21,40 @@ function positionAtEnd(cards) {
 }
 
 /**
+ * The field opened in a gap between cards: Enter adds a card there and keeps it open for the next one,
+ * leaving it adds what's typed, Escape closes it.
+ */
+function QuickAdd({ onAdd, onClose }) {
+  const [title, setTitle] = useState('');
+  const input = useRef(null);
+  // Opened by a click on the gap, so the field takes the focus right away.
+  useEffect(() => input.current.focus(), []);
+  const add = () => {
+    const value = title.trim();
+    if (value) onAdd(value);
+    setTitle('');
+  };
+  return (
+    <form className="quick-add" onSubmit={(e) => {
+      e.preventDefault();
+      add();
+    }}>
+      <input ref={input} value={title} maxLength={500} placeholder="Новая карточка сюда" aria-label="Новая карточка"
+        onChange={(e) => setTitle(e.target.value)}
+        onBlur={() => {
+          add();
+          onClose();
+        }}
+        onKeyDown={(e) => {
+          if (e.key !== 'Escape') return;
+          e.stopPropagation();
+          onClose();
+        }} />
+    </form>
+  );
+}
+
+/**
  * `target` (a folder id) is where new cards go; `targetName`, when set, is said in the add field.
  * `cardLabel(card)` returns the folder shown on the card, or null for none.
  * `edit` (see ColumnMenu), when set, lets the columns be changed from the column's menu.
@@ -33,6 +67,8 @@ export default function Column({
   edit, onNewCard, collapsed, onToggleCollapsed, onCollapseOthers,
 }) {
   const [title, setTitle] = useState('');
+  // The card a new one is being typed in before, from the gap above it.
+  const [addingBefore, setAddingBefore] = useState(null);
   // While a card is dragged over the column: the id of the card it would land before, or null for the end.
   const [dropBefore, setDropBefore] = useState(undefined);
   const list = useRef(null);
@@ -171,6 +207,12 @@ export default function Column({
     setTitle('');
   }
 
+  const gaps = !readOnly && Boolean(target) && !dragOver;
+  function addBefore(beforeId, value) {
+    const position = positionBefore(cards, beforeId);
+    if (Number.isFinite(position)) createCard({ folderId: target }, column.id, value, '', [], { position });
+  }
+
   const count = cards.filter((c) => !c.deleted).length;
   const color = columnColor(column);
   const columnClasses = [
@@ -246,8 +288,16 @@ export default function Column({
         <div className="column-moves">{menu}</div>
       </div>
       <div className="cards" ref={list}>
-        {cards.map((card, i) => [
+        {cards.flatMap((card, i) => [
           showIndicator && i === index && slot,
+          gaps && i > 0 && (addingBefore === card.id
+            ? <QuickAdd key="quick-add" onAdd={(value) => addBefore(card.id, value)} onClose={() => setAddingBefore(null)} />
+            : (
+              <div key={`gap-${card.id}`} className="card-gap">
+                <button type="button" className="card-gap-btn" tabIndex={-1} title="Добавить карточку сюда"
+                  aria-label="Добавить карточку сюда" onClick={() => setAddingBefore(card.id)} />
+              </div>
+            )),
           <Card
             key={card.id}
             card={card}

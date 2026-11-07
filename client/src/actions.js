@@ -466,7 +466,7 @@ async function arrivalPosition(columnId, cardId = null) {
 
 export async function createCard(
   { folderId }, columnId, title, description = '', reminders = [],
-  { authorId = null, assigneeId = null, checklist = [], color = null } = {},
+  { authorId = null, assigneeId = null, checklist = [], color = null, position = null } = {},
 ) {
   await insert('card', {
     color,
@@ -480,7 +480,7 @@ export async function createCard(
     assigneeId,
     attachments: [],
     checklist,
-    position: await arrivalPosition(columnId),
+    position: position ?? await arrivalPosition(columnId),
   });
   requestSync();
 }
