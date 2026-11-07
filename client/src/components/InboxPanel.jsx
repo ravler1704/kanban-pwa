@@ -105,6 +105,12 @@ export default function InboxPanel({ folders, onOpen, onClose }) {
 
   return (
     <aside className={`inbox ${dropping ? 'inbox-drop' : ''}`} aria-label="Входящие"
+      onContextMenu={(e) => {
+        // Menus and dialogs portaled from inside bubble here too.
+        if (!e.currentTarget.contains(e.target) || e.target.closest('.inbox-card, a, button, input, textarea')) return;
+        e.preventDefault();
+        setMenu({ x: e.clientX, y: e.clientY });
+      }}
       onDragOver={(e) => {
         if (!fromBoard(e)) return;
         e.preventDefault();
@@ -117,11 +123,7 @@ export default function InboxPanel({ folders, onOpen, onClose }) {
         e.preventDefault();
         moveCardTo(e.dataTransfer.getData('text/card-id'), INBOX_ID);
       }}>
-      <div className="inbox-head" onContextMenu={(e) => {
-        if (e.target.closest('button')) return;
-        e.preventDefault();
-        setMenu({ x: e.clientX, y: e.clientY });
-      }}>
+      <div className="inbox-head">
         <h2 className="inbox-title"><InboxIcon /> Входящие</h2>
         <span className="inbox-head-actions">
           <button type="button" className={`btn btn-small btn-icon-only ${menu ? 'active' : ''}`} title="Действия"
