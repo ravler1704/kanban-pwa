@@ -80,6 +80,59 @@ export function useInboxCards() {
   );
 }
 
+const MIN_WIDTH = 220;
+const DEFAULT_WIDTH = 320;
+const maxWidth = () => Math.max(MIN_WIDTH, Math.min(720, window.innerWidth - 320));
+const clampWidth = (w) => Math.round(Math.min(maxWidth(), Math.max(MIN_WIDTH, w)));
+
+/** The panel's width in px, kept in localStorage (a phone ignores it: there the panel covers the screen). */
+function useInboxWidth() {
+  const [width, setWidth] = useState(() => clampWidth(Number(localStorage.inboxWidth) || DEFAULT_WIDTH));
+  const change = (w) => {
+    const value = clampWidth(w);
+    setWidth(value);
+    localStorage.inboxWidth = String(value);
+  };
+  return [width, change];
+}
+
+/** The handle on the panel's right edge: dragged to resize, arrows nudge, double click restores the width. */
+function InboxResizer({ width, onChange }) {
+  function start(e) {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const handle = e.currentTarget;
+    handle.setPointerCapture(e.pointerId);
+    const from = e.clientX - width;
+    const move = (ev) => onChange(ev.clientX - from);
+    const end = () => {
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', end);
+      handle.removeEventListener('pointercancel', end);
+      document.body.classList.remove('inbox-resizing');
+    };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', end);
+    handle.addEventListener('pointercancel', end);
+    document.body.classList.add('inbox-resizing');
+  }
+
+  return (
+    <div className="inbox-resizer" role="separator" aria-orientation="vertical" aria-label="Ширина «Входящих»"
+      aria-valuenow={width} aria-valuemin={MIN_WIDTH} aria-valuemax={maxWidth()} tabIndex={0}
+      title="Потяните, чтобы изменить ширину (двойной щелчок — как было)"
+      onPointerDown={start}
+      onDoubleClick={() => onChange(DEFAULT_WIDTH)}
+      onKeyDown={(e) => {
+        const step = e.shiftKey ? 64 : 16;
+        if (e.key === 'ArrowLeft') onChange(width - step);
+        else if (e.key === 'ArrowRight') onChange(width + step);
+        else return;
+        e.preventDefault();
+      }} />
+  );
+}
+
 /**
  * «Входящие»: cards dumped quickly, to be sorted out onto `folders` later — dragged to a column of the board
  * (the panel doesn't cover it) or moved with «На доску». `onOpen(id)` opens a card.
@@ -92,6 +145,7 @@ export default function InboxPanel({ folders, onOpen, onClose }) {
   const [menu, setMenu, closeMenu, menuButton] = useMenuButton(240);
   const doneMarksOf = useContext(DoneMarks);
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [width, setWidth] = useInboxWidth();
   const menuItems = [
     { label: 'Настройки «Входящих»…', icon: ICONS.gear, run: () => setSettingsOpen(true) },
     { label: 'Архив…', icon: ICONS.archive, run: () => setArchiveOpen(true) },
@@ -108,8 +162,8 @@ export default function InboxPanel({ folders, onOpen, onClose }) {
     setTitle('');
   }
 
-  return (
-    <aside className={`inbox ${dropping ? 'inbox-drop' : ''}`} aria-label="Входящие"
+  return (<>
+    <aside className={`inbox ${dropping ? 'inbox-drop' : ''}`} aria-label="Входящие" style={{ '--inbox-width': `${width}px` }}
       onContextMenu={(e) => {
         // Menus and dialogs portaled from inside bubble here too.
         if (!e.currentTarget.contains(e.target) || e.target.closest('.inbox-card, a, button, input, textarea')) return;
@@ -189,5 +243,6 @@ export default function InboxPanel({ folders, onOpen, onClose }) {
         document.body,
       )}
     </aside>
-  );
+    <InboxResizer width={width} onChange={setWidth} />
+  </>);
 }

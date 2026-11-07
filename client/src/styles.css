@@ -709,7 +709,7 @@ body {
 .app-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .inbox {
   flex: none;
-  width: 20rem;
+  width: var(--inbox-width, 20rem);
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
@@ -720,6 +720,27 @@ body {
   overflow-y: auto;
 }
 .inbox-drop { outline: 2px dashed var(--accent); outline-offset: -4px; }
+/* Overlaps the panel's border, so the board doesn't move; wider than it looks to be easy to grab. */
+.inbox-resizer {
+  flex: none;
+  position: relative;
+  z-index: 5;
+  width: 9px;
+  margin: 0 -5px 0 -4px;
+  cursor: col-resize;
+  touch-action: none;
+}
+.inbox-resizer::after {
+  content: '';
+  position: absolute;
+  inset: 0 3px;
+  border-radius: 2px;
+  transition: background 0.15s;
+}
+.inbox-resizer:hover::after, .inbox-resizer:focus-visible::after, .inbox-resizing .inbox-resizer::after { background: var(--accent); }
+.inbox-resizer:focus-visible { outline: none; }
+.inbox-resizing { cursor: col-resize; user-select: none; }
+.inbox-resizing * { cursor: col-resize !important; }
 .inbox-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 .inbox-title { display: flex; align-items: center; gap: 0.45rem; margin: 0; font-size: 1.05rem; }
 .inbox-add input { width: 100%; }
@@ -780,6 +801,7 @@ body {
   .inbox-button-label { display: none; }
   /* On a phone the panel is the whole screen under the header; cards go to boards with «На доску». */
   .inbox { position: fixed; inset: 0; z-index: 30; width: auto; border-right: 0; padding-top: max(0.75rem, env(safe-area-inset-top)); }
+  .inbox-resizer { display: none; }
 }
 
 .column {
