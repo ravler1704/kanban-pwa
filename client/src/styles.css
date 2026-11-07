@@ -747,7 +747,11 @@ body {
   cursor: pointer;
 }
 .inbox-card-actions { display: flex; flex: none; gap: 0.15rem; }
-.inbox-head-actions { display: flex; gap: 0.25rem; }
+.inbox-head .inbox-title { flex: 1; min-width: 0; }
+.inbox-head .inbox-head-btn, .inbox-head .inbox-head-btn:hover:not(:disabled) {
+  flex: none; border-color: transparent; background: transparent; color: var(--muted);
+}
+.inbox-head .inbox-head-btn:hover:not(:disabled), .inbox-head .inbox-head-btn.active { color: var(--text); }
 .inbox-title-row { flex: 1; min-width: 0; }
 .inbox-title-row > .inbox-card-title { width: 100%; }
 .inbox-title-row > .card-done-btn { top: 0.35rem; }
