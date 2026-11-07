@@ -149,7 +149,9 @@ export default function StructureEditor({
       ) : (
         <>
           {list.map((f) => <FolderRow key={f.id} folder={f} ctx={ctx} />)}
-          {list.length === 0 && <p className="muted">У этой доски нет вложенных досок.</p>}
+          {list.length === 0 && (
+            <p className="muted">{current ? 'У этой доски нет вложенных досок.' : 'Пока нет ни одной доски.'}</p>
+          )}
           {canAddHere && (
             <AddButton key={current?.id ?? 'top'} label={current ? `Новая доска в «${current.name}»` : 'Новая доска верхнего уровня'}
               onAdd={async (name) => {
