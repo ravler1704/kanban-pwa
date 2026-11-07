@@ -134,7 +134,7 @@ export default function App() {
   const [chat, setChat] = useState(null);
   const [search, setSearch] = useState('');
   const [editingColumns, setEditingColumns] = useState(false);
-  // The board's menu, from a right click on the board itself (not a column or a card) or its «⋯» beside the title:
+  // The board's menu, from a right click on the board itself (not a column or a card) or its «⋯» in the bar:
   // { x, y }. `menuFolderId` is the board it is about (null: several in view); it stays for the dialogs.
   const [boardMenu, setBoardMenu] = useState(null);
   const [menuFolderId, setMenuFolderId] = useState(null);
@@ -560,15 +560,15 @@ export default function App() {
                         </>
                       ) : folderFilter.summary}
                     </h2>
-                    {view === 'board' || !readOnly ? (
-                      <BoardMenuButton open={Boolean(boardMenu)}
-                        onMenu={(pos) => (pos ? openBoardMenu(pos, viewFolder?.id ?? null) : setBoardMenu(null))} />
-                    ) : null}
                 </div>
                 )}
                 setSwitch={!searching && setTabs ? { sets: setTabs, value: boardSetId, onChange: changeAllFoldersSet } : null}
               >
                 {!publicToken && <PeopleBar folders={shownFolders} allFolders={folders} onChat={setChat} />}
+                {(view === 'board' || !readOnly) && (
+                  <BoardMenuButton open={Boolean(boardMenu)}
+                    onMenu={(pos) => (pos ? openBoardMenu(pos, viewFolder?.id ?? null) : setBoardMenu(null))} />
+                )}
               </FolderBar>
               {searching ? (
                 <ListView cards={visible} query={search} folders={folders} targets={usable} readOnly={readOnly}

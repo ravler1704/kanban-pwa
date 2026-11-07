@@ -204,7 +204,7 @@ export function BoardName({ folder, renaming, onRename, onRenamed }) {
   );
 }
 
-/** The board's «⋯» beside its title: `open` (the menu is open) toggles it, `onMenu` gets where the menu goes or null. */
+/** The board's «⋯» at the right of the board's bar: `open` (the menu is open) toggles it, `onMenu` gets where the menu goes or null. */
 export function BoardMenuButton({ open, onMenu }) {
   return (
     <button type="button" className={`btn btn-icon board-menu-btn ${open ? 'active' : ''}`}
@@ -212,7 +212,7 @@ export function BoardMenuButton({ open, onMenu }) {
       onMouseDown={(e) => open && e.stopPropagation()}
       onClick={(e) => {
         const r = e.currentTarget.getBoundingClientRect();
-        onMenu(open ? null : { x: r.left, y: r.bottom + 4 });
+        onMenu(open ? null : { x: r.right - 260, y: r.bottom + 4 });
       }}>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" />
