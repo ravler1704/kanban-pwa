@@ -753,7 +753,8 @@ body {
 }
 .inbox-head .inbox-head-btn:hover:not(:disabled), .inbox-head .inbox-head-btn.active { color: var(--text); }
 @media (hover: hover) {
-  .inbox-menu-btn, .board-menu-btn { opacity: 0; }
+  .inbox-menu-btn, .board-menu-btn, .inbox-card-actions { opacity: 0; }
+  .inbox-card:hover .inbox-card-actions, .inbox-card-actions:focus-within { opacity: 1; }
   .inbox:hover .inbox-menu-btn, .inbox-menu-btn:focus-visible, .inbox-menu-btn.active,
   .app-main:hover .board-menu-btn, .board-menu-btn:focus-visible, .board-menu-btn.active { opacity: 1; }
 }
