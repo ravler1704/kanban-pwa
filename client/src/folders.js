@@ -1,10 +1,10 @@
-import { DEFAULT_FOLDER_ID, DEFAULT_SET_ID } from './db.js';
+import { DEFAULT_FOLDER_ID, DEFAULT_SET_ID, SIMPLE_SET_ID } from './db.js';
 
 export const byPosition = (a, b) => a.position - b.position || a.id.localeCompare(b.id);
 
 // Until the first sync the device has no folders yet; the server creates «Личное» with this id.
 const STAND_IN = {
-  id: DEFAULT_FOLDER_ID, parentId: null, columnSetId: DEFAULT_SET_ID, name: 'Личное', position: 1, deleted: false, hidden: false,
+  id: DEFAULT_FOLDER_ID, parentId: null, columnSetId: SIMPLE_SET_ID, name: 'Личное', position: 1, deleted: false, hidden: false,
 };
 
 /** Live folders in order; with `standIn`, «Личное» stands in while the board has none synced. */

@@ -26,7 +26,7 @@ export function columnModel(rawSets, rawColumns, folders) {
   const columnsOfFolder = (folderId) => columnsOf(setIdOf(folderById.get(folderId)));
   const foldersOf = (setId) => folders.filter((f) => setIdOf(f) === setId);
 
-  // For a new root folder: the «3 колонки» template unless the user deleted it.
+  // For a new root folder: the «Канбан (3 колонки)» template unless the user deleted it.
   const newFolderSetId = setIds.has(SIMPLE_SET_ID) ? SIMPLE_SET_ID : sets[0].id;
 
   return { sets, columns, columnsOf, setIdOf, columnsOfFolder, foldersOf, newFolderSetId };

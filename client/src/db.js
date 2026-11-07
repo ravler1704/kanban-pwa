@@ -298,9 +298,9 @@ export const DEFAULT_COLUMNS = [
     { id: 'done', name: 'Завершено', position: 5, addToTop: true },
   ].map((c) => ({ addToTop: false, ...c, setId: DEFAULT_SET_ID })),
 ];
+// A new space has only the first set; the columns of the other are kept for spaces seeded before.
 export const DEFAULT_SETS = [
-  { id: SIMPLE_SET_ID, name: '3 колонки', position: 1 },
-  { id: DEFAULT_SET_ID, name: '5 колонок', position: 2 },
+  { id: SIMPLE_SET_ID, name: 'Канбан (3 колонки)', position: 1 },
 ];
 
 export function tableOf(type) {

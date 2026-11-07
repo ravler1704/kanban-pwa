@@ -648,8 +648,9 @@ const DEFAULT_COLUMNS = [
   { id: 'done', name: 'Завершено', addToTop: true },
 ];
 
-// The template new projects get (the client picks it while it exists).
+// The template new projects get (the client picks it while it exists); a new space has only this one.
 const SIMPLE_SET_ID = 'simple';
+const SIMPLE_SET_NAME = 'Канбан (3 колонки)';
 const SIMPLE_COLUMNS = [
   { id: 'simple-todo', name: 'Запланировано' },
   { id: 'simple-doing', name: 'В работе' },
@@ -660,6 +661,7 @@ const seeded = new Set();
 
 /**
  * Creates the root folder (`rootName`, «Личное» in the main space) and the column set templates once per board.
+ * A new space gets the one set «Канбан (3 колонки)»; spaces seeded before keep the sets they had.
  */
 export function seedColumns(owner, { rootName = 'Личное' } = {}) {
   if (seeded.has(owner)) return;
@@ -671,7 +673,19 @@ export function seedColumns(owner, { rootName = 'Личное' } = {}) {
       saveRecord(owner, 'column', id, { setId, name, position: i + 1, deleted: false, addToTop }, server);
     }
   });
+  const fresh = !getMeta(flag) && !getMeta(simpleFlag)
+    && !getRecord(owner, DEFAULT_FOLDER_ID) && !getRecord(owner, DEFAULT_SET_ID) && !getRecord(owner, SIMPLE_SET_ID);
   transaction(() => {
+    if (fresh) {
+      saveRecord(owner, 'folder', DEFAULT_FOLDER_ID, {
+        parentId: null, columnSetId: SIMPLE_SET_ID, name: rootName, position: 1, deleted: false, hidden: false,
+      }, server);
+      saveRecord(owner, 'columnSet', SIMPLE_SET_ID, { name: SIMPLE_SET_NAME, position: 1, deleted: false }, server);
+      addColumns(SIMPLE_SET_ID, SIMPLE_COLUMNS);
+      setMeta(flag, '1');
+      setMeta(simpleFlag, '1');
+      return;
+    }
     if (!getRecord(owner, DEFAULT_FOLDER_ID)) {
       saveRecord(owner, 'folder', DEFAULT_FOLDER_ID, {
         parentId: null, columnSetId: DEFAULT_SET_ID, name: rootName, position: 1, deleted: false, hidden: false,
@@ -687,7 +701,7 @@ export function seedColumns(owner, { rootName = 'Личное' } = {}) {
     }
     if (!getMeta(simpleFlag)) {
       if (!getRecord(owner, SIMPLE_SET_ID)) {
-        saveRecord(owner, 'columnSet', SIMPLE_SET_ID, { name: '3 колонки', position: 1, deleted: false }, server);
+        saveRecord(owner, 'columnSet', SIMPLE_SET_ID, { name: SIMPLE_SET_NAME, position: 1, deleted: false }, server);
       }
       addColumns(SIMPLE_SET_ID, SIMPLE_COLUMNS);
       setMeta(simpleFlag, '1');
