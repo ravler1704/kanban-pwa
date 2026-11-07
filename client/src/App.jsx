@@ -229,7 +229,9 @@ export default function App() {
       Promise.all(tables.map((t) => t.where('dirty').equals(1).count())),
     ]);
     const conflicted = await db.cards.filter((c) => !!c.conflict).toArray();
-    return { folders, columnSets, columns, conflicted, pending: pending.reduce((a, b) => a + b, 0) };
+    // Pulled from the server at least once: a space may have no boards at all.
+    const pulled = Boolean(await db.meta.get('lastSeq'));
+    return { folders, columnSets, columns, conflicted, pulled, pending: pending.reduce((a, b) => a + b, 0) };
   }, []);
 
   // ---- resolve the selection against live data ----
@@ -495,7 +497,7 @@ export default function App() {
     <div className="app">
       <StatusBar pending={data.pending} conflicts={data.conflicted.length} folders={chatFolders} onChat={setChat}
         search={search} onSearch={folders.length ? setSearch : null}
-        onSettings={readOnly || !folders.length ? null : () => setManaging(true)}
+        onSettings={readOnly ? null : () => setManaging(true)}
         inbox={inboxOn ? { count: inboxCards?.length ?? 0, open: inboxOpen, onToggle: toggleInbox } : null} />
 
       <div className="app-body">
@@ -657,7 +659,7 @@ export default function App() {
           model={model}
           columnsSynced={data.columns.length > 0}
           folders={folders}
-          foldersSynced={data.folders.some((f) => !f.deleted)}
+          foldersSynced={data.pulled || data.folders.some((f) => !f.deleted)}
           writable={writable}
           onClose={() => setManaging(false)}
         />
