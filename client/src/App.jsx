@@ -496,7 +496,7 @@ export default function App() {
     <DoneMarks.Provider value={doneMarksOf}>
     <div className="app">
       <StatusBar pending={data.pending} conflicts={data.conflicted.length} folders={chatFolders} onChat={setChat}
-        search={search} onSearch={folders.length ? setSearch : null}
+        search={search} onSearch={setSearch}
         onSettings={readOnly ? null : () => setManaging(true)}
         inbox={inboxOn ? { count: inboxCards?.length ?? 0, open: inboxOpen, onToggle: toggleInbox } : null} />
 
