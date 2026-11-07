@@ -3,20 +3,15 @@ import {
   addSupportMessage, changeSupportMessage, getSupportMessage, markSupportThreadRead, setSupportStatus, supportSummary,
   supportThread, supportTicket, supportTickets, userProfile,
 } from './db.js';
+import { messageBody, preview, validEdit } from './chat.js';
 import { notifyUser } from './events.js';
-import { sendToUsers, withoutLinks } from './push.js';
+import { sendToUsers } from './push.js';
 
 // Support: a user writes to the administrators from the chats; any administrator answers. Each user has one
 // conversation (`:user` is 'me' for the user's own, or a user's id for an administrator), open or solved.
 
-const MAX_TEXT = 4000;
 const STATUSES = new Set(['open', 'solved']);
 const validId = (v) => typeof v === 'string' && v.length > 0 && v.length <= 64;
-const validText = (v) => typeof v === 'string' && v.trim().length > 0 && v.length <= MAX_TEXT;
-const preview = (text) => {
-  const plain = withoutLinks(text);
-  return plain.length > 200 ? `${plain.slice(0, 199)}…` : plain;
-};
 
 /** Whose conversation the request is about, and whether the requester answers as the support; null: not allowed. */
 function conversation(req) {
@@ -67,26 +62,28 @@ export function registerSupportRoutes(app) {
   app.post('/api/support/:user', (req, res) => {
     const c = conversation(req);
     if (!c) return res.status(403).json({ error: 'not admin' });
-    const { id, text } = req.body ?? {};
-    if (!validId(id) || !validText(text)) return res.status(400).json({ error: 'invalid message' });
+    const { id } = req.body ?? {};
+    const body = messageBody(req.body ?? {});
+    if (!validId(id) || !body) return res.status(400).json({ error: 'invalid message' });
+    const { text, images } = body;
     const existing = getSupportMessage(id);
     if (existing) {
       if (existing.author !== req.user) return res.status(409).json({ error: 'id taken' });
       return res.json({ message: existing });
     }
     const message = addSupportMessage({
-      id, userId: c.userId, author: req.user, fromSupport: c.bySupport, text, createdAt: Date.now(),
+      id, userId: c.userId, author: req.user, fromSupport: c.bySupport, text, images, createdAt: Date.now(),
     });
     changed(c.userId);
     if (c.bySupport) {
       sendToUsers([c.userId], {
-        title: 'Техподдержка', body: preview(text), tag: 'support', url: `/?${new URLSearchParams({ chat: 'support:me' })}`,
+        title: 'Техподдержка', body: preview(text, images), tag: 'support', url: `/?${new URLSearchParams({ chat: 'support:me' })}`,
       }).catch((err) => console.error('Push failed:', err));
     } else {
       const from = userProfile(c.userId);
       sendToUsers(adminIds().filter((a) => a !== req.user), {
         title: `Поддержка: ${from.name || from.email || 'пользователь'}`,
-        body: preview(text),
+        body: preview(text, images),
         tag: `support-${c.userId}`,
         url: `/?${new URLSearchParams({ chat: `support:${c.userId}` })}`,
       }).catch((err) => console.error('Push failed:', err));
@@ -106,9 +103,9 @@ export function registerSupportRoutes(app) {
 
   app.post('/api/support/:user/:id/edit', (req, res) => {
     const { text } = req.body ?? {};
-    if (!validText(text)) return res.status(400).json({ error: 'invalid text' });
     const message = ownMessage(req, res);
     if (!message) return;
+    if (!validEdit(text, message)) return res.status(400).json({ error: 'invalid text' });
     if (message.deleted) return res.status(409).json({ error: 'deleted' });
     const next = changeSupportMessage(message.id, { text });
     changed(message.userId);

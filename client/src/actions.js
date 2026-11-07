@@ -622,11 +622,12 @@ export async function moveCardTo(id, folderId, columnId = null) {
  * `author` is the signed-in user; the server sets the author fields itself, these show
  * until it answers.
  */
-export async function addComment({ cardId = null, folderId = null }, text, author) {
+export async function addComment({ cardId = null, folderId = null }, text, author, images = []) {
   await insert('comment', {
     cardId,
     folderId,
     text,
+    images,
     authorId: author?.id ?? '',
     authorName: author?.name || author?.email || '',
     authorPicture: author?.picture ?? '',
@@ -643,7 +644,7 @@ export async function editComment(id, text) {
 }
 
 export async function deleteComment(id) {
-  await db.transaction('rw', db.comments, () => update('comment', id, { deleted: true, text: '' }));
+  await db.transaction('rw', db.comments, () => update('comment', id, { deleted: true, text: '', images: [] }));
   requestSync();
 }
 

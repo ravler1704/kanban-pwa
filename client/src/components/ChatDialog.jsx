@@ -105,7 +105,7 @@ function DmThread({ peer }) {
       empty={thread ? 'Сообщений пока нет — напишите первым.' : 'Загрузка…'}
       hint={hint}
       disabled={!online || !thread?.canWrite}
-      onSend={(text) => sendDm(peer.id, text)}
+      onSend={(text, images) => sendDm(peer.id, text, images)}
       onEdit={(m, text) => editDm(peer.id, m.id, text)}
       onDelete={(m) => deleteDm(peer.id, m.id)}
     />
@@ -168,7 +168,7 @@ function SupportThread({ user: ticketUser }) {
       hint={hint}
       placeholder={asSupport ? 'Ответ пользователю' : 'Сообщение в техподдержку'}
       disabled={!online || !thread}
-      onSend={(text) => sendSupport(ticketUser, text)}
+      onSend={(text, images) => sendSupport(ticketUser, text, images)}
       onEdit={(m, text) => editSupport(ticketUser, m.id, text)}
       onDelete={(m) => deleteSupport(ticketUser, m.id)}
     />

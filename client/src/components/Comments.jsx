@@ -94,7 +94,7 @@ export default function Comments({ card, folderId, title, className, placeholder
       me={me}
       placeholder={placeholder ?? 'Комментарий'}
       empty={card ? 'Комментариев пока нет.' : 'Сообщений пока нет — напишите первым.'}
-      onSend={canWrite ? (text) => addComment(where, text, user) : null}
+      onSend={canWrite ? (text, images) => addComment(where, text, user, images) : null}
       onEdit={canWrite ? (m, text) => editComment(m.id, text) : null}
       onDelete={canWrite ? (m) => deleteComment(m.id) : null}
       canDelete={(m) => m.authorId === me || isOwnBoard}

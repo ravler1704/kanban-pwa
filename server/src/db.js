@@ -246,6 +246,10 @@ db.exec(`
   );
 `);
 
+// Images of direct and support messages (JSON, see imageList.js).
+if (!hasColumn('direct_messages', 'images')) db.exec("ALTER TABLE direct_messages ADD COLUMN images TEXT NOT NULL DEFAULT '[]'");
+if (!hasColumn('support_messages', 'images')) db.exec("ALTER TABLE support_messages ADD COLUMN images TEXT NOT NULL DEFAULT '[]'");
+
 // When each user last used the app (any request with their session), for the administrators' overview.
 db.exec(`
   CREATE TABLE IF NOT EXISTS user_seen (
@@ -365,9 +369,48 @@ export function foldersWithBackground(owner, fileId) {
   return selectFoldersByBackground.all(owner, `${BACKGROUND_PREFIX}${fileId}`).map((r) => r.id);
 }
 
+// Images of chat messages: comments (records), direct and support messages; deleted messages keep none.
+const IMAGE_FILE = "(json_extract(j.value, '$.id') = :file OR json_extract(j.value, '$.preview') = :file)";
+const selectCommentsByImage = db.prepare(`
+  SELECT r.id, j.value AS image FROM records r, json_each(r.data, '$.images') j
+  WHERE r.owner = :owner AND r.type = 'comment' AND ${IMAGE_FILE}
+`);
+const selectDmByImage = db.prepare(`
+  SELECT d.sender, d.recipient, j.value AS image FROM direct_messages d, json_each(d.images) j
+  WHERE d.deleted = 0 AND ${IMAGE_FILE}
+`);
+const selectSupportByImage = db.prepare(`
+  SELECT s.user_id, j.value AS image FROM support_messages s, json_each(s.images) j WHERE s.deleted = 0 AND ${IMAGE_FILE}
+`);
+const KEPT_IMAGES = (from) => `
+  SELECT json_extract(j.value, '$.id') AS id, json_extract(j.value, '$.preview') AS preview FROM ${from}, json_each(images) j
+`;
+const selectKeptChatImages = db.prepare(`
+  SELECT json_extract(j.value, '$.id') AS id, json_extract(j.value, '$.preview') AS preview
+    FROM records r, json_each(r.data, '$.images') j WHERE r.type = 'comment'
+  UNION ALL ${KEPT_IMAGES('direct_messages')} WHERE deleted = 0
+  UNION ALL ${KEPT_IMAGES('support_messages')} WHERE deleted = 0
+`);
+
+/** The board's comments that have the image file: [{ id, image }]. */
+export function commentsWithImage(owner, fileId) {
+  return selectCommentsByImage.all({ owner, file: fileId }).map((r) => ({ id: r.id, image: JSON.parse(r.image) }));
+}
+
+/** Direct messages with the image file: [{ sender, recipient, image }]. */
+export function dmsWithImage(fileId) {
+  return selectDmByImage.all({ file: fileId }).map((r) => ({ ...r, image: JSON.parse(r.image) }));
+}
+
+/** Support messages with the image file: [{ userId, image }] (`userId`: whose conversation). */
+export function supportWithImage(fileId) {
+  return selectSupportByImage.all({ file: fileId }).map((r) => ({ userId: r.user_id, image: JSON.parse(r.image) }));
+}
+
 /** Files of cards (archived too) and of live folders, and of folders deleted after `deletedSince` (they may still be restored). */
 export function keptFileIds(deletedSince) {
-  return new Set([...selectKeptFiles.all(), ...selectKeptBackgrounds.all(deletedSince)].map((r) => r.id));
+  const images = selectKeptChatImages.all().flatMap((r) => (r.preview ? [r.id, r.preview] : [r.id]));
+  return new Set([...selectKeptFiles.all(), ...selectKeptBackgrounds.all(deletedSince)].map((r) => r.id).concat(images));
 }
 
 export function ownerFileIds(owner) {
@@ -960,6 +1003,7 @@ const toMessage = (row) => ({
   sender: row.sender,
   recipient: row.recipient,
   text: row.text,
+  images: JSON.parse(row.images ?? '[]'),
   createdAt: row.created_at,
   editedAt: row.edited_at,
   deleted: Boolean(row.deleted),
@@ -1005,9 +1049,11 @@ const deleteDmClearedPair = db.prepare(`
 `);
 const selectDm = db.prepare('SELECT * FROM direct_messages WHERE id = ?');
 const insertDm = db.prepare(`
-  INSERT OR IGNORE INTO direct_messages (id, sender, recipient, text, created_at) VALUES (?, ?, ?, ?, ?)
+  INSERT OR IGNORE INTO direct_messages (id, sender, recipient, text, images, created_at) VALUES (?, ?, ?, ?, ?, ?)
 `);
-const updateDm = db.prepare('UPDATE direct_messages SET text = ?, edited_at = ?, deleted = ? WHERE id = ?');
+const updateDm = db.prepare(`
+  UPDATE direct_messages SET text = ?, edited_at = ?, deleted = ?, images = CASE WHEN ? THEN '[]' ELSE images END WHERE id = ?
+`);
 const upsertDmRead = db.prepare(`
   INSERT INTO dm_reads (user_id, peer, read_at) VALUES (?, ?, ?)
   ON CONFLICT(user_id, peer) DO UPDATE SET read_at = MAX(read_at, excluded.read_at)
@@ -1034,13 +1080,13 @@ export function getDm(id) {
 }
 
 /** Returns the message, also when this id was saved before (a repeated request). */
-export function addDm({ id, sender, recipient, text, createdAt }) {
-  insertDm.run(id, sender, recipient, text, createdAt);
+export function addDm({ id, sender, recipient, text, images = [], createdAt }) {
+  insertDm.run(id, sender, recipient, text, JSON.stringify(images), createdAt);
   return getDm(id);
 }
 
 export function changeDm(id, { text, deleted }) {
-  updateDm.run(deleted ? '' : text, Date.now(), deleted ? 1 : 0, id);
+  updateDm.run(deleted ? '' : text, Date.now(), deleted ? 1 : 0, deleted ? 1 : 0, id);
   return getDm(id);
 }
 
@@ -1069,6 +1115,7 @@ const toSupportMessage = (row) => ({
   author: row.author,
   fromSupport: Boolean(row.from_support),
   text: row.text,
+  images: JSON.parse(row.images ?? '[]'),
   createdAt: row.created_at,
   editedAt: row.edited_at,
   deleted: Boolean(row.deleted),
@@ -1078,9 +1125,12 @@ const selectSupportThread = db.prepare(`
   SELECT * FROM support_messages WHERE user_id = ? AND created_at < ? ORDER BY created_at DESC, id DESC LIMIT ?
 `);
 const insertSupportMessage = db.prepare(`
-  INSERT OR IGNORE INTO support_messages (id, user_id, author, from_support, text, created_at) VALUES (?, ?, ?, ?, ?, ?)
+  INSERT OR IGNORE INTO support_messages (id, user_id, author, from_support, text, images, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?)
 `);
-const updateSupportMessage = db.prepare('UPDATE support_messages SET text = ?, edited_at = ?, deleted = ? WHERE id = ?');
+const updateSupportMessage = db.prepare(`
+  UPDATE support_messages SET text = ?, edited_at = ?, deleted = ?, images = CASE WHEN ? THEN '[]' ELSE images END WHERE id = ?
+`);
 const selectTicket = db.prepare('SELECT * FROM support_tickets WHERE user_id = ?');
 const upsertTicket = db.prepare(`
   INSERT INTO support_tickets (user_id, status, updated_at) VALUES (?, ?, ?)
@@ -1139,9 +1189,9 @@ export function getSupportMessage(id) {
 }
 
 /** A user's message opens the ticket again; the support's answer keeps its status. */
-export function addSupportMessage({ id, userId, author, fromSupport, text, createdAt }) {
+export function addSupportMessage({ id, userId, author, fromSupport, text, images = [], createdAt }) {
   transaction(() => {
-    insertSupportMessage.run(id, userId, author, fromSupport ? 1 : 0, text, createdAt);
+    insertSupportMessage.run(id, userId, author, fromSupport ? 1 : 0, text, JSON.stringify(images), createdAt);
     const ticket = selectTicket.get(userId);
     upsertTicket.run(userId, fromSupport ? (ticket?.status ?? 'open') : 'open', createdAt);
     if (fromSupport) markSupportRead.run(createdAt, userId);
@@ -1151,7 +1201,7 @@ export function addSupportMessage({ id, userId, author, fromSupport, text, creat
 }
 
 export function changeSupportMessage(id, { text, deleted }) {
-  updateSupportMessage.run(deleted ? '' : text, Date.now(), deleted ? 1 : 0, id);
+  updateSupportMessage.run(deleted ? '' : text, Date.now(), deleted ? 1 : 0, deleted ? 1 : 0, id);
   return getSupportMessage(id);
 }
 

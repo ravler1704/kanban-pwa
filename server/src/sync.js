@@ -6,6 +6,7 @@ import {
 import { folderAncestors, folderColumnSet, isInbox, isMemberInbox, memberInboxId } from './folders.js';
 import { cardReminders, isReminderList, nextTime } from './reminders.js';
 import { textDiff } from './textDiff.js';
+import { validImages } from './imageList.js';
 
 const string = (max) => (v) => typeof v === 'string' && v.length <= max;
 const ref = (v) => typeof v === 'string' && v.length > 0 && v.length <= 64;
@@ -18,6 +19,8 @@ const optionalUser = (v) => v === null || (typeof v === 'string' && v.length > 0
 const attachment = (v) => v !== null && typeof v === 'object' && ref(v.id) && string(255)(v.name)
   && Number.isInteger(v.size) && v.size >= 0 && string(255)(v.type) && Number.isInteger(v.addedAt);
 const attachments = (v) => Array.isArray(v) && v.length <= 1000 && v.every(attachment);
+// Images of a chat message (see chatImages.js); null from clients that synced before they existed.
+const optionalImages = (v) => v === null || validImages(v);
 const checkItem = (v) => v !== null && typeof v === 'object' && ref(v.id) && string(500)(v.text) && boolean(v.done);
 const checklist = (v) => Array.isArray(v) && v.length <= 200 && v.every(checkItem);
 
@@ -120,10 +123,11 @@ export const SCHEMAS = {
       editedAt: optionalTime,
       deleted: boolean,
       event: string(4000),
+      images: optionalImages,
     },
     defaults: {
       cardId: null, folderId: null, text: '', authorId: '', authorName: '', authorPicture: '',
-      createdAt: 0, editedAt: null, deleted: false, event: '',
+      createdAt: 0, editedAt: null, deleted: false, event: '', images: [],
     },
     textFields: [],
     serverFields: ['authorId', 'authorName', 'authorPicture', 'editedAt', 'event'],
@@ -283,8 +287,8 @@ function applyComment(owner, deviceId, { id, fields }, access, actor) {
   if (!actor || access?.readOnly) return reject();
 
   if (!current) {
-    const data = { ...schema.defaults, ...fields };
-    if (!data.text.trim() || data.deleted) return reject();
+    const data = { ...schema.defaults, ...fields, images: fields.images ?? [] };
+    if ((!data.text.trim() && data.images.length === 0) || data.deleted) return reject();
     let folderId = data.folderId;
     if (data.cardId) {
       const card = getRecord(owner, data.cardId);
@@ -316,8 +320,9 @@ function applyComment(owner, deviceId, { id, fields }, access, actor) {
     if (!own && actor.id !== boardOwner(owner)) return reject();
     next.deleted = true;
     next.text = '';
+    next.images = [];
   } else if ('text' in fields && fields.text !== current.text) {
-    if (!own || current.deleted || !fields.text.trim()) return reject();
+    if (!own || current.deleted || (!fields.text.trim() && !(current.images ?? []).length)) return reject();
     next.text = fields.text;
     next.editedAt = Date.now();
   }
@@ -587,6 +592,13 @@ export function visibleFolder(owner, folderId, access) {
   const folder = withDefaults(getRecord(owner, folderId));
   if (folder?.type !== 'folder' || folder.deleted) return false;
   return !access || visibleTo(access, folder);
+}
+
+/** Whether the requester sees the comment (a message of a folder's or a card's chat). */
+export function visibleComment(owner, commentId, access) {
+  const comment = withDefaults(getRecord(owner, commentId));
+  if (comment?.type !== 'comment' || comment.deleted) return false;
+  return access ? visibleTo(access, comment) : !isMemberInbox(comment.folderId);
 }
 
 export function visibleCard(owner, cardId, access) {

@@ -3,6 +3,7 @@ import {
   liveFolderIds, markDmRead, userProfile,
 } from './db.js';
 import { notifyUser } from './events.js';
+import { validImages } from './imageList.js';
 import { sendToUsers, withoutLinks } from './push.js';
 
 // People of a board, direct messages between them, and notifications about comments.
@@ -10,8 +11,17 @@ import { sendToUsers, withoutLinks } from './push.js';
 const MAX_TEXT = 4000;
 const validId = (v) => typeof v === 'string' && v.length > 0 && v.length <= 64;
 const validText = (v) => typeof v === 'string' && v.trim().length > 0 && v.length <= MAX_TEXT;
-const preview = (text) => {
-  const plain = withoutLinks(text);
+/** Text and images of a new message: either may be empty, not both; null if invalid. */
+export function messageBody({ text, images }) {
+  const list = images ?? [];
+  if (!validImages(list) || typeof (text ?? '') !== 'string' || (text ?? '').length > MAX_TEXT) return null;
+  return validText(text) || list.length > 0 ? { text: text ?? '', images: list } : null;
+}
+/** A message's text may be emptied when it has images. */
+export const validEdit = (text, message) => validText(text)
+  || (typeof text === 'string' && text.trim() === '' && message.images.length > 0);
+export const preview = (text, images = []) => {
+  const plain = withoutLinks(text).trim() || (images.length ? (images.length > 1 ? `Фото: ${images.length}` : 'Фото') : '');
   return plain.length > 200 ? `${plain.slice(0, 199)}…` : plain;
 };
 
@@ -75,22 +85,24 @@ export function registerChatRoutes(app) {
 
   app.post('/api/dm/:peer', (req, res) => {
     const { peer } = req.params;
-    const { id, text } = req.body ?? {};
-    if (!validId(id) || !validText(text)) return res.status(400).json({ error: 'invalid message' });
+    const { id } = req.body ?? {};
+    const body = messageBody(req.body ?? {});
+    if (!validId(id) || !body) return res.status(400).json({ error: 'invalid message' });
+    const { text, images } = body;
     const existing = getDm(id);
     if (existing) {
       if (existing.sender !== req.user) return res.status(409).json({ error: 'id taken' });
       return res.json({ message: existing });
     }
     if (!contactIds(req.user).includes(peer)) return res.status(403).json({ error: 'no shared project' });
-    const message = addDm({ id, sender: req.user, recipient: peer, text, createdAt: Date.now() });
+    const message = addDm({ id, sender: req.user, recipient: peer, text, images, createdAt: Date.now() });
     markDmRead(req.user, peer, message.createdAt);
     notifyUser(peer, { dm: req.user });
     notifyUser(req.user, { dm: peer });
     const sender = userProfile(req.user);
     sendToUsers([peer], {
       title: sender.name || sender.email || 'Сообщение',
-      body: preview(text),
+      body: preview(text, images),
       tag: `dm-${req.user}`,
       url: `/?${new URLSearchParams({ chat: `dm:${req.user}` })}`,
     }).catch((err) => console.error('Push failed:', err));
@@ -112,9 +124,9 @@ export function registerChatRoutes(app) {
 
   app.post('/api/dm/:peer/:id/edit', (req, res) => {
     const { text } = req.body ?? {};
-    if (!validText(text)) return res.status(400).json({ error: 'invalid text' });
     const message = ownMessage(req, res);
     if (!message) return;
+    if (!validEdit(text, message)) return res.status(400).json({ error: 'invalid text' });
     if (message.deleted) return res.status(409).json({ error: 'deleted' });
     const next = changeDm(message.id, { text });
     changed(req, next);
@@ -173,7 +185,7 @@ export function notifyComments(owner, comments) {
         url: `/?${new URLSearchParams({ ...board, chat: `folder:${c.folderId}` })}`,
       };
     }
-    sendToUsers(recipients, { ...payload, body: preview(c.text) })
+    sendToUsers(recipients, { ...payload, body: preview(c.text, c.images ?? []) })
       .catch((err) => console.error('Push failed:', err));
   }
 }

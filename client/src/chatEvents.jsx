@@ -99,7 +99,10 @@ export function parseEvent(json) {
 /** The message as plain text: a note of a change is described in words. */
 export function messageText(m, numbers) {
   const e = m.event && parseEvent(m.event);
-  if (!e) return m.text;
+  if (!e) {
+    const count = m.images?.length ?? 0;
+    return m.text?.trim() || (count > 1 ? `Фото: ${count}` : count ? 'Фото' : m.text);
+  }
   return parts(e).map((p) => (typeof p === 'string' ? p : cardName(p.card ?? {}, numbers))).join('');
 }
 

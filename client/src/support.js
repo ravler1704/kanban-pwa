@@ -62,8 +62,8 @@ export function onSupportThreadChange(listener) {
 
 export const loadSupportThread = (user) => request(path(user));
 
-export async function sendSupport(user, text) {
-  const { message } = await request(path(user), { id: newId(), text });
+export async function sendSupport(user, text, images = []) {
+  const { message } = await request(path(user), { id: newId(), text, images });
   supportChanged(user);
   return message;
 }
