@@ -1,7 +1,10 @@
 import { useEffect, useSyncExternalStore } from 'react';
-import { archiveCards, restoreCards } from '../actions.js';
+import { archiveCards, restoreCards, setCardDone, updateCard } from '../actions.js';
+import { db, INBOX_ID } from '../db.js';
 
 const SHOW_MS = 7000;
+// The tick's animation plays out before a done card of «Входящие» goes.
+const DONE_ARCHIVE_MS = 650;
 
 // One note at a time, as Trello's: a newer one replaces it.
 let current = null;
@@ -25,6 +28,18 @@ export async function archiveWithUndo(ids) {
   if (!ids.length) return;
   await archiveCards(ids);
   showUndo(ids.length === 1 ? 'Карточка архивирована' : `Архивировано карточек: ${ids.length}`, () => restoreCards(ids));
+}
+
+/** Marks the card done or not; a card of «Входящие» marked done is archived right after, with the undo note. */
+export async function markDone(card, done) {
+  await setCardDone(card.id, done);
+  if (!done || card.folderId !== INBOX_ID) return;
+  setTimeout(async () => {
+    const now = await db.cards.get(card.id);
+    if (!now?.done || now.deleted || now.folderId !== INBOX_ID) return;
+    await archiveCards([card.id]);
+    showUndo('Выполнена и архивирована', () => updateCard(card.id, { deleted: false, done: false }));
+  }, DONE_ARCHIVE_MS);
 }
 
 export default function UndoToast() {

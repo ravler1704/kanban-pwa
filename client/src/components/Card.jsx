@@ -1,6 +1,7 @@
 import { useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { DoneMarks } from '../doneMarks.js';
-import { setCardDone, updateCard } from '../actions.js';
+import { updateCard } from '../actions.js';
+import { markDone } from './UndoToast.jsx';
 import { cardColor } from '../appearance.js';
 import { uploadStore } from '../files.js';
 import { cardReminders, nextReminder } from '../reminders.js';
@@ -94,7 +95,7 @@ export function DoneButton({ card, readOnly, className = '' }) {
       onClick={(e) => {
         e.stopPropagation();
         setPopping(!done);
-        setCardDone(card.id, !done);
+        markDone(card, !done);
       }}>
       <svg viewBox="0 0 16 16" aria-hidden="true">
         <circle className="done-ring" cx="8" cy="8" r="6.75" />

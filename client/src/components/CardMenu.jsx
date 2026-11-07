@@ -1,13 +1,13 @@
 import { useContext, useEffect, useState } from 'react';
 import { DoneMarks } from '../doneMarks.js';
-import { duplicateCard, moveCardTo, moveCardToColumn, moveCardToEdge, setCardDone } from '../actions.js';
+import { duplicateCard, moveCardTo, moveCardToColumn, moveCardToEdge } from '../actions.js';
 import { authState } from '../auth.js';
 import { currentBoard, publicToken } from '../board.js';
 import { INBOX_ID } from '../db.js';
 import { cardColorItems } from '../appearance.js';
 import { ICONS } from '../menuIcons.js';
 import ContextMenu, { useHoverShortcuts, useMenuButton } from './ContextMenu.jsx';
-import { archiveWithUndo } from './UndoToast.jsx';
+import { archiveWithUndo, markDone } from './UndoToast.jsx';
 
 /** A link that opens the card (on its board) for anyone with access to it. */
 function cardLink(id) {
@@ -55,7 +55,7 @@ export default function CardMenu({ card, prevColumn, nextColumn, readOnly, onOpe
     { label: 'Открыть', icon: ICONS.open, run: onOpen },
     editable && doneMarks && {
       label: card.done ? 'Снять отметку «Выполнена»' : 'Отметить выполненной', icon: ICONS.done, shortcut: 'KeyX',
-      active: Boolean(card.done), run: () => setCardDone(card.id, !card.done),
+      active: Boolean(card.done), run: () => markDone(card, !card.done),
     },
     null,
     editable && prevColumn && {

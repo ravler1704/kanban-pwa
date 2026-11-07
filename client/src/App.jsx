@@ -357,7 +357,7 @@ export default function App() {
   const openCard = cards.find((c) => c.id === openCardId) ?? (openRecord && tree.byId.has(openRecord.folderId)
     ? { ...openRecord, columnId: folderColumnIds.get(openRecord.folderId).includes(openRecord.columnId)
       ? openRecord.columnId : folderColumnIds.get(openRecord.folderId)[0] }
-    : inboxOn && openRecord?.folderId === INBOX_ID ? openRecord : null);
+    : inboxOn && openRecord?.folderId === INBOX_ID && !openRecord.deleted ? openRecord : null);
 
   // Where new cards go among `list`: the folder the view is narrowed to (with what is inside it), else
   // «Личное», else the first in the tree.
