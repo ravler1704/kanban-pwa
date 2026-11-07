@@ -210,9 +210,9 @@ export function startYandexAuth({ link = false } = {}) {
     client_id: authState.get().yandexClientId,
     redirect_uri: `${location.origin}/`,
     state,
+    // Without it Yandex signs in with the account last used in the browser, giving no way to pick another.
+    force_confirm: 'yes',
   });
-  // Linking usually means another Yandex account: let the user pick it.
-  if (link) params.set('force_confirm', 'yes');
   location.assign(`https://oauth.yandex.ru/authorize?${params}`);
 }
 
