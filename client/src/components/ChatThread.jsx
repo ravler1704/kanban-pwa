@@ -6,6 +6,9 @@ import {
 } from '../chatImages.js';
 import { formatSize, isImage } from '../files.js';
 import { pasteAsLink } from '../links.js';
+import { ICONS } from '../menuIcons.js';
+import ContextMenu from './ContextMenu.jsx';
+import Modal from './Modal.jsx';
 import Avatar from './Avatar.jsx';
 import { useLinkMenu } from './LinkMenu.jsx';
 import Markdown from './Markdown.jsx';
@@ -79,7 +82,15 @@ function PendingImages({ items, compress, onCompress, onRemove, status }) {
   );
 }
 
-function Composer({ editing, onSubmit, onCancelEdit, placeholder, disabled, canAttach }) {
+/** A short line of the message for the editing bar and the delete dialog. */
+function snippet(m) {
+  const text = (m.text ?? '').replace(/\s+/g, ' ').trim();
+  if (text) return text.length > 120 ? `${text.slice(0, 119)}…` : text;
+  const count = m.images?.length ?? 0;
+  return count > 1 ? `Фото: ${count}` : count ? 'Фото' : '';
+}
+
+function Composer({ editing, onSubmit, onCancelEdit, onEditLast, placeholder, disabled, canAttach }) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [images, setImages] = useState([]);
@@ -116,11 +127,18 @@ function Composer({ editing, onSubmit, onCancelEdit, placeholder, disabled, canA
   const caret = useRef(null);
   const linkMenu = useLinkMenu();
 
+  // What was typed before editing comes back once the editing is over.
+  const draft = useRef(null);
   useEffect(() => {
-    if (!editing) return;
-    setText(editing.text);
-    input.current?.focus();
-  }, [editing]);
+    if (editing) {
+      draft.current ??= text;
+      setText(editing.text);
+      input.current?.focus();
+    } else if (draft.current != null) {
+      setText(draft.current);
+      draft.current = null;
+    }
+  }, [editing]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useLayoutEffect(() => {
     const el = input.current;
@@ -150,7 +168,8 @@ function Composer({ editing, onSubmit, onCancelEdit, placeholder, disabled, canA
       }
       setStatus(null);
       await onSubmit(value, uploaded);
-      setText('');
+      // After an edit the draft from before it comes back (see above).
+      if (!editing) setText('');
       images.forEach((i) => URL.revokeObjectURL(i.url));
       setImages([]);
     } catch (err) {
@@ -187,11 +206,14 @@ function Composer({ editing, onSubmit, onCancelEdit, placeholder, disabled, canA
       )}
       {editing && (
         <div className="chat-editing">
-          <span>Изменение сообщения</span>
-          <button type="button" className="btn btn-small" onClick={() => {
-            setText('');
-            onCancelEdit();
-          }}>Отмена</button>
+          <svg className="chat-editing-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={ICONS.rename} /></svg>
+          <span className="chat-editing-text">
+            <span className="chat-editing-title">Редактирование</span>
+            <span className="chat-editing-snippet">{snippet(editing)}</span>
+          </span>
+          <button type="button" className="chat-editing-cancel" onClick={onCancelEdit}
+            aria-label="Отменить редактирование" title="Отменить редактирование (Esc)">×</button>
         </div>
       )}
       <div className="chat-composer-row">
@@ -229,8 +251,12 @@ function Composer({ editing, onSubmit, onCancelEdit, placeholder, disabled, canA
           onKeyDown={(e) => {
             if (e.key === 'Escape' && editing) {
               e.stopPropagation();
-              setText('');
               onCancelEdit();
+            }
+            // As in Telegram: ↑ in an empty field edits the last own message.
+            if (e.key === 'ArrowUp' && !text && !editing && images.length === 0 && onEditLast?.()) {
+              e.preventDefault();
+              return;
             }
             if (e.key !== 'Enter' || e.shiftKey || e.nativeEvent.isComposing || coarsePointer()) return;
             e.preventDefault();
@@ -320,6 +346,36 @@ function ImageViewer({ images, index: start, onClose }) {
   );
 }
 
+/** «Удалить сообщение?» — it goes for everyone in the chat. */
+function DeleteMessageDialog({ message, direct, onDelete, onClose }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const text = snippet(message);
+  return createPortal(
+    <Modal title="Удалить сообщение?" onClose={onClose} className="confirm-delete delete-message-dialog">
+      {text && <p className="delete-message-snippet">{text}</p>}
+      <p className="muted account-hint">
+        {direct ? 'Сообщение удалится и у вас, и у собеседника.' : 'Сообщение удалится у всех участников чата.'}
+      </p>
+      {error && <p className="login-error">{error}</p>}
+      <div className="actions">
+        <button type="button" className="btn" onClick={onClose}>Отмена</button>
+        <button type="button" className="btn btn-danger" disabled={busy} onClick={async () => {
+          setBusy(true);
+          setError(null);
+          try {
+            await onDelete();
+          } catch (err) {
+            setError(err.message);
+            setBusy(false);
+          }
+        }}>{busy ? 'Удаляем…' : 'Удалить'}</button>
+      </div>
+    </Modal>,
+    document.body,
+  );
+}
+
 /**
  * Messages as a chat. `messages`: [{ id, authorId, authorName, authorPicture, text, createdAt, editedAt,
  * pending }] oldest first; the user's own (`me`) are on the right. Without `onSend` there is no input;
@@ -333,8 +389,10 @@ export default function ChatThread({
 }) {
   const list = useRef(null);
   const atBottom = useRef(true);
-  const [selected, setSelected] = useState(null);
+  // The message's menu: { x, y, message }.
+  const [menu, setMenu] = useState(null);
   const [editing, setEditing] = useState(null);
+  const [deleting, setDeleting] = useState(null);
   const [viewing, setViewing] = useState(null);
   const cardNumbers = useCardNumbers();
   const lastId = messages[messages.length - 1]?.id;
@@ -344,7 +402,31 @@ export default function ChatThread({
     if (el && atBottom.current) el.scrollTop = el.scrollHeight;
   }, [lastId, messages.length]);
 
+  // An edited message disappears (deleted elsewhere): nothing left to edit.
+  useEffect(() => {
+    if (editing && !messages.some((m) => m.id === editing.id)) setEditing(null);
+  }, [messages, editing]);
+
   const mayDelete = (m) => (canDelete ? canDelete(m) : m.authorId === me);
+  const mayEdit = (m) => Boolean(onEdit) && m.authorId === me && !m.event;
+  const menuItems = (m) => [
+    mayEdit(m) && { label: 'Изменить', icon: ICONS.rename, run: () => setEditing(m) },
+    m.text && {
+      label: 'Копировать текст', icon: ICONS.copy, run: () => navigator.clipboard?.writeText(m.text).catch(() => {}),
+    },
+    mayDelete(m) && onDelete && { label: 'Удалить', icon: ICONS.trash, danger: true, run: () => setDeleting(m) },
+  ].filter(Boolean);
+  const openMenu = (e, m) => {
+    if (e.target.closest('a, .chat-image') || window.getSelection()?.toString()) return;
+    if (!menuItems(m).length) return;
+    e.preventDefault();
+    setMenu({ x: e.clientX, y: e.clientY, message: m });
+  };
+  const editLast = () => {
+    const own = [...messages].reverse().find(mayEdit);
+    if (own) setEditing(own);
+    return Boolean(own);
+  };
 
   return (
     <div className={`chat ${className}`}>
@@ -378,21 +460,21 @@ export default function ChatThread({
           const last = !continues(m, messages[i + 1]);
           const mine = m.authorId === me;
           const withAuthor = !mine && !direct;
-          const actions = selected === m.id && (mine && onEdit || mayDelete(m) && onDelete);
           const name = m.authorName || 'Без имени';
+          const active = menu?.message.id === m.id || editing?.id === m.id || deleting?.id === m.id;
           return (
             <Fragment key={m.id}>
               {newDay && <div className="chat-day"><span>{dayLabel(m.createdAt)}</span></div>}
-              <div className={`chat-msg ${mine ? 'chat-msg-mine' : ''} ${grouped ? 'chat-msg-grouped' : ''} ${last ? 'chat-msg-tail' : ''}`}>
+              <div className={`chat-msg ${mine ? 'chat-msg-mine' : ''} ${grouped ? 'chat-msg-grouped' : ''} ${last ? 'chat-msg-tail' : ''}
+                ${active ? 'chat-msg-active' : ''}`}>
                 {withAuthor && (last
                   ? <Avatar user={{ name: m.authorName, picture: m.authorPicture }} size={34} />
                   : <span className="chat-avatar-space" />)}
                 <div className="chat-bubble-wrap">
+                  {/* As in Telegram: a right click (or a tap on a phone) opens the message's menu. */}
                   <div className={`chat-bubble ${m.pending ? 'chat-bubble-pending' : ''}`}
-                    onClick={(e) => {
-                      if (e.target.closest('a')) return;
-                      setSelected(selected === m.id ? null : m.id);
-                    }}>
+                    onContextMenu={(e) => openMenu(e, m)}
+                    onClick={(e) => coarsePointer() && openMenu(e, m)}>
                     {withAuthor && !grouped && (
                       <div className="chat-author" style={{ '--author-hue': nameHue(m.authorName || '') }}>{name}</div>
                     )}
@@ -401,31 +483,11 @@ export default function ChatThread({
                     )}
                     {m.text && <div className="chat-text"><Markdown text={m.text} /></div>}
                     <span className="chat-time" title={new Date(m.createdAt).toLocaleString('ru-RU')}>
-                      {m.editedAt ? 'изм. ' : ''}{time(m.createdAt)}
+                      {m.editedAt ? <span title={`Изменено ${new Date(m.editedAt).toLocaleString('ru-RU')}`}>изменено </span> : ''}
+                      {time(m.createdAt)}
                       {mine && <Ticks pending={m.pending} />}
                     </span>
                   </div>
-                  {actions && (
-                    <div className="chat-actions">
-                      {mine && onEdit && (
-                        <button type="button" className="btn btn-small" onClick={() => {
-                          setEditing(m);
-                          setSelected(null);
-                        }}>Изменить</button>
-                      )}
-                      {mayDelete(m) && onDelete && (
-                        <button type="button" className="btn btn-small btn-danger" onClick={async () => {
-                          if (!confirm('Удалить сообщение?')) return;
-                          setSelected(null);
-                          try {
-                            await onDelete(m);
-                          } catch (err) {
-                            alert(err.message);
-                          }
-                        }}>Удалить</button>
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
             </Fragment>
@@ -435,15 +497,26 @@ export default function ChatThread({
       {hint && <p className="chat-hint muted">{hint}</p>}
       {onSend && (
         <Composer editing={editing} disabled={disabled} placeholder={placeholder} canAttach={canAttach}
-          onCancelEdit={() => setEditing(null)}
+          onCancelEdit={() => setEditing(null)} onEditLast={onEdit ? editLast : null}
           onSubmit={async (text, images) => {
-            atBottom.current = true;
             if (editing) {
-              await onEdit(editing, text);
+              if (text !== editing.text.trim()) await onEdit(editing, text);
               setEditing(null);
             } else {
+              atBottom.current = true;
               await onSend(text, images);
             }
+          }} />
+      )}
+      {menu && (
+        <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.message)} onClose={() => setMenu(null)} />
+      )}
+      {deleting && (
+        <DeleteMessageDialog message={deleting} direct={direct} onClose={() => setDeleting(null)}
+          onDelete={async () => {
+            await onDelete(deleting);
+            if (editing?.id === deleting.id) setEditing(null);
+            setDeleting(null);
           }} />
       )}
       {viewing && <ImageViewer images={viewing.images} index={viewing.index} onClose={() => setViewing(null)} />}
