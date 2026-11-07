@@ -6,6 +6,7 @@ import { getTheme, setTheme } from '../theme.js';
 import Avatar from './Avatar.jsx';
 import { DELETE_WORD } from './ConfirmDelete.jsx';
 import Modal from './Modal.jsx';
+import MonitorDialog from './MonitorDialog.jsx';
 import { EmailCodeForm, GoogleButton, YandexButton } from './ProviderButtons.jsx';
 import ServerSettings from './ServerSettings.jsx';
 const PROVIDERS = { google: 'Google', yandex: 'Яндекс', email: 'Почта', dev: 'Тестовый' };
@@ -233,13 +234,18 @@ const TABS = [
 /** The server's settings, for its administrator: apart from the account's, they apply to everyone. */
 function ServerAdmin() {
   const [open, setOpen] = useState(false);
+  const [monitor, setMonitor] = useState(false);
   return (
     <>
       <div className="server-admin">
         <h4 className="manage-heading">Администрирование сервера</h4>
         <p className="muted account-hint">Вы администратор: эти настройки действуют для всех пользователей сервера.</p>
-        <button type="button" className="btn btn-small" onClick={() => setOpen(true)}>Настройки сервера…</button>
+        <div className="server-admin-buttons">
+          <button type="button" className="btn btn-small" onClick={() => setMonitor(true)}>Мониторинг…</button>
+          <button type="button" className="btn btn-small" onClick={() => setOpen(true)}>Настройки сервера…</button>
+        </div>
       </div>
+      {monitor && <MonitorDialog onClose={() => setMonitor(false)} />}
       {open && (
         <Modal title="Настройки сервера" onClose={() => setOpen(false)}>
           <p className="muted account-hint server-admin-note">Действуют для всех пользователей сервера.</p>

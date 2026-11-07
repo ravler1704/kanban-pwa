@@ -34,6 +34,11 @@ export function disconnectUser(userId) {
   }
 }
 
+/** Users with the app open right now. */
+export function onlineUsers() {
+  return new Set([...clients.values()].map((c) => c.user).filter(Boolean));
+}
+
 /** Routes expect `req.owner` and `req.user` (set by requireAuth). */
 export function registerEvents(app) {
   app.get('/api/events', (req, res) => {

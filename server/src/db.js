@@ -3,7 +3,7 @@ import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const DB_PATH = process.env.DB_PATH || path.join(import.meta.dirname, '..', 'data', 'kanban.db');
+export const DB_PATH = process.env.DB_PATH || path.join(import.meta.dirname, '..', 'data', 'kanban.db');
 export const DB_DIR = path.dirname(DB_PATH);
 fs.mkdirSync(DB_DIR, { recursive: true });
 
@@ -221,6 +221,27 @@ db.exec(`
 `);
 // Cards can be marked done (as Trello's) on boards that don't say otherwise: 0 / 1, null → on.
 if (!hasColumn('spaces', 'done_marks')) db.exec('ALTER TABLE spaces ADD COLUMN done_marks INTEGER');
+
+// When each user last used the app (any request with their session), for the administrators' overview.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_seen (
+    user_id     TEXT    PRIMARY KEY,
+    seen_at     INTEGER NOT NULL
+  );
+`);
+const upsertSeen = db.prepare(`
+  INSERT INTO user_seen (user_id, seen_at) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET seen_at = excluded.seen_at
+`);
+const SEEN_EVERY_MS = 5 * 60 * 1000;
+const seenWritten = new Map();
+
+/** Notes that the user is active; written at most once per a few minutes. */
+export function touchUser(userId) {
+  const now = Date.now();
+  if (now - (seenWritten.get(userId) ?? 0) < SEEN_EVERY_MS) return;
+  seenWritten.set(userId, now);
+  upsertSeen.run(userId, now);
+}
 
 // Identifies this database instance. Clients holding data from another epoch
 // (e.g. after the database was wiped or restored) discard it and resync.
@@ -500,6 +521,7 @@ export function mergeUsers(from, to) {
     db.prepare('DELETE FROM dm_cleared WHERE user_id = ? OR peer = ? OR user_id = peer').run(from, from);
     db.prepare('UPDATE OR IGNORE user_names SET user_id = ? WHERE user_id = ?').run(to, from);
     db.prepare('DELETE FROM user_names WHERE user_id = ?').run(from);
+    db.prepare('DELETE FROM user_seen WHERE user_id = ?').run(from);
     // The other spaces come along as they are; the main one has just been merged.
     db.prepare('UPDATE spaces SET owner = ? WHERE owner = ? AND id != ?').run(to, from, from);
     db.prepare('DELETE FROM spaces WHERE id = ?').run(from);
@@ -530,6 +552,7 @@ export function deleteUser(userId) {
     db.prepare('DELETE FROM dm_reads WHERE user_id = ? OR peer = ?').run(userId, userId);
     db.prepare('DELETE FROM dm_cleared WHERE user_id = ? OR peer = ?').run(userId, userId);
     db.prepare('DELETE FROM user_names WHERE user_id = ?').run(userId);
+    db.prepare('DELETE FROM user_seen WHERE user_id = ?').run(userId);
     const usedElsewhere = db.prepare('SELECT 1 FROM identities WHERE lower(email) = ?');
     for (const email of emails) {
       db.prepare('DELETE FROM email_codes WHERE email = ?').run(email);

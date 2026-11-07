@@ -5,8 +5,9 @@ import {
   deleteMember, deletePublicLink, deleteSession, deleteSpace, deleteUser, findUserByEmail, getEmailCode, getIdentityUser,
   getPublicLink, getRecord, getSession, isInvited, leaveBoard, listIdentities, listMembers, listPublicLinks, memberProjects,
   mergeUsers, ownerFileIds, ownSpaces, pruneEmailCodes, renameSpace, saveEmailCode, setInboxDoneMarks, setSpaceDoneMarks, saveIdentity, savePublicLink,
-  setCustomName, sharedBoards, useEmailCode, userFileIds, usersWithEmail,
+  setCustomName, sharedBoards, touchUser, useEmailCode, userFileIds, usersWithEmail,
 } from './db.js';
+import { serverOverview } from './monitor.js';
 import { broadcast, disconnect, disconnectUser, notifyUser } from './events.js';
 import { removeFiles } from './files.js';
 import {
@@ -73,9 +74,10 @@ function currentSession(req) {
   if (!token) return null;
   const session = getSession(hash(token));
   if (!session) return null;
-  if (session.provider === 'dev') return devLoginAllowed(req) ? session : null;
   // Removing an address from the allowed e-mails revokes its sessions immediately.
-  return isAllowed(session.email) ? session : null;
+  if (session.provider === 'dev' ? !devLoginAllowed(req) : !isAllowed(session.email)) return null;
+  touchUser(session.user_id);
+  return session;
 }
 
 const publicIdentity = (i) => ({
@@ -598,6 +600,10 @@ export function registerAuthRoutes(app) {
     }
     saveSettings(cleaned);
     res.json(adminSettings(req.session));
+  });
+
+  app.get('/api/admin/overview', requireAdmin, async (req, res) => {
+    res.json(await serverOverview(isAdmin));
   });
 
   app.get('/api/admin/mail', requireAdmin, (req, res) => res.json(mailSettings()));

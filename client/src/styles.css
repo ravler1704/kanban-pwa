@@ -650,6 +650,89 @@ body {
 }
 .server-admin .manage-heading { margin: 0; color: var(--warn); }
 .server-admin-note { margin-bottom: 1rem; }
+.server-admin-buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+/* Monitoring (administrators): totals in tiles, then a table of users that opens into their spaces. */
+.modal.monitor-dialog { width: min(1120px, 100%); }
+.monitor-refresh { margin-left: auto; }
+.monitor-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+.monitor-tile {
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+}
+.monitor-tile-value { font-size: 1.5rem; font-weight: 650; line-height: 1.2; }
+.monitor-tile-label { font-size: 0.85rem; margin-top: 0.15rem; }
+.monitor-tile-note { font-size: 0.75rem; margin-top: 0.25rem; line-height: 1.35; }
+.monitor-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 1rem; margin-bottom: 0.6rem; font-size: 0.85rem; }
+.monitor-search { flex: 1 1 240px; max-width: 360px; padding: 0.45rem 0.7rem; border-color: var(--border); }
+.monitor-search:focus { border-color: var(--accent); }
+.monitor-table-wrap { overflow-x: auto; }
+.monitor-table, .monitor-spaces { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.monitor-table th, .monitor-table td, .monitor-spaces th, .monitor-spaces td {
+  padding: 0.45rem 0.55rem;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+.monitor-table th, .monitor-spaces th { font-weight: 500; color: var(--muted); font-size: 0.78rem; }
+.monitor-table .num, .monitor-spaces td:not(:first-child), .monitor-spaces th:not(:first-child) { text-align: right; }
+.monitor-sort {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.monitor-sort:hover { color: var(--text); }
+.monitor-row { cursor: pointer; }
+.monitor-row:hover, .monitor-row-open { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.monitor-user { display: flex; align-items: center; gap: 0.6rem; min-width: 0; }
+.monitor-avatar { position: relative; flex: none; display: inline-flex; }
+.monitor-online {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ok);
+  border: 2px solid var(--panel);
+}
+.monitor-user-text { display: flex; flex-direction: column; min-width: 13rem; white-space: normal; }
+.monitor-user-name { font-weight: 550; }
+.monitor-user-sub { font-size: 0.75rem; }
+.monitor-badge {
+  margin-left: 0.4rem;
+  padding: 0 0.35rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--warn);
+  border: 1px solid color-mix(in srgb, var(--warn) 50%, transparent);
+}
+.monitor-now { color: var(--ok); }
+.monitor-sub-num { font-size: 0.75rem; }
+.monitor-details > td { padding: 0.2rem 0.55rem 0.9rem 2.9rem; background: color-mix(in srgb, var(--accent) 4%, transparent); }
+/* As wide as the row, not as the spaces table (which scrolls on its own). */
+.monitor-details-inner { display: flex; flex-direction: column; gap: 0.5rem; width: 0; min-width: 100%; }
+.monitor-details-inner .account-hint { white-space: normal; }
+.monitor-spaces { background: var(--card); border-radius: 8px; }
+.monitor-spaces td:first-child { white-space: normal; min-width: 10rem; }
+.monitor-privacy { margin-top: 0.8rem; }
+.monitor-narrow { display: none; }
+@media (max-width: 700px) {
+  .monitor-table .monitor-wide { display: none; }
+  .monitor-narrow { display: block; }
+  .monitor-details > td { padding-left: 0.55rem; }
+}
 .settings-list { resize: vertical; min-height: 4.5rem; font: inherit; line-height: 1.4; }
 .account-delete .manage-input { width: 100%; box-sizing: border-box; }
 .account-row { align-items: center; }

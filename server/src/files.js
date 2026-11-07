@@ -8,7 +8,7 @@ import { changeAttachments, visibleCard, visibleFolder } from './sync.js';
 
 // Files attached to cards, one file per attachment id. The card's `attachments` list them;
 // access to a file is access to its card (owner, member of its project, public link).
-const FILES_DIR = path.resolve(process.env.FILES_DIR || path.join(DB_DIR, 'files'));
+export const FILES_DIR = path.resolve(process.env.FILES_DIR || path.join(DB_DIR, 'files'));
 fs.mkdirSync(FILES_DIR, { recursive: true });
 
 // Uploads stop when the disk would get this full: the database needs room too.
