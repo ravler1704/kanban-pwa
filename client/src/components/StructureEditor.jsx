@@ -41,7 +41,12 @@ function FolderRow({ folder, ctx }) {
     folders, model, columnsSynced, writable: ctx.writable, reorder: !needle,
     onAccess: () => togglePanel('access'), accessActive: panel === 'access',
   });
-  const menuItems = [{ label: 'Открыть', icon: ICONS.open, shortcut: 'KeyO', run: () => onOpen(folder.id) }, ...actions.items];
+  const menuItems = [
+    { label: 'Открыть', icon: ICONS.open, shortcut: 'KeyO', run: () => onOpen(folder.id) },
+    ...actions.items,
+    null,
+    actions.removeItem,
+  ];
   const node = useRef(null);
   useHoverShortcuts(node, menuItems);
 

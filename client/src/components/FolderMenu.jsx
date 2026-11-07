@@ -7,7 +7,6 @@ import { childrenOf, descendants, folderColumnSetId, folderTree } from '../folde
 import { ICONS } from '../menuIcons.js';
 import BoardSettings from './BoardSettings.jsx';
 import ColumnsDraftDialog from './ColumnsDraftDialog.jsx';
-import ContextMenu from './ContextMenu.jsx';
 import { NameField } from './EditableName.jsx';
 import FolderSelect from './FolderSelect.jsx';
 import Modal from './Modal.jsx';
@@ -116,12 +115,14 @@ function DeleteFolderDialog({ folder, stats, folders, onClose }) {
 }
 
 /**
- * The menu items of a folder (board) and the dialogs they open: `items` go into a ContextMenu, `dialogs` are rendered
- * beside it and outlive the menu. `onAccess` shows its members in place (otherwise in a dialog); `reorder` adds «Выше» / «Ниже».
+ * The menu items of a folder (board) and the dialogs they open: `items` and `removeItem` (meant to go last) go into
+ * a ContextMenu, `dialogs` are rendered beside it and outlive the menu; without a folder there are none.
+ * `onAccess` shows its members in place (otherwise in a dialog); `reorder` adds «Выше» / «Ниже».
  */
 export function useFolderActions(folder, { folders, model, columnsSynced, writable, onAccess, accessActive, reorder = true }) {
   const [dialog, setDialog] = useState(null);
   const canShare = useCanShare();
+  if (!folder) return { items: [], removeItem: null, dialogs: null };
   const siblings = childrenOf(folders, folderTree(folders).parentOf(folder));
   const index = siblings.findIndex((f) => f.id === folder.id);
   const close = () => setDialog(null);
@@ -152,9 +153,8 @@ export function useFolderActions(folder, { folders, model, columnsSynced, writab
       label: 'Ниже', icon: ICONS.down, shortcut: 'Alt+ArrowDown', disabled: index < 0 || index >= siblings.length - 1,
       run: () => reorderFolder(folder.id, 1),
     },
-    null,
-    { label: 'Удалить', icon: ICONS.trash, shortcut: 'Delete', danger: true, run: remove },
   ].filter((item) => item !== false);
+  const removeItem = { label: 'Удалить', icon: ICONS.trash, shortcut: 'Delete', danger: true, run: remove };
 
   const setId = model.setIdOf(folder);
   const dialogs = dialog && createPortal(
@@ -173,54 +173,41 @@ export function useFolderActions(folder, { folders, model, columnsSynced, writab
           ),
     document.body,
   );
-  return { items, dialogs };
+  return { items, removeItem, dialogs };
 }
 
 /**
- * A board's name in the board title: a click opens the board's menu (as in the space settings) with «Переименовать»
- * on top, which turns the name into a field; F2 renames right away. `options` as for useFolderActions.
+ * A board's name in the board title: a click (Enter) calls `onMenu` with where the menu goes, F2 calls `onRename`;
+ * while `renaming` it is a field.
  */
-export function FolderNameMenu({ folder, ...options }) {
-  const [renaming, setRenaming] = useState(false);
-  const [menu, setMenu] = useState(null);
-  const actions = useFolderActions(folder, options);
-  const items = [
-    { label: 'Переименовать', icon: ICONS.rename, shortcut: 'F2', run: () => setRenaming(true) },
-    null,
-    ...actions.items,
-  ];
+export function BoardName({ folder, renaming, onMenu, onRename, onRenamed }) {
+  if (renaming) {
+    return (
+      <NameField value={folder.name} label="Название доски" maxLength={200} className="" note={null}
+        onSave={(name) => renameFolder(folder.id, name)} onDone={onRenamed} />
+    );
+  }
   const open = (e) => {
     const r = e.currentTarget.getBoundingClientRect();
-    setMenu(menu ? null : { x: r.left, y: r.bottom + 4 });
+    onMenu({ x: r.left, y: r.bottom + 4 });
   };
-
   return (
-    <>
-      {renaming ? (
-        <NameField value={folder.name} label="Название доски" maxLength={200} className="" note={null} onSave={(name) => renameFolder(folder.id, name)}
-          onDone={() => setRenaming(false)} />
-      ) : (
-        <span role="button" tabIndex={0} className="editable-name" title="Действия с доской" aria-haspopup="menu"
-          aria-expanded={Boolean(menu)}
-          onMouseDown={(e) => menu && e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            open(e);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'F2') {
-              e.preventDefault();
-              setRenaming(true);
-            } else if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              open(e);
-            }
-          }}>
-          {folder.name}
-        </span>
-      )}
-      {menu && <ContextMenu x={menu.x} y={menu.y} items={items} onClose={() => setMenu(null)} />}
-      {actions.dialogs}
-    </>
+    <span role="button" tabIndex={0} className="editable-name" title="Действия с доской" aria-haspopup="menu"
+      onClick={(e) => {
+        e.stopPropagation();
+        open(e);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'F2') {
+          e.preventDefault();
+          onRename();
+        } else if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          open(e);
+        }
+      }}>
+      {folder.name}
+    </span>
   );
 }
+

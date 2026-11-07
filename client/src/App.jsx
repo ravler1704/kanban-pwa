@@ -6,9 +6,8 @@ import { dbName, isCurrentBoard, isOwnBoard, publicToken, switchBoard } from './
 import { useReadOnly } from './public.js';
 import { db, DEFAULT_FOLDER_ID, INBOX_ID } from './db.js';
 import { columnModel } from './columnSets.js';
-import { backgroundItems, folderBackground, folderDoneMarks } from './appearance.js';
+import { folderBackground, folderDoneMarks } from './appearance.js';
 import { DoneMarks } from './doneMarks.js';
-import BoardSettings from './components/BoardSettings.jsx';
 import { useOpenSpace } from './components/Spaces.jsx';
 import { ICONS } from './menuIcons.js';
 import ContextMenu from './components/ContextMenu.jsx';
@@ -19,7 +18,7 @@ import CardEditor from './components/CardEditor.jsx';
 import ConflictDialog from './components/ConflictDialog.jsx';
 import ManageDialog from './components/ManageDialog.jsx';
 import ColumnsDraftDialog from './components/ColumnsDraftDialog.jsx';
-import { FolderNameMenu } from './components/FolderMenu.jsx';
+import { BoardName, useFolderActions } from './components/FolderMenu.jsx';
 import NewCardDialog from './components/NewCardDialog.jsx';
 import CalendarView from './components/CalendarView.jsx';
 import ListView from './components/ListView.jsx';
@@ -135,9 +134,11 @@ export default function App() {
   const [chat, setChat] = useState(null);
   const [search, setSearch] = useState('');
   const [editingColumns, setEditingColumns] = useState(false);
-  // The menu of a right click on the board itself (not a column or a card): { x, y }.
+  // The board's menu, from a right click on the board itself (not a column or a card) or a click on a board's name
+  // in the title: { x, y }. `menuFolderId` is the board it is about (null: several in view); it stays for the dialogs.
   const [boardMenu, setBoardMenu] = useState(null);
-  const [boardSettingsId, setBoardSettingsId] = useState(null);
+  const [menuFolderId, setMenuFolderId] = useState(null);
+  const [renamingId, setRenamingId] = useState(null);
   const { doneMarks: spaceDoneMarks, inboxDoneMarks } = useOpenSpace();
   const [inboxOpen, setInboxOpen] = useState(() => localStorage.getItem(INBOX_OPEN_KEY) === '1');
   const toggleInbox = () => {
@@ -236,7 +237,6 @@ export default function App() {
     const folder = tree.byId.get(card.folderId);
     return folder ? folderDoneMarks(folder, folders, spaceDoneMarks) : spaceDoneMarks;
   };
-  const settingsFolder = boardSettingsId ? tree.byId.get(boardSettingsId) ?? null : null;
   const model = columnModel(data?.columnSets ?? [], data?.columns ?? [], folders);
 
   // A card is shown if its folder is checked; folders are independent of those above and below them.
@@ -273,14 +273,19 @@ export default function App() {
     if (extra.length) select([...new Set([...selection, ...extra])]);
   });
 
-  if (!data || !folderCards) return <div className="loading">Загрузка…</div>;
-
   // What the user may add cards to: on someone else's board the folders opened to them
   // (the folders above are only there to show the way).
   const mine = !isOwnBoard && !publicToken ? folderIdsOf(people.find((p) => p.id === me)) : [];
   const writable = mine.length ? new Set(mine) : null;
   const usable = writable ? folders.filter((f) => writable.has(f.id)) : folders;
   const chatFolders = usable;
+
+  const menuFolder = !readOnly && menuFolderId ? usable.find((f) => f.id === menuFolderId) ?? null : null;
+  const folderActions = useFolderActions(menuFolder, {
+    folders, model, writable, columnsSynced: (data?.columns.length ?? 0) > 0,
+  });
+
+  if (!data || !folderCards) return <div className="loading">Загрузка…</div>;
 
   const commentStats = new Map();
   for (const c of folderComments ?? []) {
@@ -450,6 +455,12 @@ export default function App() {
   const titleRenamable = !readOnly && !allChecked && titleBoards.some((f) => usable.includes(f));
 
   const allCollapsed = columns.every((c) => collapsed.includes(c.id));
+  const openBoardMenu = (pos, folderId) => {
+    setMenuFolderId(folderId);
+    setBoardMenu(pos);
+  };
+  // The board in view, when it is one the user may change: the board's own menu is about it.
+  const viewFolder = !readOnly && !searching && columnsFolder && usable.includes(columnsFolder) ? columnsFolder : null;
   const boardMenuItems = [
     !readOnly && { label: 'Новая карточка…', icon: ICONS.add, shortcut: 'KeyN', run: () => setAddingCard(true) },
     null,
@@ -461,17 +472,19 @@ export default function App() {
         return allCollapsed ? elsewhere : [...elsewhere, ...columns.map((c) => c.id)];
       }),
     },
-    columnEdit && { label: 'Набор колонок…', icon: ICONS.settings, shortcut: 'KeyK', run: () => setEditingColumns(true) },
-    view === 'board' && !searching && !readOnly && columnsFolder && usable.includes(columnsFolder) && {
-      label: 'Фон', icon: ICONS.palette, submenu: backgroundItems(columnsFolder),
-    },
-    view === 'board' && !searching && !readOnly && columnsFolder && usable.includes(columnsFolder) && {
-      label: 'Настройки доски…', icon: ICONS.settings, run: () => setBoardSettingsId(columnsFolder.id),
-    },
+    null,
+    ...(folderActions.removeItem ? [
+      { label: 'Переименовать', icon: ICONS.rename, shortcut: 'F2', run: () => setRenamingId(menuFolder.id) },
+      ...folderActions.items,
+    ] : [
+      columnEdit && { label: 'Набор колонок…', icon: ICONS.settings, shortcut: 'KeyK', run: () => setEditingColumns(true) },
+    ]),
     null,
     !readOnly && !publicToken && {
       label: 'Настройки пространства…', icon: ICONS.gear, run: () => setManaging(true),
     },
+    null,
+    folderActions.removeItem,
   ].filter((item, i, list) => item !== false && (item !== null || (i > 0 && list[i - 1] && list.slice(i + 1).some(Boolean))));
 
   return (
@@ -490,7 +503,7 @@ export default function App() {
             if (!folders.length || !e.currentTarget.contains(e.target)
               || e.target.closest('.column, .card, a, button, input, textarea, select, [contenteditable="true"]')) return;
             e.preventDefault();
-            setBoardMenu({ x: e.clientX, y: e.clientY });
+            openBoardMenu({ x: e.clientX, y: e.clientY }, viewFolder?.id ?? null);
           }}>
           {folders.length === 0 ? (
             !isOwnBoard ? (
@@ -536,8 +549,9 @@ export default function App() {
                             <Fragment key={f.id}>
                               {i > 0 && ', '}
                               {usable.includes(f)
-                                ? <FolderNameMenu folder={f} folders={folders} model={model} writable={writable}
-                                  columnsSynced={data.columns.length > 0} />
+                                ? <BoardName folder={f} renaming={renamingId === f.id}
+                                  onMenu={(pos) => openBoardMenu(pos, f.id)} onRename={() => setRenamingId(f.id)}
+                                  onRenamed={() => setRenamingId(null)} />
                                 : f.name}
                             </Fragment>
                           ))}
@@ -628,9 +642,7 @@ export default function App() {
           onClose={() => setEditingColumns(false)} />
       )}
 
-      {settingsFolder && (
-        <BoardSettings folder={settingsFolder} folders={folders} onClose={() => setBoardSettingsId(null)} />
-      )}
+      {folderActions.dialogs}
 
       {managing && (
         <ManageDialog
