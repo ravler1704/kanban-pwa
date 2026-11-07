@@ -521,6 +521,13 @@ export function deleteCard(id) {
   return updateCard(id, { deleted: true });
 }
 
+export async function archiveCards(ids) {
+  await db.transaction('rw', db.cards, async () => {
+    for (const id of ids) await update('card', id, { deleted: true });
+  });
+  requestSync();
+}
+
 export function restoreCard(id) {
   return updateCard(id, { deleted: false });
 }

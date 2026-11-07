@@ -87,12 +87,14 @@ function MoreIcon() {
 
 /**
  * The «⋯» menu of a board column: moving all its cards (`moveAll(column)` to `prevColumn` / `nextColumn`,
- * null when it has none to move) and, with `edit` ({ setId, setName, columns, boards: [name], onSetSettings }:
+ * null when it has none to move), archiving them (`archiveAll()`, null with none, absent when read-only) and, with `edit` ({ setId, setName, columns, boards: [name], onSetSettings }:
  * the set the column belongs to, its columns in order and the boards using it), changing the columns.
  * A right click on `hoverRef` (the column, apart from its cards) opens it too; the shortcuts also work
  * with the pointer over it. A `collapsed` column has no «⋯» button, only the right click.
  */
-export default function ColumnMenu({ column, prevColumn, nextColumn, moveAll, edit, collapsed, onCollapse, hoverRef }) {
+export default function ColumnMenu({
+  column, prevColumn, nextColumn, moveAll, archiveAll, edit, collapsed, onCollapse, hoverRef,
+}) {
   const [menu, setMenu, closeMenu, menuButton] = useMenuButton(280);
   const [dialog, setDialog] = useState(null);
   const closeDialog = () => setDialog(null);
@@ -117,6 +119,7 @@ export default function ColumnMenu({ column, prevColumn, nextColumn, moveAll, ed
       label: `Все карточки в «${nextColumn.name}»`, icon: ICONS.allRight, shortcut: 'Alt+ArrowRight',
       disabled: !moveAll, run: () => moveAll(nextColumn),
     },
+    archiveAll !== undefined && { label: 'Архивировать все карточки', icon: ICONS.archive, disabled: !archiveAll, run: () => archiveAll() },
   ].filter(Boolean);
   const changes = edit ? [
     {

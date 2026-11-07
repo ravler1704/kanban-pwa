@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { createCard, moveCard, moveCardsToColumn, moveColumnTo, renameColumn } from '../actions.js';
+import { archiveCards, createCard, moveCard, moveCardsToColumn, moveColumnTo, renameColumn } from '../actions.js';
 import { columnColor } from '../appearance.js';
 import ColumnMenu from './ColumnMenu.jsx';
 import EditableName from './EditableName.jsx';
@@ -157,6 +157,12 @@ export default function Column({
     moveCardsToColumn(movable.map((c) => c.id), to.id);
   }
 
+  function archiveAll() {
+    const what = movable.length === 1 ? '1 карточку' : `все карточки (${movable.length})`;
+    if (!confirm(`Архивировать ${what} колонки «${column.name}»? Их можно будет восстановить из архива.`)) return;
+    archiveCards(movable.map((c) => c.id));
+  }
+
   function handleAdd(e) {
     e.preventDefault();
     const value = title.trim();
@@ -174,7 +180,8 @@ export default function Column({
   const columnStyle = color ? { '--column-color': color } : undefined;
   const menu = (
     <ColumnMenu column={column} prevColumn={readOnly ? null : prevColumn} nextColumn={readOnly ? null : nextColumn}
-      moveAll={!readOnly && movable.length ? moveAll : null} edit={readOnly ? null : edit}
+      moveAll={!readOnly && movable.length ? moveAll : null} archiveAll={readOnly ? undefined : (movable.length ? archiveAll : null)}
+      edit={readOnly ? null : edit}
       collapsed={collapsed} onCollapse={onToggleCollapsed} hoverRef={section} />
   );
   if (collapsed) {
