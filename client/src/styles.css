@@ -651,6 +651,18 @@ body {
 .server-admin .manage-heading { margin: 0; color: var(--warn); }
 .server-admin-note { margin-bottom: 1rem; }
 .server-admin-buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.server-admin-buttons .btn { display: inline-flex; align-items: center; gap: 0.4rem; }
+.account-support-unread { min-width: 1.2rem; height: 1.2rem; line-height: 1.2rem; font-size: 0.7rem; }
+.account-support {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+.account-support .account-hint { flex: 1 1 14rem; }
 
 /* Monitoring (administrators): totals in tiles, then a table of users that opens into their spaces. */
 .modal.monitor-dialog { width: min(1120px, 100%); }

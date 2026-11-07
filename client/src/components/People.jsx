@@ -1,6 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { authState } from '../auth.js';
 import { dmStore, dmUnread, refreshDm } from '../dm.js';
+import { refreshSupport, supportStore, supportUnread } from '../support.js';
 import { folderIdsOf, peopleStore, personName } from '../people.js';
 import { topFolderIds } from '../folders.js';
 import Avatar from './Avatar.jsx';
@@ -80,14 +81,16 @@ function PeopleDialog({ people, folders, allFolders, me, onChat, onClose }) {
  */
 export function ChatButton({ folders, onChat }) {
   const { contacts } = useSyncExternalStore(dmStore.subscribe, dmStore.get);
+  const support = useSyncExternalStore(supportStore.subscribe, supportStore.get);
   const chats = useChats();
 
   useEffect(() => {
     refreshDm();
+    refreshSupport();
   }, []);
 
   const shown = new Set(folders.map((f) => f.id));
-  const unread = dmUnread(contacts)
+  const unread = dmUnread(contacts) + supportUnread(support)
     + folders.reduce((sum, f) => sum + (chats.folders[f.id]?.unread ?? 0), 0)
     + chats.cards.reduce((sum, c) => sum + (shown.has(c.card.folderId) ? c.unread : 0), 0);
   return (

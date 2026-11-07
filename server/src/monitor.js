@@ -28,6 +28,9 @@ const selectCounts = db.prepare(`
 `);
 const selectDevices = db.prepare('SELECT owner, COUNT(*) AS n FROM push_subscriptions GROUP BY owner');
 const selectDmCount = db.prepare('SELECT COUNT(*) AS n FROM direct_messages WHERE deleted = 0');
+const selectTicketCounts = db.prepare(`
+  SELECT COUNT(*) AS total, COALESCE(SUM(status = 'open'), 0) AS open FROM support_tickets
+`);
 
 async function sizeOf(file) {
   return (await fs.promises.stat(file).catch(() => null))?.size ?? 0;
@@ -101,6 +104,8 @@ export async function serverOverview(isAdmin) {
       cards: users.reduce((a, u) => a + u.cards, 0),
       archived: users.reduce((a, u) => a + u.archived, 0),
       messages: users.reduce((a, u) => a + u.messages, 0) + selectDmCount.get().n,
+      tickets: selectTicketCounts.get().total,
+      openTickets: selectTicketCounts.get().open,
       files: files.count,
       fileBytes: files.bytes,
       dbBytes: (await sizeOf(DB_PATH)) + (await sizeOf(`${DB_PATH}-wal`)),

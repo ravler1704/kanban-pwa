@@ -222,6 +222,30 @@ db.exec(`
 // Cards can be marked done (as Trello's) on boards that don't say otherwise: 0 / 1, null → on.
 if (!hasColumn('spaces', 'done_marks')) db.exec('ALTER TABLE spaces ADD COLUMN done_marks INTEGER');
 
+// Support: each user has one conversation with the administrators (all of them answer as «Поддержка»).
+// `from_support`: written by an administrator in someone's conversation. The ticket keeps its status and
+// until when the user and the support (one mark shared by the administrators) have read it.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS support_messages (
+    id            TEXT    PRIMARY KEY,
+    user_id       TEXT    NOT NULL,
+    author        TEXT    NOT NULL,
+    from_support  INTEGER NOT NULL,
+    text          TEXT    NOT NULL,
+    created_at    INTEGER NOT NULL,
+    edited_at     INTEGER,
+    deleted       INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE INDEX IF NOT EXISTS idx_support_user ON support_messages(user_id, created_at);
+  CREATE TABLE IF NOT EXISTS support_tickets (
+    user_id       TEXT    PRIMARY KEY,
+    status        TEXT    NOT NULL,
+    updated_at    INTEGER NOT NULL,
+    user_read     INTEGER NOT NULL DEFAULT 0,
+    support_read  INTEGER NOT NULL DEFAULT 0
+  );
+`);
+
 // When each user last used the app (any request with their session), for the administrators' overview.
 db.exec(`
   CREATE TABLE IF NOT EXISTS user_seen (
@@ -432,6 +456,11 @@ const selectUserByEmail = db.prepare('SELECT user_id FROM identities WHERE email
 
 const selectUsersByEmail = db.prepare('SELECT DISTINCT user_id FROM identities WHERE email = ?');
 
+/** Every user who has an account with an e-mail. */
+export function usersWithAnyEmail() {
+  return db.prepare('SELECT DISTINCT user_id FROM identities WHERE email IS NOT NULL').all().map((r) => r.user_id);
+}
+
 /** Every user with an account that has this e-mail. */
 export function usersWithEmail(email) {
   return selectUsersByEmail.all(email).map((r) => r.user_id);
@@ -522,6 +551,13 @@ export function mergeUsers(from, to) {
     db.prepare('UPDATE OR IGNORE user_names SET user_id = ? WHERE user_id = ?').run(to, from);
     db.prepare('DELETE FROM user_names WHERE user_id = ?').run(from);
     db.prepare('DELETE FROM user_seen WHERE user_id = ?').run(from);
+    db.prepare('UPDATE support_messages SET user_id = ? WHERE user_id = ?').run(to, from);
+    db.prepare('UPDATE support_messages SET author = ? WHERE author = ?').run(to, from);
+    if (db.prepare('SELECT 1 FROM support_tickets WHERE user_id = ?').get(to)) {
+      db.prepare('DELETE FROM support_tickets WHERE user_id = ?').run(from);
+    } else {
+      db.prepare('UPDATE support_tickets SET user_id = ? WHERE user_id = ?').run(to, from);
+    }
     // The other spaces come along as they are; the main one has just been merged.
     db.prepare('UPDATE spaces SET owner = ? WHERE owner = ? AND id != ?').run(to, from, from);
     db.prepare('DELETE FROM spaces WHERE id = ?').run(from);
@@ -553,6 +589,8 @@ export function deleteUser(userId) {
     db.prepare('DELETE FROM dm_cleared WHERE user_id = ? OR peer = ?').run(userId, userId);
     db.prepare('DELETE FROM user_names WHERE user_id = ?').run(userId);
     db.prepare('DELETE FROM user_seen WHERE user_id = ?').run(userId);
+    db.prepare('DELETE FROM support_messages WHERE user_id = ?').run(userId);
+    db.prepare('DELETE FROM support_tickets WHERE user_id = ?').run(userId);
     const usedElsewhere = db.prepare('SELECT 1 FROM identities WHERE lower(email) = ?');
     for (const email of emails) {
       db.prepare('DELETE FROM email_codes WHERE email = ?').run(email);
@@ -1021,6 +1059,109 @@ export function clearDm(userId, peer, forBoth) {
   } else {
     upsertDmCleared.run(userId, peer, Date.now());
   }
+}
+
+// ---- support ----
+
+const toSupportMessage = (row) => ({
+  id: row.id,
+  userId: row.user_id,
+  author: row.author,
+  fromSupport: Boolean(row.from_support),
+  text: row.text,
+  createdAt: row.created_at,
+  editedAt: row.edited_at,
+  deleted: Boolean(row.deleted),
+});
+const selectSupportMessage = db.prepare('SELECT * FROM support_messages WHERE id = ?');
+const selectSupportThread = db.prepare(`
+  SELECT * FROM support_messages WHERE user_id = ? AND created_at < ? ORDER BY created_at DESC, id DESC LIMIT ?
+`);
+const insertSupportMessage = db.prepare(`
+  INSERT OR IGNORE INTO support_messages (id, user_id, author, from_support, text, created_at) VALUES (?, ?, ?, ?, ?, ?)
+`);
+const updateSupportMessage = db.prepare('UPDATE support_messages SET text = ?, edited_at = ?, deleted = ? WHERE id = ?');
+const selectTicket = db.prepare('SELECT * FROM support_tickets WHERE user_id = ?');
+const upsertTicket = db.prepare(`
+  INSERT INTO support_tickets (user_id, status, updated_at) VALUES (?, ?, ?)
+  ON CONFLICT(user_id) DO UPDATE SET status = excluded.status, updated_at = excluded.updated_at
+`);
+const selectTickets = db.prepare(`
+  SELECT t.*,
+    (SELECT COUNT(*) FROM support_messages m WHERE m.user_id = t.user_id AND m.deleted = 0 AND m.from_support = 0
+      AND m.created_at > t.support_read) AS unread
+  FROM support_tickets t ORDER BY t.updated_at DESC
+`);
+const selectLastSupport = db.prepare(`
+  SELECT * FROM support_messages WHERE user_id = ? AND deleted = 0 ORDER BY created_at DESC, id DESC LIMIT 1
+`);
+const selectUserUnread = db.prepare(`
+  SELECT COUNT(*) AS n FROM support_messages WHERE user_id = ? AND deleted = 0 AND from_support = 1 AND created_at > ?
+`);
+const markUserRead = db.prepare('UPDATE support_tickets SET user_read = MAX(user_read, ?) WHERE user_id = ?');
+const markSupportRead = db.prepare('UPDATE support_tickets SET support_read = MAX(support_read, ?) WHERE user_id = ?');
+
+function lastSupportMessage(userId) {
+  const row = selectLastSupport.get(userId);
+  return row ? toSupportMessage(row) : null;
+}
+
+/** The user's own conversation with the support: { status, last, unread } (status null: never written). */
+export function supportSummary(userId) {
+  const ticket = selectTicket.get(userId);
+  return {
+    status: ticket?.status ?? null,
+    last: ticket ? lastSupportMessage(userId) : null,
+    unread: ticket ? selectUserUnread.get(userId, ticket.user_read).n : 0,
+  };
+}
+
+/** Every conversation, for the administrators: [{ userId, status, updatedAt, last, unread }], the latest first. */
+export function supportTickets() {
+  return selectTickets.all().map((t) => ({
+    userId: t.user_id, status: t.status, updatedAt: t.updated_at, last: lastSupportMessage(t.user_id), unread: t.unread,
+  }));
+}
+
+export function supportTicket(userId) {
+  const t = selectTicket.get(userId);
+  return t ? { status: t.status, updatedAt: t.updated_at } : null;
+}
+
+/** Up to `limit` messages of the user's conversation before `before`, oldest first. */
+export function supportThread(userId, before, limit) {
+  return selectSupportThread.all(userId, before, limit).reverse().map(toSupportMessage);
+}
+
+export function getSupportMessage(id) {
+  const row = selectSupportMessage.get(id);
+  return row ? toSupportMessage(row) : null;
+}
+
+/** A user's message opens the ticket again; the support's answer keeps its status. */
+export function addSupportMessage({ id, userId, author, fromSupport, text, createdAt }) {
+  transaction(() => {
+    insertSupportMessage.run(id, userId, author, fromSupport ? 1 : 0, text, createdAt);
+    const ticket = selectTicket.get(userId);
+    upsertTicket.run(userId, fromSupport ? (ticket?.status ?? 'open') : 'open', createdAt);
+    if (fromSupport) markSupportRead.run(createdAt, userId);
+    else markUserRead.run(createdAt, userId);
+  });
+  return getSupportMessage(id);
+}
+
+export function changeSupportMessage(id, { text, deleted }) {
+  updateSupportMessage.run(deleted ? '' : text, Date.now(), deleted ? 1 : 0, id);
+  return getSupportMessage(id);
+}
+
+export function setSupportStatus(userId, status) {
+  return db.prepare('UPDATE support_tickets SET status = ? WHERE user_id = ?').run(status, userId).changes > 0;
+}
+
+/** `bySupport`: the administrators read it (one mark for all of them), else the user. */
+export function markSupportThreadRead(userId, at, bySupport) {
+  (bySupport ? markSupportRead : markUserRead).run(at, userId);
 }
 
 // Links to deleted folders stay in the table but open nothing.

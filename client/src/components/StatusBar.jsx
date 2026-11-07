@@ -194,7 +194,12 @@ export default function StatusBar({ pending, conflicts, folders, onChat, search,
         )}
         {user && !publicToken && <ChatButton folders={folders} onChat={onChat} />}
       </div>
-      {accountOpen && <AccountDialog onClose={() => setAccountOpen(false)} />}
+      {accountOpen && (
+        <AccountDialog onClose={() => setAccountOpen(false)} onChat={(thread) => {
+          setAccountOpen(false);
+          onChat(thread);
+        }} />
+      )}
       {notificationsOpen && (
         <Modal title="Уведомления" onClose={() => setNotificationsOpen(false)} className="notifications-dialog" closeButton>
           <NotificationSettings onChange={setPush} />

@@ -5,7 +5,7 @@ import {
   deleteMember, deletePublicLink, deleteSession, deleteSpace, deleteUser, findUserByEmail, getEmailCode, getIdentityUser,
   getPublicLink, getRecord, getSession, isInvited, leaveBoard, listIdentities, listMembers, listPublicLinks, memberProjects,
   mergeUsers, ownerFileIds, ownSpaces, pruneEmailCodes, renameSpace, saveEmailCode, setInboxDoneMarks, setSpaceDoneMarks, saveIdentity, savePublicLink,
-  setCustomName, sharedBoards, touchUser, useEmailCode, userFileIds, usersWithEmail,
+  setCustomName, sharedBoards, touchUser, useEmailCode, userFileIds, usersWithAnyEmail, usersWithEmail,
 } from './db.js';
 import { serverOverview } from './monitor.js';
 import { broadcast, disconnect, disconnectUser, notifyUser } from './events.js';
@@ -34,7 +34,10 @@ const emailLoginAllowed = (req) => mailEnabled() || devLoginAllowed(req);
 const isAdminEmail = (email) => Boolean(email)
   && (settings().adminEmails.includes(email.toLowerCase()) || envAdminEmails.has(email.toLowerCase()));
 const emailsOf = (userId) => listIdentities(userId).map((i) => i.email).filter(Boolean);
-const isAdmin = (userId) => emailsOf(userId).some(isAdminEmail);
+export const isAdmin = (userId) => emailsOf(userId).some(isAdminEmail);
+
+/** Every user who is an administrator. */
+export const adminIds = () => usersWithAnyEmail().filter(isAdmin);
 
 const COOKIE = 'kanban_session';
 // Browsers cap cookie lifetime at 400 days.

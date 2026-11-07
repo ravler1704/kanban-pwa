@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { authState, deleteAccount, linkAccount, renameUser, signOut, unlinkAccount } from '../auth.js';
 import { disablePush, enablePush, PUSH_HINTS, pushState } from '../push.js';
+import { openTickets, refreshSupport, supportStore, supportUnread } from '../support.js';
 import { syncStatus } from '../sync.js';
 import { getTheme, setTheme } from '../theme.js';
 import Avatar from './Avatar.jsx';
@@ -232,9 +233,15 @@ const TABS = [
 ];
 
 /** The server's settings, for its administrator: apart from the account's, they apply to everyone. */
-function ServerAdmin() {
+function ServerAdmin({ onChat }) {
   const [open, setOpen] = useState(false);
   const [monitor, setMonitor] = useState(false);
+  const support = useSyncExternalStore(supportStore.subscribe, supportStore.get);
+  const waiting = openTickets(support);
+  const unread = supportUnread(support);
+  useEffect(() => {
+    refreshSupport();
+  }, []);
   return (
     <>
       <div className="server-admin">
@@ -242,6 +249,12 @@ function ServerAdmin() {
         <p className="muted account-hint">Вы администратор: эти настройки действуют для всех пользователей сервера.</p>
         <div className="server-admin-buttons">
           <button type="button" className="btn btn-small" onClick={() => setMonitor(true)}>Мониторинг…</button>
+          <button type="button" className="btn btn-small" disabled={!support.tickets?.length}
+            title={support.tickets?.length ? undefined : 'Обращений пока не было'}
+            onClick={() => onChat(waiting[0] ? `support:${waiting[0].userId}` : `support:${support.tickets[0].userId}`)}>
+            Обращения{waiting.length ? `: открыто ${waiting.length}` : ''}
+            {unread > 0 && <span className="chat-unread account-support-unread">{unread}</span>}
+          </button>
           <button type="button" className="btn btn-small" onClick={() => setOpen(true)}>Настройки сервера…</button>
         </div>
       </div>
@@ -311,7 +324,7 @@ function ProfileName() {
   );
 }
 
-export default function AccountDialog({ onClose }) {
+export default function AccountDialog({ onClose, onChat }) {
   const { online } = useSyncExternalStore(syncStatus.subscribe, syncStatus.get);
   const { user } = useSyncExternalStore(authState.subscribe, authState.get);
   const [picked, setTab] = useState(() => localStorage.getItem(TAB_KEY));
@@ -341,7 +354,12 @@ export default function AccountDialog({ onClose }) {
         </div>
       </div>
       <div role="tabpanel"><Content /></div>
-      {user?.admin && <ServerAdmin />}
+      {user?.admin ? <ServerAdmin onChat={onChat} /> : (
+        <div className="account-support">
+          <span className="muted account-hint">Вопрос, ошибка или предложение? Администраторы ответят в чате.</span>
+          <button type="button" className="btn btn-small" onClick={() => onChat('support:me')}>Написать в техподдержку</button>
+        </div>
+      )}
       <div className="actions">
         <button className="btn btn-danger" onClick={logout} disabled={!online}
           title={online ? 'Данные этого пространства будут удалены с устройства' : 'Для выхода нужен интернет'}>

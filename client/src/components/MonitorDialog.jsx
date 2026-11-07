@@ -214,6 +214,8 @@ export default function MonitorDialog({ onClose }) {
             <Tile label="Досок" value={num(t.boards)} />
             <Tile label="Карточек" value={num(t.cards)} note={`в архиве ${num(t.archived)}`} />
             <Tile label="Сообщений" value={num(t.messages)} note="в чатах досок и личных" />
+            <Tile label="Обращений в поддержку" value={num(t.tickets)}
+              note={t.openTickets ? `открыто ${t.openTickets}` : 'открытых нет'} />
             <Tile label="Файлов" value={num(t.files)} note={bytes(t.fileBytes)} />
             <Tile label="База данных" value={bytes(t.dbBytes)}
               note={t.diskFree == null ? null : `свободно на диске ${bytes(t.diskFree)}`} />

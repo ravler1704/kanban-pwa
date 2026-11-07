@@ -8,6 +8,7 @@ import { broadcast, registerEvents } from './events.js';
 import { registerFileRoutes, removeFiles, startFileCleanup } from './files.js';
 import { migrateFolders } from './migrateFolders.js';
 import { registerPushRoutes, startReminders } from './push.js';
+import { registerSupportRoutes } from './support.js';
 import { push, pull, ValidationError } from './sync.js';
 
 migrateFolders();
@@ -31,8 +32,9 @@ registerFileRoutes(app);
 startFileCleanup();
 app.use('/api/push', requireAuth);
 registerPushRoutes(app);
-app.use(['/api/people', '/api/dm'], requireAuth);
+app.use(['/api/people', '/api/dm', '/api/support'], requireAuth);
 registerChatRoutes(app);
+registerSupportRoutes(app);
 startReminders();
 
 // The epoch identifies the board, not just the database: a device that holds another
