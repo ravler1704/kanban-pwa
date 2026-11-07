@@ -18,7 +18,7 @@ import CardEditor from './components/CardEditor.jsx';
 import ConflictDialog from './components/ConflictDialog.jsx';
 import ManageDialog from './components/ManageDialog.jsx';
 import ColumnsDraftDialog from './components/ColumnsDraftDialog.jsx';
-import { BoardName, useFolderActions } from './components/FolderMenu.jsx';
+import { BoardMenuButton, BoardName, useFolderActions } from './components/FolderMenu.jsx';
 import NewCardDialog from './components/NewCardDialog.jsx';
 import CalendarView from './components/CalendarView.jsx';
 import ListView from './components/ListView.jsx';
@@ -134,8 +134,8 @@ export default function App() {
   const [chat, setChat] = useState(null);
   const [search, setSearch] = useState('');
   const [editingColumns, setEditingColumns] = useState(false);
-  // The board's menu, from a right click on the board itself (not a column or a card) or a click on a board's name
-  // in the title: { x, y }. `menuFolderId` is the board it is about (null: several in view); it stays for the dialogs.
+  // The board's menu, from a right click on the board itself (not a column or a card) or its «⋯» beside the title:
+  // { x, y }. `menuFolderId` is the board it is about (null: several in view); it stays for the dialogs.
   const [boardMenu, setBoardMenu] = useState(null);
   const [menuFolderId, setMenuFolderId] = useState(null);
   const [renamingId, setRenamingId] = useState(null);
@@ -451,7 +451,7 @@ export default function App() {
     summary: allChecked ? 'Все доски' : checkedIds.length ? filterSummary() : 'Не выбраны',
   };
   const openGroup = (card) => saveChecked([card.folderId]);
-  // The title names the shown boards (maybe without some inside them): each name there opens its board's menu.
+  // The title names the shown boards (maybe without some inside them): each name there renames its board.
   const titleRenamable = !readOnly && !allChecked && titleBoards.some((f) => usable.includes(f));
 
   const allCollapsed = columns.every((c) => collapsed.includes(c.id));
@@ -474,7 +474,9 @@ export default function App() {
     },
     null,
     ...(folderActions.removeItem ? [
-      { label: 'Переименовать', icon: ICONS.rename, shortcut: 'F2', run: () => setRenamingId(menuFolder.id) },
+      titleRenamable && titleBoards.includes(menuFolder) && {
+        label: 'Переименовать', icon: ICONS.rename, shortcut: 'F2', run: () => setRenamingId(menuFolder.id),
+      },
       ...folderActions.items,
     ] : [
       columnEdit && { label: 'Набор колонок…', icon: ICONS.settings, shortcut: 'KeyK', run: () => setEditingColumns(true) },
@@ -550,8 +552,7 @@ export default function App() {
                               {i > 0 && ', '}
                               {usable.includes(f)
                                 ? <BoardName folder={f} renaming={renamingId === f.id}
-                                  onMenu={(pos) => openBoardMenu(pos, f.id)} onRename={() => setRenamingId(f.id)}
-                                  onRenamed={() => setRenamingId(null)} />
+                                  onRename={() => setRenamingId(f.id)} onRenamed={() => setRenamingId(null)} />
                                 : f.name}
                             </Fragment>
                           ))}
@@ -559,6 +560,10 @@ export default function App() {
                         </>
                       ) : folderFilter.summary}
                     </h2>
+                    {view === 'board' || !readOnly ? (
+                      <BoardMenuButton open={Boolean(boardMenu)}
+                        onMenu={(pos) => (pos ? openBoardMenu(pos, viewFolder?.id ?? null) : setBoardMenu(null))} />
+                    ) : null}
                 </div>
                 )}
                 setSwitch={!searching && setTabs ? { sets: setTabs, value: boardSetId, onChange: changeAllFoldersSet } : null}

@@ -177,37 +177,47 @@ export function useFolderActions(folder, { folders, model, columnsSynced, writab
 }
 
 /**
- * A board's name in the board title: a click (Enter) calls `onMenu` with where the menu goes, F2 calls `onRename`;
- * while `renaming` it is a field.
+ * A board's name in the board title, renamed in place like EditableName, but `renaming` is the caller's (the board's
+ * menu renames it too): a click (Enter / F2) calls `onRename`, `onRenamed` when the field is done.
  */
-export function BoardName({ folder, renaming, onMenu, onRename, onRenamed }) {
+export function BoardName({ folder, renaming, onRename, onRenamed }) {
   if (renaming) {
     return (
       <NameField value={folder.name} label="Название доски" maxLength={200} className="" note={null}
         onSave={(name) => renameFolder(folder.id, name)} onDone={onRenamed} />
     );
   }
-  const open = (e) => {
-    const r = e.currentTarget.getBoundingClientRect();
-    onMenu({ x: r.left, y: r.bottom + 4 });
-  };
   return (
-    <span role="button" tabIndex={0} className="editable-name" title="Действия с доской" aria-haspopup="menu"
+    <span role="button" tabIndex={0} className="editable-name" title="Нажмите, чтобы переименовать"
+      aria-label={`${folder.name} — переименовать`}
       onClick={(e) => {
         e.stopPropagation();
-        open(e);
+        onRename();
       }}
       onKeyDown={(e) => {
-        if (e.key === 'F2') {
-          e.preventDefault();
-          onRename();
-        } else if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          open(e);
-        }
+        if (e.key !== 'Enter' && e.key !== 'F2') return;
+        e.preventDefault();
+        onRename();
       }}>
       {folder.name}
     </span>
+  );
+}
+
+/** The board's «⋯» beside its title: `open` (the menu is open) toggles it, `onMenu` gets where the menu goes or null. */
+export function BoardMenuButton({ open, onMenu }) {
+  return (
+    <button type="button" className={`btn btn-icon board-menu-btn ${open ? 'active' : ''}`}
+      title="Действия с доской" aria-label="Действия с доской" aria-haspopup="menu" aria-expanded={open}
+      onMouseDown={(e) => open && e.stopPropagation()}
+      onClick={(e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        onMenu(open ? null : { x: r.left, y: r.bottom + 4 });
+      }}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" />
+      </svg>
+    </button>
   );
 }
 

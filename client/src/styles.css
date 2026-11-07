@@ -206,6 +206,11 @@ body {
 }
 .projectbar-row:empty { display: none; }
 .board-head { display: flex; flex: 1; align-items: center; gap: 0.5rem; min-width: 0; }
+.board-head .board-menu-btn, .board-head .board-menu-btn:hover:not(:disabled) {
+  flex: none; border-color: transparent; background: transparent; color: var(--muted);
+}
+.board-head .board-menu-btn:hover:not(:disabled), .board-head .board-menu-btn.active { color: var(--text); }
+.has-bg .board-head .board-menu-btn { color: #f8fafc; }
 .board-title {
   margin: -0.25em -4px;
   padding: 0.25em 4px;
