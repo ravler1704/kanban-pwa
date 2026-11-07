@@ -7,6 +7,7 @@ import { childrenOf, descendants, folderColumnSetId, folderTree } from '../folde
 import { ICONS } from '../menuIcons.js';
 import BoardSettings from './BoardSettings.jsx';
 import ColumnsDraftDialog from './ColumnsDraftDialog.jsx';
+import ConfirmDelete, { useDeleteWord } from './ConfirmDelete.jsx';
 import { NameField } from './EditableName.jsx';
 import FolderSelect from './FolderSelect.jsx';
 import Modal from './Modal.jsx';
@@ -79,9 +80,11 @@ function DeleteFolderDialog({ folder, stats, folders, onClose }) {
   const parentId = folders.find((f) => f.id === folder.parentId)?.id;
   const [targetId, setTargetId] = useState(parentId ?? folders.find((f) => f.id !== folder.id)?.id ?? '');
   const [error, setError] = useState(null);
+  const [ok, wordField] = useDeleteWord();
   const total = stats.cards + stats.subCards;
 
   async function finish(keepCards) {
+    if (!ok) return;
     try {
       await deleteFolder(folder.id, { keepCards, targetId });
       onClose();
@@ -100,13 +103,14 @@ function DeleteFolderDialog({ folder, stats, folders, onClose }) {
         <FolderSelect label="Карточки доски перенести на доску" folders={folders} exclude={new Set([folder.id])}
           value={targetId} onChange={setTargetId} />
       )}
+      {wordField}
       {error && <p className="login-error">{error}</p>}
       <div className="actions">
         <button className="btn" onClick={onClose}>Отмена</button>
-        <button className="btn" disabled={stats.cards > 0 && !targetId} onClick={() => finish(true)}>
+        <button className="btn" disabled={!ok || (stats.cards > 0 && !targetId)} onClick={() => finish(true)}>
           Оставить карточки{stats.folders > 0 ? ' и вложенные доски' : ''}
         </button>
-        <button className="btn btn-danger" onClick={() => finish(false)}>
+        <button className="btn btn-danger" disabled={!ok} onClick={() => finish(false)}>
           Удалить {total > 0 || stats.folders > 0 ? 'всё' : 'доску'}
         </button>
       </div>
@@ -129,8 +133,7 @@ export function useFolderActions(folder, { folders, model, columnsSynced, writab
 
   async function remove() {
     const stats = await folderStats(folder.id);
-    if (stats.cards + stats.subCards + stats.folders > 0) setDialog({ name: 'delete', stats });
-    else if (confirm(`Удалить доску «${folder.name}»?`)) await deleteFolder(folder.id);
+    setDialog(stats.cards + stats.subCards + stats.folders > 0 ? { name: 'delete', stats } : { name: 'deleteEmpty' });
   }
 
   const items = [
@@ -163,7 +166,12 @@ export function useFolderActions(folder, { folders, model, columnsSynced, writab
         <ColumnsDraftDialog key={setId} model={model} setId={setId} folder={folder} folders={folders} onClose={close} />
       ) : dialog.name === 'settings' ? <BoardSettings folder={folder} folders={folders} onClose={close} />
         : dialog.name === 'delete' ? <DeleteFolderDialog folder={folder} stats={dialog.stats} folders={folders} onClose={close} />
-          : (
+          : dialog.name === 'deleteEmpty' ? (
+            <ConfirmDelete title="Удалить доску" confirmLabel="Удалить доску" onConfirm={() => deleteFolder(folder.id)}
+              onClose={close}>
+              Доска «{folder.name}» пуста и будет удалена.
+            </ConfirmDelete>
+          ) : (
             <Modal title={`Доступ к доске «${folder.name}»`} onClose={close}>
               <div className="manage"><FolderMembers folder={folder} folders={folders} /></div>
               <div className="actions">

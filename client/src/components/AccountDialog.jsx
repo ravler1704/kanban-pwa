@@ -4,6 +4,7 @@ import { disablePush, enablePush, PUSH_HINTS, pushState } from '../push.js';
 import { syncStatus } from '../sync.js';
 import { getTheme, setTheme } from '../theme.js';
 import Avatar from './Avatar.jsx';
+import { DELETE_WORD } from './ConfirmDelete.jsx';
 import Modal from './Modal.jsx';
 import { EmailCodeForm, GoogleButton, YandexButton } from './ProviderButtons.jsx';
 import ServerSettings from './ServerSettings.jsx';
@@ -85,8 +86,6 @@ function SignInTab() {
     </div>
   );
 }
-
-const DELETE_WORD = 'удалить';
 
 function DeleteAccount({ online }) {
   const [open, setOpen] = useState(false);

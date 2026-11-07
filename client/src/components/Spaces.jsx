@@ -4,6 +4,7 @@ import { boardName, boardOwnerName, currentBoard, switchBoard } from '../board.j
 import { ICONS } from '../menuIcons.js';
 import { personName } from '../people.js';
 import { syncStatus } from '../sync.js';
+import ConfirmDelete from './ConfirmDelete.jsx';
 import ContextMenu from './ContextMenu.jsx';
 import { SwitchRow } from './FolderFilter.jsx';
 import Modal from './Modal.jsx';
@@ -134,6 +135,7 @@ export function SpaceSettings() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const sent = useRef(null);
+  const [removing, setRemoving] = useState(false);
   if (!own) return null;
 
   async function run(action) {
@@ -160,12 +162,6 @@ export function SpaceSettings() {
       }));
     }
   };
-
-  function remove() {
-    if (!confirm(`Удалить пространство «${own.name}» со всеми досками, карточками и чатами? `
-      + 'Участники потеряют к нему доступ. Это нельзя отменить.')) return;
-    run(() => deleteSpace(own.id));
-  }
 
   return (
     <div className="manage space-settings">
@@ -195,8 +191,16 @@ export function SpaceSettings() {
       ) : (
         <div className="manage-row account-row">
           <span className="account-email">Удалить пространство со всем содержимым</span>
-          <button type="button" className="btn btn-small btn-danger" disabled={!online || busy} onClick={remove}>Удалить</button>
+          <button type="button" className="btn btn-small btn-danger" disabled={!online || busy}
+            onClick={() => setRemoving(true)}>Удалить…</button>
         </div>
+      )}
+      {removing && (
+        <ConfirmDelete title="Удалить пространство" confirmLabel="Удалить пространство"
+          onConfirm={() => deleteSpace(own.id)} onClose={() => setRemoving(false)}>
+          Пространство «{own.name}» будет удалено со всеми досками, карточками и чатами, участники потеряют к нему
+          доступ. Это нельзя отменить.
+        </ConfirmDelete>
       )}
       {error && <p className="login-error">{error}</p>}
     </div>
