@@ -219,6 +219,8 @@ db.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_spaces_owner ON spaces(owner);
 `);
+// Cards can be marked done (as Trello's) on boards that don't say otherwise: 0 / 1, null → on.
+if (!hasColumn('spaces', 'done_marks')) db.exec('ALTER TABLE spaces ADD COLUMN done_marks INTEGER');
 
 // Identifies this database instance. Clients holding data from another epoch
 // (e.g. after the database was wiped or restored) discard it and resync.
@@ -658,7 +660,7 @@ export function sharedBoards(userId) {
     const owner = selectOwnerProfile.get(ownerId);
     return [{
       id: board, name: owner?.name ?? null, email: owner?.email ?? null, picture: owner?.picture ?? null,
-      space: spaceName(board),
+      space: spaceName(board), doneMarks: spaceDoneMarks(board),
     }];
   });
 }
@@ -712,13 +714,15 @@ export function leaveBoard(board, userId) {
 export const MAIN_SPACE_NAME = 'Моё пространство';
 const SPACE_PREFIX = 's:';
 const selectSpace = db.prepare('SELECT * FROM spaces WHERE id = ?');
-const selectOwnSpaces = db.prepare('SELECT id, name FROM spaces WHERE owner = ? ORDER BY created_at, id');
+const selectOwnSpaces = db.prepare('SELECT id, name, done_marks FROM spaces WHERE owner = ? ORDER BY created_at, id');
 const insertSpace = db.prepare('INSERT INTO spaces (id, owner, name, created_at) VALUES (?, ?, ?, ?)');
 const upsertMainSpace = db.prepare(`
   INSERT INTO spaces (id, owner, name, created_at) VALUES (?, ?, ?, ?)
   ON CONFLICT(id) DO UPDATE SET name = excluded.name
 `);
 const updateSpaceName = db.prepare('UPDATE spaces SET name = ? WHERE id = ? AND owner = ?');
+const updateSpaceDoneMarks = db.prepare('UPDATE spaces SET done_marks = ? WHERE id = ? AND owner = ?');
+const doneMarksOf = (row) => row?.done_marks == null ? true : Boolean(row.done_marks);
 
 /** The user who owns the board: the board id itself for main spaces, null for a space that is gone. */
 export function boardOwner(board) {
@@ -726,14 +730,27 @@ export function boardOwner(board) {
   return selectSpace.get(board)?.owner ?? null;
 }
 
-/** The user's spaces, the main one first: [{ id, name, main? }]. */
+/** The user's spaces, the main one first: [{ id, name, doneMarks, main? }]. */
 export function ownSpaces(userId) {
   const rows = selectOwnSpaces.all(userId);
   const main = rows.find((r) => r.id === userId);
   return [
-    { id: userId, name: main?.name ?? MAIN_SPACE_NAME, main: true },
-    ...rows.filter((r) => r.id !== userId).map((r) => ({ id: r.id, name: r.name })),
+    { id: userId, name: main?.name ?? MAIN_SPACE_NAME, doneMarks: doneMarksOf(main), main: true },
+    ...rows.filter((r) => r.id !== userId).map((r) => ({ id: r.id, name: r.name, doneMarks: doneMarksOf(r) })),
   ];
+}
+
+/** Whether the board's cards can be marked done where its boards don't say otherwise. */
+export function spaceDoneMarks(board) {
+  return doneMarksOf(selectSpace.get(board));
+}
+
+/** False if the space is not the user's. */
+export function setSpaceDoneMarks(owner, id, on) {
+  if (id === owner) {
+    upsertMainSpace.run(id, owner, spaceName(id), 0);
+  }
+  return updateSpaceDoneMarks.run(on ? 1 : 0, id, owner).changes > 0;
 }
 
 export function spaceName(board) {

@@ -1,10 +1,11 @@
 import { useRef, useState, useSyncExternalStore } from 'react';
-import { authState, createSpace, deleteSpace, renameSpace } from '../auth.js';
+import { authState, createSpace, deleteSpace, renameSpace, setSpaceDoneMarks } from '../auth.js';
 import { boardName, boardOwnerName, currentBoard, switchBoard } from '../board.js';
 import { ICONS } from '../menuIcons.js';
 import { personName } from '../people.js';
 import { syncStatus } from '../sync.js';
 import ContextMenu from './ContextMenu.jsx';
+import { SwitchRow } from './FolderFilter.jsx';
 import Modal from './Modal.jsx';
 
 const MAIN_NAME = 'Моё пространство';
@@ -12,16 +13,20 @@ const MAIN_NAME = 'Моё пространство';
 /** The user's spaces, the main one first (a server from before spaces sends none). */
 const spacesOf = (user) => (user?.spaces?.length ? user.spaces : [{ id: user?.id, name: MAIN_NAME, main: true }]);
 
-/** The open space: { title, subtitle, own (one of the user's: { id, name, main? }) }. */
+/**
+ * The open space: { title, subtitle, own (one of the user's: { id, name, doneMarks, main? }), doneMarks
+ * (whether cards can be marked done on boards that don't say otherwise) }.
+ */
 export function useOpenSpace() {
   const { user } = useSyncExternalStore(authState.subscribe, authState.get);
   const own = spacesOf(user).find((s) => (currentBoard ? s.id === currentBoard : s.main)) ?? null;
-  if (own) return { title: own.name, subtitle: user ? personName(user) : '', own };
+  if (own) return { title: own.name, subtitle: user ? personName(user) : '', own, doneMarks: own.doneMarks !== false };
   const shared = (user?.boards ?? []).find((b) => b.id === currentBoard);
   return {
     title: shared ? boardName(shared) : 'Общее пространство',
     subtitle: shared ? `владелец: ${boardOwnerName(shared)}` : '',
     own: null,
+    doneMarks: shared?.doneMarks !== false,
   };
 }
 
@@ -171,6 +176,11 @@ export function SpaceSettings() {
       <p className="muted account-hint">
         Название видно вверху экрана вместо вашего имени и у участников, которым открыты доски пространства.
       </p>
+      <ul className="fp-list ff-group space-switches">
+        <SwitchRow label="Отметка «Выполнена» у карточек" on={own.doneMarks !== false} disabled={!online || busy}
+          meta="Для досок без своей настройки"
+          onChange={(on) => run(() => setSpaceDoneMarks(own.id, on))} />
+      </ul>
       {!online && <p className="muted">Изменить пространство можно только при подключении к интернету.</p>}
       {own.main ? (
         <p className="muted account-hint">Это основное пространство, его нельзя удалить. Другие пространства создаются в меню названия вверху экрана.</p>

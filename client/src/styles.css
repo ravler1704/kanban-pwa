@@ -139,6 +139,7 @@ body {
 .space-switch-user { font-size: 0.75rem; line-height: 1.2; color: var(--muted); }
 .space-switch-chevron { flex: none; color: var(--muted); }
 .space-settings .manage-field { display: block; margin-bottom: 0.4rem; }
+.space-settings .space-switches { margin: 0.9rem 0; }
 .status { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; font-size: 0.9rem; }
 .status-state {
   position: relative; display: inline-flex; align-items: center; gap: 0.6rem;

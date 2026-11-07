@@ -324,6 +324,13 @@ export async function renameSpace(id, name) {
   setSpaces(res.body.spaces);
 }
 
+/** Turns marking cards done on or off for the space's boards that don't say otherwise. */
+export async function setSpaceDoneMarks(id, doneMarks) {
+  const res = await postJson('/api/spaces/settings', { id, doneMarks }).catch(() => ({ status: 0, body: {} }));
+  if (res.status !== 200) throw spacesError(res, 'изменить настройки пространства');
+  setSpaces(res.body.spaces);
+}
+
 /** Deletes a space other than the main one with everything in it; the main space opens if it was this one. */
 export async function deleteSpace(id) {
   const res = await postJson('/api/spaces/delete', { id }).catch(() => ({ status: 0, body: {} }));

@@ -9,6 +9,7 @@ import { columnModel } from './columnSets.js';
 import { backgroundItems, folderBackground, folderDoneMarks } from './appearance.js';
 import { DoneMarks } from './doneMarks.js';
 import BoardSettings from './components/BoardSettings.jsx';
+import { useOpenSpace } from './components/Spaces.jsx';
 import { ICONS } from './menuIcons.js';
 import ContextMenu from './components/ContextMenu.jsx';
 import { renameFolder } from './actions.js';
@@ -138,6 +139,7 @@ export default function App() {
   // The menu of a right click on the board itself (not a column or a card): { x, y }.
   const [boardMenu, setBoardMenu] = useState(null);
   const [boardSettingsId, setBoardSettingsId] = useState(null);
+  const { doneMarks: spaceDoneMarks } = useOpenSpace();
   const [inboxOpen, setInboxOpen] = useState(() => localStorage.getItem(INBOX_OPEN_KEY) === '1');
   const toggleInbox = () => {
     localStorage.setItem(INBOX_OPEN_KEY, inboxOpen ? '0' : '1');
@@ -232,7 +234,7 @@ export default function App() {
   const tree = folderTree(folders);
   const doneMarksOf = (card) => {
     const folder = tree.byId.get(card.folderId);
-    return folder ? folderDoneMarks(folder, folders) : true;
+    return folder ? folderDoneMarks(folder, folders, spaceDoneMarks) : spaceDoneMarks;
   };
   const settingsFolder = boardSettingsId ? tree.byId.get(boardSettingsId) ?? null : null;
   const model = columnModel(data?.columnSets ?? [], data?.columns ?? [], folders);

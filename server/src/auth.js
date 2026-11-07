@@ -4,7 +4,7 @@ import {
   addMember, boardMemberEmails, boardOwner, boardSummary, countEmailCodeAttempt, createSession, createSpace, customName, deleteIdentity,
   deleteMember, deletePublicLink, deleteSession, deleteSpace, deleteUser, findUserByEmail, getEmailCode, getIdentityUser,
   getPublicLink, getRecord, getSession, isInvited, leaveBoard, listIdentities, listMembers, listPublicLinks, memberProjects,
-  mergeUsers, ownerFileIds, ownSpaces, pruneEmailCodes, renameSpace, saveEmailCode, saveIdentity, savePublicLink,
+  mergeUsers, ownerFileIds, ownSpaces, pruneEmailCodes, renameSpace, saveEmailCode, setSpaceDoneMarks, saveIdentity, savePublicLink,
   setCustomName, sharedBoards, useEmailCode, userFileIds, usersWithEmail,
 } from './db.js';
 import { broadcast, disconnect, disconnectUser, notifyUser } from './events.js';
@@ -508,6 +508,15 @@ export function registerAuthRoutes(app) {
     const { id } = req.body ?? {};
     if (!name || typeof id !== 'string') return res.status(400).json({ error: 'invalid name' });
     if (!renameSpace(req.user, id, name)) return res.status(404).json({ error: 'not found' });
+    for (const email of boardMemberEmails(id)) notifyBoardsChanged(email);
+    res.json({ spaces: ownSpaces(req.user) });
+  });
+
+  app.post('/api/spaces/settings', requireAuth, (req, res) => {
+    if (!authEnabled) return res.status(404).json({ error: 'auth disabled' });
+    const { id, doneMarks } = req.body ?? {};
+    if (typeof id !== 'string' || typeof doneMarks !== 'boolean') return res.status(400).json({ error: 'invalid settings' });
+    if (!setSpaceDoneMarks(req.user, id, doneMarks)) return res.status(404).json({ error: 'not found' });
     for (const email of boardMemberEmails(id)) notifyBoardsChanged(email);
     res.json({ spaces: ownSpaces(req.user) });
   });
