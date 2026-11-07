@@ -1,7 +1,7 @@
 import { useContext, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { createInboxCard, deleteCard, moveCardTo } from '../actions.js';
+import { createInboxCard, moveCardTo } from '../actions.js';
 import { setInboxDoneMarks } from '../auth.js';
 import { db, INBOX_ID } from '../db.js';
 import { DoneMarks } from '../doneMarks.js';
@@ -15,6 +15,7 @@ import { FolderPickerDialog } from './FolderSelect.jsx';
 import Markdown from './Markdown.jsx';
 import Modal from './Modal.jsx';
 import { useOpenSpace } from './Spaces.jsx';
+import { archiveWithUndo } from './UndoToast.jsx';
 
 const svg = (children) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
@@ -223,7 +224,7 @@ export default function InboxPanel({ folders, onOpen, onClose }) {
                   <MoveIcon />
                 </button>
                 <button type="button" className="btn btn-small btn-icon-only" title="Архивировать" aria-label="Архивировать"
-                  onClick={() => confirm('Архивировать карточку? Её можно будет восстановить из архива.') && deleteCard(card.id)}>
+                  onClick={() => archiveWithUndo([card.id])}>
                   <ArchiveIcon />
                 </button>
               </span>

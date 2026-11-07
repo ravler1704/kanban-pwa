@@ -20,6 +20,7 @@ import ManageDialog from './components/ManageDialog.jsx';
 import ColumnsDraftDialog from './components/ColumnsDraftDialog.jsx';
 import { BoardMenuButton, BoardName, useFolderActions } from './components/FolderMenu.jsx';
 import ArchiveDialog from './components/ArchiveDialog.jsx';
+import UndoToast from './components/UndoToast.jsx';
 import NewCardDialog from './components/NewCardDialog.jsx';
 import CalendarView from './components/CalendarView.jsx';
 import ListView from './components/ListView.jsx';
@@ -649,6 +650,7 @@ export default function App() {
 
       {folderActions.dialogs}
       {archiveOpen && <ArchiveDialog folders={usable} onClose={() => setArchiveOpen(false)} />}
+      <UndoToast />
 
       {managing && (
         <ManageDialog

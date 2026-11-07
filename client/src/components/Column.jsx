@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { archiveCards, createCard, moveCard, moveCardsToColumn, moveColumnTo, renameColumn } from '../actions.js';
+import { createCard, moveCard, moveCardsToColumn, moveColumnTo, renameColumn } from '../actions.js';
 import { columnColor } from '../appearance.js';
 import ColumnMenu from './ColumnMenu.jsx';
 import EditableName from './EditableName.jsx';
 import { PlusIcon } from './FolderBar.jsx';
 import Card, { draggedCardHeight, draggedCardId } from './Card.jsx';
+import { archiveWithUndo } from './UndoToast.jsx';
 
 /** The id of the column being dragged by its head: `dataTransfer` can't be read until the drop. */
 let draggedColumnId = null;
@@ -193,11 +194,7 @@ export default function Column({
     moveCardsToColumn(movable.map((c) => c.id), to.id);
   }
 
-  function archiveAll() {
-    const what = movable.length === 1 ? '1 карточку' : `все карточки (${movable.length})`;
-    if (!confirm(`Архивировать ${what} колонки «${column.name}»? Их можно будет восстановить из архива.`)) return;
-    archiveCards(movable.map((c) => c.id));
-  }
+  const archiveAll = () => archiveWithUndo(movable.map((c) => c.id));
 
   function handleAdd(e) {
     e.preventDefault();

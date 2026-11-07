@@ -516,11 +516,7 @@ export async function updateCard(id, patch, base = null) {
   requestSync();
 }
 
-/** Moves the card to the archive, from where it may be restored. */
-export function deleteCard(id) {
-  return updateCard(id, { deleted: true });
-}
-
+/** Moves the cards to the archive, from where they may be restored. */
 export async function archiveCards(ids) {
   await db.transaction('rw', db.cards, async () => {
     for (const id of ids) await update('card', id, { deleted: true });
@@ -530,6 +526,13 @@ export async function archiveCards(ids) {
 
 export function restoreCard(id) {
   return updateCard(id, { deleted: false });
+}
+
+export async function restoreCards(ids) {
+  await db.transaction('rw', db.cards, async () => {
+    for (const id of ids) await update('card', id, { deleted: false });
+  });
+  requestSync();
 }
 
 /** Deletes archived cards for good: the server wipes them with their comments, history and files. */

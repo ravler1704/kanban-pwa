@@ -1,12 +1,13 @@
 import { useContext, useEffect, useState } from 'react';
 import { DoneMarks } from '../doneMarks.js';
-import { deleteCard, duplicateCard, moveCardTo, moveCardToColumn, moveCardToEdge, setCardDone } from '../actions.js';
+import { duplicateCard, moveCardTo, moveCardToColumn, moveCardToEdge, setCardDone } from '../actions.js';
 import { authState } from '../auth.js';
 import { currentBoard, publicToken } from '../board.js';
 import { INBOX_ID } from '../db.js';
 import { cardColorItems } from '../appearance.js';
 import { ICONS } from '../menuIcons.js';
 import ContextMenu, { useHoverShortcuts, useMenuButton } from './ContextMenu.jsx';
+import { archiveWithUndo } from './UndoToast.jsx';
 
 /** A link that opens the card (on its board) for anyone with access to it. */
 function cardLink(id) {
@@ -81,7 +82,7 @@ export default function CardMenu({ card, prevColumn, nextColumn, readOnly, onOpe
     null,
     editable && {
       label: 'Архивировать', icon: ICONS.archive, shortcut: 'Delete',
-      run: () => confirm('Архивировать карточку? Её можно будет восстановить из архива.') && deleteCard(card.id),
+      run: () => archiveWithUndo([card.id]),
     },
   ]);
   const useful = items.length > 1;

@@ -1,10 +1,11 @@
 import { useContext, useState } from 'react';
 import { DoneMarks } from '../doneMarks.js';
-import { deleteCard, moveCardTo, moveCardToColumn, moveCardToFolder, updateCard } from '../actions.js';
+import { moveCardTo, moveCardToColumn, moveCardToFolder, updateCard } from '../actions.js';
 import { CARD_COLORS } from '../appearance.js';
 import { INBOX_ID } from '../db.js';
 import { ICONS } from '../menuIcons.js';
 import { ButtonIcon } from './ArchiveDialog.jsx';
+import { archiveWithUndo } from './UndoToast.jsx';
 import Attachments from './Attachments.jsx';
 import { DoneButton } from './Card.jsx';
 import CardExtraFields from './CardExtraFields.jsx';
@@ -132,8 +133,7 @@ function CardForm({ card, columnsOfFolder, folders, inbox, onClose }) {
   }
 
   async function remove() {
-    if (!confirm('Архивировать карточку? Её можно будет восстановить из архива.')) return;
-    await deleteCard(card.id);
+    await archiveWithUndo([card.id]);
     onClose();
   }
 
