@@ -8,7 +8,7 @@ import { DoneMarks } from '../doneMarks.js';
 import { ICONS } from '../menuIcons.js';
 import { syncStatus } from '../sync.js';
 import ArchiveDialog from './ArchiveDialog.jsx';
-import { DoneButton, setDraggedCard } from './Card.jsx';
+import { DoneButton, layerForDragImage, setDraggedCard } from './Card.jsx';
 import ContextMenu, { useMenuButton } from './ContextMenu.jsx';
 import { SwitchRow } from './FolderFilter.jsx';
 import { FolderPickerDialog } from './FolderSelect.jsx';
@@ -207,6 +207,7 @@ export default function InboxPanel({ folders, onOpen, onClose }) {
             <li key={card.id} className="inbox-card" draggable
               onDragStart={(e) => {
                 setDraggedCard(card.id, e.currentTarget.offsetHeight);
+                layerForDragImage(e.currentTarget);
                 e.dataTransfer.setData('text/card-id', card.id);
                 e.dataTransfer.setData('text/inbox', '1');
                 e.dataTransfer.effectAllowed = 'move';

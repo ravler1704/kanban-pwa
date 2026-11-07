@@ -4,7 +4,7 @@ import { columnColor } from '../appearance.js';
 import ColumnMenu from './ColumnMenu.jsx';
 import EditableName from './EditableName.jsx';
 import { PlusIcon } from './FolderBar.jsx';
-import Card, { draggedCardHeight, draggedCardId } from './Card.jsx';
+import Card, { draggedCardHeight, draggedCardId, layerForDragImage } from './Card.jsx';
 import { archiveWithUndo } from './UndoToast.jsx';
 
 /** The id of the column being dragged by its head: `dataTransfer` can't be read until the drop. */
@@ -126,6 +126,7 @@ export default function Column({
       draggedColumnId = column.id;
       e.dataTransfer.setData('text/column-id', column.id);
       if (section.current) {
+        layerForDragImage(section.current);
         const r = section.current.getBoundingClientRect();
         e.dataTransfer.setDragImage(section.current, e.clientX - r.left, e.clientY - r.top);
       }

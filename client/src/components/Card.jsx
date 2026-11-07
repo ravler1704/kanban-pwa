@@ -188,6 +188,18 @@ function Tags({ text, activeTags, onTag }) {
 /** Id and height of the card being dragged: `dataTransfer` can't be read until the drop. */
 export let draggedCardId = null;
 export let draggedCardHeight = 0;
+/**
+ * Called in `dragstart`: the browser's drag image of a rounded element shows what's behind it in the corners
+ * unless the element has its own layer while it's taken. Kept only for that moment, as a transform would move
+ * the fixed menus inside it.
+ */
+export function layerForDragImage(el) {
+  el.style.transform = 'translateZ(0)';
+  setTimeout(() => {
+    el.style.transform = '';
+  });
+}
+
 export function setDraggedCard(id, height = draggedCardHeight) {
   draggedCardId = id;
   draggedCardHeight = height;
@@ -212,6 +224,7 @@ export default function Card({
       onDragStart={(e) => {
         draggedCardId = card.id;
         draggedCardHeight = e.currentTarget.offsetHeight;
+        layerForDragImage(e.currentTarget);
         e.dataTransfer.setData('text/card-id', card.id);
         e.dataTransfer.effectAllowed = 'move';
       }}
