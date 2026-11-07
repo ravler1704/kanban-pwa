@@ -482,10 +482,6 @@ export default function App() {
       columnEdit && { label: 'Набор колонок…', icon: ICONS.settings, shortcut: 'KeyK', run: () => setEditingColumns(true) },
     ]),
     null,
-    !readOnly && !publicToken && {
-      label: 'Настройки пространства…', icon: ICONS.gear, run: () => setManaging(true),
-    },
-    null,
     folderActions.removeItem,
   ].filter((item, i, list) => item !== false && (item !== null || (i > 0 && list[i - 1] && list.slice(i + 1).some(Boolean))));
 
