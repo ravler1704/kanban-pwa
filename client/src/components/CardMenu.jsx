@@ -80,8 +80,8 @@ export default function CardMenu({ card, prevColumn, nextColumn, readOnly, onOpe
     editable && { label: 'Дублировать', icon: ICONS.copy, shortcut: 'KeyD', run: () => duplicateCard(card.id) },
     null,
     editable && {
-      label: 'Удалить карточку', icon: ICONS.trash, shortcut: 'Delete', danger: true,
-      run: () => confirm('Удалить карточку? Она попадёт в архив, откуда её можно восстановить.') && deleteCard(card.id),
+      label: 'Архивировать', icon: ICONS.archive, shortcut: 'Delete',
+      run: () => confirm('Архивировать карточку? Её можно будет восстановить из архива.') && deleteCard(card.id),
     },
   ]);
   const useful = items.length > 1;

@@ -26,7 +26,7 @@ export function InboxIcon() {
   return svg(<><path d="M22 12h-6l-2 3h-4l-2-3H2" /><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z" /></>);
 }
 const MoveIcon = () => svg(<><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></>);
-const DeleteIcon = () => svg(<><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M6 6l1 14h10l1-14" /></>);
+const ArchiveIcon = () => svg(<><path d="M3 4h18v4H3z" /><path d="M5 8v12h14V8" /><path d="M10 12h4" /></>);
 const CloseIcon = () => svg(<path d="M18 6 6 18M6 6l12 12" />);
 
 const MoreIcon = () => (
@@ -168,9 +168,9 @@ export default function InboxPanel({ folders, onOpen, onClose }) {
                   disabled={!folders.length} onClick={() => setMoving(card.id)}>
                   <MoveIcon />
                 </button>
-                <button type="button" className="btn btn-small btn-icon-only" title="Удалить" aria-label="Удалить"
-                  onClick={() => confirm('Удалить карточку? Она попадёт в архив, откуда её можно восстановить.') && deleteCard(card.id)}>
-                  <DeleteIcon />
+                <button type="button" className="btn btn-small btn-icon-only" title="Архивировать" aria-label="Архивировать"
+                  onClick={() => confirm('Архивировать карточку? Её можно будет восстановить из архива.') && deleteCard(card.id)}>
+                  <ArchiveIcon />
                 </button>
               </span>
             </li>

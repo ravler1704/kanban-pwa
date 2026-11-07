@@ -11,7 +11,7 @@ const formatDate = (time) => new Date(time).toLocaleString('ru-RU', {
 });
 
 /**
- * Deleted cards of `folders` (and of «Входящие»), last deleted first: each may be restored where it was or deleted
+ * Archived (deleted) cards of `folders` (and of «Входящие»), last deleted first: each may be restored where it was or deleted
  * for good — then the server wipes it with its comments, history and files. Cards of deleted boards are not here.
  */
 export default function ArchiveDialog({ folders, onClose }) {
@@ -34,7 +34,7 @@ export default function ArchiveDialog({ folders, onClose }) {
   return (
     <Modal title="Архив" onClose={onClose} className="archive-dialog" closeButton>
       <p className="muted archive-note">
-        Сюда попадают удалённые карточки. Карточку можно восстановить на её доску или удалить навсегда — вместе
+        Здесь архивированные карточки. Карточку можно восстановить на её доску или удалить навсегда — вместе
         с комментариями, историей и файлами.
       </p>
       {cards && shown.length === 0 && <p className="muted">Архив пуст.</p>}
@@ -47,7 +47,7 @@ export default function ArchiveDialog({ folders, onClose }) {
                   {card.number ? <span className="muted">#{card.number} </span> : null}
                   {card.title || 'Без названия'}
                 </span>
-                <span className="archive-meta muted">{names.get(card.folderId)} · удалена {formatDate(deletedAt(card))}</span>
+                <span className="archive-meta muted">{names.get(card.folderId)} · архивирована {formatDate(deletedAt(card))}</span>
               </div>
               <div className="archive-actions">
                 <button type="button" className="btn btn-small" onClick={() => restoreCard(card.id)}>Восстановить</button>

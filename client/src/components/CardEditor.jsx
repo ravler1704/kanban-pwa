@@ -130,7 +130,7 @@ function CardForm({ card, columnsOfFolder, folders, inbox, onClose }) {
   }
 
   async function remove() {
-    if (!confirm('Удалить карточку? Она попадёт в архив, откуда её можно восстановить.')) return;
+    if (!confirm('Архивировать карточку? Её можно будет восстановить из архива.')) return;
     await deleteCard(card.id);
     onClose();
   }
@@ -174,7 +174,7 @@ function CardForm({ card, columnsOfFolder, folders, inbox, onClose }) {
           onAuthor={setAuthorId} onAssignee={setAssigneeId} />
         {folderId !== INBOX_ID && <ColorField value={color} onChange={setColor} />}
         <div className="actions">
-          <button type="button" className="btn btn-danger" onClick={remove}>Удалить</button>
+          <button type="button" className="btn" onClick={remove}>Архивировать</button>
           <span className="spacer" />
           <button type="button" className="btn" onClick={onClose}>Отмена</button>
           <button type="submit" className="btn btn-primary">Сохранить</button>
