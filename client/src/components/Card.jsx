@@ -231,7 +231,7 @@ export default function Card({
       )}
       <div className={`card-title-row${doneShown ? ' card-title-row-done' : ''}`}>
         {doneShown && <DoneButton card={card} readOnly={readOnly || card.deleted} className="card-done-btn" />}
-        <div className="card-title">
+        <div className="card-title done-slide">
           {card.title
             ? <TaggedText text={card.title} inline activeTags={activeTags} onTag={onTag} />
             : <em className="muted">Без названия</em>}

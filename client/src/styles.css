@@ -743,9 +743,9 @@ body {
 }
 .inbox-card-actions { display: flex; flex: none; gap: 0.15rem; }
 .inbox-head-actions { display: flex; gap: 0.25rem; }
-.inbox-done-btn { margin: 0.3rem 0.3rem 0 0; }
-.inbox-card-title { transition: opacity 0.425s ease-in-out; }
-.inbox-card-done { opacity: 0.6; }
+.inbox-title-row { flex: 1; min-width: 0; }
+.inbox-title-row > .inbox-card-title { width: 100%; }
+.inbox-title-row > .card-done-btn { top: 0.35rem; }
 .inbox-card-actions .btn-icon-only { padding: 0.3rem; color: var(--muted); }
 .inbox-card-actions .btn-icon-only:hover { color: var(--text); }
 .inbox-empty { margin: 0; font-size: 0.9rem; line-height: 1.45; }
@@ -899,22 +899,24 @@ body {
   position: absolute; left: 0; top: 0.2rem; opacity: 0;
   transition: opacity 0.425s ease-in-out;
 }
-.card-title-row-done > .card-title {
+.card-title-row-done > .done-slide {
   transition: transform 0.425s ease-in-out, opacity 0.6s ease;
   will-change: transform;
 }
-.card-title-row-done:has(.done-btn-on) > .card-title { opacity: 0.6; }
-.card:hover .card-done-btn, .card-done-btn:focus-visible, .card-done-btn.done-btn-on { opacity: 1; }
-.card:hover .card-title-row-done > .card-title,
-.card-title-row-done:has(.card-done-btn:focus-visible) > .card-title,
-.card-title-row-done:has(.done-btn-on) > .card-title { transform: translateX(var(--done-room)); }
+.card-title-row-done:has(.done-btn-on) > .done-slide { opacity: 0.6; }
+.card:hover .card-done-btn, .inbox-card:hover .card-done-btn, .card-done-btn:focus-visible, .card-done-btn.done-btn-on { opacity: 1; }
+.card:hover .card-title-row-done > .done-slide,
+.inbox-card:hover .card-title-row-done > .done-slide,
+.card-title-row-done:has(.card-done-btn:focus-visible) > .done-slide,
+.card-title-row-done:has(.done-btn-on) > .done-slide { transform: translateX(var(--done-room)); }
 @media (hover: none) {
   .card-done-btn:not(.done-btn-on) { display: none; }
   .card-title-row-done:not(:has(.done-btn-on)) { padding-right: 0; }
-  .card:hover .card-title-row-done:not(:has(.done-btn-on)) > .card-title { transform: none; }
+  .card:hover .card-title-row-done:not(:has(.done-btn-on)) > .done-slide,
+  .inbox-card:hover .card-title-row-done:not(:has(.done-btn-on)) > .done-slide { transform: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .card-done-btn, .card-title-row-done > .card-title { transition: opacity 0.2s; }
+  .card-done-btn, .card-title-row-done > .done-slide { transition: opacity 0.2s; }
 }
 .modal-done-btn { width: 1.5rem; height: 1.5rem; }
 .card-desc {

@@ -151,11 +151,12 @@ export default function InboxPanel({ folders, onOpen, onClose }) {
                 e.dataTransfer.effectAllowed = 'move';
               }}
               onDragEnd={() => setDraggedCard(null)}>
-              {doneMarksOf(card) && <DoneButton card={card} className="inbox-done-btn" />}
-              <button type="button" className={`inbox-card-title${doneMarksOf(card) && card.done ? ' inbox-card-done' : ''}`}
-                onClick={() => onOpen(card.id)}>
-                {card.title ? <Markdown text={card.title} inline /> : <em className="muted">Без названия</em>}
-              </button>
+              <div className={`card-title-row inbox-title-row${doneMarksOf(card) ? ' card-title-row-done' : ''}`}>
+                {doneMarksOf(card) && <DoneButton card={card} className="card-done-btn" />}
+                <button type="button" className="inbox-card-title done-slide" onClick={() => onOpen(card.id)}>
+                  {card.title ? <Markdown text={card.title} inline /> : <em className="muted">Без названия</em>}
+                </button>
+              </div>
               <span className="inbox-card-actions">
                 <button type="button" className="btn btn-small btn-icon-only" title="На доску…" aria-label="На доску"
                   disabled={!folders.length} onClick={() => setMoving(card.id)}>
