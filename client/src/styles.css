@@ -1743,6 +1743,8 @@ a.btn { display: inline-block; text-decoration: none; }
   gap: 2px;
   overflow-y: auto;
   overscroll-behavior: contain;
+  /* Room for the bubbles' tails and the selection outline. */
+  padding: 3px 0.75rem;
 }
 .chat-embedded .chat-messages { max-height: 40vh; }
 .chat-full {
@@ -1753,7 +1755,7 @@ a.btn { display: inline-block; text-decoration: none; }
 }
 .chat-full .chat-messages {
   flex: 1;
-  padding: 0.5rem max(0.6rem, calc((100% - 760px) / 2)) 0.75rem;
+  padding: 0.5rem max(0.8rem, calc((100% - 760px) / 2)) 0.75rem;
 }
 .chat-empty { margin: 0.5rem 0; text-align: center; font-size: 0.9rem; }
 .chat-full .chat-empty, .chat-pane-empty span {
@@ -1829,11 +1831,18 @@ a.btn { display: inline-block; text-decoration: none; }
 }
 .chat-msg-mine .chat-time { color: var(--chat-meta-out); }
 .chat-ticks { flex: none; }
-.chat-msg-active .chat-bubble { box-shadow: 0 0 0 2px var(--accent); }
+/* An outline along the bubble's shape with its tail (a box-shadow would skip the clipped tail). */
+.chat-bubble { --ring: transparent; }
+.chat-msg-active .chat-bubble, .chat-msg-flash .chat-bubble {
+  filter: drop-shadow(2px 0 0 var(--ring)) drop-shadow(-2px 0 0 var(--ring))
+    drop-shadow(0 2px 0 var(--ring)) drop-shadow(0 -2px 0 var(--ring));
+}
+.chat-msg-active .chat-bubble { --ring: var(--accent); }
 .chat-msg-flash .chat-bubble { animation: chat-flash 1.6s ease-out; }
+@property --ring { syntax: '<color>'; inherits: true; initial-value: transparent; }
 @keyframes chat-flash {
-  0%, 40% { box-shadow: 0 0 0 3px var(--accent); }
-  100% { box-shadow: 0 0 0 3px transparent; }
+  0%, 40% { --ring: var(--accent); }
+  100% { --ring: transparent; }
 }
 .chat-reply {
   --reply-color: hsl(var(--author-hue, 200) 60% var(--chat-name-l));
