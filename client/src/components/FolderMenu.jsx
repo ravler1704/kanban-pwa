@@ -207,7 +207,7 @@ export function BoardName({ folder, renaming, onRename, onRenamed }) {
 /** The board's «⋯» at the right of the board's bar: `open` (the menu is open) toggles it, `onMenu` gets where the menu goes or null. */
 export function BoardMenuButton({ open, onMenu }) {
   return (
-    <button type="button" className={`btn btn-icon board-menu-btn ${open ? 'active' : ''}`}
+    <button type="button" className={`btn btn-small btn-icon-only board-menu-btn ${open ? 'active' : ''}`}
       title="Действия с доской" aria-label="Действия с доской" aria-haspopup="menu" aria-expanded={open}
       onMouseDown={(e) => open && e.stopPropagation()}
       onClick={(e) => {
