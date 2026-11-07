@@ -39,7 +39,7 @@ export default function ConfirmDelete({ title, children, confirmLabel = 'Уда�
   }
 
   return createPortal(
-    <Modal title={title} onClose={busy ? () => {} : onClose}>
+    <Modal title={title} onClose={busy ? () => {} : onClose} className="confirm-delete">
       <form onSubmit={confirm}>
         <p className="account-hint">{children}</p>
         {field}
