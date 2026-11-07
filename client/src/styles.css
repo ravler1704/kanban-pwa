@@ -1339,6 +1339,7 @@ a.btn { display: inline-block; text-decoration: none; }
 .archive-meta { font-size: 0.78rem; }
 .archive-actions { display: flex; gap: 0.35rem; flex: none; }
 .archive-clear { margin-right: auto; }
+.btn-labeled { display: inline-flex; align-items: center; gap: 0.35rem; }
 .notice {
   margin: 0;
   padding: 0.6rem 0.75rem;

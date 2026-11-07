@@ -1,7 +1,16 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { purgeCards, restoreCard } from '../actions.js';
 import { db, INBOX_ID } from '../db.js';
+import { ICONS } from '../menuIcons.js';
 import Modal from './Modal.jsx';
+
+/** An icon of ICONS (a path) on a button, before its label. */
+export function ButtonIcon({ path }) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={path} /></svg>
+  );
+}
 
 const PURGE_NOTE = 'Её комментарии, история изменений и файлы будут стёрты без возможности восстановления.';
 
@@ -50,15 +59,23 @@ export default function ArchiveDialog({ folders, onClose }) {
                 <span className="archive-meta muted">{names.get(card.folderId)} · архивирована {formatDate(deletedAt(card))}</span>
               </div>
               <div className="archive-actions">
-                <button type="button" className="btn btn-small" onClick={() => restoreCard(card.id)}>Восстановить</button>
-                <button type="button" className="btn btn-small btn-danger" onClick={() => purge(card)}>Удалить навсегда</button>
+                <button type="button" className="btn btn-small btn-labeled" onClick={() => restoreCard(card.id)}>
+                  <ButtonIcon path={ICONS.restore} />Восстановить
+                </button>
+                <button type="button" className="btn btn-small btn-danger btn-labeled" onClick={() => purge(card)}>
+                  <ButtonIcon path={ICONS.trash} />Удалить навсегда
+                </button>
               </div>
             </li>
           ))}
         </ul>
       )}
       <div className="actions">
-        {shown.length > 0 && <button type="button" className="btn btn-danger archive-clear" onClick={purgeAll}>Очистить архив</button>}
+        {shown.length > 0 && (
+          <button type="button" className="btn btn-danger btn-labeled archive-clear" onClick={purgeAll}>
+            <ButtonIcon path={ICONS.trash} />Очистить архив
+          </button>
+        )}
         <button type="button" className="btn btn-primary" onClick={onClose}>Готово</button>
       </div>
     </Modal>

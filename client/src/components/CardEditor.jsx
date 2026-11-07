@@ -3,6 +3,8 @@ import { DoneMarks } from '../doneMarks.js';
 import { deleteCard, moveCardTo, moveCardToColumn, moveCardToFolder, updateCard } from '../actions.js';
 import { CARD_COLORS } from '../appearance.js';
 import { INBOX_ID } from '../db.js';
+import { ICONS } from '../menuIcons.js';
+import { ButtonIcon } from './ArchiveDialog.jsx';
 import Attachments from './Attachments.jsx';
 import { DoneButton } from './Card.jsx';
 import CardExtraFields from './CardExtraFields.jsx';
@@ -174,7 +176,9 @@ function CardForm({ card, columnsOfFolder, folders, inbox, onClose }) {
           onAuthor={setAuthorId} onAssignee={setAssigneeId} />
         {folderId !== INBOX_ID && <ColorField value={color} onChange={setColor} />}
         <div className="actions">
-          <button type="button" className="btn" onClick={remove}>Архивировать</button>
+          <button type="button" className="btn btn-labeled" onClick={remove}>
+            <ButtonIcon path={ICONS.archive} />Архивировать
+          </button>
           <span className="spacer" />
           <button type="button" className="btn" onClick={onClose}>Отмена</button>
           <button type="submit" className="btn btn-primary">Сохранить</button>

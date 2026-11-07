@@ -15,6 +15,7 @@ export const ICONS = {
   collapse: 'M4 4v16M20 4v16M15 8l-4 4 4 4',
   expand: 'M4 4v16M20 4v16M11 8l-3 4 3 4M13 8l3 4-3 4',
   archive: 'M3 4h18v4H3zM5 8v12h14V8M10 12h4',
+  restore: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5',
   trash: 'M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6',
   open: 'M5 12h14M12 5l7 7-7 7',
   done: 'M22 11.08V12a10 10 0 1 1-5.93-9.14M22 4 12 14.01l-3-3',
