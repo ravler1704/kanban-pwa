@@ -1331,7 +1331,8 @@ a.btn { display: inline-block; text-decoration: none; }
   align-items: center;
   justify-content: center;
   padding: 1rem;
-  z-index: 10;
+  /* Above «Входящие», which covers the screen on a phone. */
+  z-index: 40;
 }
 .modal {
   background: var(--panel);
