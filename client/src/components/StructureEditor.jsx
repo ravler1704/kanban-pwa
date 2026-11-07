@@ -1,81 +1,15 @@
 import { useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { createFolder, moveFolder, renameFolder, reorderFolder } from '../actions.js';
-import { backgroundItems } from '../appearance.js';
+import { createFolder, renameFolder } from '../actions.js';
 import { isOwnBoard } from '../board.js';
-import { childrenOf, descendants, flattenFolders, folderColumnSetId, folderPath, folderTree } from '../folders.js';
+import { childrenOf, flattenFolders, folderPath, folderTree } from '../folders.js';
 import { ICONS } from '../menuIcons.js';
-import BoardSettings from './BoardSettings.jsx';
-import ColumnsDraftDialog from './ColumnsDraftDialog.jsx';
 import ContextMenu, { useHoverShortcuts, useMenuButton } from './ContextMenu.jsx';
-import FolderSelect from './FolderSelect.jsx';
 import EditableName from './EditableName.jsx';
+import { useFolderActions } from './FolderMenu.jsx';
 import { AddButton, Chevron, plural } from './ManageFields.jsx';
-import Modal from './Modal.jsx';
 import { FolderMembers, useCanShare } from './SharingSection.jsx';
 
 const SEARCH_FROM = 7;
-const TOP = '';
-
-/** Where a folder can go: the top level or under another folder (not itself or what is inside it). */
-function MoveDialog({ folder, folders, model, writable, onClose }) {
-  const tree = folderTree(folders);
-  const inside = new Set([folder.id, ...descendants(folders, folder.id).map((f) => f.id)]);
-  // Members move folders only where they have access.
-  const exclude = new Set([...inside, ...folders.filter((f) => writable && !writable.has(f.id)).map((f) => f.id)]);
-  const current = tree.parentOf(folder) ?? TOP;
-  const [value, setValue] = useState(current);
-  const [keepColumns, setKeepColumns] = useState(true);
-  const [busy, setBusy] = useState(false);
-
-  // A folder with a set of its own keeps it; one that takes it from its ancestors may get another set.
-  const target = value || null;
-  const moved = folders.map((f) => (f.id === folder.id ? { ...f, parentId: target } : f));
-  const before = folderColumnSetId(folder, folders);
-  const after = folderColumnSetId(moved.find((f) => f.id === folder.id), moved);
-  const setName = (id) => model.sets.find((s) => s.id === id)?.name ?? '';
-  const otherSet = !folder.columnSetId && before !== after;
-
-  async function submit(e) {
-    e.preventDefault();
-    if (value === current || busy) return;
-    setBusy(true);
-    try {
-      await moveFolder(folder.id, target, { keepColumns });
-      onClose();
-    } catch (err) {
-      alert(err.message);
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Modal title={`Перенести доску «${folder.name}»`} onClose={onClose}>
-      <form className="editor" onSubmit={submit}>
-        <FolderSelect label="Куда" folders={folders} exclude={exclude} value={value} onChange={setValue}
-          topLabel={isOwnBoard ? 'Верхний уровень' : null} />
-        <p className="move-result">Доска перейдёт со всеми вложенными досками и карточками.</p>
-        {otherSet && (
-          <div className="field">
-            <span className="field-label">У новой доски другой набор колонок</span>
-            <label className="radio-option">
-              <input type="radio" name="keep-columns" checked={keepColumns} onChange={() => setKeepColumns(true)} />
-              Оставить набор «{setName(before)}»
-            </label>
-            <label className="radio-option">
-              <input type="radio" name="keep-columns" checked={!keepColumns} onChange={() => setKeepColumns(false)} />
-              Взять набор «{setName(after)}»: карточки встанут в колонки с теми же названиями, остальные — в первую
-            </label>
-          </div>
-        )}
-        <div className="actions">
-          <button type="button" className="btn" onClick={onClose}>Отмена</button>
-          <button type="submit" className="btn btn-primary" disabled={value === current || busy}>Перенести</button>
-        </div>
-      </form>
-    </Modal>
-  );
-}
 
 function MoreIcon() {
   return (
@@ -86,12 +20,11 @@ function MoreIcon() {
 }
 
 /** One folder: a row with its name and actions; clicking it opens the folder (its contents are listed instead). */
-function FolderRow({ folder, index, count, ctx }) {
+function FolderRow({ folder, ctx }) {
   const { model, folders, columnsSynced, canShare, needle, onOpen } = ctx;
   const tree = folderTree(folders);
   const kids = childrenOf(folders, folder.id);
   const [panel, setPanel] = useState(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const isRoot = !tree.parentOf(folder);
   const own = Boolean(folder.columnSetId);
   const setName = model.sets.find((s) => s.id === model.setIdOf(folder))?.name;
@@ -104,27 +37,11 @@ function FolderRow({ folder, index, count, ctx }) {
   ].filter(Boolean).join(' · ');
   const togglePanel = (name) => setPanel(panel === name ? null : name);
   const [menu, setMenu, closeMenu, menuButton] = useMenuButton(260);
-  const menuItems = [
-    { label: 'Открыть', icon: ICONS.open, shortcut: 'KeyO', run: () => onOpen(folder.id) },
-    canShare && {
-      label: 'Доступ', icon: ICONS.access, shortcut: 'KeyA', active: panel === 'access', run: () => togglePanel('access'),
-    },
-    { label: 'Перенести…', icon: ICONS.move, shortcut: 'KeyM', run: () => ctx.onMove(folder) },
-    ctx.onColumns ? { label: 'Набор колонок…', icon: ICONS.settings, shortcut: 'KeyK', run: () => ctx.onColumns(folder.id) } : false,
-    { label: 'Фон', icon: ICONS.palette, submenu: backgroundItems(folder) },
-    { label: 'Настройки доски…', icon: ICONS.gear, run: () => setSettingsOpen(true) },
-    !needle && null,
-    !needle && {
-      label: 'Выше', icon: ICONS.up, shortcut: 'Alt+ArrowUp', disabled: index === 0,
-      run: () => reorderFolder(folder.id, -1),
-    },
-    !needle && {
-      label: 'Ниже', icon: ICONS.down, shortcut: 'Alt+ArrowDown', disabled: index >= count - 1,
-      run: () => reorderFolder(folder.id, 1),
-    },
-    null,
-    { label: 'Удалить', icon: ICONS.trash, shortcut: 'Delete', danger: true, run: () => ctx.onRemove(folder) },
-  ].filter((item) => item !== false);
+  const actions = useFolderActions(folder, {
+    folders, model, columnsSynced, writable: ctx.writable, reorder: !needle,
+    onAccess: () => togglePanel('access'), accessActive: panel === 'access',
+  });
+  const menuItems = [{ label: 'Открыть', icon: ICONS.open, shortcut: 'KeyO', run: () => onOpen(folder.id) }, ...actions.items];
   const node = useRef(null);
   useHoverShortcuts(node, menuItems);
 
@@ -148,10 +65,7 @@ function FolderRow({ folder, index, count, ctx }) {
         </button>
       </div>
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={closeMenu} />}
-      {settingsOpen && createPortal(
-        <BoardSettings folder={folder} folders={folders} onClose={() => setSettingsOpen(false)} />,
-        document.body,
-      )}
+      {actions.dialogs}
       {panel === 'access' && canShare && (
         <div className="tree-body"><FolderMembers folder={folder} folders={folders} /></div>
       )}
@@ -174,7 +88,7 @@ function FolderIcon() {
  * `writable` (a set of ids, or null for all) are the folders a member may touch.
  */
 export default function StructureEditor({
-  model, folders, synced, columnsSynced, writable, onRemoveFolder,
+  model, folders, synced, columnsSynced, writable,
 }) {
   const canShare = useCanShare();
   const tree = folderTree(folders);
@@ -183,8 +97,6 @@ export default function StructureEditor({
   const current = currentId ? tree.byId.get(currentId) ?? null : null;
   const path = current ? folderPath(current, folders) : [];
   const list = childrenOf(folders, current?.id ?? null);
-  const [moving, setMoving] = useState(null);
-  const [editingColumns, setEditingColumns] = useState(null);
   const [query, setQuery] = useState('');
 
   const needle = query.trim().toLowerCase();
@@ -196,11 +108,7 @@ export default function StructureEditor({
     setQuery('');
     setCurrentId(id);
   };
-  const ctx = {
-    model, folders, columnsSynced, canShare, needle, onOpen: open,
-    onMove: setMoving, onRemove: onRemoveFolder,
-    onColumns: isOwnBoard && columnsSynced ? setEditingColumns : null,
-  };
+  const ctx = { model, folders, columnsSynced, writable, canShare, needle, onOpen: open };
   const canAddHere = current ? true : isOwnBoard;
   return (
     <div className="manage tree">
@@ -231,11 +139,11 @@ export default function StructureEditor({
       )}
       {needle ? (
         found.length
-          ? found.map((f) => <FolderRow key={f.id} folder={f} index={0} count={1} ctx={ctx} />)
+          ? found.map((f) => <FolderRow key={f.id} folder={f} ctx={ctx} />)
           : <p className="muted">Ничего не найдено.</p>
       ) : (
         <>
-          {list.map((f, i) => <FolderRow key={f.id} folder={f} index={i} count={list.length} ctx={ctx} />)}
+          {list.map((f) => <FolderRow key={f.id} folder={f} ctx={ctx} />)}
           {list.length === 0 && <p className="muted">У этой доски нет вложенных досок.</p>}
           {canAddHere && (
             <AddButton key={current?.id ?? 'top'} label={current ? `Новая доска в «${current.name}»` : 'Новая доска верхнего уровня'}
@@ -246,14 +154,6 @@ export default function StructureEditor({
         </>
       )}
 
-      {moving && (
-        <MoveDialog folder={moving} folders={folders} model={model} writable={writable} onClose={() => setMoving(null)} />
-      )}
-      {editingColumns && tree.byId.has(editingColumns) && (
-        <ColumnsDraftDialog key={`${editingColumns}:${model.setIdOf(tree.byId.get(editingColumns))}`} model={model}
-          setId={model.setIdOf(tree.byId.get(editingColumns))} folder={tree.byId.get(editingColumns)} folders={folders}
-          onClose={() => setEditingColumns(null)} />
-      )}
     </div>
   );
 }

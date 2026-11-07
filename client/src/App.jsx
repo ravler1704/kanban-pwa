@@ -12,7 +12,6 @@ import BoardSettings from './components/BoardSettings.jsx';
 import { useOpenSpace } from './components/Spaces.jsx';
 import { ICONS } from './menuIcons.js';
 import ContextMenu from './components/ContextMenu.jsx';
-import { renameFolder } from './actions.js';
 import StatusBar from './components/StatusBar.jsx';
 import FolderBar from './components/FolderBar.jsx';
 import Column from './components/Column.jsx';
@@ -20,7 +19,7 @@ import CardEditor from './components/CardEditor.jsx';
 import ConflictDialog from './components/ConflictDialog.jsx';
 import ManageDialog from './components/ManageDialog.jsx';
 import ColumnsDraftDialog from './components/ColumnsDraftDialog.jsx';
-import EditableName from './components/EditableName.jsx';
+import { FolderNameMenu } from './components/FolderMenu.jsx';
 import NewCardDialog from './components/NewCardDialog.jsx';
 import CalendarView from './components/CalendarView.jsx';
 import ListView from './components/ListView.jsx';
@@ -447,7 +446,7 @@ export default function App() {
     summary: allChecked ? 'Все доски' : checkedIds.length ? filterSummary() : 'Не выбраны',
   };
   const openGroup = (card) => saveChecked([card.folderId]);
-  // The title names the shown boards (maybe without some inside them): each name there renames its board.
+  // The title names the shown boards (maybe without some inside them): each name there opens its board's menu.
   const titleRenamable = !readOnly && !allChecked && titleBoards.some((f) => usable.includes(f));
 
   const allCollapsed = columns.every((c) => collapsed.includes(c.id));
@@ -537,7 +536,8 @@ export default function App() {
                             <Fragment key={f.id}>
                               {i > 0 && ', '}
                               {usable.includes(f)
-                                ? <EditableName value={f.name} label="Название доски" onSave={(name) => renameFolder(f.id, name)} />
+                                ? <FolderNameMenu folder={f} folders={folders} model={model} writable={writable}
+                                  columnsSynced={data.columns.length > 0} />
                                 : f.name}
                             </Fragment>
                           ))}

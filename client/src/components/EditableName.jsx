@@ -26,7 +26,7 @@ function Note({ anchor, id, children }) {
 }
 
 /** The field the name turns into: Enter, leaving it or a press outside saves, Escape cancels. */
-function NameField({ value, label, maxLength, className, note, onSave, onDone }) {
+export function NameField({ value, label, maxLength, className, note, onSave, onDone }) {
   const [draft, setDraft] = useState(value);
   const input = useRef(null);
   const box = useRef(null);
