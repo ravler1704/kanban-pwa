@@ -94,13 +94,42 @@ function Spaces({ user, now }) {
   );
 }
 
+// The providers' photos come small; the same photo in a bigger size.
+function largePicture(url) {
+  if (!url) return url;
+  if (url.includes('googleusercontent.com')) return url.replace(/=s\d+(-c)?$/, '=s512-c');
+  if (url.includes('avatars.yandex.net')) return url.replace(/\/islands-[\w-]+$/, '/islands-200');
+  return url;
+}
+
+function AvatarView({ u, onClose }) {
+  return (
+    <Modal title={u.name || u.email || 'Аватар'} className="avatar-view" closeButton onClose={onClose}>
+      <div className="avatar-view-body">
+        <Avatar user={{ ...u, picture: largePicture(u.picture) }} size={256} />
+        {u.email && <span className="muted">{u.email}</span>}
+      </div>
+    </Modal>
+  );
+}
+
 function UserCell({ u, now }) {
+  const [big, setBig] = useState(false);
   return (
     <div className="monitor-user">
-      <span className="monitor-avatar">
+      <button type="button" className="monitor-avatar" title="Увеличить" aria-label="Увеличить аватар"
+        onClick={(e) => {
+          e.stopPropagation();
+          setBig(true);
+        }}>
         <Avatar user={u} size={28} />
         {u.online && <span className="monitor-online" title="Сейчас в приложении" />}
-      </span>
+      </button>
+      {big && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <AvatarView u={u} onClose={() => setBig(false)} />
+        </div>
+      )}
       <span className="monitor-user-text">
         <span className="monitor-user-name">
           {u.name || u.email || u.id}
