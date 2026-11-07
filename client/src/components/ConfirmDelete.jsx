@@ -9,7 +9,7 @@ export function useDeleteWord() {
   const [word, setWord] = useState('');
   const ok = word.trim().toLowerCase() === DELETE_WORD;
   const field = (
-    <label className="field">
+    <label className="field delete-word">
       <span className="field-label">Чтобы подтвердить, введите «{DELETE_WORD}»</span>
       <input className="manage-input" value={word} autoComplete="off" autoCapitalize="none" spellCheck={false}
         onChange={(e) => setWord(e.target.value)} />

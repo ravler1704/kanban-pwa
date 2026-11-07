@@ -140,7 +140,12 @@ body {
 .space-switch-chevron { flex: none; color: var(--muted); }
 .space-settings .manage-field { display: block; margin-bottom: 0.4rem; }
 .space-dialog .account-hint, .confirm-delete .account-hint { line-height: 1.45; }
-.space-dialog .manage-field, .confirm-delete .field { display: block; margin-top: 0.9rem; }
+.space-dialog .manage-field { display: block; margin-top: 0.9rem; }
+.delete-word { margin-top: 0.9rem; }
+.delete-word .manage-input {
+  width: 100%; box-sizing: border-box; padding-left: 0.7rem; padding-right: 0.7rem; border-color: var(--border);
+}
+.delete-word .manage-input:focus { border-color: var(--accent); }
 .space-settings .space-switches { margin: 0.9rem 0; }
 .status { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; font-size: 0.9rem; }
 .status-state {
