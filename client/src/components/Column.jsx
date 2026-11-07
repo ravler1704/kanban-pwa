@@ -56,7 +56,8 @@ function QuickAdd({ onAdd, onClose }) {
 }
 
 /**
- * `target` (a folder id) is where new cards go; `targetName`, when set, is said in the add field.
+ * `target` (a folder id) is where new cards go. Only with a `single` board in view are they added in place (the field
+ * at the bottom, the gaps between cards); with several the button opens the full form, where the board is picked.
  * `cardLabel(card)` returns the folder shown on the card, or null for none.
  * `edit` (see ColumnMenu), when set, lets the columns be changed from the column's menu.
  * `onNewCard()` opens the full new card form for the column.
@@ -64,7 +65,7 @@ function QuickAdd({ onAdd, onClose }) {
  * `onCollapseOthers()` expands this column and collapses the rest of the board, or expands them all when it's the only one left.
  */
 export default function Column({
-  target, targetName, column, prevColumn, nextColumn, cards, cardLabel, activeTags, onTag, readOnly, onOpen, onOpenGroup,
+  target, single, column, prevColumn, nextColumn, cards, cardLabel, activeTags, onTag, readOnly, onOpen, onOpenGroup,
   edit, onNewCard, collapsed, onToggleCollapsed, onCollapseOthers,
 }) {
   const [title, setTitle] = useState('');
@@ -205,7 +206,8 @@ export default function Column({
     setTitle('');
   }
 
-  const gaps = !readOnly && Boolean(target) && !dragOver;
+  const quickAdd = Boolean(target) && single;
+  const gaps = !readOnly && quickAdd && !dragOver;
   function addBefore(beforeId, value) {
     const position = positionBefore(cards, beforeId);
     if (Number.isFinite(position)) createCard({ folderId: target }, column.id, value, '', [], { position });
@@ -311,11 +313,17 @@ export default function Column({
         ])}
         {showIndicator && index === cards.length && slot}
       </div>
-      {!readOnly && <form className="add-card" onSubmit={handleAdd}>
+      {!readOnly && !quickAdd && (
+        <button type="button" className="add-card-open" onClick={onNewCard}
+          title="Новая карточка: в окне выбирается доска" aria-label={`Новая карточка в «${column.name}»`}>
+          + Новая карточка…
+        </button>
+      )}
+      {!readOnly && quickAdd && <form className="add-card" onSubmit={handleAdd}>
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder={targetName ? `+ Новая карточка в «${targetName}»` : '+ Новая карточка'}
+          placeholder="+ Новая карточка"
           maxLength={500}
         />
         <button type={title.trim() ? 'submit' : 'button'} className={`btn btn-small btn-icon-only add-card-btn ${title.trim() ? 'btn-primary' : ''}`}

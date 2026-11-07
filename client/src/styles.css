@@ -846,6 +846,11 @@ body {
 .column-expand-title .count { flex: none; }
 
 .add-card { display: flex; gap: 0.4rem; }
+.add-card-open {
+  padding: 0.55rem 0.7rem; border: 1px dashed var(--border); border-radius: 8px; background: none;
+  color: var(--muted); font: inherit; text-align: left; cursor: pointer;
+}
+.add-card-open:hover { border-color: var(--muted); color: var(--text); }
 .cards {
   display: flex;
   flex-direction: column;

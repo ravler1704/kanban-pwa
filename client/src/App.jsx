@@ -594,7 +594,7 @@ export default function App() {
                     <Column
                       key={col.id}
                       target={boardTarget}
-                      targetName={boardFolders.length > 1 ? tree.byId.get(boardTarget)?.name : null}
+                      single={boardTops.length <= 1}
                       column={col}
                       prevColumn={columns[index - 1]}
                       nextColumn={columns[index + 1]}
