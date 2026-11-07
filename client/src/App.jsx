@@ -47,6 +47,8 @@ const byPosition = (a, b) => a.position - b.position || a.id.localeCompare(b.id)
 // It lives in the URL so the back button works; localStorage keeps it between launches of the installed app.
 // Earlier builds kept the unchecked projects and sections in these keys (their ids are folder ids now).
 const TOGGLES_KEY = 'folderToggles';
+// Kept per space, so each one opens with what was last chosen in it.
+const STORED_TOGGLES_KEY = `${TOGGLES_KEY}:${dbName}`;
 const LEGACY_TOGGLE_KEYS = ['projectToggles', 'sectionToggles', 'projectsOff', 'sectionsOff', 'toggled'];
 // Spaces unchecked in an earlier build: their whole subtree is unchecked once, then this is dropped.
 const SPACES_OFF_KEY = `spacesOff:${dbName}`;
@@ -74,6 +76,8 @@ function readSelection() {
   const keys = [TOGGLES_KEY, ...LEGACY_TOGGLE_KEYS];
   const fromUrl = keys.filter((key) => params.has(key)).flatMap((key) => idList(params.get(key)));
   if (keys.some((key) => params.has(key))) return [...new Set(fromUrl)];
+  const stored = storedList(STORED_TOGGLES_KEY);
+  if (stored) return stored;
   return [...new Set(keys.flatMap((key) => storedList(key) ?? []))];
 }
 
@@ -109,11 +113,11 @@ function useSelection() {
   const select = useCallback((next) => {
     setSelection(next);
     const url = new URL(location.href);
-    for (const key of LEGACY_TOGGLE_KEYS) {
+    for (const key of [TOGGLES_KEY, ...LEGACY_TOGGLE_KEYS]) {
       url.searchParams.delete(key);
       localStorage.removeItem(key);
     }
-    localStorage.setItem(TOGGLES_KEY, JSON.stringify(next));
+    localStorage.setItem(STORED_TOGGLES_KEY, JSON.stringify(next));
     if (next.length) url.searchParams.set(TOGGLES_KEY, next.join(','));
     else url.searchParams.delete(TOGGLES_KEY);
     if (url.href !== location.href) history.pushState(null, '', url);

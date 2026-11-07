@@ -73,6 +73,10 @@ export function boardQuery() {
 /** Opens another board (null: the own one); `search` is the query of the page to open. */
 export function switchBoard(board, search = '') {
   store(normalize(board));
+  // The selection of earlier builds, kept for all spaces, stays with the board being left.
+  const scoped = `folderToggles:${dbName}`;
+  const legacy = localStorage.getItem('folderToggles');
+  if (legacy !== null && localStorage.getItem(scoped) === null) localStorage.setItem(scoped, legacy);
   // Folder ids belong to the board that is being left.
   for (const key of ['folderToggles', 'projectToggles', 'sectionToggles', 'projectsOff', 'sectionsOff', 'toggled', 'selectedProjects', 'selectedSections', 'selectedProject', 'selectedSection']) {
     localStorage.removeItem(key);
