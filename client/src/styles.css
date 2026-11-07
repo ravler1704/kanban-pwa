@@ -900,7 +900,13 @@ body {
 .card-gap-btn:hover { opacity: 1; transition: opacity 0.12s 0.15s; }
 @media (hover: none) { .card-gap { display: none; } }
 .quick-add { flex: none; display: flex; }
-.quick-add input { flex: 1; min-width: 0; }
+/* Looks like the card it turns into. */
+.quick-add input {
+  flex: 1; min-width: 0; padding: 0.6rem 0.75rem; border: 1px solid var(--accent); border-radius: 10px;
+  background: var(--card); color: var(--text); font: inherit; font-weight: 600;
+}
+.quick-add input:focus { outline: none; }
+.quick-add input::placeholder { font-weight: 400; }
 .drop-slot {
   flex: none;
   min-height: 2.5rem;
