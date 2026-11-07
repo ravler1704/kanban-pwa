@@ -1831,18 +1831,10 @@ a.btn { display: inline-block; text-decoration: none; }
 }
 .chat-msg-mine .chat-time { color: var(--chat-meta-out); }
 .chat-ticks { flex: none; }
-/* An outline along the bubble's shape with its tail (a box-shadow would skip the clipped tail). */
-.chat-bubble { --ring: transparent; }
-.chat-msg-active .chat-bubble, .chat-msg-flash .chat-bubble {
-  filter: drop-shadow(2px 0 0 var(--ring)) drop-shadow(-2px 0 0 var(--ring))
-    drop-shadow(0 2px 0 var(--ring)) drop-shadow(0 -2px 0 var(--ring));
-}
-.chat-msg-active .chat-bubble { --ring: var(--accent); }
-.chat-msg-flash .chat-bubble { animation: chat-flash 1.6s ease-out; }
-@property --ring { syntax: '<color>'; inherits: true; initial-value: transparent; }
+.chat-msg-flash { animation: chat-flash 1.6s ease-out; border-radius: 8px; }
 @keyframes chat-flash {
-  0%, 40% { --ring: var(--accent); }
-  100% { --ring: transparent; }
+  0%, 40% { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+  100% { background: transparent; }
 }
 .chat-reply {
   --reply-color: hsl(var(--author-hue, 200) 60% var(--chat-name-l));

@@ -572,12 +572,11 @@ export default function ChatThread({
           const mine = m.authorId === me;
           const withAuthor = !mine && !direct;
           const name = m.authorName || 'Без имени';
-          const active = menu?.message.id === m.id || editing?.id === m.id || deleting?.id === m.id || replying?.id === m.id;
           return (
             <Fragment key={m.id}>
               {newDay && <div className="chat-day"><span>{dayLabel(m.createdAt)}</span></div>}
               <div className={`chat-msg ${mine ? 'chat-msg-mine' : ''} ${grouped ? 'chat-msg-grouped' : ''} ${last ? 'chat-msg-tail' : ''}
-                ${active ? 'chat-msg-active' : ''} ${flash === m.id ? 'chat-msg-flash' : ''}`} data-message={m.id}>
+                ${flash === m.id ? 'chat-msg-flash' : ''}`} data-message={m.id}>
                 {withAuthor && (last
                   ? <Avatar user={{ name: m.authorName, picture: m.authorPicture }} size={34} />
                   : <span className="chat-avatar-space" />)}
