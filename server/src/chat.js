@@ -4,6 +4,7 @@ import {
 } from './db.js';
 import { notifyUser } from './events.js';
 import { validImages } from './imageList.js';
+import { validReply } from './reply.js';
 import { sendToUsers, withoutLinks } from './push.js';
 
 // People of a board, direct messages between them, and notifications about comments.
@@ -11,11 +12,13 @@ import { sendToUsers, withoutLinks } from './push.js';
 const MAX_TEXT = 4000;
 const validId = (v) => typeof v === 'string' && v.length > 0 && v.length <= 64;
 const validText = (v) => typeof v === 'string' && v.trim().length > 0 && v.length <= MAX_TEXT;
-/** Text and images of a new message: either may be empty, not both; null if invalid. */
-export function messageBody({ text, images }) {
+/** Text, images and the answered message of a new message: text or images may be empty, not both; null if invalid. */
+export function messageBody({ text, images, reply }) {
   const list = images ?? [];
-  if (!validImages(list) || typeof (text ?? '') !== 'string' || (text ?? '').length > MAX_TEXT) return null;
-  return validText(text) || list.length > 0 ? { text: text ?? '', images: list } : null;
+  if (!validImages(list) || !validReply(reply ?? null) || typeof (text ?? '') !== 'string' || (text ?? '').length > MAX_TEXT) {
+    return null;
+  }
+  return validText(text) || list.length > 0 ? { text: text ?? '', images: list, reply: reply ?? null } : null;
 }
 /** A message's text may be emptied when it has images. */
 export const validEdit = (text, message) => validText(text)
@@ -88,14 +91,14 @@ export function registerChatRoutes(app) {
     const { id } = req.body ?? {};
     const body = messageBody(req.body ?? {});
     if (!validId(id) || !body) return res.status(400).json({ error: 'invalid message' });
-    const { text, images } = body;
+    const { text, images, reply } = body;
     const existing = getDm(id);
     if (existing) {
       if (existing.sender !== req.user) return res.status(409).json({ error: 'id taken' });
       return res.json({ message: existing });
     }
     if (!contactIds(req.user).includes(peer)) return res.status(403).json({ error: 'no shared project' });
-    const message = addDm({ id, sender: req.user, recipient: peer, text, images, createdAt: Date.now() });
+    const message = addDm({ id, sender: req.user, recipient: peer, text, images, reply, createdAt: Date.now() });
     markDmRead(req.user, peer, message.createdAt);
     notifyUser(peer, { dm: req.user });
     notifyUser(req.user, { dm: peer });

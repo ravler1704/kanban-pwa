@@ -7,6 +7,7 @@ import { folderAncestors, folderColumnSet, isInbox, isMemberInbox, memberInboxId
 import { cardReminders, isReminderList, nextTime } from './reminders.js';
 import { textDiff } from './textDiff.js';
 import { validImages } from './imageList.js';
+import { validReply } from './reply.js';
 
 const string = (max) => (v) => typeof v === 'string' && v.length <= max;
 const ref = (v) => typeof v === 'string' && v.length > 0 && v.length <= 64;
@@ -124,10 +125,12 @@ export const SCHEMAS = {
       deleted: boolean,
       event: string(4000),
       images: optionalImages,
+      // The message this one answers (see reply.js), or null.
+      reply: validReply,
     },
     defaults: {
       cardId: null, folderId: null, text: '', authorId: '', authorName: '', authorPicture: '',
-      createdAt: 0, editedAt: null, deleted: false, event: '', images: [],
+      createdAt: 0, editedAt: null, deleted: false, event: '', images: [], reply: null,
     },
     textFields: [],
     serverFields: ['authorId', 'authorName', 'authorPicture', 'editedAt', 'event'],
@@ -321,6 +324,7 @@ function applyComment(owner, deviceId, { id, fields }, access, actor) {
     next.deleted = true;
     next.text = '';
     next.images = [];
+    next.reply = null;
   } else if ('text' in fields && fields.text !== current.text) {
     if (!own || current.deleted || (!fields.text.trim() && !(current.images ?? []).length)) return reject();
     next.text = fields.text;

@@ -65,14 +65,14 @@ export function registerSupportRoutes(app) {
     const { id } = req.body ?? {};
     const body = messageBody(req.body ?? {});
     if (!validId(id) || !body) return res.status(400).json({ error: 'invalid message' });
-    const { text, images } = body;
+    const { text, images, reply } = body;
     const existing = getSupportMessage(id);
     if (existing) {
       if (existing.author !== req.user) return res.status(409).json({ error: 'id taken' });
       return res.json({ message: existing });
     }
     const message = addSupportMessage({
-      id, userId: c.userId, author: req.user, fromSupport: c.bySupport, text, images, createdAt: Date.now(),
+      id, userId: c.userId, author: req.user, fromSupport: c.bySupport, text, images, reply, createdAt: Date.now(),
     });
     changed(c.userId);
     if (c.bySupport) {

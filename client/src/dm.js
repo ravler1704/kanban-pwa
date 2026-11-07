@@ -65,8 +65,8 @@ export function onDmThreadChange(listener) {
 
 export const loadThread = (peer, before) => request(`${path(peer)}${before ? `?before=${before}` : ''}`);
 
-export async function sendDm(peer, text, images = []) {
-  const { message } = await request(path(peer), { id: newId(), text, images });
+export async function sendDm(peer, text, images = [], reply = null) {
+  const { message } = await request(path(peer), { id: newId(), text, images, reply });
   dmChanged(peer);
   return message;
 }

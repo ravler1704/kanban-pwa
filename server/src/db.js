@@ -249,6 +249,9 @@ db.exec(`
 // Images of direct and support messages (JSON, see imageList.js).
 if (!hasColumn('direct_messages', 'images')) db.exec("ALTER TABLE direct_messages ADD COLUMN images TEXT NOT NULL DEFAULT '[]'");
 if (!hasColumn('support_messages', 'images')) db.exec("ALTER TABLE support_messages ADD COLUMN images TEXT NOT NULL DEFAULT '[]'");
+// What a direct or support message answers (JSON, see reply.js), or null.
+if (!hasColumn('direct_messages', 'reply')) db.exec('ALTER TABLE direct_messages ADD COLUMN reply TEXT');
+if (!hasColumn('support_messages', 'reply')) db.exec('ALTER TABLE support_messages ADD COLUMN reply TEXT');
 
 // When each user last used the app (any request with their session), for the administrators' overview.
 db.exec(`
@@ -1004,6 +1007,7 @@ const toMessage = (row) => ({
   recipient: row.recipient,
   text: row.text,
   images: JSON.parse(row.images ?? '[]'),
+  reply: row.reply ? JSON.parse(row.reply) : null,
   createdAt: row.created_at,
   editedAt: row.edited_at,
   deleted: Boolean(row.deleted),
@@ -1049,10 +1053,11 @@ const deleteDmClearedPair = db.prepare(`
 `);
 const selectDm = db.prepare('SELECT * FROM direct_messages WHERE id = ?');
 const insertDm = db.prepare(`
-  INSERT OR IGNORE INTO direct_messages (id, sender, recipient, text, images, created_at) VALUES (?, ?, ?, ?, ?, ?)
+  INSERT OR IGNORE INTO direct_messages (id, sender, recipient, text, images, reply, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)
 `);
 const updateDm = db.prepare(`
-  UPDATE direct_messages SET text = ?, edited_at = ?, deleted = ?, images = CASE WHEN ? THEN '[]' ELSE images END WHERE id = ?
+  UPDATE direct_messages SET text = ?, edited_at = ?, deleted = ?, images = CASE WHEN ? THEN '[]' ELSE images END,
+    reply = CASE WHEN ? THEN NULL ELSE reply END WHERE id = ?
 `);
 const upsertDmRead = db.prepare(`
   INSERT INTO dm_reads (user_id, peer, read_at) VALUES (?, ?, ?)
@@ -1080,13 +1085,13 @@ export function getDm(id) {
 }
 
 /** Returns the message, also when this id was saved before (a repeated request). */
-export function addDm({ id, sender, recipient, text, images = [], createdAt }) {
-  insertDm.run(id, sender, recipient, text, JSON.stringify(images), createdAt);
+export function addDm({ id, sender, recipient, text, images = [], reply = null, createdAt }) {
+  insertDm.run(id, sender, recipient, text, JSON.stringify(images), reply && JSON.stringify(reply), createdAt);
   return getDm(id);
 }
 
 export function changeDm(id, { text, deleted }) {
-  updateDm.run(deleted ? '' : text, Date.now(), deleted ? 1 : 0, deleted ? 1 : 0, id);
+  updateDm.run(deleted ? '' : text, Date.now(), deleted ? 1 : 0, deleted ? 1 : 0, deleted ? 1 : 0, id);
   return getDm(id);
 }
 
@@ -1116,6 +1121,7 @@ const toSupportMessage = (row) => ({
   fromSupport: Boolean(row.from_support),
   text: row.text,
   images: JSON.parse(row.images ?? '[]'),
+  reply: row.reply ? JSON.parse(row.reply) : null,
   createdAt: row.created_at,
   editedAt: row.edited_at,
   deleted: Boolean(row.deleted),
@@ -1125,11 +1131,12 @@ const selectSupportThread = db.prepare(`
   SELECT * FROM support_messages WHERE user_id = ? AND created_at < ? ORDER BY created_at DESC, id DESC LIMIT ?
 `);
 const insertSupportMessage = db.prepare(`
-  INSERT OR IGNORE INTO support_messages (id, user_id, author, from_support, text, images, created_at)
-  VALUES (?, ?, ?, ?, ?, ?, ?)
+  INSERT OR IGNORE INTO support_messages (id, user_id, author, from_support, text, images, reply, created_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `);
 const updateSupportMessage = db.prepare(`
-  UPDATE support_messages SET text = ?, edited_at = ?, deleted = ?, images = CASE WHEN ? THEN '[]' ELSE images END WHERE id = ?
+  UPDATE support_messages SET text = ?, edited_at = ?, deleted = ?, images = CASE WHEN ? THEN '[]' ELSE images END,
+    reply = CASE WHEN ? THEN NULL ELSE reply END WHERE id = ?
 `);
 const selectTicket = db.prepare('SELECT * FROM support_tickets WHERE user_id = ?');
 const upsertTicket = db.prepare(`
@@ -1189,9 +1196,9 @@ export function getSupportMessage(id) {
 }
 
 /** A user's message opens the ticket again; the support's answer keeps its status. */
-export function addSupportMessage({ id, userId, author, fromSupport, text, images = [], createdAt }) {
+export function addSupportMessage({ id, userId, author, fromSupport, text, images = [], reply = null, createdAt }) {
   transaction(() => {
-    insertSupportMessage.run(id, userId, author, fromSupport ? 1 : 0, text, JSON.stringify(images), createdAt);
+    insertSupportMessage.run(id, userId, author, fromSupport ? 1 : 0, text, JSON.stringify(images), reply && JSON.stringify(reply), createdAt);
     const ticket = selectTicket.get(userId);
     upsertTicket.run(userId, fromSupport ? (ticket?.status ?? 'open') : 'open', createdAt);
     if (fromSupport) markSupportRead.run(createdAt, userId);
@@ -1201,7 +1208,7 @@ export function addSupportMessage({ id, userId, author, fromSupport, text, image
 }
 
 export function changeSupportMessage(id, { text, deleted }) {
-  updateSupportMessage.run(deleted ? '' : text, Date.now(), deleted ? 1 : 0, deleted ? 1 : 0, id);
+  updateSupportMessage.run(deleted ? '' : text, Date.now(), deleted ? 1 : 0, deleted ? 1 : 0, deleted ? 1 : 0, id);
   return getSupportMessage(id);
 }
 

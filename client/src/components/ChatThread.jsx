@@ -16,6 +16,8 @@ import Markdown from './Markdown.jsx';
 // Phones put a line break on Enter; elsewhere Enter sends and Shift+Enter breaks the line.
 const coarsePointer = () => window.matchMedia?.('(pointer: coarse)').matches;
 const GROUP_MS = 5 * 60 * 1000;
+// As the server's limit of a reply's text (reply.js).
+const MAX_REPLY_TEXT = 1000;
 
 const time = (ts) => new Date(ts).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
@@ -90,7 +92,9 @@ function snippet(m) {
   return count > 1 ? `Фото: ${count}` : count ? 'Фото' : '';
 }
 
-function Composer({ editing, onSubmit, onCancelEdit, onEditLast, placeholder, disabled, canAttach }) {
+function Composer({
+  editing, replying, onSubmit, onCancelEdit, onCancelReply, onEditLast, placeholder, disabled, canAttach,
+}) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [images, setImages] = useState([]);
@@ -139,6 +143,10 @@ function Composer({ editing, onSubmit, onCancelEdit, onEditLast, placeholder, di
       draft.current = null;
     }
   }, [editing]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (replying) input.current?.focus();
+  }, [replying]);
 
   useLayoutEffect(() => {
     const el = input.current;
@@ -216,6 +224,20 @@ function Composer({ editing, onSubmit, onCancelEdit, onEditLast, placeholder, di
             aria-label="Отменить редактирование" title="Отменить редактирование (Esc)">×</button>
         </div>
       )}
+      {replying && !editing && (
+        <div className="chat-editing">
+          <svg className="chat-editing-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d={replying.quote ? ICONS.quote : ICONS.reply} />
+          </svg>
+          <span className="chat-editing-text">
+            <span className="chat-editing-title">{replying.quote ? 'Цитата' : 'Ответ'}: {replying.author}</span>
+            <span className="chat-editing-snippet">{snippet(replying)}</span>
+          </span>
+          <button type="button" className="chat-editing-cancel" onClick={onCancelReply}
+            aria-label="Отменить ответ" title="Отменить ответ (Esc)">×</button>
+        </div>
+      )}
       <div className="chat-composer-row">
         {attaching && (
           <>
@@ -249,9 +271,10 @@ function Composer({ editing, onSubmit, onCancelEdit, onEditLast, placeholder, di
           }}
           onContextMenu={linkMenu.onContextMenu}
           onKeyDown={(e) => {
-            if (e.key === 'Escape' && editing) {
+            if (e.key === 'Escape' && (editing || replying)) {
               e.stopPropagation();
-              onCancelEdit();
+              if (editing) onCancelEdit();
+              else onCancelReply();
             }
             // As in Telegram: ↑ in an empty field edits the last own message.
             if (e.key === 'ArrowUp' && !text && !editing && images.length === 0 && onEditLast?.()) {
@@ -346,6 +369,43 @@ function ImageViewer({ images, index: start, onClose }) {
   );
 }
 
+/**
+ * Text selected within one message of the list `ref`: { id, text, x, top, bottom } (the middle and the
+ * edges of the selection on the screen), or null.
+ */
+function useQuoteSelection(ref) {
+  const [selection, setSelection] = useState(null);
+  useEffect(() => {
+    const update = () => {
+      const sel = window.getSelection();
+      const range = sel?.rangeCount ? sel.getRangeAt(0) : null;
+      const node = range?.commonAncestorContainer;
+      const el = node?.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement;
+      const text = sel?.toString().trim();
+      const message = el?.closest('.chat-text') && el.closest('[data-message]');
+      if (!text || !message || !ref.current?.contains(message)) {
+        setSelection(null);
+        return;
+      }
+      const rect = range.getBoundingClientRect();
+      setSelection({
+        id: message.dataset.message, text: text.slice(0, MAX_REPLY_TEXT), x: rect.left + rect.width / 2, top: rect.top,
+        bottom: rect.bottom,
+      });
+    };
+    const list = ref.current;
+    document.addEventListener('selectionchange', update);
+    list?.addEventListener('scroll', update);
+    window.addEventListener('resize', update);
+    return () => {
+      document.removeEventListener('selectionchange', update);
+      list?.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, [ref]);
+  return selection;
+}
+
 /** «Удалить сообщение?» — it goes for everyone in the chat. */
 function DeleteMessageDialog({ message, direct, onDelete, onClose }) {
   const [busy, setBusy] = useState(false);
@@ -392,8 +452,13 @@ export default function ChatThread({
   // The message's menu: { x, y, message }.
   const [menu, setMenu] = useState(null);
   const [editing, setEditing] = useState(null);
+  // The answered message: { id, author, text, quote } (as saved in the reply's `reply`).
+  const [replying, setReplying] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [viewing, setViewing] = useState(null);
+  // The message briefly highlighted after a click on a reply to it.
+  const [flash, setFlash] = useState(null);
+  const selection = useQuoteSelection(list);
   const cardNumbers = useCardNumbers();
   const lastId = messages[messages.length - 1]?.id;
 
@@ -409,24 +474,60 @@ export default function ChatThread({
 
   const mayDelete = (m) => (canDelete ? canDelete(m) : m.authorId === me);
   const mayEdit = (m) => Boolean(onEdit) && m.authorId === me && !m.event;
-  const menuItems = (m) => [
-    mayEdit(m) && { label: 'Изменить', icon: ICONS.rename, run: () => setEditing(m) },
-    m.text && {
-      label: 'Копировать текст', icon: ICONS.copy, run: () => navigator.clipboard?.writeText(m.text).catch(() => {}),
-    },
+  const mayReply = Boolean(onSend) && !disabled;
+  const copy = (text) => navigator.clipboard?.writeText(text).catch(() => {});
+  const edit = (m) => {
+    setReplying(null);
+    setEditing(m);
+  };
+  /** Answers `m`; with `quote` (the selected part of its text) — quoting it. */
+  const reply = (m, quote = '') => {
+    setEditing(null);
+    setReplying({
+      id: m.id,
+      author: (m.authorName || 'Без имени').slice(0, 200),
+      text: (quote || m.text?.trim() || snippet(m)).slice(0, MAX_REPLY_TEXT),
+      quote: Boolean(quote),
+    });
+    window.getSelection()?.removeAllRanges();
+  };
+  // With a part of the message's text selected the menu is about that part.
+  const menuItems = (m, quote) => (quote ? [
+    mayReply && { label: 'Ответить с цитатой', icon: ICONS.quote, run: () => reply(m, quote) },
+    { label: 'Копировать выделенное', icon: ICONS.copy, run: () => copy(quote) },
+  ] : [
+    mayReply && { label: 'Ответить', icon: ICONS.reply, run: () => reply(m) },
+    mayEdit(m) && { label: 'Изменить', icon: ICONS.rename, run: () => edit(m) },
+    m.text && { label: 'Копировать текст', icon: ICONS.copy, run: () => copy(m.text) },
     mayDelete(m) && onDelete && { label: 'Удалить', icon: ICONS.trash, danger: true, run: () => setDeleting(m) },
-  ].filter(Boolean);
+  ]).filter(Boolean);
   const openMenu = (e, m) => {
-    if (e.target.closest('a, .chat-image') || window.getSelection()?.toString()) return;
-    if (!menuItems(m).length) return;
+    if (e.target.closest('a, .chat-image, .chat-reply')) return;
+    const quote = selection?.id === m.id ? selection.text : '';
+    // A selection elsewhere keeps the browser's own menu (to copy it).
+    if (!quote && window.getSelection()?.toString()) return;
+    const items = menuItems(m, quote);
+    if (!items.length) return;
     e.preventDefault();
-    setMenu({ x: e.clientX, y: e.clientY, message: m });
+    setMenu({ x: e.clientX, y: e.clientY, message: m, quote });
   };
   const editLast = () => {
     const own = [...messages].reverse().find(mayEdit);
-    if (own) setEditing(own);
+    if (own) edit(own);
     return Boolean(own);
   };
+  const jumpTo = (id) => {
+    const el = list.current?.querySelector(`[data-message="${CSS.escape(id)}"]`);
+    if (!el) return;
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    setFlash(id);
+  };
+  useEffect(() => {
+    if (!flash) return undefined;
+    const timer = setTimeout(() => setFlash(null), 1600);
+    return () => clearTimeout(timer);
+  }, [flash]);
+  const selected = selection && mayReply && messages.find((m) => m.id === selection.id);
 
   return (
     <div className={`chat ${className}`}>
@@ -461,12 +562,12 @@ export default function ChatThread({
           const mine = m.authorId === me;
           const withAuthor = !mine && !direct;
           const name = m.authorName || 'Без имени';
-          const active = menu?.message.id === m.id || editing?.id === m.id || deleting?.id === m.id;
+          const active = menu?.message.id === m.id || editing?.id === m.id || deleting?.id === m.id || replying?.id === m.id;
           return (
             <Fragment key={m.id}>
               {newDay && <div className="chat-day"><span>{dayLabel(m.createdAt)}</span></div>}
               <div className={`chat-msg ${mine ? 'chat-msg-mine' : ''} ${grouped ? 'chat-msg-grouped' : ''} ${last ? 'chat-msg-tail' : ''}
-                ${active ? 'chat-msg-active' : ''}`}>
+                ${active ? 'chat-msg-active' : ''} ${flash === m.id ? 'chat-msg-flash' : ''}`} data-message={m.id}>
                 {withAuthor && (last
                   ? <Avatar user={{ name: m.authorName, picture: m.authorPicture }} size={34} />
                   : <span className="chat-avatar-space" />)}
@@ -477,6 +578,14 @@ export default function ChatThread({
                     onClick={(e) => coarsePointer() && openMenu(e, m)}>
                     {withAuthor && !grouped && (
                       <div className="chat-author" style={{ '--author-hue': nameHue(m.authorName || '') }}>{name}</div>
+                    )}
+                    {m.reply && (
+                      <button type="button" className={`chat-reply ${m.reply.quote ? 'chat-reply-quote' : ''}`}
+                        style={{ '--author-hue': nameHue(m.reply.author) }} onClick={() => jumpTo(m.reply.id)}
+                        title="Показать сообщение">
+                        <span className="chat-reply-author">{m.reply.author || 'Без имени'}</span>
+                        <span className="chat-reply-text">{m.reply.text}</span>
+                      </button>
                     )}
                     {m.images?.length > 0 && (
                       <MessageImages images={m.images} onOpen={(index) => setViewing({ images: m.images, index })} />
@@ -496,20 +605,32 @@ export default function ChatThread({
       </div>
       {hint && <p className="chat-hint muted">{hint}</p>}
       {onSend && (
-        <Composer editing={editing} disabled={disabled} placeholder={placeholder} canAttach={canAttach}
-          onCancelEdit={() => setEditing(null)} onEditLast={onEdit ? editLast : null}
+        <Composer editing={editing} replying={replying} disabled={disabled} placeholder={placeholder} canAttach={canAttach}
+          onCancelEdit={() => setEditing(null)} onCancelReply={() => setReplying(null)} onEditLast={onEdit ? editLast : null}
           onSubmit={async (text, images) => {
             if (editing) {
               if (text !== editing.text.trim()) await onEdit(editing, text);
               setEditing(null);
             } else {
               atBottom.current = true;
-              await onSend(text, images);
+              await onSend(text, images, replying);
+              setReplying(null);
             }
           }} />
       )}
+      {selected && !menu && createPortal(
+        <button type="button" className={`chat-quote-button ${coarsePointer() ? 'chat-quote-button-below' : ''}`}
+          style={{ left: selection.x, top: coarsePointer() ? selection.bottom : selection.top }}
+          onPointerDown={(e) => e.preventDefault()} onMouseDown={(e) => e.preventDefault()}
+          onClick={() => reply(selected, selection.text)}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+            strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={ICONS.quote} /></svg>
+          Цитировать
+        </button>,
+        document.body,
+      )}
       {menu && (
-        <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.message)} onClose={() => setMenu(null)} />
+        <ContextMenu x={menu.x} y={menu.y} items={menuItems(menu.message, menu.quote)} onClose={() => setMenu(null)} />
       )}
       {deleting && (
         <DeleteMessageDialog message={deleting} direct={direct} onClose={() => setDeleting(null)}

@@ -1830,6 +1830,64 @@ a.btn { display: inline-block; text-decoration: none; }
 .chat-msg-mine .chat-time { color: var(--chat-meta-out); }
 .chat-ticks { flex: none; }
 .chat-msg-active .chat-bubble { box-shadow: 0 0 0 2px var(--accent); }
+.chat-msg-flash .chat-bubble { animation: chat-flash 1.6s ease-out; }
+@keyframes chat-flash {
+  0%, 40% { box-shadow: 0 0 0 3px var(--accent); }
+  100% { box-shadow: 0 0 0 3px transparent; }
+}
+.chat-reply {
+  --reply-color: hsl(var(--author-hue, 200) 60% var(--chat-name-l));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.05rem;
+  width: 100%;
+  min-width: 8rem;
+  margin: 0.1rem 0 0.3rem;
+  padding: 0.25rem 0.5rem;
+  border: 0;
+  border-left: 3px solid var(--reply-color);
+  border-radius: 4px 6px 6px 4px;
+  background: color-mix(in srgb, var(--reply-color) 14%, transparent);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.chat-reply:hover { background: color-mix(in srgb, var(--reply-color) 22%, transparent); }
+.chat-reply-author { font-size: 0.8rem; font-weight: 600; color: var(--reply-color); }
+.chat-reply-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 0.85rem;
+  line-height: 1.3;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  opacity: 0.9;
+}
+.chat-reply-quote .chat-reply-text::before { content: '«'; }
+.chat-reply-quote .chat-reply-text::after { content: '»'; }
+.chat-quote-button {
+  position: fixed;
+  z-index: 55;
+  transform: translate(-50%, calc(-100% - 8px));
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+.chat-quote-button-below { transform: translate(-50%, 8px); }
+.chat-quote-button:hover { color: var(--accent); }
 .chat-time > span[title] { cursor: default; }
 .delete-message-snippet {
   margin: 0 0 0.6rem;

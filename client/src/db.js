@@ -269,11 +269,12 @@ export const TYPES = {
   },
   // A comment on a card, or (cardId null) a message of the folder's chat. The server sets the author
   // fields and editedAt; `event` (JSON, see chatEvents.jsx) is the server's note of a change in the folder.
-  // images: uploaded before the message is written (see chatImages.js).
+  // images: uploaded before the message is written (see chatImages.js). reply: the answered message
+  // ({ id, author, text, quote }, see ChatThread.jsx), or null.
   comment: {
     table: 'comments',
     fields: ['cardId', 'folderId', 'text', 'authorId', 'authorName', 'authorPicture', 'createdAt', 'editedAt', 'deleted', 'event',
-      'images'],
+      'images', 'reply'],
   },
 };
 
