@@ -7,6 +7,7 @@ import { db, INBOX_ID } from '../db.js';
 import { DoneMarks } from '../doneMarks.js';
 import { ICONS } from '../menuIcons.js';
 import { syncStatus } from '../sync.js';
+import ArchiveDialog from './ArchiveDialog.jsx';
 import { DoneButton, setDraggedCard } from './Card.jsx';
 import ContextMenu, { useMenuButton } from './ContextMenu.jsx';
 import { SwitchRow } from './FolderFilter.jsx';
@@ -90,7 +91,11 @@ export default function InboxPanel({ folders, onOpen, onClose }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [menu, setMenu, closeMenu, menuButton] = useMenuButton(240);
   const doneMarksOf = useContext(DoneMarks);
-  const menuItems = [{ label: 'Настройки «Входящих»…', icon: ICONS.gear, run: () => setSettingsOpen(true) }];
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const menuItems = [
+    { label: 'Настройки «Входящих»…', icon: ICONS.gear, run: () => setSettingsOpen(true) },
+    { label: 'Архив…', icon: ICONS.archive, run: () => setArchiveOpen(true) },
+  ];
   // A card of the board dragged over the panel: it goes back to «Входящие» on the drop.
   const [dropping, setDropping] = useState(false);
   const fromBoard = (e) => e.dataTransfer.types.includes('text/card-id') && !e.dataTransfer.types.includes('text/inbox');
@@ -136,6 +141,7 @@ export default function InboxPanel({ folders, onOpen, onClose }) {
       </div>
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={closeMenu} />}
       {settingsOpen && createPortal(<InboxSettings onClose={() => setSettingsOpen(false)} />, document.body)}
+      {archiveOpen && createPortal(<ArchiveDialog folders={folders} onClose={() => setArchiveOpen(false)} />, document.body)}
       <form className="add-card inbox-add" onSubmit={add}>
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="+ Быстро записать дело"
           aria-label="Новое дело" maxLength={500} />
@@ -163,7 +169,7 @@ export default function InboxPanel({ folders, onOpen, onClose }) {
                   <MoveIcon />
                 </button>
                 <button type="button" className="btn btn-small btn-icon-only" title="Удалить" aria-label="Удалить"
-                  onClick={() => confirm('Удалить карточку?') && deleteCard(card.id)}>
+                  onClick={() => confirm('Удалить карточку? Она попадёт в архив, откуда её можно восстановить.') && deleteCard(card.id)}>
                   <DeleteIcon />
                 </button>
               </span>

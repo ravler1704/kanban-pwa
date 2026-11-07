@@ -5,7 +5,7 @@ import { authEnabled, registerAuthRoutes, requireAuth, requireAuthOrPublic } fro
 import { notifyComments, registerChatRoutes } from './chat.js';
 import { EPOCH, userProfile } from './db.js';
 import { broadcast, registerEvents } from './events.js';
-import { registerFileRoutes, startFileCleanup } from './files.js';
+import { registerFileRoutes, removeFiles, startFileCleanup } from './files.js';
 import { migrateFolders } from './migrateFolders.js';
 import { registerPushRoutes, startReminders } from './push.js';
 import { push, pull, ValidationError } from './sync.js';
@@ -60,6 +60,7 @@ app.post('/api/sync', (req, res) => {
   try {
     const actor = req.user == null ? null : userProfile(req.user);
     const result = push(req.owner, deviceId, changes, req.access, actor);
+    removeFiles(result.purgedFiles);
     if (result.modified) broadcast(req.owner, { seq: result.seq, from: deviceId });
     notifyComments(req.owner, result.results.filter((r) => r.created).map((r) => r.record));
     res.json({ epoch: expected, results: result.results, seq: result.seq });

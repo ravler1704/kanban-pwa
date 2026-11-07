@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import {
-  boardOwner, cardCreators, cardIdsInOrder, commentIdsOfCard, getMaxSeq, getMeta, getRecord, getRecordsSince, saveRecord,
+  boardOwner, cardCreators, cardIdsInOrder, commentIdsOfCard, eventIdsOfCard, getMaxSeq, getMeta, getRecord, getRecordsSince, saveRecord,
   setMeta, transaction, userProfile,
 } from './db.js';
 import { folderAncestors, folderColumnSet, isInbox, isMemberInbox, memberInboxId } from './folders.js';
@@ -93,11 +93,13 @@ export const SCHEMAS = {
       color: optionalKey,
       // Marked complete (as Trello's), wherever the card is.
       done: (v) => v === null || boolean(v),
+      // Deleted from the archive for good: the card, its comments and the notes about it are wiped (see purgeCard).
+      purged: boolean,
     },
     defaults: {
       columnId: 'todo', title: '', description: '', position: 0, deleted: false, remindAt: null,
       reminders: [], authorId: null, assigneeId: null, attachments: [], checklist: [], number: null, color: null,
-      done: false,
+      done: false, purged: false,
     },
     textFields: ['title', 'description'],
     serverFields: ['attachments', 'number'],
@@ -354,6 +356,7 @@ function recordEvents(owner, actor, type, before, after) {
   if (!after || after.type !== type || (before && after.version === before.version)) return;
   const note = (folderId, e) => folderId && addEvent(owner, folderId, actor, e);
   if (type === 'card') {
+    if (after.purged) return;
     const card = { id: after.id, title: after.title, number: after.number };
     const at = after.folderId;
     if (!before) {
@@ -472,6 +475,32 @@ function numberCards(owner) {
   numbered.add(owner);
 }
 
+/**
+ * Wipes the card for good: what was in it, its comments and the notes about it in the chats. Blank deleted records
+ * stay, so that the other devices wipe their copies too. Returns the card and the ids of its files (to remove).
+ */
+function purgeCard(owner, deviceId, id, current, fields) {
+  const defaults = SCHEMAS.card.defaults;
+  const record = saveRecord(owner, 'card', id, pickData(SCHEMAS.card, {
+    ...defaults,
+    folderId: current?.folderId ?? fields.folderId ?? null,
+    columnId: current?.columnId ?? fields.columnId ?? defaults.columnId,
+    deleted: true,
+    purged: true,
+  }), { version: (current?.version ?? 0) + 1, deviceId });
+  for (const commentId of new Set([...commentIdsOfCard(owner, id), ...eventIdsOfCard(owner, id)])) {
+    const comment = withDefaults(getRecord(owner, commentId));
+    saveRecord(owner, 'comment', commentId, pickData(SCHEMAS.comment, {
+      ...SCHEMAS.comment.defaults,
+      cardId: comment.cardId,
+      folderId: comment.folderId,
+      createdAt: comment.createdAt,
+      deleted: true,
+    }), { version: comment.version + 1, deviceId: 'server' });
+  }
+  return { record, files: (current?.attachments ?? []).map((f) => f.id) };
+}
+
 function applyChange(owner, deviceId, { type, id, baseVersion, fields, base }, access, actor) {
   const schema = SCHEMAS[type];
   const current = withDefaults(getRecord(owner, id));
@@ -485,6 +514,14 @@ function applyChange(owner, deviceId, { type, id, baseVersion, fields, base }, a
   // Members' own «Входящие» are theirs alone, also on the owner's board.
   if (!access && type === 'card' && (hiddenFromOwner(current) || isMemberInbox(fields.folderId))) {
     return result('merged', current && !hiddenFromOwner(current) ? current : tombstone(type, id, current));
+  }
+  if (type === 'card') {
+    // Nothing brings a wiped card back.
+    if (current?.purged) return result('merged', current);
+    if (fields.purged === true) {
+      const { record, files } = purgeCard(owner, deviceId, id, current, fields);
+      return { ...result('applied', record), purgedFiles: files };
+    }
   }
 
   if (!current) {
@@ -596,7 +633,9 @@ export function push(owner, deviceId, rawChanges, access = null, actor = null) {
       return r;
     });
     const seq = getMaxSeq(owner);
-    return { results, seq, modified: seq !== before };
+    const purgedFiles = results.flatMap((r) => r.purgedFiles ?? []);
+    for (const r of results) delete r.purgedFiles;
+    return { results, seq, modified: seq !== before, purgedFiles };
   });
 }
 

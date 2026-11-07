@@ -13,7 +13,7 @@ fs.mkdirSync(FILES_DIR, { recursive: true });
 
 // Uploads stop when the disk would get this full: the database needs room too.
 const MIN_FREE_BYTES = 1024 ** 3;
-// A deleted card may be restored (conflict dialog) for a while; its files stay that long.
+// A deleted folder may be restored for a while; its background stays that long. Cards keep theirs while archived.
 const KEEP_DELETED_MS = 30 * 24 * 60 * 60 * 1000;
 const CLEANUP_EVERY_MS = 6 * 60 * 60 * 1000;
 // Files not yet listed in a card (an upload finishing) are left alone for this long.

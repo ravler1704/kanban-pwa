@@ -19,6 +19,7 @@ import ConflictDialog from './components/ConflictDialog.jsx';
 import ManageDialog from './components/ManageDialog.jsx';
 import ColumnsDraftDialog from './components/ColumnsDraftDialog.jsx';
 import { BoardMenuButton, BoardName, useFolderActions } from './components/FolderMenu.jsx';
+import ArchiveDialog from './components/ArchiveDialog.jsx';
 import NewCardDialog from './components/NewCardDialog.jsx';
 import CalendarView from './components/CalendarView.jsx';
 import ListView from './components/ListView.jsx';
@@ -139,6 +140,7 @@ export default function App() {
   const [boardMenu, setBoardMenu] = useState(null);
   const [menuFolderId, setMenuFolderId] = useState(null);
   const [renamingId, setRenamingId] = useState(null);
+  const [archiveOpen, setArchiveOpen] = useState(false);
   const { doneMarks: spaceDoneMarks, inboxDoneMarks } = useOpenSpace();
   const [inboxOpen, setInboxOpen] = useState(() => localStorage.getItem(INBOX_OPEN_KEY) === '1');
   const toggleInbox = () => {
@@ -482,6 +484,8 @@ export default function App() {
       columnEdit && { label: 'Набор колонок…', icon: ICONS.settings, shortcut: 'KeyK', run: () => setEditingColumns(true) },
     ]),
     null,
+    !readOnly && { label: 'Архив…', icon: ICONS.archive, run: () => setArchiveOpen(true) },
+    null,
     folderActions.removeItem,
   ].filter((item, i, list) => item !== false && (item !== null || (i > 0 && list[i - 1] && list.slice(i + 1).some(Boolean))));
 
@@ -644,6 +648,7 @@ export default function App() {
       )}
 
       {folderActions.dialogs}
+      {archiveOpen && <ArchiveDialog folders={usable} onClose={() => setArchiveOpen(false)} />}
 
       {managing && (
         <ManageDialog

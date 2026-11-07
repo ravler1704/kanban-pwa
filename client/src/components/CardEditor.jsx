@@ -130,7 +130,7 @@ function CardForm({ card, columnsOfFolder, folders, inbox, onClose }) {
   }
 
   async function remove() {
-    if (!confirm('Удалить карточку?')) return;
+    if (!confirm('Удалить карточку? Она попадёт в архив, откуда её можно восстановить.')) return;
     await deleteCard(card.id);
     onClose();
   }

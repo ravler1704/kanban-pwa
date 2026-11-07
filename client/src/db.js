@@ -246,7 +246,7 @@ db.version(13).stores({
 // background (folder), color (card): ids of the presets in appearance.js.
 const FOLDER_FIELDS = ['parentId', 'columnSetId', 'name', 'position', 'deleted', 'hidden', 'background', 'doneMarks'];
 const CARD_FIELDS = ['folderId', 'columnId', 'title', 'description', 'position', 'deleted', 'remindAt', 'reminders', 'authorId', 'assigneeId',
-  'attachments', 'checklist', 'number', 'color', 'done'];
+  'attachments', 'checklist', 'number', 'color', 'done', 'purged'];
 
 // Push order matters: columns and sets before the folders that use them, folders before their cards.
 // Folders among themselves go parents first (see sortFolders in sync.js).
@@ -264,6 +264,7 @@ export const TYPES = {
     // checklist: subtasks [{ id, text, done }], in order.
     // number: #1, #2, … within the board, given by the server (null until the card is synced).
     // done: marked complete (as Trello's).
+    // deleted: in the archive (it may be restored); purged: deleted from there for good, the server wipes it all.
     fields: CARD_FIELDS,
   },
   // A comment on a card, or (cardId null) a message of the folder's chat. The server sets the author

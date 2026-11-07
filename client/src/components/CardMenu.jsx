@@ -81,7 +81,7 @@ export default function CardMenu({ card, prevColumn, nextColumn, readOnly, onOpe
     null,
     editable && {
       label: 'Удалить карточку', icon: ICONS.trash, shortcut: 'Delete', danger: true,
-      run: () => confirm('Удалить карточку?') && deleteCard(card.id),
+      run: () => confirm('Удалить карточку? Она попадёт в архив, откуда её можно восстановить.') && deleteCard(card.id),
     },
   ]);
   const useful = items.length > 1;

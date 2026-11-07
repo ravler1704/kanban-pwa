@@ -16,7 +16,10 @@ async function insert(type, fields) {
   // which is the order cards get their numbers in.
   lastCreated = Math.max(Date.now(), lastCreated + 1);
   const record = { id: newId(), ...fields, deleted: false, server: null, conflict: null, createdLocally: lastCreated };
-  if (type === 'card') record.done ??= false;
+  if (type === 'card') {
+    record.done ??= false;
+    record.purged = false;
+  }
   record.dirty = isDirty(type, record);
   await tableOf(type).add(record);
   return record;
@@ -513,8 +516,25 @@ export async function updateCard(id, patch, base = null) {
   requestSync();
 }
 
+/** Moves the card to the archive, from where it may be restored. */
 export function deleteCard(id) {
   return updateCard(id, { deleted: true });
+}
+
+export function restoreCard(id) {
+  return updateCard(id, { deleted: false });
+}
+
+/** Deletes archived cards for good: the server wipes them with their comments, history and files. */
+export async function purgeCards(ids) {
+  await db.transaction('rw', db.cards, db.comments, async () => {
+    for (const id of ids) {
+      await update('card', id, { purged: true });
+      // Gone from this device right away; the server's wiped copies follow.
+      await db.comments.where('cardId').equals(id).modify({ text: '', deleted: true });
+    }
+  });
+  requestSync();
 }
 
 /** With `folderId` the card goes to that folder too (from «Входящие»). */

@@ -297,9 +297,8 @@ export function saveRecord(owner, type, id, data, { version, deviceId }) {
 
 const CARD_FILES = `FROM records r, json_each(r.data, '$.attachments') j WHERE r.type = 'card'`;
 const selectCardByFile = db.prepare(`SELECT r.id ${CARD_FILES} AND r.owner = ? AND json_extract(j.value, '$.id') = ? LIMIT 1`);
-const selectKeptFiles = db.prepare(`
-  SELECT json_extract(j.value, '$.id') AS id ${CARD_FILES} AND (json_extract(r.data, '$.deleted') = 0 OR r.updated_at > ?)
-`);
+// Deleted cards stay in the archive with their files until they are deleted for good (then they list none).
+const selectKeptFiles = db.prepare(`SELECT json_extract(j.value, '$.id') AS id ${CARD_FILES}`);
 const selectOwnerFiles = db.prepare(`SELECT json_extract(j.value, '$.id') AS id ${CARD_FILES} AND r.owner = ?`);
 
 // Board backgrounds uploaded by users: a folder's `background` is `file-<file id>`.
@@ -321,9 +320,9 @@ export function foldersWithBackground(owner, fileId) {
   return selectFoldersByBackground.all(owner, `${BACKGROUND_PREFIX}${fileId}`).map((r) => r.id);
 }
 
-/** Files of live cards and folders, and of those deleted after `deletedSince` (they may still be restored). */
+/** Files of cards (archived too) and of live folders, and of folders deleted after `deletedSince` (they may still be restored). */
 export function keptFileIds(deletedSince) {
-  return new Set([...selectKeptFiles.all(deletedSince), ...selectKeptBackgrounds.all(deletedSince)].map((r) => r.id));
+  return new Set([...selectKeptFiles.all(), ...selectKeptBackgrounds.all(deletedSince)].map((r) => r.id));
 }
 
 export function ownerFileIds(owner) {
@@ -855,6 +854,18 @@ export function cardIdsInOrder(owner) {
 
 export function commentIdsOfCard(owner, cardId) {
   return selectCommentsOfCard.all(owner, cardId).map((r) => r.id);
+}
+
+const selectEventsOfCard = db.prepare(`
+  SELECT id FROM (
+    SELECT id, json_extract(data, '$.event') AS event
+    FROM records WHERE owner = ? AND type = 'comment' AND json_extract(data, '$.event') LIKE '{%'
+  ) WHERE CASE WHEN json_valid(event) THEN json_extract(event, '$.card.id') END = ?
+`);
+
+/** The notes about the card in the chats of the board's folders. */
+export function eventIdsOfCard(owner, cardId) {
+  return selectEventsOfCard.all(owner, cardId).map((r) => r.id);
 }
 
 // People sharing a live folder with the user.

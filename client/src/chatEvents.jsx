@@ -34,8 +34,8 @@ function parts(e) {
   const card = { card: e.card };
   switch (e.k) {
     case 'card.create': return ['Создана карточка ', card, e.column ? ` в колонке ${q(e.column)}` : ''];
-    case 'card.delete': return ['Удалена карточка ', card];
-    case 'card.restore': return ['Восстановлена карточка ', card];
+    case 'card.delete': return ['В архив перенесена карточка ', card];
+    case 'card.restore': return ['Из архива восстановлена карточка ', card];
     case 'card.rename': return [`Карточка ${q(e.from)} переименована в `, card];
     case 'card.column': return ['Карточка ', card, ` перемещена: ${q(e.from)} → ${q(e.to)}`];
     case 'card.section': return e.to
