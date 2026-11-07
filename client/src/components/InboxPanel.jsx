@@ -129,7 +129,7 @@ export default function InboxPanel({ folders, onOpen, onClose }) {
           <CloseIcon />
         </button>
         <h2 className="inbox-title"><InboxIcon /> Входящие</h2>
-        <button type="button" className={`btn btn-small btn-icon-only inbox-head-btn ${menu ? 'active' : ''}`} title="Действия"
+        <button type="button" className={`btn btn-small btn-icon-only inbox-head-btn inbox-menu-btn ${menu ? 'active' : ''}`} title="Действия"
           aria-label="Действия с «Входящими»" {...menuButton}>
           <MoreIcon />
         </button>

@@ -752,6 +752,11 @@ body {
   flex: none; border-color: transparent; background: transparent; color: var(--muted);
 }
 .inbox-head .inbox-head-btn:hover:not(:disabled), .inbox-head .inbox-head-btn.active { color: var(--text); }
+@media (hover: hover) {
+  .inbox-menu-btn, .board-menu-btn { opacity: 0; }
+  .inbox:hover .inbox-menu-btn, .inbox-menu-btn:focus-visible, .inbox-menu-btn.active,
+  .app-main:hover .board-menu-btn, .board-menu-btn:focus-visible, .board-menu-btn.active { opacity: 1; }
+}
 .inbox-title-row { flex: 1; min-width: 0; }
 .inbox-title-row > .inbox-card-title { width: 100%; }
 .inbox-title-row > .card-done-btn { top: 0.35rem; }
