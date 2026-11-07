@@ -206,6 +206,11 @@ body {
 }
 .projectbar-row:empty { display: none; }
 .board-head { display: flex; flex: 1; align-items: center; gap: 0.5rem; min-width: 0; }
+.projectbar .board-menu-btn, .projectbar .board-menu-btn:hover:not(:disabled) {
+  flex: none; border-color: transparent; background: transparent; color: var(--muted);
+}
+.projectbar .board-menu-btn:hover:not(:disabled), .projectbar .board-menu-btn.active { color: var(--text); }
+.has-bg .projectbar .board-menu-btn { color: #f8fafc; }
 .board-title {
   margin: -0.25em -4px;
   padding: 0.25em 4px;
@@ -340,8 +345,6 @@ body {
 .filters-reset { margin-right: auto; }
 .filters-toggle { position: relative; color: var(--muted); }
 .filters-toggle.active { color: var(--text); }
-.board-menu-btn { flex: none; color: var(--muted); }
-.board-menu-btn.active { color: var(--text); }
 .filters-dot {
   position: absolute; top: 4px; right: 4px; width: 8px; height: 8px;
   border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--bg);
