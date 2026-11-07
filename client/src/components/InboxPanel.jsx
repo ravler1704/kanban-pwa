@@ -218,6 +218,9 @@ export default function InboxPanel({ folders, onOpen, onClose }) {
                 <button type="button" className="inbox-card-title done-slide" onClick={() => onOpen(card.id)}>
                   {card.title ? <Markdown text={card.title} inline /> : <em className="muted">Без названия</em>}
                 </button>
+                {card.conflict
+                  ? <span className="badge badge-conflict inbox-card-badge done-slide">Конфликт — откройте, чтобы решить</span>
+                  : card.dirty === 1 && <span className="badge badge-pending inbox-card-badge done-slide">Не синхр.</span>}
               </div>
               <span className="inbox-card-actions">
                 <button type="button" className="btn btn-small btn-icon-only" title="На доску…" aria-label="На доску"

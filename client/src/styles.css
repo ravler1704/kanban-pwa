@@ -782,6 +782,7 @@ body {
 .inbox-title-row { flex: 1; min-width: 0; }
 .inbox-title-row > .inbox-card-title { width: 100%; }
 .inbox-title-row > .card-done-btn { top: 0.35rem; }
+.inbox-card-badge { display: table; margin: 0.1rem 0 0.2rem; }
 .inbox-card-actions .btn-icon-only { padding: 0.3rem; color: var(--muted); }
 .inbox-card-actions .btn-icon-only:hover { color: var(--text); }
 .inbox-empty { margin: 0; font-size: 0.9rem; line-height: 1.45; }
