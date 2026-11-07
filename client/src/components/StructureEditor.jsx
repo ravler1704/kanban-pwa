@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { createFolder, moveFolder, renameFolder, reorderFolder } from '../actions.js';
 import { backgroundItems } from '../appearance.js';
 import { isOwnBoard } from '../board.js';
 import { childrenOf, descendants, flattenFolders, folderColumnSetId, folderPath, folderTree } from '../folders.js';
 import { ICONS } from '../menuIcons.js';
+import BoardSettings from './BoardSettings.jsx';
 import ColumnsDraftDialog from './ColumnsDraftDialog.jsx';
 import ContextMenu, { useHoverShortcuts, useMenuButton } from './ContextMenu.jsx';
 import FolderSelect from './FolderSelect.jsx';
@@ -89,6 +91,7 @@ function FolderRow({ folder, index, count, ctx }) {
   const tree = folderTree(folders);
   const kids = childrenOf(folders, folder.id);
   const [panel, setPanel] = useState(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const isRoot = !tree.parentOf(folder);
   const own = Boolean(folder.columnSetId);
   const setName = model.sets.find((s) => s.id === model.setIdOf(folder))?.name;
@@ -109,6 +112,7 @@ function FolderRow({ folder, index, count, ctx }) {
     { label: 'Перенести…', icon: ICONS.move, shortcut: 'KeyM', run: () => ctx.onMove(folder) },
     ctx.onColumns ? { label: 'Набор колонок…', icon: ICONS.settings, shortcut: 'KeyK', run: () => ctx.onColumns(folder.id) } : false,
     { label: 'Фон', icon: ICONS.palette, submenu: backgroundItems(folder) },
+    { label: 'Настройки доски…', icon: ICONS.gear, run: () => setSettingsOpen(true) },
     !needle && null,
     !needle && {
       label: 'Выше', icon: ICONS.up, shortcut: 'Alt+ArrowUp', disabled: index === 0,
@@ -144,6 +148,10 @@ function FolderRow({ folder, index, count, ctx }) {
         </button>
       </div>
       {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={closeMenu} />}
+      {settingsOpen && createPortal(
+        <BoardSettings folder={folder} folders={folders} onClose={() => setSettingsOpen(false)} />,
+        document.body,
+      )}
       {panel === 'access' && canShare && (
         <div className="tree-body"><FolderMembers folder={folder} folders={folders} /></div>
       )}

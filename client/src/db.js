@@ -244,7 +244,7 @@ db.version(13).stores({
 });
 
 // background (folder), color (card): ids of the presets in appearance.js.
-const FOLDER_FIELDS = ['parentId', 'columnSetId', 'name', 'position', 'deleted', 'hidden', 'background'];
+const FOLDER_FIELDS = ['parentId', 'columnSetId', 'name', 'position', 'deleted', 'hidden', 'background', 'doneMarks'];
 const CARD_FIELDS = ['folderId', 'columnId', 'title', 'description', 'position', 'deleted', 'remindAt', 'reminders', 'authorId', 'assigneeId',
   'attachments', 'checklist', 'number', 'color', 'done'];
 

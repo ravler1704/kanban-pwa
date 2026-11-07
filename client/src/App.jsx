@@ -6,7 +6,9 @@ import { dbName, isCurrentBoard, isOwnBoard, publicToken, switchBoard } from './
 import { useReadOnly } from './public.js';
 import { db, DEFAULT_FOLDER_ID, INBOX_ID } from './db.js';
 import { columnModel } from './columnSets.js';
-import { backgroundItems, folderBackground } from './appearance.js';
+import { backgroundItems, folderBackground, folderDoneMarks } from './appearance.js';
+import { DoneMarks } from './doneMarks.js';
+import BoardSettings from './components/BoardSettings.jsx';
 import { ICONS } from './menuIcons.js';
 import ContextMenu from './components/ContextMenu.jsx';
 import { renameFolder } from './actions.js';
@@ -135,6 +137,7 @@ export default function App() {
   const [editingColumns, setEditingColumns] = useState(false);
   // The menu of a right click on the board itself (not a column or a card): { x, y }.
   const [boardMenu, setBoardMenu] = useState(null);
+  const [boardSettingsId, setBoardSettingsId] = useState(null);
   const [inboxOpen, setInboxOpen] = useState(() => localStorage.getItem(INBOX_OPEN_KEY) === '1');
   const toggleInbox = () => {
     localStorage.setItem(INBOX_OPEN_KEY, inboxOpen ? '0' : '1');
@@ -227,6 +230,11 @@ export default function App() {
   // ---- resolve the selection against live data ----
   const folders = liveFolders(data?.folders ?? [], { standIn: isOwnBoard });
   const tree = folderTree(folders);
+  const doneMarksOf = (card) => {
+    const folder = tree.byId.get(card.folderId);
+    return folder ? folderDoneMarks(folder, folders) : true;
+  };
+  const settingsFolder = boardSettingsId ? tree.byId.get(boardSettingsId) ?? null : null;
   const model = columnModel(data?.columnSets ?? [], data?.columns ?? [], folders);
 
   // A card is shown if its folder is checked; folders are independent of those above and below them.
@@ -455,6 +463,9 @@ export default function App() {
     view === 'board' && !searching && !readOnly && columnsFolder && usable.includes(columnsFolder) && {
       label: 'Фон', icon: ICONS.palette, submenu: backgroundItems(columnsFolder),
     },
+    view === 'board' && !searching && !readOnly && columnsFolder && usable.includes(columnsFolder) && {
+      label: 'Настройки доски…', icon: ICONS.settings, run: () => setBoardSettingsId(columnsFolder.id),
+    },
     null,
     !readOnly && !publicToken && {
       label: 'Настройки пространства…', icon: ICONS.gear, run: () => setManaging(true),
@@ -462,6 +473,7 @@ export default function App() {
   ].filter((item, i, list) => item !== false && (item !== null || (i > 0 && list[i - 1] && list.slice(i + 1).some(Boolean))));
 
   return (
+    <DoneMarks.Provider value={doneMarksOf}>
     <div className="app">
       <StatusBar pending={data.pending} conflicts={data.conflicted.length} folders={chatFolders} onChat={setChat}
         search={search} onSearch={folders.length ? setSearch : null}
@@ -613,6 +625,10 @@ export default function App() {
           onClose={() => setEditingColumns(false)} />
       )}
 
+      {settingsFolder && (
+        <BoardSettings folder={settingsFolder} folders={folders} onClose={() => setBoardSettingsId(null)} />
+      )}
+
       {managing && (
         <ManageDialog
           model={model}
@@ -624,5 +640,6 @@ export default function App() {
         />
       )}
     </div>
+    </DoneMarks.Provider>
   );
 }

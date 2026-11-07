@@ -69,6 +69,15 @@ export function folderBackground(folder, folders) {
   return null;
 }
 
+/** Whether the folder's cards can be marked done: its own setting or the nearest ancestor's; on by default. */
+export function folderDoneMarks(folder, folders) {
+  const path = folderPath(folder, folders);
+  for (let i = path.length - 1; i >= 0; i -= 1) {
+    if (typeof path[i].doneMarks === 'boolean') return path[i].doneMarks;
+  }
+  return true;
+}
+
 /** Menu items (see ContextMenu) that set the card's cover colour. */
 export const cardColorItems = (card) => [
   { label: 'Без цвета', swatch: 'none', active: !card.color, run: () => updateCard(card.id, { color: null }) },

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
+import { DoneMarks } from '../doneMarks.js';
 import { deleteCard, duplicateCard, moveCardTo, moveCardToColumn, moveCardToEdge, setCardDone } from '../actions.js';
 import { authState } from '../auth.js';
 import { currentBoard, publicToken } from '../board.js';
@@ -41,6 +42,7 @@ export default function CardMenu({ card, prevColumn, nextColumn, readOnly, onOpe
   const [menu, setMenu, closeMenu, menuButton] = useMenuButton(260);
   const [copied, setCopied] = useState(false);
   const editable = !readOnly && !card.conflict;
+  const doneMarks = useContext(DoneMarks)(card);
 
   useEffect(() => {
     if (!copied) return undefined;
@@ -50,7 +52,7 @@ export default function CardMenu({ card, prevColumn, nextColumn, readOnly, onOpe
 
   const items = tidy([
     { label: 'Открыть', icon: ICONS.open, run: onOpen },
-    editable && {
+    editable && doneMarks && {
       label: card.done ? 'Снять отметку «Выполнена»' : 'Отметить выполненной', icon: ICONS.done, shortcut: 'KeyX',
       active: Boolean(card.done), run: () => setCardDone(card.id, !card.done),
     },

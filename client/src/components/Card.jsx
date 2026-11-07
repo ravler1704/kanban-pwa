@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { DoneMarks } from '../doneMarks.js';
 import { setCardDone, updateCard } from '../actions.js';
 import { cardColor } from '../appearance.js';
 import { uploadStore } from '../files.js';
@@ -200,7 +201,7 @@ export default function Card({
   const classes = ['card'];
   if (card.conflict) classes.push('card-conflict');
   if (card.deleted) classes.push('card-deleted');
-  const doneShown = !card.conflict && (!readOnly || Boolean(card.done));
+  const doneShown = useContext(DoneMarks)(card) && !card.conflict && (!readOnly || Boolean(card.done));
 
   return (
     <article

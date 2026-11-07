@@ -61,9 +61,12 @@ export const SCHEMAS = {
       hidden: boolean,
       // Background of the board: an id of the client's presets or `file-<id>` (an uploaded image); null → the parent's.
       background: (v) => optionalKey(v) || (typeof v === 'string' && /^file-[0-9a-f-]{36}$/.test(v)),
+      // Cards can be marked done (as Trello's); null → as the parent, on at the top.
+      doneMarks: (v) => v === null || boolean(v),
     },
     defaults: {
       parentId: null, columnSetId: null, name: '', position: 0, deleted: false, hidden: false, background: null,
+      doneMarks: null,
     },
     textFields: [],
     deleteConflicts: false,

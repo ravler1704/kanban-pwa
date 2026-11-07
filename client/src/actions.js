@@ -310,6 +310,12 @@ export async function setFolderBackground(id, background) {
   requestSync();
 }
 
+/** Turns marking cards done on or off for the folder; null takes the parent's. */
+export async function setFolderDoneMarks(id, doneMarks) {
+  await update('folder', id, { doneMarks });
+  requestSync();
+}
+
 /** Swaps the folder with its neighbour among the folders of the same parent; `direction` is -1 (up) or 1 (down). */
 export async function reorderFolder(id, direction) {
   await db.transaction('rw', db.folders, async () => {

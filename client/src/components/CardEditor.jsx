@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useContext, useState } from 'react';
+import { DoneMarks } from '../doneMarks.js';
 import { deleteCard, moveCardTo, moveCardToColumn, moveCardToFolder, updateCard } from '../actions.js';
 import { CARD_COLORS } from '../appearance.js';
 import { INBOX_ID } from '../db.js';
@@ -43,9 +44,10 @@ function ColorField({ value, onChange }) {
 function CardView({ card, columnsOfFolder, folders, onClose }) {
   const column = columnsOfFolder(card.folderId).find((c) => c.id === card.columnId);
   const folder = folders.find((f) => f.id === card.folderId);
+  const doneMarks = useContext(DoneMarks)(card);
   return (
     <Modal title={card.number ? `Карточка #${card.number}` : 'Карточка'} onClose={onClose}
-      headerEnd={card.done && <DoneButton card={card} readOnly className="modal-done-btn" />}>
+      headerEnd={card.done && doneMarks && <DoneButton card={card} readOnly className="modal-done-btn" />}>
       <div className="editor card-view">
         <h3 className="card-view-title">
           {card.title ? <Markdown text={card.title} inline /> : <em className="muted">Без названия</em>}
@@ -88,6 +90,7 @@ function CardForm({ card, columnsOfFolder, folders, inbox, onClose }) {
   const [authorId, setAuthorId] = useState(card.authorId ?? null);
   const [assigneeId, setAssigneeId] = useState(card.assigneeId ?? null);
   const [color, setColor] = useState(card.color ?? null);
+  const doneMarks = useContext(DoneMarks)(card);
 
   // Another folder may use another column set: the status then is one of its columns.
   const columns = columnsOfFolder(folderId);
@@ -134,7 +137,7 @@ function CardForm({ card, columnsOfFolder, folders, inbox, onClose }) {
 
   return (
     <Modal title={card.number ? `Карточка #${card.number}` : 'Карточка'} onClose={onClose}
-      headerEnd={<DoneButton card={card} readOnly={card.conflict} className="modal-done-btn" />}>
+      headerEnd={doneMarks && <DoneButton card={card} readOnly={card.conflict} className="modal-done-btn" />}>
       <form className="editor" onSubmit={save}>
         {changedRemotely && (
           <p className="notice">
