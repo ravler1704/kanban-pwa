@@ -229,6 +229,15 @@ const hiddenFromOwner = (record) => Boolean(record) && (record.type === 'card' |
 /** Cards and comments the member may see and change: in their folders or their own «Входящие». */
 const holdsCards = (access, folderId) => access.folders.has(folderId) || (access.inbox != null && folderId === access.inbox);
 
+/** Whether the chat `folder:<id>` or `card:<id>` of the board is there and open to `access` (null: the owner). */
+export function threadVisible(owner, thread, access) {
+  const [, kind, id] = thread.match(/^(folder|card):(.+)$/) ?? [];
+  const record = id && getRecord(owner, id);
+  if (!record || record.type !== kind) return false;
+  if (!access) return true;
+  return holdsCards(access, kind === 'folder' ? record.id : record.folderId);
+}
+
 function visibleTo(access, record) {
   switch (record.type) {
     case 'folder': return access.folders.has(record.id) || access.ancestors.has(record.id);

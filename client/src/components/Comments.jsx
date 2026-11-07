@@ -4,6 +4,7 @@ import { addComment, deleteComment, editComment } from '../actions.js';
 import { authState } from '../auth.js';
 import { parseEvent } from '../chatEvents.jsx';
 import { isOwnBoard, publicToken } from '../board.js';
+import { chatReadsStore, reportRead } from '../chatReads.js';
 import { db } from '../db.js';
 import { markSeen, threadOf } from '../seen.js';
 import ChatThread from './ChatThread.jsx';
@@ -37,7 +38,9 @@ export function useComments({ cardId, folderId }) {
   const latest = live[live.length - 1]?.createdAt ?? 0;
   const thread = threadOf({ cardId, folderId });
   useEffect(() => {
-    if (latest) markSeen(thread, latest);
+    if (!latest) return;
+    markSeen(thread, latest);
+    reportRead(thread, latest);
   }, [thread, latest]);
   return comments ? live.map(toMessage) : null;
 }
@@ -80,6 +83,7 @@ export default function Comments({ card, folderId, title, className, placeholder
   const where = card ? { cardId: card.id, folderId: card.folderId } : { cardId: null, folderId };
   const all = useComments(where);
   const historyHidden = useHistoryHidden();
+  const reads = useSyncExternalStore(chatReadsStore.subscribe, chatReadsStore.get);
   const me = user?.id ?? '';
   const canWrite = !publicToken;
 
@@ -92,6 +96,7 @@ export default function Comments({ card, folderId, title, className, placeholder
       className={className}
       messages={messages}
       me={me}
+      readAt={reads[threadOf(where)] ?? 0}
       placeholder={placeholder ?? 'Комментарий'}
       empty={card ? 'Комментариев пока нет.' : 'Сообщений пока нет — напишите первым.'}
       onSend={canWrite ? (text, images, reply) => addComment(where, text, user, images, reply) : null}

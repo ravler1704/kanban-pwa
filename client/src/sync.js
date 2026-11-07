@@ -2,6 +2,7 @@ import { checkAuth, isSignedOut, markSignedOut } from './auth.js';
 import { boardHeaders, boardQuery, dropCurrentBoard, publicToken } from './board.js';
 import { markLinkGone, publicLinkGone } from './public.js';
 import { clearLocalData, db, getDeviceId, isDirty, pickFields, sameValue, tableOf, TYPES } from './db.js';
+import { refreshChatReads } from './chatReads.js';
 import { dmChanged, refreshDm } from './dm.js';
 import { refreshSupport, supportChanged } from './support.js';
 import { refreshPeople } from './people.js';
@@ -268,6 +269,8 @@ function connectEvents() {
       if ('dm' in data) dmChanged(data.dm);
       // A message to the support or from it: 'me' or the user's id (for administrators).
       else if ('support' in data) supportChanged(data.support);
+      // Someone read a chat of the board further (the two ticks).
+      else if ('reads' in data) refreshChatReads();
       // Someone opened a board to the user or closed it.
       else if (data.boards) checkAuth();
       else if (data.from !== deviceId) requestSync();
@@ -280,6 +283,7 @@ function connectEvents() {
     if (!publicToken) {
       refreshDm();
       refreshSupport();
+      refreshChatReads();
     }
   };
 }

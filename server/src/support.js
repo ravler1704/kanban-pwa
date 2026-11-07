@@ -54,8 +54,11 @@ export function registerSupportRoutes(app) {
     if (hasMore) messages.shift();
     const authors = {};
     for (const m of messages) authors[m.author] ??= author(m.author);
+    const ticket = supportTicket(c.userId);
     res.json({
-      user: userProfile(c.userId), status: supportTicket(c.userId)?.status ?? null, messages, hasMore, authors,
+      user: userProfile(c.userId), status: ticket?.status ?? null, messages, hasMore, authors,
+      // Until when the other side has read this side's messages (their two ticks).
+      readAt: (c.bySupport ? ticket?.userRead : ticket?.supportRead) ?? 0,
     });
   });
 
@@ -125,9 +128,8 @@ export function registerSupportRoutes(app) {
     if (!c) return res.status(403).json({ error: 'not admin' });
     const at = Number(req.body?.at);
     if (!Number.isInteger(at) || at <= 0) return res.status(400).json({ error: 'invalid time' });
-    markSupportThreadRead(c.userId, Math.min(at, Date.now()), c.bySupport);
-    if (c.bySupport) changed(c.userId);
-    else notifyUser(req.user, { support: 'me' });
+    // Both sides: the other one's ticks turn double.
+    if (markSupportThreadRead(c.userId, Math.min(at, Date.now()), c.bySupport)) changed(c.userId);
     res.json({ ok: true });
   });
 

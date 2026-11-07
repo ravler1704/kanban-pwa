@@ -102,6 +102,7 @@ function DmThread({ peer }) {
       direct
       messages={messages}
       me={me}
+      readAt={thread?.peerReadAt ?? 0}
       empty={thread ? 'Сообщений пока нет — напишите первым.' : 'Загрузка…'}
       hint={hint}
       disabled={!online || !thread?.canWrite}
@@ -162,6 +163,7 @@ function SupportThread({ user: ticketUser }) {
       className="chat-full"
       messages={messages}
       me={me}
+      readAt={thread?.readAt ?? 0}
       empty={thread
         ? (asSupport ? 'Сообщений нет.' : 'Опишите вопрос или проблему — администраторы ответят здесь же.')
         : 'Загрузка…'}

@@ -1,10 +1,11 @@
 import {
-  addDm, boardOwner, changeDm, clearDm, contactIds, dmConversations, dmThread, folderInvitees, folderUsers, getDm, getRecord,
+  addDm, boardOwner, changeDm, chatReadsByOthers, clearDm, contactIds, dmConversations, dmReadAt, dmThread, markChatRead, folderInvitees, folderUsers, getDm, getRecord,
   liveFolderIds, markDmRead, userProfile,
 } from './db.js';
-import { notifyUser } from './events.js';
+import { broadcast, notifyUser } from './events.js';
 import { validImages } from './imageList.js';
 import { validReply } from './reply.js';
+import { threadVisible } from './sync.js';
 import { sendToUsers, withoutLinks } from './push.js';
 
 // People of a board, direct messages between them, and notifications about comments.
@@ -81,6 +82,8 @@ export function registerChatRoutes(app) {
     res.json({
       peer: userProfile(req.params.peer),
       canWrite: contactIds(req.user).includes(req.params.peer),
+      // Until when the peer has read the user's messages (their two ticks).
+      peerReadAt: dmReadAt(req.params.peer, req.user),
       messages,
       hasMore,
     });
@@ -158,8 +161,33 @@ export function registerChatRoutes(app) {
   app.post('/api/dm/:peer/read', (req, res) => {
     const at = Number(req.body?.at);
     if (!Number.isInteger(at) || at <= 0) return res.status(400).json({ error: 'invalid time' });
-    markDmRead(req.user, req.params.peer, Math.min(at, Date.now()));
-    notifyUser(req.user, { dm: req.params.peer });
+    if (markDmRead(req.user, req.params.peer, Math.min(at, Date.now()))) {
+      notifyUser(req.user, { dm: req.params.peer });
+      notifyUser(req.params.peer, { dm: req.user });
+    }
+    res.json({ ok: true });
+  });
+}
+
+const validThread = (v) => typeof v === 'string' && /^(folder|card):[^:]{1,64}$/.test(v);
+
+/** Routes expect `req.user`, `req.owner` and `req.access` (set by requireAuth). */
+export function registerChatReadRoutes(app) {
+  // Until when the others have read each chat of the board the user sees: { reads: { [thread]: time } }.
+  app.get('/api/chat-reads', (req, res) => {
+    const reads = {};
+    for (const { thread, readAt } of chatReadsByOthers(req.owner, req.user)) {
+      if (threadVisible(req.owner, thread, req.access)) reads[thread] = readAt;
+    }
+    res.json({ reads });
+  });
+
+  app.post('/api/chat-reads', (req, res) => {
+    const { thread } = req.body ?? {};
+    const at = Number(req.body?.at);
+    if (!validThread(thread) || !Number.isInteger(at) || at <= 0) return res.status(400).json({ error: 'invalid read' });
+    if (!threadVisible(req.owner, thread, req.access)) return res.status(404).json({ error: 'no chat' });
+    if (markChatRead(req.owner, thread, req.user, Math.min(at, Date.now()))) broadcast(req.owner, { reads: thread });
     res.json({ ok: true });
   });
 }

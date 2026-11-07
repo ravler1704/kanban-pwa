@@ -34,13 +34,22 @@ function nameHue(name) {
   return hash;
 }
 
-function Ticks({ pending }) {
-  return pending ? (
-    <svg className="chat-ticks" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="2.25" strokeLinecap="round" aria-label="Не отправлено"><circle cx="12" cy="12" r="8" /><path d="M12 8v4l2.5 2" /></svg>
-  ) : (
-    <svg className="chat-ticks" width="16" height="14" viewBox="0 0 24 20" fill="none" stroke="currentColor"
-      strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" aria-label="Отправлено"><path d="m4 11 5 5L20 5" /></svg>
+/** As in Telegram: a clock until the server has the message, one tick — delivered, two — read. */
+function Ticks({ pending, read }) {
+  if (pending) {
+    return (
+      <svg className="chat-ticks" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+        strokeWidth="2.25" strokeLinecap="round" aria-label="Не отправлено"><title>Отправляется</title>
+        <circle cx="12" cy="12" r="8" /><path d="M12 8v4l2.5 2" /></svg>
+    );
+  }
+  return (
+    <svg className={`chat-ticks ${read ? 'chat-ticks-read' : ''}`} width="19" height="14" viewBox="0 0 28 20" fill="none"
+      stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round"
+      aria-label={read ? 'Просмотрено' : 'Доставлено'}>
+      <title>{read ? 'Просмотрено' : 'Доставлено'}</title>
+      {read ? <><path d="m2 11 5 5L18 5" /><path d="m13 15 1 1L25 5" /></> : <path d="m4 11 5 5L20 5" />}
+    </svg>
   );
 }
 
@@ -441,11 +450,12 @@ function DeleteMessageDialog({ message, direct, onDelete, onClose }) {
  * pending }] oldest first; the user's own (`me`) are on the right. Without `onSend` there is no input;
  * `hint` explains why sending is off (`disabled`). `canDelete(message)` defaults to the user's own.
  * Messages with `event` are notes of changes; their card opens with `onOpenCard(id)`. `direct`: a chat of
- * two, without the other person's avatar and name at their messages.
+ * two, without the other person's avatar and name at their messages. `readAt`: until when the others have
+ * read the chat — the user's messages from before it get two ticks.
  */
 export default function ChatThread({
   messages, me, onSend, onEdit, onDelete, canDelete, onOpenCard, disabled, hint, placeholder = 'Сообщение', empty,
-  className = '', direct = false, canAttach = true,
+  className = '', direct = false, canAttach = true, readAt = 0,
 }) {
   const list = useRef(null);
   const atBottom = useRef(true);
@@ -594,7 +604,7 @@ export default function ChatThread({
                     <span className="chat-time" title={new Date(m.createdAt).toLocaleString('ru-RU')}>
                       {m.editedAt ? <span title={`Изменено ${new Date(m.editedAt).toLocaleString('ru-RU')}`}>изменено </span> : ''}
                       {time(m.createdAt)}
-                      {mine && <Ticks pending={m.pending} />}
+                      {mine && <Ticks pending={m.pending} read={m.createdAt <= readAt} />}
                     </span>
                   </div>
                 </div>

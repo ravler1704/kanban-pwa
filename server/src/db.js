@@ -253,6 +253,37 @@ if (!hasColumn('support_messages', 'images')) db.exec("ALTER TABLE support_messa
 if (!hasColumn('direct_messages', 'reply')) db.exec('ALTER TABLE direct_messages ADD COLUMN reply TEXT');
 if (!hasColumn('support_messages', 'reply')) db.exec('ALTER TABLE support_messages ADD COLUMN reply TEXT');
 
+// Until when each user has read each chat of a board: `folder:<id>` (a folder's chat) or `card:<id>` (a card's
+// comments), for the two ticks («просмотрено») of the authors' messages.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS chat_reads (
+    board       TEXT    NOT NULL,
+    thread      TEXT    NOT NULL,
+    user_id     TEXT    NOT NULL,
+    read_at     INTEGER NOT NULL,
+    PRIMARY KEY (board, thread, user_id)
+  );
+`);
+const selectChatRead = db.prepare('SELECT read_at FROM chat_reads WHERE board = ? AND thread = ? AND user_id = ?');
+const upsertChatRead = db.prepare(`
+  INSERT INTO chat_reads (board, thread, user_id, read_at) VALUES (?, ?, ?, ?)
+  ON CONFLICT(board, thread, user_id) DO UPDATE SET read_at = MAX(read_at, excluded.read_at)
+`);
+const selectChatReadsByOthers = db.prepare(`
+  SELECT thread, MAX(read_at) AS read_at FROM chat_reads WHERE board = ? AND user_id != ? GROUP BY thread
+`);
+
+/** Whether the user's mark moved on (an earlier `at` changes nothing). */
+export function markChatRead(board, thread, userId, at) {
+  if ((selectChatRead.get(board, thread, userId)?.read_at ?? 0) >= at) return false;
+  upsertChatRead.run(board, thread, userId, at);
+  return true;
+}
+
+/** For each chat of the board, until when anyone but the user has read it: [{ thread, readAt }]. */
+export const chatReadsByOthers = (board, userId) => selectChatReadsByOthers.all(board, userId)
+  .map((r) => ({ thread: r.thread, readAt: r.read_at }));
+
 // When each user last used the app (any request with their session), for the administrators' overview.
 db.exec(`
   CREATE TABLE IF NOT EXISTS user_seen (
@@ -597,6 +628,10 @@ export function mergeUsers(from, to) {
     db.prepare('UPDATE OR IGNORE user_names SET user_id = ? WHERE user_id = ?').run(to, from);
     db.prepare('DELETE FROM user_names WHERE user_id = ?').run(from);
     db.prepare('DELETE FROM user_seen WHERE user_id = ?').run(from);
+    db.prepare('UPDATE OR IGNORE chat_reads SET board = ? WHERE board = ?').run(to, from);
+    db.prepare('DELETE FROM chat_reads WHERE board = ?').run(from);
+    db.prepare('UPDATE OR IGNORE chat_reads SET user_id = ? WHERE user_id = ?').run(to, from);
+    db.prepare('DELETE FROM chat_reads WHERE user_id = ?').run(from);
     db.prepare('UPDATE support_messages SET user_id = ? WHERE user_id = ?').run(to, from);
     db.prepare('UPDATE support_messages SET author = ? WHERE author = ?').run(to, from);
     if (db.prepare('SELECT 1 FROM support_tickets WHERE user_id = ?').get(to)) {
@@ -635,6 +670,7 @@ export function deleteUser(userId) {
     db.prepare('DELETE FROM dm_cleared WHERE user_id = ? OR peer = ?').run(userId, userId);
     db.prepare('DELETE FROM user_names WHERE user_id = ?').run(userId);
     db.prepare('DELETE FROM user_seen WHERE user_id = ?').run(userId);
+    db.prepare('DELETE FROM chat_reads WHERE board = ? OR user_id = ?').run(userId, userId);
     db.prepare('DELETE FROM support_messages WHERE user_id = ?').run(userId);
     db.prepare('DELETE FROM support_tickets WHERE user_id = ?').run(userId);
     const usedElsewhere = db.prepare('SELECT 1 FROM identities WHERE lower(email) = ?');
@@ -899,6 +935,7 @@ function deleteBoardData(board) {
   db.prepare('DELETE FROM folder_members WHERE board = ?').run(board);
   db.prepare('DELETE FROM public_links WHERE board = ?').run(board);
   db.prepare('DELETE FROM reminders_sent WHERE owner = ?').run(board);
+  db.prepare('DELETE FROM chat_reads WHERE board = ?').run(board);
   db.prepare('DELETE FROM meta WHERE key LIKE ?').run(`%:${board}`);
 }
 
@@ -1095,8 +1132,16 @@ export function changeDm(id, { text, deleted }) {
   return getDm(id);
 }
 
+const selectDmRead = db.prepare('SELECT read_at FROM dm_reads WHERE user_id = ? AND peer = ?');
+
+/** Until when `userId` has read the messages from `peer` (0: never). */
+export const dmReadAt = (userId, peer) => selectDmRead.get(userId, peer)?.read_at ?? 0;
+
+/** Whether the mark moved on (an earlier `at` changes nothing). */
 export function markDmRead(userId, peer, at) {
+  if (dmReadAt(userId, peer) >= at) return false;
   upsertDmRead.run(userId, peer, at);
+  return true;
 }
 
 /**
@@ -1182,7 +1227,7 @@ export function supportTickets() {
 
 export function supportTicket(userId) {
   const t = selectTicket.get(userId);
-  return t ? { status: t.status, updatedAt: t.updated_at } : null;
+  return t ? { status: t.status, updatedAt: t.updated_at, userRead: t.user_read, supportRead: t.support_read } : null;
 }
 
 /** Up to `limit` messages of the user's conversation before `before`, oldest first. */
@@ -1217,8 +1262,12 @@ export function setSupportStatus(userId, status) {
 }
 
 /** `bySupport`: the administrators read it (one mark for all of them), else the user. */
+/** Whether the mark moved on (an earlier `at` changes nothing). */
 export function markSupportThreadRead(userId, at, bySupport) {
+  const ticket = selectTicket.get(userId);
+  if (!ticket || (bySupport ? ticket.support_read : ticket.user_read) >= at) return false;
   (bySupport ? markSupportRead : markUserRead).run(at, userId);
+  return true;
 }
 
 // Links to deleted folders stay in the table but open nothing.
