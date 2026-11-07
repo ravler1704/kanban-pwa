@@ -331,6 +331,13 @@ export async function setSpaceDoneMarks(id, doneMarks) {
   setSpaces(res.body.spaces);
 }
 
+/** Turns marking cards done on or off in the user's own «Входящие» of the space (`board`); null → as the space. */
+export async function setInboxDoneMarks(board, doneMarks) {
+  const res = await postJson('/api/inbox/settings', { board, doneMarks }).catch(() => ({ status: 0, body: {} }));
+  if (res.status !== 200) throw spacesError(res, 'изменить настройки «Входящих»');
+  setState({ user: { ...state.user, spaces: res.body.spaces, boards: res.body.boards } });
+}
+
 /** Deletes a space other than the main one with everything in it; the main space opens if it was this one. */
 export async function deleteSpace(id) {
   const res = await postJson('/api/spaces/delete', { id }).catch(() => ({ status: 0, body: {} }));

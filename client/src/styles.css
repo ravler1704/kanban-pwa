@@ -742,6 +742,10 @@ body {
   cursor: pointer;
 }
 .inbox-card-actions { display: flex; flex: none; gap: 0.15rem; }
+.inbox-head-actions { display: flex; gap: 0.25rem; }
+.inbox-done-btn { margin: 0.3rem 0.3rem 0 0; }
+.inbox-card-title { transition: opacity 0.425s ease-in-out; }
+.inbox-card-done { opacity: 0.6; }
 .inbox-card-actions .btn-icon-only { padding: 0.3rem; color: var(--muted); }
 .inbox-card-actions .btn-icon-only:hover { color: var(--text); }
 .inbox-empty { margin: 0; font-size: 0.9rem; line-height: 1.45; }

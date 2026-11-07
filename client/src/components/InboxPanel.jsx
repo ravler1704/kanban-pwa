@@ -1,11 +1,19 @@
-import { useState } from 'react';
+import { useContext, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { createInboxCard, deleteCard, moveCardTo } from '../actions.js';
+import { setInboxDoneMarks } from '../auth.js';
 import { db, INBOX_ID } from '../db.js';
-import { setDraggedCard } from './Card.jsx';
+import { DoneMarks } from '../doneMarks.js';
+import { ICONS } from '../menuIcons.js';
+import { syncStatus } from '../sync.js';
+import { DoneButton, setDraggedCard } from './Card.jsx';
+import ContextMenu, { useMenuButton } from './ContextMenu.jsx';
+import { SwitchRow } from './FolderFilter.jsx';
 import { FolderPickerDialog } from './FolderSelect.jsx';
 import Markdown from './Markdown.jsx';
+import Modal from './Modal.jsx';
+import { useOpenSpace } from './Spaces.jsx';
 
 const svg = (children) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
@@ -19,6 +27,47 @@ export function InboxIcon() {
 const MoveIcon = () => svg(<><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></>);
 const DeleteIcon = () => svg(<><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M6 6l1 14h10l1-14" /></>);
 const CloseIcon = () => svg(<path d="M18 6 6 18M6 6l12 12" />);
+
+const MoreIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" />
+  </svg>
+);
+
+/** Settings of the user's own «Входящие» (kept on the server, so they need the connection). */
+function InboxSettings({ onClose }) {
+  const space = useOpenSpace();
+  const { online } = useSyncExternalStore(syncStatus.subscribe, syncStatus.get);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const on = space.inboxDoneMarks ?? space.doneMarks;
+
+  async function change(value) {
+    setBusy(true);
+    setError(null);
+    try {
+      await setInboxDoneMarks(space.id, value === space.doneMarks ? null : value);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal title="Настройки «Входящих»" onClose={onClose} className="folder-picker board-settings" closeButton>
+      <ul className="fp-list ff-group">
+        <SwitchRow label="Отметка «Выполнена» у карточек" on={on} disabled={!online || busy}
+          meta={space.inboxDoneMarks === null ? 'Как у пространства' : 'Своя настройка «Входящих»'} onChange={change} />
+      </ul>
+      {!online && <p className="muted">Изменить настройки можно только при подключении к интернету.</p>}
+      {error && <p className="login-error">{error}</p>}
+      <div className="actions fp-actions">
+        <button type="button" className="btn btn-primary" onClick={onClose}>Готово</button>
+      </div>
+    </Modal>
+  );
+}
 
 /** The live cards in «Входящие», in their order. */
 export function useInboxCards() {
@@ -38,6 +87,10 @@ export default function InboxPanel({ folders, onOpen, onClose }) {
   const cards = useInboxCards() ?? [];
   const [title, setTitle] = useState('');
   const [moving, setMoving] = useState(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [menu, setMenu, closeMenu, menuButton] = useMenuButton(240);
+  const doneMarksOf = useContext(DoneMarks);
+  const menuItems = [{ label: 'Настройки «Входящих»…', icon: ICONS.gear, run: () => setSettingsOpen(true) }];
   // A card of the board dragged over the panel: it goes back to «Входящие» on the drop.
   const [dropping, setDropping] = useState(false);
   const fromBoard = (e) => e.dataTransfer.types.includes('text/card-id') && !e.dataTransfer.types.includes('text/inbox');
@@ -64,13 +117,25 @@ export default function InboxPanel({ folders, onOpen, onClose }) {
         e.preventDefault();
         moveCardTo(e.dataTransfer.getData('text/card-id'), INBOX_ID);
       }}>
-      <div className="inbox-head">
+      <div className="inbox-head" onContextMenu={(e) => {
+        if (e.target.closest('button')) return;
+        e.preventDefault();
+        setMenu({ x: e.clientX, y: e.clientY });
+      }}>
         <h2 className="inbox-title"><InboxIcon /> Входящие</h2>
-        <button type="button" className="btn btn-small btn-icon-only" title="Закрыть" aria-label="Закрыть"
-          onClick={onClose}>
-          <CloseIcon />
-        </button>
+        <span className="inbox-head-actions">
+          <button type="button" className={`btn btn-small btn-icon-only ${menu ? 'active' : ''}`} title="Действия"
+            aria-label="Действия с «Входящими»" {...menuButton}>
+            <MoreIcon />
+          </button>
+          <button type="button" className="btn btn-small btn-icon-only" title="Закрыть" aria-label="Закрыть"
+            onClick={onClose}>
+            <CloseIcon />
+          </button>
+        </span>
       </div>
+      {menu && <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={closeMenu} />}
+      {settingsOpen && createPortal(<InboxSettings onClose={() => setSettingsOpen(false)} />, document.body)}
       <form className="add-card inbox-add" onSubmit={add}>
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="+ Быстро записать дело"
           aria-label="Новое дело" maxLength={500} />
@@ -86,7 +151,9 @@ export default function InboxPanel({ folders, onOpen, onClose }) {
                 e.dataTransfer.effectAllowed = 'move';
               }}
               onDragEnd={() => setDraggedCard(null)}>
-              <button type="button" className="inbox-card-title" onClick={() => onOpen(card.id)}>
+              {doneMarksOf(card) && <DoneButton card={card} className="inbox-done-btn" />}
+              <button type="button" className={`inbox-card-title${doneMarksOf(card) && card.done ? ' inbox-card-done' : ''}`}
+                onClick={() => onOpen(card.id)}>
                 {card.title ? <Markdown text={card.title} inline /> : <em className="muted">Без названия</em>}
               </button>
               <span className="inbox-card-actions">

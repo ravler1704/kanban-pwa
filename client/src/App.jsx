@@ -139,7 +139,7 @@ export default function App() {
   // The menu of a right click on the board itself (not a column or a card): { x, y }.
   const [boardMenu, setBoardMenu] = useState(null);
   const [boardSettingsId, setBoardSettingsId] = useState(null);
-  const { doneMarks: spaceDoneMarks } = useOpenSpace();
+  const { doneMarks: spaceDoneMarks, inboxDoneMarks } = useOpenSpace();
   const [inboxOpen, setInboxOpen] = useState(() => localStorage.getItem(INBOX_OPEN_KEY) === '1');
   const toggleInbox = () => {
     localStorage.setItem(INBOX_OPEN_KEY, inboxOpen ? '0' : '1');
@@ -233,6 +233,7 @@ export default function App() {
   const folders = liveFolders(data?.folders ?? [], { standIn: isOwnBoard });
   const tree = folderTree(folders);
   const doneMarksOf = (card) => {
+    if (card.folderId === INBOX_ID) return inboxDoneMarks ?? spaceDoneMarks;
     const folder = tree.byId.get(card.folderId);
     return folder ? folderDoneMarks(folder, folders, spaceDoneMarks) : spaceDoneMarks;
   };

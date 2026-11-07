@@ -660,7 +660,7 @@ export function sharedBoards(userId) {
     const owner = selectOwnerProfile.get(ownerId);
     return [{
       id: board, name: owner?.name ?? null, email: owner?.email ?? null, picture: owner?.picture ?? null,
-      space: spaceName(board), doneMarks: spaceDoneMarks(board),
+      space: spaceName(board), doneMarks: spaceDoneMarks(board), inboxDoneMarks: inboxDoneMarks(board, userId),
     }];
   });
 }
@@ -730,14 +730,29 @@ export function boardOwner(board) {
   return selectSpace.get(board)?.owner ?? null;
 }
 
-/** The user's spaces, the main one first: [{ id, name, doneMarks, main? }]. */
+/** The user's spaces, the main one first: [{ id, name, doneMarks, inboxDoneMarks, main? }]. */
 export function ownSpaces(userId) {
   const rows = selectOwnSpaces.all(userId);
   const main = rows.find((r) => r.id === userId);
+  const space = (id, row) => ({ id, name: row.name, doneMarks: doneMarksOf(row), inboxDoneMarks: inboxDoneMarks(id, userId) });
   return [
-    { id: userId, name: main?.name ?? MAIN_SPACE_NAME, doneMarks: doneMarksOf(main), main: true },
-    ...rows.filter((r) => r.id !== userId).map((r) => ({ id: r.id, name: r.name, doneMarks: doneMarksOf(r) })),
+    { ...space(userId, { name: MAIN_SPACE_NAME, ...main }), main: true },
+    ...rows.filter((r) => r.id !== userId).map((r) => space(r.id, r)),
   ];
+}
+
+// The user's own «Входящие» of the board (personal): whether its cards can be marked done; null → as the space.
+// The key ends with the board, so it goes with the board's data.
+const inboxDoneMarksKey = (board, userId) => `inboxDoneMarks:${userId}:${board}`;
+
+export function inboxDoneMarks(board, userId) {
+  const value = getMeta(inboxDoneMarksKey(board, userId));
+  return value == null ? null : value === '1';
+}
+
+export function setInboxDoneMarks(board, userId, on) {
+  if (on === null) db.prepare('DELETE FROM meta WHERE key = ?').run(inboxDoneMarksKey(board, userId));
+  else setMeta(inboxDoneMarksKey(board, userId), on ? '1' : '0');
 }
 
 /** Whether the board's cards can be marked done where its boards don't say otherwise. */

@@ -14,19 +14,27 @@ const MAIN_NAME = 'Моё пространство';
 const spacesOf = (user) => (user?.spaces?.length ? user.spaces : [{ id: user?.id, name: MAIN_NAME, main: true }]);
 
 /**
- * The open space: { title, subtitle, own (one of the user's: { id, name, doneMarks, main? }), doneMarks
- * (whether cards can be marked done on boards that don't say otherwise) }.
+ * The open space: { id, title, subtitle, own (one of the user's: { id, name, doneMarks, main? }), doneMarks
+ * (whether cards can be marked done on boards that don't say otherwise), inboxDoneMarks (the same for the
+ * user's own «Входящие»: true / false, null → as the space) }.
  */
 export function useOpenSpace() {
   const { user } = useSyncExternalStore(authState.subscribe, authState.get);
   const own = spacesOf(user).find((s) => (currentBoard ? s.id === currentBoard : s.main)) ?? null;
-  if (own) return { title: own.name, subtitle: user ? personName(user) : '', own, doneMarks: own.doneMarks !== false };
+  if (own) {
+    return {
+      id: own.id, title: own.name, subtitle: user ? personName(user) : '', own,
+      doneMarks: own.doneMarks !== false, inboxDoneMarks: own.inboxDoneMarks ?? null,
+    };
+  }
   const shared = (user?.boards ?? []).find((b) => b.id === currentBoard);
   return {
+    id: currentBoard,
     title: shared ? boardName(shared) : 'Общее пространство',
     subtitle: shared ? `владелец: ${boardOwnerName(shared)}` : '',
     own: null,
     doneMarks: shared?.doneMarks !== false,
+    inboxDoneMarks: shared?.inboxDoneMarks ?? null,
   };
 }
 

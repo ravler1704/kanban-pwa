@@ -4,7 +4,7 @@ import {
   addMember, boardMemberEmails, boardOwner, boardSummary, countEmailCodeAttempt, createSession, createSpace, customName, deleteIdentity,
   deleteMember, deletePublicLink, deleteSession, deleteSpace, deleteUser, findUserByEmail, getEmailCode, getIdentityUser,
   getPublicLink, getRecord, getSession, isInvited, leaveBoard, listIdentities, listMembers, listPublicLinks, memberProjects,
-  mergeUsers, ownerFileIds, ownSpaces, pruneEmailCodes, renameSpace, saveEmailCode, setSpaceDoneMarks, saveIdentity, savePublicLink,
+  mergeUsers, ownerFileIds, ownSpaces, pruneEmailCodes, renameSpace, saveEmailCode, setInboxDoneMarks, setSpaceDoneMarks, saveIdentity, savePublicLink,
   setCustomName, sharedBoards, useEmailCode, userFileIds, usersWithEmail,
 } from './db.js';
 import { broadcast, disconnect, disconnectUser, notifyUser } from './events.js';
@@ -519,6 +519,19 @@ export function registerAuthRoutes(app) {
     if (!setSpaceDoneMarks(req.user, id, doneMarks)) return res.status(404).json({ error: 'not found' });
     for (const email of boardMemberEmails(id)) notifyBoardsChanged(email);
     res.json({ spaces: ownSpaces(req.user) });
+  });
+
+  // Settings of the user's own «Входящие» in a space of theirs or one they were invited to.
+  app.post('/api/inbox/settings', requireAuth, (req, res) => {
+    if (!authEnabled) return res.status(404).json({ error: 'auth disabled' });
+    const { board, doneMarks } = req.body ?? {};
+    if (typeof board !== 'string' || (doneMarks !== null && typeof doneMarks !== 'boolean')) {
+      return res.status(400).json({ error: 'invalid settings' });
+    }
+    const boards = sharedBoards(req.user);
+    if (boardOwner(board) !== req.user && !boards.some((b) => b.id === board)) return res.status(404).json({ error: 'not found' });
+    setInboxDoneMarks(board, req.user, doneMarks);
+    res.json({ spaces: ownSpaces(req.user), boards: sharedBoards(req.user) });
   });
 
   app.post('/api/spaces/delete', requireAuth, (req, res) => {
