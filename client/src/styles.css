@@ -1500,6 +1500,28 @@ a.btn { display: inline-block; text-decoration: none; }
 .field .title-input { height: 2.9rem; resize: none; overflow: hidden; white-space: pre-wrap; }
 .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; justify-content: flex-end; }
 
+/* «Выгрузить в Excel»: what goes into the workbook. */
+.modal.export-dialog { width: min(520px, 100%); }
+.export-group {
+  display: flex; flex-direction: column; gap: 0.15rem;
+  padding: 1.35rem 0.4rem 0.4rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg);
+}
+.export-option, .export-board, .export-check { display: flex; align-items: flex-start; gap: 0.55rem; cursor: pointer; }
+.export-option { padding: 0.4rem 0.3rem; border-radius: 6px; }
+.export-option:hover:not(.disabled), .export-board:hover { background: var(--card); }
+.export-option.disabled { cursor: default; opacity: 0.55; }
+.export-option input, .export-board input, .export-check input {
+  flex: none; width: 1.05rem; height: 1.05rem; margin: 0.15rem 0 0; accent-color: var(--accent); cursor: inherit;
+}
+.export-option-text { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+.export-option-meta { font-size: 0.8rem; }
+.export-board-tools { display: flex; gap: 0.4rem; padding: 0 0.3rem 0.35rem; }
+.export-boards { list-style: none; margin: 0; padding: 0; max-height: 40vh; overflow-y: auto; }
+.export-board { padding: 0.35rem 0.6rem; border-radius: 6px; }
+.export-board-name { min-width: 0; overflow-wrap: anywhere; }
+.export-check { padding: 0 0.1rem; }
+.export-note { margin: 0; font-size: 0.82rem; line-height: 1.45; }
+
 /* «Архив»: deleted cards, restored or deleted for good. */
 .archive-note { margin: 0 0 0.75rem; font-size: 0.85rem; }
 .archive-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; max-height: 60vh; overflow-y: auto; }

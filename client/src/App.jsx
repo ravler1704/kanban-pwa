@@ -20,6 +20,7 @@ import ManageDialog from './components/ManageDialog.jsx';
 import ColumnsDraftDialog from './components/ColumnsDraftDialog.jsx';
 import { BoardMenuButton, BoardName, useFolderActions } from './components/FolderMenu.jsx';
 import ArchiveDialog from './components/ArchiveDialog.jsx';
+import ExportDialog from './components/ExportDialog.jsx';
 import UndoToast from './components/UndoToast.jsx';
 import NewCardDialog from './components/NewCardDialog.jsx';
 import CalendarView from './components/CalendarView.jsx';
@@ -28,7 +29,7 @@ import ChatDialog from './components/ChatDialog.jsx';
 import PeopleBar from './components/People.jsx';
 import InboxPanel, { useInboxCards } from './components/InboxPanel.jsx';
 import { tagKey, tagNames, tagsOf } from './tags.js';
-import { descendants, flattenFolders, folderPath, folderTree, liveFolders, topFolderIds } from './folders.js';
+import { descendants, flattenFolders, folderPath, folderTree, isInside, liveFolders, topFolderIds } from './folders.js';
 import { folderIdsOf, peopleStore } from './people.js';
 
 const VIEW_KEY = 'view';
@@ -146,6 +147,7 @@ export default function App() {
   const [menuFolderId, setMenuFolderId] = useState(null);
   const [renamingId, setRenamingId] = useState(null);
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const { doneMarks: spaceDoneMarks, inboxDoneMarks } = useOpenSpace();
   const [inboxOpen, setInboxOpen] = useState(() => localStorage.getItem(INBOX_OPEN_KEY) === '1');
   const toggleInbox = () => {
@@ -492,6 +494,7 @@ export default function App() {
     ]),
     null,
     !readOnly && { label: 'Архив…', icon: ICONS.archive, run: () => setArchiveOpen(true) },
+    { label: 'Выгрузить в Excel…', icon: ICONS.download, run: () => setExportOpen(true) },
     null,
     folderActions.removeItem,
   ].filter((item, i, list) => item !== false && (item !== null || (i > 0 && list[i - 1] && list.slice(i + 1).some(Boolean))));
@@ -656,6 +659,13 @@ export default function App() {
 
       {folderActions.dialogs}
       {archiveOpen && <ArchiveDialog folders={usable} onClose={() => setArchiveOpen(false)} />}
+      {exportOpen && (
+        <ExportDialog folders={folders} checkedIds={checkedIds} inbox={inboxOn}
+          current={titleBoards.length === 1 && !allChecked
+            ? checkedIds.filter((id) => id === titleBoards[0].id || isInside(tree.byId.get(id), titleBoards[0].id, folders))
+            : null}
+          onClose={() => setExportOpen(false)} />
+      )}
       <UndoToast />
 
       {managing && (
