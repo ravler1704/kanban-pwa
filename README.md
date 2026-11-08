@@ -10,7 +10,8 @@
 [![iPhone и iPad](https://img.shields.io/badge/iPhone%20%D0%B8%20iPad-%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%B8%D1%82%D1%8C-000000?style=for-the-badge&logo=apple&logoColor=white)](https://178-83-123-195.sslip.io/install.html)
 [![Windows, macOS, Linux](https://img.shields.io/badge/Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%B8%D1%82%D1%8C-0078D4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://178-83-123-195.sslip.io/install.html)
 
-Все способы установки — на [странице установки](https://178-83-123-195.sslip.io/install.html).
+Все способы установки — на [странице установки](https://178-83-123-195.sslip.io/install.html), знакомство с
+приложением и живая демо-доска — на [промо-странице](https://178-83-123-195.sslip.io/promo.html).
 
 ![Доска](docs/screenshots/board.png)
 
