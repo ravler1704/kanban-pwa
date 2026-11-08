@@ -1,0 +1,13 @@
+---
+description: Every commit updates CHANGELOG.md and is pushed to GitHub
+alwaysApply: true
+---
+
+# History of changes
+
+- With every commit, add an entry to `CHANGELOG.md` in the same commit: under today's date (`## YYYY-MM-DD`,
+  newest on top), in Russian, what changed for the user — not the code details.
+- When the change is visible in the interface, add a screenshot to `docs/screenshots/` and link it from the entry
+  (`![…](docs/screenshots/<name>.png)`); update the screenshots in `README.md` when they no longer match.
+- After committing (and deploying), push: `git push origin master`. The repository is public: never commit
+  secrets — `deploy/kanban.env` stays out of git.
