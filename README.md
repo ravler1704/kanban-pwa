@@ -4,7 +4,13 @@
 работает без интернета и сама синхронизирует изменения между устройствами, когда связь появляется.
 Внутри — доски, вложенные папки, карточки с подзадачами и напоминаниями, общий доступ, чаты в стиле Telegram.
 
-**Демо:** https://178-83-123-195.sslip.io
+[![Открыть демо](https://img.shields.io/badge/%D0%9E%D1%82%D0%BA%D1%80%D1%8B%D1%82%D1%8C-%D0%B4%D0%B5%D0%BC%D0%BE-2563eb?style=for-the-badge&logo=googlechrome&logoColor=white)](https://178-83-123-195.sslip.io)
+[![Android: скачать APK](https://img.shields.io/badge/Android-%D0%A1%D0%BA%D0%B0%D1%87%D0%B0%D1%82%D1%8C%20APK-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/ravler1704/kanban-pwa/releases/latest/download/offline-kanban.apk)
+[![Google Play: скоро](https://img.shields.io/badge/Google%20Play-%D1%81%D0%BA%D0%BE%D1%80%D0%BE-414141?style=for-the-badge&logo=googleplay&logoColor=white)](https://178-83-123-195.sslip.io/install.html)
+[![iPhone и iPad](https://img.shields.io/badge/iPhone%20%D0%B8%20iPad-%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%B8%D1%82%D1%8C-000000?style=for-the-badge&logo=apple&logoColor=white)](https://178-83-123-195.sslip.io/install.html)
+[![Windows, macOS, Linux](https://img.shields.io/badge/Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%B8%D1%82%D1%8C-0078D4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://178-83-123-195.sslip.io/install.html)
+
+Все способы установки — на [странице установки](https://178-83-123-195.sslip.io/install.html).
 
 ![Доска](docs/screenshots/board.png)
 
@@ -72,6 +78,34 @@ npm run dev
 - код — `/opt/kanban`, база — `/var/lib/kanban/kanban.db` (деплой её не трогает);
 - приложение — systemd-сервис `kanban` (`journalctl -u kanban -f` — логи), слушает только `127.0.0.1:3001`;
 - Caddy (`/etc/caddy/Caddyfile`) — HTTPS-сертификат Let's Encrypt для домена sslip.io, указывающего на IP.
+
+## Приложения для платформ
+
+Везде устанавливается один и тот же PWA; страница `/install.html` (`client/public/install.html`) и вкладка
+«Приложение» в окне «Аккаунт» подсказывают способ для устройства.
+
+**Android** — Trusted Web Activity: обёртка `android/` открывает сайт на весь экран без адресной строки (пакет
+`io.github.ravler1704.kanban`). Окно без браузерных панелей Android даёт только после проверки
+`/.well-known/assetlinks.json` (`client/public/.well-known/`), где указан SHA-256 ключа подписи.
+
+```bash
+brew install openjdk@17 && brew install --cask android-commandlinetools && npm i -g @bubblewrap/cli
+./android/build.sh    # → android/offline-kanban.apk (для сайта и GitHub) и .aab (для Google Play)
+gh release create android-1.0.1 android/offline-kanban.apk --title "Android 1.0.1"
+```
+
+- Ключ подписи и пароли — `deploy/android/` (не в git). **Храните копию**: без него обновление APK не
+  установится поверх старого.
+- Перед новой сборкой поднимите `appVersionCode` и `appVersionName` в `android/twa-manifest.json`.
+- Google Play: аккаунт разработчика (разовый взнос $25), «Создать приложение» → загрузить `.aab`. Play подписывает
+  приложение своим ключом — его SHA-256 (Play Console → «Целостность приложения») нужно добавить вторым отпечатком в
+  `assetlinks.json`, иначе вверху будет адресная строка. Затем в `client/src/install.js` и `install.html` задать
+  `PLAY_URL`.
+
+**iPhone и iPad** — «Поделиться» → «На экран «Домой»» в Safari (iOS 16.4+ — с уведомлениями). App Store требует
+аккаунт Apple Developer ($99 в год) и сборку в Xcode.
+
+**Windows, macOS, Linux** — установка из Chrome, Edge, Яндекс Браузера и Safari (macOS 14+).
 
 ## Вход
 

@@ -1,0 +1,1192 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>Offline Kanban — канбан-доска, которая работает без интернета</title>
+  <meta name="description" content="Бесплатная канбан-доска для себя и команды: работает офлайн, синхронизирует телефон и компьютер, чаты как в Telegram, напоминания с push-уведомлениями. Android, iPhone, iPad, Windows, macOS, Linux." />
+  <link rel="canonical" href="https://178-83-123-195.sslip.io/promo.html" />
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="ru_RU" />
+  <meta property="og:site_name" content="Offline Kanban" />
+  <meta property="og:title" content="Offline Kanban — канбан, который работает даже без интернета" />
+  <meta property="og:description" content="Доски, карточки, чаты и напоминания на телефоне и компьютере. Работает офлайн, синхронизируется сам. Бесплатно и с открытым кодом." />
+  <meta property="og:url" content="https://178-83-123-195.sslip.io/promo.html" />
+  <meta property="og:image" content="https://178-83-123-195.sslip.io/promo/og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Доска Offline Kanban на компьютере и iPhone" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Offline Kanban — канбан, который работает даже без интернета" />
+  <meta name="twitter:description" content="Доски, чаты и напоминания на всех устройствах. Офлайн, бесплатно, с открытым кодом." />
+  <meta name="twitter:image" content="https://178-83-123-195.sslip.io/promo/og.png" />
+  <style>
+    :root {
+      --bg: #0f172a; --bg2: #0b1222; --panel: #1e293b; --card: #273449; --border: #334155;
+      --text: #e2e8f0; --muted: #94a3b8; --accent: #38bdf8; --violet: #a78bfa; --green: #34d399;
+      --amber: #fbbf24; --ease: cubic-bezier(.2, .8, .2, 1);
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+    body { margin: 0; background: var(--bg); color: var(--text); overflow-x: hidden;
+      font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    a { color: var(--accent); }
+    svg.i { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round;
+      stroke-linejoin: round; flex: none; }
+    .wrap { max-width: 1160px; margin: 0 auto; padding: 0 20px; }
+    [hidden] { display: none !important; }
+    .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+    /* ---------- Top bar ---------- */
+    .top { position: sticky; top: 0; z-index: 50; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      background: rgba(15, 23, 42, .72); border-bottom: 1px solid rgba(51, 65, 85, .6); }
+    .top .wrap { display: flex; align-items: center; gap: 24px; height: 60px; }
+    .brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-weight: 700; }
+    .brand img { width: 30px; height: 30px; border-radius: 8px; }
+    .top nav { display: flex; gap: 20px; margin-left: auto; }
+    .top nav a { color: var(--muted); text-decoration: none; font-size: .95rem; }
+    .top nav a:hover { color: var(--text); }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 20px;
+      border-radius: 12px; border: 1px solid var(--border); background: var(--panel); color: var(--text);
+      font: inherit; font-weight: 600; text-decoration: none; cursor: pointer; white-space: nowrap;
+      transition: transform .2s var(--ease), background .2s, border-color .2s, box-shadow .2s; }
+    .btn:hover { transform: translateY(-2px); border-color: #475569; background: #243247; }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: #0f172a;
+      box-shadow: 0 8px 30px -8px rgba(56, 189, 248, .6); }
+    .btn-primary:hover { background: #7dd3fc; border-color: #7dd3fc; box-shadow: 0 12px 34px -8px rgba(56, 189, 248, .75); }
+    .btn-sm { padding: 8px 14px; border-radius: 10px; font-size: .9rem; }
+    .btn .soon { font-size: .72rem; font-weight: 600; padding: 2px 7px; border-radius: 99px; background: #334155; color: var(--muted); }
+    .btn[aria-disabled="true"] { opacity: .7; cursor: default; }
+    .btn[aria-disabled="true"]:hover { transform: none; background: var(--panel); border-color: var(--border); }
+
+    /* ---------- Hero ---------- */
+    .hero { position: relative; padding: 64px 0 40px; text-align: center; overflow: hidden; }
+    .hero::before { content: ""; position: absolute; inset: -20% -10% auto; height: 900px; pointer-events: none;
+      background: radial-gradient(40% 40% at 25% 40%, rgba(56, 189, 248, .18), transparent 70%),
+        radial-gradient(35% 35% at 75% 35%, rgba(167, 139, 250, .18), transparent 70%),
+        radial-gradient(30% 30% at 55% 80%, rgba(52, 211, 153, .1), transparent 70%); }
+    .hero > .wrap { position: relative; }
+    .pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 99px;
+      border: 1px solid var(--border); background: rgba(30, 41, 59, .7); color: var(--muted); font-size: .88rem; }
+    .pill b { color: var(--green); font-weight: 600; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px rgba(52, 211, 153, .2); }
+    h1 { font-size: clamp(2.2rem, 5.6vw, 4rem); line-height: 1.06; letter-spacing: -.03em; margin: 20px auto 18px; max-width: 900px; }
+    .grad { background: linear-gradient(90deg, var(--accent), var(--violet) 55%, var(--green));
+      -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .lead { font-size: clamp(1.05rem, 2vw, 1.25rem); color: var(--muted); max-width: 680px; margin: 0 auto 28px; }
+    .ctas { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+    .trust { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 22px; margin: 22px 0 0; padding: 0;
+      list-style: none; color: var(--muted); font-size: .92rem; }
+    .trust li { display: flex; align-items: center; gap: 7px; }
+    .trust svg { color: var(--green); }
+
+    /* ---------- Demo stage ---------- */
+    .stage-wrap { position: relative; margin: 52px auto 0; max-width: 1000px; }
+    .stage { position: relative; width: 1000px; height: 680px; transform-origin: 0 0; text-align: left; }
+    .stage-hints { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 22px; }
+    .chip { display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px; border-radius: 99px;
+      border: 1px solid var(--border); background: rgba(30, 41, 59, .8); color: var(--text); font: inherit;
+      font-size: .86rem; cursor: pointer; transition: background .2s, border-color .2s, transform .2s var(--ease); }
+    .chip:hover { background: #243247; border-color: #475569; transform: translateY(-1px); }
+    .chip svg { color: var(--accent); }
+    .chip.static { cursor: default; color: var(--muted); }
+    .chip.static:hover { transform: none; background: rgba(30, 41, 59, .8); border-color: var(--border); }
+    .phone-tabs { display: none; }
+
+    /* macOS window */
+    .mac { position: absolute; left: 0; top: 0; width: 760px; height: 500px; border-radius: 14px; overflow: hidden;
+      background: var(--bg); border: 1px solid #3b4a61;
+      box-shadow: 0 40px 100px -30px rgba(0, 0, 0, .8), 0 0 0 1px rgba(0, 0, 0, .4); display: flex; flex-direction: column; }
+    .mac-bar { flex: none; height: 34px; display: flex; align-items: center; padding: 0 14px; gap: 8px;
+      background: #172033; border-bottom: 1px solid #0b1222; position: relative; }
+    .mac-bar i { width: 12px; height: 12px; border-radius: 50%; background: #ff5f57; }
+    .mac-bar i:nth-child(2) { background: #febc2e; } .mac-bar i:nth-child(3) { background: #28c840; }
+    .mac-bar span { position: absolute; left: 0; right: 0; text-align: center; font-size: 12.5px; color: var(--muted); pointer-events: none; }
+    .app-bar { flex: none; height: 48px; display: flex; align-items: center; gap: 10px; padding: 0 12px;
+      background: var(--panel); border-bottom: 1px solid var(--border); font-size: 13px; }
+    .avatar { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; flex: none;
+      background: var(--av, #8b5cf6); color: #fff; font-size: 12px; font-weight: 700; }
+    .space b { display: block; font-size: 14px; line-height: 1.1; }
+    .space small { color: var(--muted); font-size: 10.5px; }
+    .ibtn { display: grid; place-items: center; width: 30px; height: 28px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--card); color: var(--text); flex: none; }
+    .ibtn svg { width: 15px; height: 15px; }
+    .inbox { display: flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 8px; background: var(--card);
+      border: 1px solid var(--border); font-size: 12px; }
+    .search { flex: 1; display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px; border-radius: 8px;
+      background: var(--bg); border: 1px solid var(--border); color: #64748b; font-size: 12.5px; min-width: 0; }
+    .net { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 99px; border: 1px solid transparent;
+      background: none; color: var(--text); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+      transition: background .2s, border-color .2s; white-space: nowrap; }
+    .net:hover { background: var(--card); border-color: var(--border); }
+    .net .dot { transition: background .3s, box-shadow .3s; }
+    .offline .net .dot { background: #64748b; box-shadow: 0 0 0 3px rgba(100, 116, 139, .25); }
+    .offline .net { color: var(--amber); }
+    .synced { color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .offline .synced { color: var(--amber); }
+    .spin svg { animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .board-bar { flex: none; height: 46px; display: flex; align-items: center; gap: 8px; padding: 0 14px; }
+    .board-bar h3 { margin: 0 0 0 4px; font-size: 16px; }
+    .views { display: flex; margin-left: auto; padding: 2px; border-radius: 9px; background: rgba(15, 23, 42, .7);
+      border: 1px solid var(--border); font-size: 12px; }
+    .views span { padding: 3px 9px; border-radius: 7px; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+    .views span.on { background: var(--card); color: var(--text); }
+    .faces { display: flex; }
+    .faces .avatar { width: 24px; height: 24px; font-size: 11px; border: 2px solid #1b2538; margin-left: -6px; }
+    .mac-body { flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative;
+      background: linear-gradient(rgba(15, 23, 42, .25), rgba(15, 23, 42, .55)), url(/backgrounds/mountains.jpg) center/cover, #1e293b; }
+
+    /* Board (shared by the window and the phone) */
+    .board { flex: 1; min-height: 0; display: flex; gap: 12px; padding: 0 14px 14px; }
+    .col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; border-radius: 12px; background: rgba(30, 41, 59, .94);
+      border: 1px solid rgba(71, 85, 105, .6); transition: border-color .2s, box-shadow .2s; }
+    .col.over { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+    .col > header { display: flex; align-items: center; gap: 6px; padding: 11px 12px 8px; font-size: 13.5px; }
+    .col > header span { color: var(--muted); font-weight: 600; }
+    .col > header i { margin-left: auto; color: var(--muted); font-style: normal; letter-spacing: 1px; }
+    .col-cards { flex: 1; min-height: 30px; overflow-y: auto; overflow-x: hidden; padding: 2px 8px 6px; scrollbar-width: none; }
+    .col-cards::-webkit-scrollbar { display: none; }
+    .col-add { margin: 0 8px 8px; padding: 7px 10px; border-radius: 8px; background: rgba(15, 23, 42, .6); color: #64748b;
+      border: 1px solid var(--border); font-size: 12px; }
+    .card { position: relative; margin-bottom: 8px; padding: 10px 10px 8px; border-radius: 9px; background: var(--card);
+      border: 1px solid rgba(71, 85, 105, .55); overflow: hidden; cursor: grab; user-select: none; -webkit-user-select: none;
+      -webkit-touch-callout: none; touch-action: pan-x pan-y;
+      transition: transform .22s var(--ease), box-shadow .22s var(--ease), border-color .22s, opacity .2s; }
+    .card:hover { transform: translateY(-3px); border-color: #64748b; box-shadow: 0 12px 24px -10px rgba(0, 0, 0, .7); }
+    .card .strip { position: absolute; left: 0; right: 0; top: 0; height: 4px; background: var(--strip); }
+    .card-head { display: flex; gap: 7px; align-items: flex-start; }
+    .card-title { font-size: 13px; font-weight: 650; line-height: 1.35; }
+    .tag { color: #7dd3fc; background: rgba(56, 189, 248, .14); border-radius: 4px; padding: 0 3px; }
+    .card-desc { margin: 3px 0 0; color: var(--muted); font-size: 11.5px; line-height: 1.4; }
+    .card-meta { display: flex; align-items: center; gap: 9px; margin-top: 6px; color: var(--muted); font-size: 11px; }
+    .card-meta .avatar { width: 20px; height: 20px; font-size: 10px; margin-left: auto; }
+    .cl, .rem { display: inline-flex; align-items: center; gap: 4px; background: none; border: 0; padding: 0; color: inherit;
+      font: inherit; cursor: pointer; }
+    .cl svg, .rem svg { width: 12px; height: 12px; }
+    .cl.full { color: var(--green); }
+    .rem { color: var(--amber); cursor: default; }
+    .tick { flex: none; width: 17px; height: 17px; margin-top: 1px; padding: 0; border-radius: 50%; border: 1.6px solid #64748b;
+      background: none; color: transparent; display: grid; place-items: center; cursor: pointer;
+      transition: background .25s, border-color .25s, transform .25s var(--ease); }
+    .tick svg { width: 11px; height: 11px; stroke-width: 3; stroke-dasharray: 24; stroke-dashoffset: 24; transition: stroke-dashoffset .35s .05s var(--ease); }
+    .tick:hover { border-color: var(--green); transform: scale(1.12); }
+    .is-done .tick { background: var(--green); border-color: var(--green); color: #0f172a; }
+    .is-done .tick svg { stroke-dashoffset: 0; }
+    .is-done .card-title { color: var(--muted); }
+    .checklist { list-style: none; margin: 8px 0 0; padding: 7px 0 0; border-top: 1px solid var(--border); font-size: 12px; }
+    .checklist li { display: flex; align-items: center; gap: 7px; padding: 2px 0; }
+    .checklist li.on { color: var(--muted); text-decoration: line-through; }
+    .cb { width: 15px; height: 15px; border-radius: 4px; border: 1.6px solid #64748b; background: none; padding: 0; display: grid;
+      place-items: center; color: transparent; cursor: pointer; flex: none; transition: background .2s, border-color .2s; }
+    .cb svg { width: 10px; height: 10px; stroke-width: 3.2; stroke-dasharray: 24; stroke-dashoffset: 24; transition: stroke-dashoffset .3s var(--ease); }
+    .cb.on { background: var(--accent); border-color: var(--accent); color: #0f172a; }
+    .cb.on svg { stroke-dashoffset: 0; }
+    .card.placeholder { opacity: .25; transform: none; box-shadow: none; }
+    .card.hold { transform: scale(1.03); box-shadow: 0 0 0 2px var(--accent); }
+    .card.flash { animation: flash 1.4s var(--ease); }
+    @keyframes flash { 0%, 40% { box-shadow: 0 0 0 2px var(--accent), 0 0 24px rgba(56, 189, 248, .5); } 100% { box-shadow: none; } }
+    .ghost { position: fixed; left: 0; top: 0; z-index: 1000; margin: 0; pointer-events: none; transform-origin: 0 0;
+      box-shadow: 0 24px 50px -12px rgba(0, 0, 0, .8), 0 0 0 2px var(--accent); cursor: grabbing; transition: none; }
+    .mac .toast { position: absolute; right: 14px; top: 10px; z-index: 5; display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; border-radius: 10px; background: rgba(15, 23, 42, .92); border: 1px solid var(--border); font-size: 12.5px;
+      box-shadow: 0 12px 30px -10px rgba(0, 0, 0, .7); transform: translateY(-140%); opacity: 0;
+      transition: transform .4s var(--ease), opacity .4s; }
+    .mac .toast.show { transform: none; opacity: 1; }
+    .mac .toast svg { color: var(--green); }
+    .offline .mac .toast svg { color: var(--amber); }
+
+    /* iPhone */
+    .iphone { position: absolute; right: 0; top: 96px; width: 286px; height: 584px; padding: 11px; border-radius: 52px;
+      background: linear-gradient(145deg, #3a4150, #11151d 40%, #2a303b); box-shadow: 0 0 0 1.5px #545b68 inset,
+        0 50px 90px -30px rgba(0, 0, 0, .9), 0 0 0 1px rgba(0, 0, 0, .6); }
+    .iphone::before, .iphone::after { content: ""; position: absolute; left: -3px; top: 120px; width: 3px; height: 54px;
+      border-radius: 2px 0 0 2px; background: #3a4150; }
+    .iphone::after { left: auto; right: -3px; top: 150px; height: 80px; border-radius: 0 2px 2px 0; }
+    .screen { position: relative; width: 100%; height: 100%; border-radius: 42px; overflow: hidden; background: var(--bg);
+      display: flex; flex-direction: column; isolation: isolate; }
+    .sbar { flex: none; height: 46px; display: flex; align-items: center; justify-content: space-between; padding: 6px 26px 0 30px;
+      font-size: 14.5px; font-weight: 600; position: relative; z-index: 3; }
+    .sbar-icons { display: flex; align-items: center; gap: 5px; }
+    .sbar-icons svg { height: 11px; fill: currentColor; stroke: none; }
+    .sbar .wifi { transition: opacity .3s; }
+    .offline .sbar .wifi { opacity: .25; }
+    .island { position: absolute; left: 50%; top: 10px; z-index: 20; width: 88px; height: 26px; transform: translateX(-50%);
+      border-radius: 20px; background: #000; color: #fff; display: flex; align-items: center; gap: 8px; padding: 0 14px;
+      font-size: 11.5px; font-weight: 600; overflow: hidden; white-space: nowrap;
+      transition: width .5s var(--ease), height .5s var(--ease), border-radius .5s; }
+    .island > * { opacity: 0; transition: opacity .2s; }
+    .island.wide { width: 196px; height: 34px; }
+    .island.wide > * { opacity: 1; transition-delay: .25s; }
+    .island svg { width: 15px; height: 15px; color: var(--green); }
+    .island.warn svg { color: var(--amber); }
+    .home-ind { position: absolute; left: 50%; bottom: 7px; width: 100px; height: 4px; border-radius: 3px; background: rgba(226, 232, 240, .7);
+      transform: translateX(-50%); z-index: 4; pointer-events: none; }
+    .notif { position: absolute; left: 8px; right: 8px; top: 50px; z-index: 15; display: flex; gap: 10px; padding: 10px 12px;
+      border-radius: 20px; background: rgba(51, 65, 85, .82); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 12px 30px -8px rgba(0, 0, 0, .6); font-size: 12px; line-height: 1.35; cursor: pointer;
+      transform: translateY(-160%); opacity: 0; transition: transform .55s var(--ease), opacity .4s; }
+    .notif.show { transform: none; opacity: 1; }
+    .notif img { width: 32px; height: 32px; border-radius: 8px; flex: none; }
+    .notif div { flex: 1; min-width: 0; }
+    .notif header { display: flex; justify-content: space-between; color: #cbd5e1; font-size: 11px; }
+    .notif p { margin: 1px 0 0; }
+    .view { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .iphone[data-view="chat"] .view-board, .iphone[data-view="board"] .view-chat { display: none; }
+
+    .chat-head { flex: none; display: flex; align-items: center; gap: 9px; padding: 4px 12px 9px; background: var(--panel);
+      border-bottom: 1px solid var(--border); }
+    .chat-head .back { color: var(--accent); width: 18px; height: 18px; }
+    .chat-ava { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; flex: none;
+      background: linear-gradient(135deg, #64748b, #334155), url(/backgrounds/mountains.jpg) center/cover; color: #e2e8f0; }
+    .chat-ava svg { width: 17px; height: 17px; }
+    .chat-title { flex: 1; min-width: 0; line-height: 1.2; }
+    .chat-title b { display: block; font-size: 14px; }
+    .chat-title small { color: var(--muted); font-size: 11.5px; }
+    .chat-title small.typing { color: var(--accent); }
+    .chat-body { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 9px 6px; display: flex; flex-direction: column; gap: 5px;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' fill='none' stroke='white' stroke-opacity='.05' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='14' y='14' width='34' height='24' rx='4'/%3E%3Cpath d='M20 22h18M20 29h11'/%3E%3Crect x='104' y='16' width='20' height='20' rx='5'/%3E%3Cpath d='m109 26 4 4 7-8'/%3E%3Crect x='60' y='64' width='38' height='28' rx='4'/%3E%3Cpath d='M72.5 64v28M85.5 64v28'/%3E%3Cpath d='M20 104v28M20 106h16l-4 6 4 6H20'/%3E%3Ccircle cx='124' cy='118' r='11'/%3E%3Cpath d='M124 112v6l4 3M66 134h12M72 128v12'/%3E%3Ccircle cx='142' cy='70' r='2.5'/%3E%3Ccircle cx='38' cy='72' r='2.5'/%3E%3C/svg%3E"),
+        radial-gradient(circle at 12% 15%, rgba(56, 189, 248, .14), transparent 45%),
+        radial-gradient(circle at 90% 35%, rgba(52, 211, 153, .08), transparent 50%),
+        radial-gradient(circle at 25% 95%, rgba(129, 140, 248, .12), transparent 45%), #0b1222;
+      scrollbar-width: none; }
+    .chat-body::-webkit-scrollbar { display: none; }
+    .chat-body > :first-child { margin-top: auto; }
+    .day, .sys { align-self: center; max-width: 92%; padding: 3px 10px; border-radius: 99px; background: rgba(15, 23, 42, .6);
+      font-size: 11px; color: #cbd5e1; text-align: center; }
+    .sys { border-radius: 10px; }
+    .msg { display: flex; }
+    .msg.out { justify-content: flex-end; }
+    .bubble { max-width: 82%; padding: 6px 9px 5px; border-radius: 14px 14px 14px 4px; background: var(--panel); font-size: 13px;
+      line-height: 1.35; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); overflow-wrap: anywhere; }
+    .out .bubble { border-radius: 14px 14px 4px 14px; background: color-mix(in srgb, #38bdf8 26%, #1e293b); }
+    .bubble .who { display: block; color: var(--violet); font-weight: 650; font-size: 12px; }
+    .bubble q { display: block; quotes: none; margin: 1px 0 4px; padding: 2px 7px; border-left: 3px solid var(--violet);
+      border-radius: 4px; background: rgba(167, 139, 250, .12); font-size: 12px; }
+    .bubble q b { display: block; color: var(--violet); font-size: 11.5px; }
+    .meta { float: right; display: inline-flex; align-items: center; gap: 3px; margin: 5px 0 -2px 8px; font-size: 10.5px; color: var(--muted); }
+    .out .meta { color: #7dd3fc; }
+    .meta svg { width: 15px; height: 13px; stroke-width: 2.2; }
+    .msg.new { animation: pop .45s var(--ease) both; }
+    .out.new { transform-origin: 100% 100%; } .in.new { transform-origin: 0 100%; }
+    @keyframes pop { from { opacity: 0; transform: translateY(10px) scale(.85); } }
+    .meta .st { display: inline-flex; animation: pop .3s var(--ease); }
+    .typing-b { display: inline-flex; gap: 4px; padding: 10px 12px; }
+    .typing-b i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: blink 1.2s infinite; }
+    .typing-b i:nth-child(2) { animation-delay: .2s; } .typing-b i:nth-child(3) { animation-delay: .4s; }
+    @keyframes blink { 0%, 80%, 100% { opacity: .3; transform: none; } 40% { opacity: 1; transform: translateY(-3px); } }
+    .chat-input { flex: none; display: flex; align-items: center; gap: 7px; padding: 7px 9px 18px; background: var(--panel);
+      border-top: 1px solid var(--border); }
+    .chat-input svg { width: 19px; height: 19px; color: var(--muted); }
+    .chat-input input { flex: 1; min-width: 0; height: 32px; padding: 0 12px; border-radius: 16px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--text); font: inherit; font-size: 16px; transform: scale(.82); transform-origin: 0 50%;
+      width: 122%; margin-right: -22%; }
+    .chat-input input:focus { outline: none; border-color: var(--accent); }
+    .chat-input button { width: 32px; height: 32px; border-radius: 50%; border: 0; background: var(--accent); color: #0f172a;
+      display: grid; place-items: center; cursor: pointer; flex: none; transition: transform .2s var(--ease); }
+    .chat-input button:hover { transform: scale(1.08); }
+    .chat-input button svg { color: #0f172a; width: 16px; height: 16px; }
+
+    .pb-head { flex: none; padding: 2px 12px 10px; background: var(--panel); border-bottom: 1px solid var(--border); }
+    .pb-row { display: flex; align-items: center; gap: 8px; }
+    .pb-row .space { flex: 1; min-width: 0; }
+    .pb-head .search { margin-top: 9px; height: 30px; flex: none; }
+    .view-board .mac-body { background-position: 30% center; }
+    .view-board .board-bar { height: 44px; }
+    .view-board .board { overflow-x: auto; scroll-snap-type: x mandatory; gap: 10px; padding: 0 12px 26px; scrollbar-width: none; }
+    .view-board .board::-webkit-scrollbar { display: none; }
+    .view-board .col { flex: 0 0 206px; scroll-snap-align: center; }
+
+    /* Phones: one device, a switch between the board and the chat */
+    .stage.mobile { width: auto; height: auto; transform: none !important; display: flex; flex-direction: column; align-items: center; }
+    .stage.mobile .mac { display: none; }
+    .stage.mobile .iphone { position: relative; right: auto; top: auto; }
+    .stage.mobile .phone-tabs { display: flex; gap: 4px; padding: 4px; margin-bottom: 18px; border-radius: 12px; background: var(--panel);
+      border: 1px solid var(--border); }
+    .phone-tabs button { padding: 7px 18px; border: 0; border-radius: 9px; background: none; color: var(--muted); font: inherit;
+      font-size: .9rem; font-weight: 600; cursor: pointer; }
+    .phone-tabs button[aria-pressed="true"] { background: var(--card); color: var(--text); }
+
+    /* ---------- Sections ---------- */
+    section.block { padding: 84px 0; }
+    .eyebrow { color: var(--accent); font-weight: 700; font-size: .85rem; letter-spacing: .08em; text-transform: uppercase; margin: 0 0 10px; }
+    h2 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); line-height: 1.15; letter-spacing: -.02em; margin: 0 0 14px; }
+    .sub { color: var(--muted); max-width: 640px; margin: 0 0 40px; font-size: 1.08rem; }
+    .center { text-align: center; } .center .sub { margin-left: auto; margin-right: auto; }
+
+    .platforms { border-block: 1px solid rgba(51, 65, 85, .6); background: rgba(30, 41, 59, .35); padding: 26px 0; }
+    .platforms .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 14px 34px; }
+    .platforms p { margin: 0; color: var(--muted); font-size: .92rem; width: 100%; text-align: center; }
+    .plat { display: flex; align-items: center; gap: 9px; font-weight: 600; color: #cbd5e1; }
+    .plat svg { width: 22px; height: 22px; color: var(--accent); }
+
+    .features { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+    .feature { position: relative; padding: 24px; border-radius: 18px; background: linear-gradient(180deg, rgba(30, 41, 59, .9), rgba(30, 41, 59, .5));
+      border: 1px solid rgba(51, 65, 85, .8); transition: transform .3s var(--ease), border-color .3s, box-shadow .3s; overflow: hidden; }
+    .feature:hover { transform: translateY(-4px); border-color: color-mix(in srgb, var(--c) 55%, #334155);
+      box-shadow: 0 20px 40px -20px color-mix(in srgb, var(--c) 45%, transparent); }
+    .feature .ico { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; margin-bottom: 16px;
+      color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); }
+    .feature .ico svg { width: 22px; height: 22px; }
+    .feature h3 { margin: 0 0 6px; font-size: 1.1rem; }
+    .feature p { margin: 0; color: var(--muted); font-size: .95rem; }
+    .feature.big { grid-column: span 2; }
+
+    .shots { display: grid; grid-template-columns: 1.6fr 1fr; gap: 18px; align-items: start; }
+    .shot { margin: 0; border-radius: 16px; overflow: hidden; border: 1px solid var(--border); background: var(--panel);
+      box-shadow: 0 30px 60px -30px rgba(0, 0, 0, .8); }
+    .shot img { display: block; width: 100%; height: auto; }
+    .shot figcaption { padding: 10px 14px; color: var(--muted); font-size: .9rem; }
+    .shots-side { display: grid; gap: 18px; }
+
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; counter-reset: step; }
+    .step { padding: 26px; border-radius: 18px; border: 1px solid var(--border); background: rgba(30, 41, 59, .5); }
+    .step::before { counter-increment: step; content: counter(step); display: grid; place-items: center; width: 38px; height: 38px;
+      margin-bottom: 14px; border-radius: 50%; font-weight: 800; color: #0f172a;
+      background: linear-gradient(135deg, var(--accent), var(--violet)); }
+    .step h3 { margin: 0 0 6px; font-size: 1.12rem; }
+    .step p { margin: 0; color: var(--muted); }
+
+    .faq { max-width: 780px; margin: 0 auto; display: grid; gap: 10px; }
+    .faq details { border: 1px solid var(--border); border-radius: 14px; background: rgba(30, 41, 59, .5); transition: border-color .2s; }
+    .faq details[open] { border-color: #475569; background: rgba(30, 41, 59, .8); }
+    .faq summary { list-style: none; cursor: pointer; padding: 18px 20px; font-weight: 650; display: flex; justify-content: space-between; gap: 16px; }
+    .faq summary::-webkit-details-marker { display: none; }
+    .faq summary::after { content: "+"; color: var(--accent); font-size: 1.4rem; line-height: 1; transition: transform .25s var(--ease); }
+    .faq details[open] summary::after { transform: rotate(45deg); }
+    .faq details p { margin: 0; padding: 0 20px 18px; color: var(--muted); }
+
+    .final { text-align: center; padding: 70px 24px; border-radius: 28px; border: 1px solid #3b4a61; position: relative; overflow: hidden;
+      background: radial-gradient(60% 80% at 20% 0%, rgba(56, 189, 248, .22), transparent 70%),
+        radial-gradient(60% 80% at 90% 100%, rgba(167, 139, 250, .22), transparent 70%), var(--panel); }
+    .final img { width: 72px; height: 72px; border-radius: 18px; box-shadow: 0 16px 40px -10px rgba(56, 189, 248, .6); }
+    .final p { color: var(--muted); max-width: 560px; margin: 0 auto 26px; }
+
+    footer { padding: 40px 0 50px; color: var(--muted); font-size: .92rem; }
+    footer .wrap { display: flex; flex-wrap: wrap; gap: 14px 28px; align-items: center; justify-content: space-between; }
+    footer nav { display: flex; flex-wrap: wrap; gap: 8px 22px; }
+    footer a { color: var(--muted); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+    footer a:hover { color: var(--text); }
+
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity .7s var(--ease), transform .7s var(--ease); }
+    .reveal.in { opacity: 1; transform: none; }
+
+    @media (max-width: 860px) {
+      .top nav { display: none; }
+      .top .btn { margin-left: auto; }
+      .feature.big { grid-column: auto; }
+      .shots, .steps { grid-template-columns: 1fr; }
+      section.block { padding: 64px 0; }
+    }
+    @media (max-width: 520px) {
+      .hero { padding-top: 40px; }
+      .ctas .btn { flex: 1 1 100%; }
+      .stage-wrap { margin-top: 36px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important; transition-delay: 0s !important; }
+      .reveal { opacity: 1; transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-check2" viewBox="0 0 26 24"><path d="M2 12.5l4.5 4.5L16 7.5M12.5 16.5l1 1L23 7.5"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2"/></symbol>
+    <symbol id="i-sync" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.3-4.3L4 9M4 4v5h5M4 13a8 8 0 0 0 14.3 4.3L20 15M20 20v-5h-5"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9M10 20a2 2 0 0 0 4 0"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M3 13h5l1.5 3h5l1.5-3h5M5.5 5h13l2.5 8v6H3v-6z"/></symbol>
+    <symbol id="i-cols" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01"/></symbol>
+    <symbol id="i-listcheck" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m8 12 3 3 5-6"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+    <symbol id="i-wifioff" viewBox="0 0 24 24"><path d="M2 2l20 20M8.5 16.5a5 5 0 0 1 7 0M5 12.9a10 10 0 0 1 5.2-2.8M19 12.9a10 10 0 0 0-2.2-1.7M2 8.8a15 15 0 0 1 4.6-2.9M22 8.8A15 15 0 0 0 11 5M12 20h.01"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></symbol>
+    <symbol id="i-theme" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z"/></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24"><path d="m8 7-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+    <symbol id="i-laptop" viewBox="0 0 24 24"><path d="M4 5h16v11H4zM2 19h20"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m6 9 4 3-4 3M12 15h6"/></symbol>
+    <symbol id="i-android" viewBox="0 0 24 24"><path d="M4 17v-3a8 8 0 0 1 16 0v3zM7 7.5 5 4.5M17 7.5l2-3M9 13h.01M15 13h.01"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 21h16"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/></symbol>
+    <symbol id="i-gift" viewBox="0 0 24 24"><path d="M3 9h18v4H3zM5 13v8h14v-8M12 9v12M12 9S10.5 3 7.5 4.5 9 9 12 9zm0 0s1.5-6 4.5-4.5S15 9 12 9z"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M4 12 20 4l-6 16-3-7z"/></symbol>
+    <symbol id="i-clip" viewBox="0 0 24 24"><path d="M21 11.5 12.5 20a5 5 0 0 1-7-7L14 4.5a3.5 3.5 0 0 1 5 5L10.5 18a2 2 0 0 1-3-3L15 7.5"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></symbol>
+    <symbol id="i-hand" viewBox="0 0 24 24"><path d="M8 13V5.5a1.5 1.5 0 0 1 3 0V12M11 11.5v-2a1.5 1.5 0 0 1 3 0V12M14 10.5a1.5 1.5 0 0 1 3 0V12M17 11.5a1.5 1.5 0 0 1 3 0V16a6 6 0 0 1-6 6h-1.5a6 6 0 0 1-5-2.7L4.300 15a1.6 1.6 0 0 1 2.6-1.8L8 15"/></symbol>
+    <symbol id="i-reset" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></symbol>
+    <symbol id="i-github" viewBox="0 0 24 24"><path fill="currentColor" stroke="none" d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.9 10.9.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.5-3.9-1.5-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.7 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A11.5 11.5 0 0 0 23.5 12C23.5 5.7 18.3.5 12 .5z"/></symbol>
+  </svg>
+
+  <header class="top">
+    <div class="wrap">
+      <a class="brand" href="#top"><img src="/icon.svg" alt="" width="30" height="30" />Offline Kanban</a>
+      <nav aria-label="Разделы">
+        <a href="#features">Возможности</a>
+        <a href="#start">Как начать</a>
+        <a href="#faq">Вопросы</a>
+        <a href="https://github.com/ravler1704/kanban-pwa">GitHub</a>
+      </nav>
+      <a class="btn btn-primary btn-sm" href="/">Открыть</a>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="wrap">
+        <span class="pill"><span class="dot"></span>Бесплатно · <b>работает без интернета</b></span>
+        <h1>Канбан, который работает <span class="grad">даже без интернета</span></h1>
+        <p class="lead">Доски, карточки, чаты и напоминания — на телефоне и компьютере. Пишите в метро и в самолёте:
+          всё сохранится на устройстве и само синхронизируется, как только появится сеть.</p>
+        <div class="ctas">
+          <a class="btn btn-primary" href="/"><svg class="i"><use href="#i-globe"/></svg>Открыть в браузере</a>
+          <a class="btn" href="/install.html"><svg class="i"><use href="#i-plus"/></svg>Установить</a>
+          <a class="btn" href="https://github.com/ravler1704/kanban-pwa/releases/latest/download/offline-kanban.apk"><svg class="i"><use href="#i-android"/></svg>Скачать APK</a>
+          <a class="btn" aria-disabled="true" title="Скоро в Google Play"><svg class="i"><use href="#i-download"/></svg>Google Play <span class="soon">скоро</span></a>
+        </div>
+        <ul class="trust">
+          <li><svg class="i"><use href="#i-check"/></svg>Без рекламы и подписок</li>
+          <li><svg class="i"><use href="#i-check"/></svg>Открытый код на GitHub</li>
+          <li><svg class="i"><use href="#i-check"/></svg>Телефон, планшет, компьютер</li>
+        </ul>
+
+        <div class="stage-wrap" id="stage-wrap">
+          <div class="stage" id="stage" aria-label="Интерактивная демонстрация доски. Ничего не сохраняется." role="region">
+            <div class="phone-tabs" role="group" aria-label="Экран телефона">
+              <button type="button" data-tab="board" aria-pressed="true">Доска</button>
+              <button type="button" data-tab="chat" aria-pressed="false">Чат</button>
+            </div>
+
+            <div class="mac" aria-hidden="false">
+              <div class="mac-bar"><i></i><i></i><i></i><span>Offline Kanban — Ремонт квартиры</span></div>
+              <div class="app-bar">
+                <span class="avatar">Т</span>
+                <span class="space"><b>Моё пространство</b><small>3 участника</small></span>
+                <span class="inbox"><svg class="i"><use href="#i-inbox"/></svg>Входящие</span>
+                <span class="search"><svg class="i"><use href="#i-search"/></svg>Найти карточку</span>
+                <button type="button" class="net" data-net title="Переключить сеть (демо)"><span class="dot"></span><span data-net-label>Онлайн</span></button>
+                <span class="synced" data-synced>Синхр.: 12:59</span>
+                <span class="ibtn" data-sync-icon><svg class="i"><use href="#i-sync"/></svg></span>
+                <span class="ibtn"><svg class="i"><use href="#i-bell"/></svg></span>
+                <span class="ibtn"><svg class="i"><use href="#i-user"/></svg></span>
+                <span class="ibtn"><svg class="i"><use href="#i-chat"/></svg></span>
+              </div>
+              <div class="mac-body">
+                <div class="toast" data-toast><svg class="i"><use href="#i-check"/></svg><span>Синхронизировано</span></div>
+                <div class="board-bar">
+                  <span class="ibtn"><svg class="i"><use href="#i-cols"/></svg></span>
+                  <span class="ibtn"><svg class="i"><use href="#i-filter"/></svg></span>
+                  <h3>Ремонт квартиры</h3>
+                  <span class="faces"><span class="avatar" style="--av:#a78bfa">А</span><span class="avatar" style="--av:#0ea5e9">М</span><span class="avatar" style="--av:#10b981">Т</span></span>
+                  <span class="views"><span class="on"><svg class="i"><use href="#i-cols"/></svg>Колонки</span><span><svg class="i"><use href="#i-list"/></svg>Список</span><span><svg class="i"><use href="#i-cal"/></svg>Календарь</span></span>
+                </div>
+                <div class="board" data-board="mac"></div>
+              </div>
+            </div>
+
+            <div class="iphone" data-view="chat">
+              <div class="screen">
+                <div class="island" data-island><svg class="i"><use href="#i-check"/></svg><span data-island-text>Синхронизировано</span></div>
+                <div class="sbar">
+                  <span>9:41</span>
+                  <span class="sbar-icons" aria-hidden="true">
+                    <svg viewBox="0 0 18 11"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="5" y="5" width="3" height="6" rx="1"/><rect x="10" y="2.5" width="3" height="8.5" rx="1"/><rect x="15" y="0" width="3" height="11" rx="1"/></svg>
+                    <svg class="wifi" viewBox="0 0 16 11"><path d="M8 2.2c2.4 0 4.6.9 6.2 2.5l1.3-1.3A10.6 10.6 0 0 0 8 .3 10.6 10.6 0 0 0 .5 3.4l1.3 1.3A8.7 8.7 0 0 1 8 2.2zm0 3.7c1.4 0 2.6.5 3.6 1.4l1.3-1.3A7 7 0 0 0 8 4a7 7 0 0 0-4.9 2l1.3 1.3c1-.9 2.2-1.4 3.6-1.4zM8 11l2.3-2.3a3.3 3.3 0 0 0-4.6 0z"/></svg>
+                    <svg viewBox="0 0 26 12"><rect x=".5" y=".5" width="22" height="11" rx="3.2" fill="none" stroke="currentColor" opacity=".45"/><rect x="2.2" y="2.2" width="16" height="7.6" rx="1.8"/><rect x="23.6" y="4" width="1.8" height="4" rx=".9" opacity=".45"/></svg>
+                  </span>
+                </div>
+                <div class="notif" data-notif role="status">
+                  <img src="/icon-192.png" alt="" width="32" height="32" />
+                  <div>
+                    <header><b>Kanban</b><span>сейчас</span></header>
+                    <p><b>Напоминание:</b> Позвонить электрику — сегодня в 15:00</p>
+                  </div>
+                </div>
+
+                <div class="view view-chat">
+                  <div class="chat-head">
+                    <svg class="i back"><use href="#i-back"/></svg>
+                    <span class="chat-ava"><svg class="i"><use href="#i-folder"/></svg></span>
+                    <span class="chat-title"><b>Ремонт квартиры</b><small data-chat-sub>3 участника</small></span>
+                    <button type="button" class="net" data-net title="Переключить сеть (демо)"><span class="dot"></span></button>
+                  </div>
+                  <div class="chat-body" data-chat aria-live="polite"></div>
+                  <form class="chat-input" data-chat-form>
+                    <svg class="i"><use href="#i-clip"/></svg>
+                    <input type="text" maxlength="160" placeholder="Сообщение" aria-label="Сообщение (демо)" autocomplete="off" />
+                    <button type="submit" aria-label="Отправить"><svg class="i"><use href="#i-send"/></svg></button>
+                  </form>
+                </div>
+
+                <div class="view view-board">
+                  <div class="pb-head">
+                    <div class="pb-row">
+                      <span class="avatar">Т</span>
+                      <span class="space"><b>Моё пространство</b><small>Ремонт квартиры</small></span>
+                      <button type="button" class="net" data-net title="Переключить сеть (демо)"><span class="dot"></span><span data-net-label>Онлайн</span></button>
+                    </div>
+                    <span class="search"><svg class="i"><use href="#i-search"/></svg>Найти карточку</span>
+                  </div>
+                  <div class="mac-body">
+                    <div class="board-bar">
+                      <span class="ibtn"><svg class="i"><use href="#i-cols"/></svg></span>
+                      <h3>Все доски</h3>
+                      <span class="faces" style="margin-left:auto"><span class="avatar" style="--av:#a78bfa">А</span><span class="avatar" style="--av:#0ea5e9">М</span></span>
+                    </div>
+                    <div class="board" data-board="phone"></div>
+                  </div>
+                </div>
+                <span class="home-ind"></span>
+              </div>
+            </div>
+          </div>
+          <noscript><img src="/screenshots/board.png" alt="Доска Offline Kanban" style="width:100%;border-radius:14px" /></noscript>
+        </div>
+
+        <div class="stage-hints">
+          <span class="chip static"><svg class="i"><use href="#i-hand"/></svg>Перетащите карточку</span>
+          <button type="button" class="chip" data-net><svg class="i"><use href="#i-wifioff"/></svg>Онлайн / офлайн</button>
+          <button type="button" class="chip" data-remind><svg class="i"><use href="#i-bell"/></svg>Напоминание</button>
+          <button type="button" class="chip" data-reset><svg class="i"><use href="#i-reset"/></svg>Сначала</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="platforms">
+      <div class="wrap">
+        <p>Одно приложение — на всех ваших устройствах</p>
+        <span class="plat"><svg class="i"><use href="#i-android"/></svg>Android</span>
+        <span class="plat"><svg class="i"><use href="#i-phone"/></svg>iPhone и iPad</span>
+        <span class="plat"><svg class="i"><use href="#i-monitor"/></svg>Windows</span>
+        <span class="plat"><svg class="i"><use href="#i-laptop"/></svg>macOS</span>
+        <span class="plat"><svg class="i"><use href="#i-terminal"/></svg>Linux</span>
+        <span class="plat"><svg class="i"><use href="#i-globe"/></svg>Любой браузер</span>
+      </div>
+    </div>
+
+    <section class="block" id="features">
+      <div class="wrap">
+        <p class="eyebrow">Возможности</p>
+        <h2>Всё для дел — и ничего лишнего</h2>
+        <p class="sub">От списка покупок до ремонта с бригадой: доски для себя и для небольшой команды.</p>
+        <div class="features">
+          <article class="feature big reveal" style="--c:#34d399">
+            <span class="ico"><svg class="i"><use href="#i-wifioff"/></svg></span>
+            <h3>Работает без интернета</h3>
+            <p>Все данные хранятся на устройстве. Создавайте и двигайте карточки, пишите в чаты в самолёте или на даче —
+              изменения уйдут на сервер, когда появится связь. Если двое поправили одно и то же, приложение покажет
+              конфликт и даст выбрать.</p>
+          </article>
+          <article class="feature reveal" style="--c:#38bdf8">
+            <span class="ico"><svg class="i"><use href="#i-sync"/></svg></span>
+            <h3>Синхронизация устройств</h3>
+            <p>Начали на телефоне — продолжили на компьютере. Всё обновляется само.</p>
+          </article>
+          <article class="feature reveal" style="--c:#fbbf24">
+            <span class="ico"><svg class="i"><use href="#i-folder"/></svg></span>
+            <h3>Папки и доски</h3>
+            <p>Вложенные папки любой глубины, несколько пространств, свои наборы колонок, поиск по всем доскам.</p>
+          </article>
+          <article class="feature reveal" style="--c:#a78bfa">
+            <span class="ico"><svg class="i"><use href="#i-chat"/></svg></span>
+            <h3>Чаты как в Telegram</h3>
+            <p>Чаты досок и карточек, личные сообщения, ответы и цитаты, правка и удаление, картинки, галочки
+              «доставлено» и «прочитано».</p>
+          </article>
+          <article class="feature reveal" style="--c:#f472b6">
+            <span class="ico"><svg class="i"><use href="#i-bell"/></svg></span>
+            <h3>Напоминания с push</h3>
+            <p>Сколько угодно напоминаний на карточку, с повторами. Уведомление придёт, даже если приложение закрыто.</p>
+          </article>
+          <article class="feature reveal" style="--c:#38bdf8">
+            <span class="ico"><svg class="i"><use href="#i-share"/></svg></span>
+            <h3>Общий доступ</h3>
+            <p>Пригласите по почте — с доступом к отдельным папкам — или поделитесь публичной ссылкой без входа.</p>
+          </article>
+          <article class="feature reveal" style="--c:#34d399">
+            <span class="ico"><svg class="i"><use href="#i-cal"/></svg></span>
+            <h3>Колонки, список, календарь</h3>
+            <p>Канбан для потока, редактируемая таблица для правок, календарь для сроков и напоминаний.</p>
+          </article>
+          <article class="feature reveal" style="--c:#a78bfa">
+            <span class="ico"><svg class="i"><use href="#i-listcheck"/></svg></span>
+            <h3>Карточки по-взрослому</h3>
+            <p>Подзадачи, Markdown, файлы и видео, цвета и хэштеги, архив и история изменений, «Входящие» для быстрых дел.</p>
+          </article>
+          <article class="feature reveal" style="--c:#fbbf24">
+            <span class="ico"><svg class="i"><use href="#i-theme"/></svg></span>
+            <h3>Светлая и тёмная тема</h3>
+            <p>Подстраивается под систему, а интерфейс удобен и на маленьком экране телефона.</p>
+          </article>
+          <article class="feature reveal" style="--c:#e2e8f0">
+            <span class="ico"><svg class="i"><use href="#i-code"/></svg></span>
+            <h3>Бесплатно и открыто</h3>
+            <p>Без рекламы и платных тарифов. Исходный код — на <a href="https://github.com/ravler1704/kanban-pwa">GitHub</a>.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="block" style="padding-top:0">
+      <div class="wrap">
+        <p class="eyebrow">Как это выглядит</p>
+        <h2>Настоящие экраны приложения</h2>
+        <p class="sub">Без монтажа: так выглядит доска и чат в браузере и на телефоне.</p>
+        <div class="shots">
+          <figure class="shot reveal">
+            <img src="/screenshots/board.png" alt="Доска с колонками «Запланировано», «В работе», «Завершено»" width="1360" height="800" loading="lazy" decoding="async" />
+            <figcaption>Доска на компьютере</figcaption>
+          </figure>
+          <div class="shots-side">
+            <figure class="shot reveal">
+              <img src="/screenshots/chat.png" alt="Чат доски с ответами и галочками прочтения" width="1360" height="800" loading="lazy" decoding="async" />
+              <figcaption>Чат доски с ответами и цитатами</figcaption>
+            </figure>
+            <figure class="shot reveal" style="max-width:240px">
+              <img src="/screenshots/phone.png" alt="Доска на телефоне" width="780" height="1688" loading="lazy" decoding="async" />
+              <figcaption>На телефоне</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block" id="start" style="padding-top:0">
+      <div class="wrap">
+        <p class="eyebrow">Как начать</p>
+        <h2>Три шага — и доска с вами везде</h2>
+        <p class="sub">Ничего не нужно настраивать: вход через Google, Яндекс ID или по коду на почту.</p>
+        <div class="steps">
+          <div class="step reveal">
+            <h3>Откройте</h3>
+            <p><a href="/">Откройте приложение</a> в браузере и войдите — доска «Личное» уже ждёт.</p>
+          </div>
+          <div class="step reveal">
+            <h3>Установите</h3>
+            <p>Добавьте значок на экран «Домой» или рабочий стол — <a href="/install.html">инструкция для вашего устройства</a>.
+              Для Android есть APK.</p>
+          </div>
+          <div class="step reveal">
+            <h3>Пользуйтесь где угодно</h3>
+            <p>Создавайте карточки и зовите близких или коллег. Без интернета всё работает, с ним — синхронизируется.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="block" id="faq" style="padding-top:0">
+      <div class="wrap">
+        <div class="center">
+          <p class="eyebrow">Вопросы</p>
+          <h2>Частые вопросы</h2>
+        </div>
+        <div class="faq">
+          <details open>
+            <summary>Это бесплатно?</summary>
+            <p>Да, полностью: без рекламы, подписок и ограничений по числу досок. Код открыт на GitHub — можно посмотреть,
+              как всё устроено, или поднять свой сервер.</p>
+          </details>
+          <details>
+            <summary>Где хранятся мои данные?</summary>
+            <p>На вашем устройстве (в хранилище браузера или приложения) и на сервере — копия нужна для синхронизации
+              между устройствами и совместной работы. Доски видят только те, кого вы пригласили, или те, у кого есть
+              публичная ссылка, если вы её создали.</p>
+          </details>
+          <details>
+            <summary>Работает ли без интернета?</summary>
+            <p>Да. После первого входа приложение открывается и без сети: можно создавать и менять карточки, писать
+              сообщения. Сообщения помечаются часиками, а когда связь вернётся, всё отправится само.</p>
+          </details>
+          <details>
+            <summary>Как установить на iPhone или iPad?</summary>
+            <p>Откройте <a href="/">сайт</a> в Safari, нажмите «Поделиться» (квадрат со стрелкой) и выберите «На экран
+              «Домой»». Появится значок, приложение откроется на весь экран, а напоминания будут приходить как обычные
+              уведомления (iOS 16.4 и новее).</p>
+          </details>
+          <details>
+            <summary>А на Android и компьютер?</summary>
+            <p>На Android — <a href="https://github.com/ravler1704/kanban-pwa/releases/latest/download/offline-kanban.apk">скачайте APK</a>
+              или установите из Chrome (меню ⋮ → «Установить приложение»); скоро — в Google Play. На Windows, macOS и
+              Linux — значок установки в адресной строке Chrome, Edge или Яндекс Браузера. Подробно — на
+              <a href="/install.html">странице установки</a>.</p>
+          </details>
+          <details>
+            <summary>Можно работать вместе с командой?</summary>
+            <p>Да: пригласите людей по почте и выберите, какие папки им доступны. У каждой доски и карточки есть свой
+              чат, а изменения видны всем участникам.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <section class="block" style="padding-top:0">
+      <div class="wrap">
+        <div class="final reveal">
+          <img src="/icon.svg" alt="" width="72" height="72" />
+          <h2>Попробуйте прямо сейчас</h2>
+          <p>Откройте в браузере за пару секунд, а понравится — установите на телефон и компьютер.</p>
+          <div class="ctas">
+            <a class="btn btn-primary" href="/"><svg class="i"><use href="#i-globe"/></svg>Открыть в браузере</a>
+            <a class="btn" href="/install.html"><svg class="i"><use href="#i-plus"/></svg>Установить</a>
+            <a class="btn" href="https://github.com/ravler1704/kanban-pwa/releases/latest/download/offline-kanban.apk"><svg class="i"><use href="#i-android"/></svg>Скачать APK</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <a class="brand" href="#top"><img src="/icon.svg" alt="" width="30" height="30" />Offline Kanban</a>
+      <nav aria-label="Ссылки">
+        <a href="/">Открыть приложение</a>
+        <a href="/install.html">Установка</a>
+        <a href="https://github.com/ravler1704/kanban-pwa/releases/latest">Релизы</a>
+        <a href="https://github.com/ravler1704/kanban-pwa"><svg class="i"><use href="#i-github"/></svg>GitHub</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script>
+  (() => {
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const $ = (s, r = document) => r.querySelector(s);
+    const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+    const esc = (s) => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const now = () => new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    const ico = (id) => `<svg class="i"><use href="#${id}"/></svg>`;
+
+    /* ---------- Demo data (nothing is saved) ---------- */
+    const COLS = [['plan', 'Запланировано'], ['work', 'В работе'], ['done', 'Завершено']];
+    const PEOPLE = { 'А': '#a78bfa', 'М': '#0ea5e9', 'Т': '#10b981' };
+    const CARDS = [
+      { id: 'c1', n: 1, title: 'Выбрать плитку для ванной', tag: 'ремонт', color: '#fcd34d', col: 'plan', who: 'А',
+        list: [['Замерить стены', true], ['Съездить в салон', false], ['Заказать доставку', false]] },
+      { id: 'c2', n: 2, title: 'Позвонить электрику', col: 'plan', who: 'М', remind: '15:00' },
+      { id: 'c3', n: 3, title: 'Купить краску для стен', tag: 'покупки', color: '#4ade80', col: 'plan', who: 'Т' },
+      { id: 'c4', n: 4, title: 'Демонтаж старой плитки', desc: 'Снять плитку в ванной и на кухне, вынести мусор.',
+        color: '#fb923c', col: 'work', who: 'М', list: [['Ванная', true], ['Кухня', false]] },
+      { id: 'c5', n: 5, title: 'Смета на материалы', tag: 'бюджет', color: '#a78bfa', col: 'work', who: 'А' },
+      { id: 'c6', n: 6, title: 'Выбрать бригаду', color: '#60a5fa', col: 'done', who: 'Т', done: true },
+      { id: 'c7', n: 7, title: 'Замерить комнаты', col: 'done', who: 'А', done: true },
+    ];
+    const MSGS = [
+      { t: 'day', text: 'Сегодня' },
+      { t: 'sys', text: 'Аня создала карточку #1 «Выбрать плитку для ванной»' },
+      { t: 'in', name: 'Аня', text: 'Завтра свободна, могу съездить за краской 🎨', time: '12:41' },
+      { t: 'out', text: 'Супер, бери светло-серую 👍', time: '12:43', st: 'read' },
+    ];
+    const clone = (x) => JSON.parse(JSON.stringify(x));
+    const state = { cards: clone(CARDS), msgs: clone(MSGS), online: true, pending: 0, typing: false };
+    const card = (id) => state.cards.find((c) => c.id === id);
+
+    const stage = $('#stage'), stageWrap = $('#stage-wrap'), phone = $('.iphone');
+    const boards = $$('[data-board]');
+    let scale = 1, mobile = false, lastUser = 0;
+    const markUser = () => { lastUser = Date.now(); };
+
+    /* ---------- Board ---------- */
+    function cardHTML(c) {
+      const total = c.list ? c.list.length : 0, doneN = total ? c.list.filter((x) => x[1]).length : 0;
+      return `<article class="card${c.done ? ' is-done' : ''}" data-id="${c.id}"${c.color ? ` style="--strip:${c.color}"` : ''}>
+        ${c.color ? '<i class="strip"></i>' : ''}
+        <div class="card-head"><button type="button" class="tick" data-act="done" aria-label="Выполнено" aria-pressed="${!!c.done}">${ico('i-check')}</button>
+        <span class="card-title">${esc(c.title)}${c.tag ? ` <span class="tag">#${c.tag}</span>` : ''}</span></div>
+        ${c.desc ? `<p class="card-desc">${c.desc}</p>` : ''}
+        <div class="card-meta"><span>#${c.n}</span>
+          ${total ? `<button type="button" class="cl${doneN === total ? ' full' : ''}" data-act="open" aria-expanded="${!!c.open}">${ico('i-listcheck')}${doneN}/${total}</button>` : ''}
+          ${c.remind ? `<span class="rem">${ico('i-bell')}${c.remind}</span>` : ''}
+          <span class="avatar" style="--av:${PEOPLE[c.who]}">${c.who}</span></div>
+        ${c.open && total ? `<ul class="checklist">${c.list.map((x, i) => `<li class="${x[1] ? 'on' : ''}"><button type="button" class="cb${x[1] ? ' on' : ''}" data-act="item" data-i="${i}" aria-pressed="${x[1]}" aria-label="${esc(x[0])}">${ico('i-check')}</button>${esc(x[0])}</li>`).join('')}</ul>` : ''}
+      </article>`;
+    }
+
+    function renderBoards(from = {}, flash) {
+      const before = new Map();
+      $$('[data-board] .card').forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (r.width) before.set(el.closest('[data-board]').dataset.board + el.dataset.id, r);
+      });
+      const scrolls = boards.map((b) => [...b.querySelectorAll('.col-cards')].map((x) => x.scrollTop));
+      boards.forEach((root, bi) => {
+        root.innerHTML = COLS.map(([id, title]) => {
+          const list = state.cards.filter((c) => c.col === id);
+          return `<section class="col" data-col="${id}"><header><b>${title}</b><span>${list.length}</span><i>···</i></header>
+            <div class="col-cards">${list.map(cardHTML).join('')}</div><div class="col-add">+ Новая карточка</div></section>`;
+        }).join('');
+        root.querySelectorAll('.col-cards').forEach((x, i) => { x.scrollTop = scrolls[bi][i] || 0; });
+      });
+      $$('[data-board] .card').forEach((el) => {
+        const key = el.closest('[data-board]').dataset.board;
+        const r = el.getBoundingClientRect();
+        if (!r.width) return;
+        if (flash && el.dataset.id === flash) el.classList.add('flash');
+        if (reduce) return;
+        const r0 = from[key + el.dataset.id] || before.get(key + el.dataset.id);
+        if (!r0) return;
+        const k = key === 'mac' || !mobile ? scale : 1;
+        const dx = (r0.left - r.left) / k, dy = (r0.top - r.top) / k;
+        if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+          el.animate([{ transform: `translate(${dx}px, ${dy}px)`, zIndex: 3 }, { transform: 'none', zIndex: 3 }],
+            { duration: 520, easing: 'cubic-bezier(.2,.8,.2,1)' });
+        }
+      });
+    }
+
+    function changed() {
+      if (state.online) syncFlash();
+      else { state.pending++; renderNet(); }
+    }
+
+    function moveCard(id, col, index = 0) {
+      const c = card(id);
+      if (!c) return;
+      state.cards.splice(state.cards.indexOf(c), 1);
+      const same = state.cards.filter((x) => x.col === col);
+      const at = same[index] ? state.cards.indexOf(same[index]) : (same.length ? state.cards.indexOf(same[same.length - 1]) + 1 : state.cards.length);
+      c.col = col;
+      c.done = col === 'done';
+      state.cards.splice(at, 0, c);
+      renderBoards({}, id);
+      changed();
+    }
+
+    function toggleItem(id, i) {
+      const c = card(id);
+      c.open = true;
+      c.list[i][1] = !c.list[i][1];
+      renderBoards();
+      changed();
+    }
+
+    function toggleDone(id) {
+      const c = card(id);
+      c.done = !c.done;
+      renderBoards();
+      changed();
+    }
+
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-board] [data-act]');
+      const el = e.target.closest('[data-board] .card');
+      if (!el || suppressClick) return;
+      markUser();
+      const c = card(el.dataset.id);
+      const act = btn ? btn.dataset.act : 'open';
+      if (act === 'done') toggleDone(c.id);
+      else if (act === 'item') toggleItem(c.id, +btn.dataset.i);
+      else if (c.list) { c.open = !c.open; renderBoards(); }
+    });
+
+    /* Drag and drop with pointer events: mouse at once, touch after a short hold so the page still scrolls. */
+    let drag = null, suppressClick = false;
+    document.addEventListener('pointerdown', (e) => {
+      const el = e.target.closest('[data-board] .card');
+      if (!el || e.target.closest('button') || e.button > 0) return;
+      markUser();
+      const touch = e.pointerType !== 'mouse';
+      drag = { el, root: el.closest('[data-board]'), x: e.clientX, y: e.clientY, ready: !touch, started: false };
+      if (touch) drag.timer = setTimeout(() => {
+        if (!drag) return;
+        drag.ready = true;
+        el.classList.add('hold');
+        if (navigator.vibrate) navigator.vibrate(12);
+      }, 230);
+    });
+    document.addEventListener('touchmove', (e) => { if (drag && drag.ready) e.preventDefault(); }, { passive: false });
+    document.addEventListener('contextmenu', (e) => { if (drag) e.preventDefault(); });
+    document.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      const dist = Math.hypot(e.clientX - drag.x, e.clientY - drag.y);
+      if (!drag.ready) { if (dist > 8) endDrag(true); return; }
+      if (!drag.started) {
+        if (dist < 4 && e.pointerType === 'mouse') return;
+        const r = drag.el.getBoundingClientRect();
+        const g = drag.el.cloneNode(true);
+        g.classList.remove('hold', 'flash');
+        g.classList.add('ghost');
+        g.style.width = drag.el.offsetWidth + 'px';
+        drag.k = r.width / drag.el.offsetWidth;
+        drag.ox = drag.x - r.left; drag.oy = drag.y - r.top;
+        document.body.append(g);
+        drag.ghost = g;
+        drag.el.classList.remove('hold');
+        drag.el.classList.add('placeholder');
+        drag.startCol = drag.el.closest('.col').dataset.col;
+        drag.started = true;
+        document.body.style.cursor = 'grabbing';
+      }
+      markUser();
+      const gx = e.clientX - drag.ox, gy = e.clientY - drag.oy;
+      drag.ghost.style.transform = `translate(${gx}px, ${gy}px) scale(${drag.k}) rotate(2.5deg)`;
+      const under = document.elementFromPoint(e.clientX, e.clientY);
+      const col = under && under.closest('.col');
+      $$('.col.over').forEach((c) => c !== col && c.classList.remove('over'));
+      if (col && drag.root.contains(col)) {
+        col.classList.add('over');
+        const box = col.querySelector('.col-cards');
+        const next = [...box.children].find((c) => c !== drag.el && c.getBoundingClientRect().top + c.getBoundingClientRect().height / 2 > e.clientY);
+        if (next) { if (next.previousElementSibling !== drag.el) box.insertBefore(drag.el, next); }
+        else if (box.lastElementChild !== drag.el) box.append(drag.el);
+      }
+      if (drag.root.dataset.board === 'phone') {
+        const rr = drag.root.getBoundingClientRect();
+        if (e.clientX > rr.right - 30) drag.root.scrollLeft += 8;
+        else if (e.clientX < rr.left + 30) drag.root.scrollLeft -= 8;
+      }
+    });
+    function endDrag(cancel) {
+      if (!drag) return;
+      clearTimeout(drag.timer);
+      const d = drag;
+      drag = null;
+      d.el.classList.remove('hold');
+      document.body.style.cursor = '';
+      $$('.col.over').forEach((c) => c.classList.remove('over'));
+      if (!d.started) return;
+      suppressClick = true;
+      setTimeout(() => { suppressClick = false; }, 0);
+      const from = { [d.root.dataset.board + d.el.dataset.id]: d.ghost.getBoundingClientRect() };
+      d.ghost.remove();
+      const order = $$('.card', d.root).map((el) => {
+        const c = card(el.dataset.id);
+        const col = el.closest('.col').dataset.col;
+        if (c.col !== col) c.done = col === 'done';
+        c.col = col;
+        return c;
+      });
+      state.cards = order;
+      renderBoards(from, d.el.dataset.id);
+      if (!cancel) changed();
+    }
+    document.addEventListener('pointerup', () => endDrag(false));
+    document.addEventListener('pointercancel', () => endDrag(true));
+
+    /* ---------- Network: online / offline / sync ---------- */
+    let islandTimer, toastTimer;
+    function island(text, warn) {
+      const el = $('[data-island]');
+      $('[data-island-text]').textContent = text;
+      el.querySelector('use').setAttribute('href', warn ? '#i-wifioff' : '#i-check');
+      el.classList.toggle('warn', !!warn);
+      el.classList.add('wide');
+      clearTimeout(islandTimer);
+      islandTimer = setTimeout(() => el.classList.remove('wide'), 2200);
+    }
+    function toast(text) {
+      const el = $('[data-toast]');
+      el.querySelector('span').textContent = text;
+      el.querySelector('use').setAttribute('href', state.online ? '#i-check' : '#i-wifioff');
+      el.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove('show'), 2000);
+    }
+    function renderNet() {
+      document.documentElement.classList.toggle('offline', !state.online);
+      $$('[data-net-label]').forEach((el) => {
+        el.textContent = state.online ? 'Онлайн' : state.pending ? `Офлайн · ${state.pending}` : 'Офлайн';
+      });
+      $('[data-synced]').textContent = state.online ? `Синхр.: ${state.syncedAt || '12:59'}`
+        : state.pending ? `Ждут сети: ${state.pending}` : 'Нет сети';
+    }
+    function syncFlash() {
+      const icon = $('[data-sync-icon]');
+      icon.classList.add('spin');
+      setTimeout(() => icon.classList.remove('spin'), 700);
+      state.syncedAt = now();
+      renderNet();
+    }
+    function setOnline(on) {
+      if (state.online === on) return;
+      state.online = on;
+      renderNet();
+      if (!on) { island('Нет сети — работаем офлайн', true); toast('Офлайн: изменения сохраняются на устройстве'); return; }
+      const icon = $('[data-sync-icon]');
+      icon.classList.add('spin');
+      setTimeout(() => {
+        icon.classList.remove('spin');
+        const n = state.pending;
+        state.pending = 0;
+        state.syncedAt = now();
+        renderNet();
+        island('Синхронизировано');
+        toast(n ? `Отправлено изменений: ${n}` : 'Синхронизировано');
+        state.msgs.forEach((m) => { if (m.st === 'clock') deliver(m); });
+      }, 900);
+    }
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('[data-net]')) { markUser(); setOnline(!state.online); }
+      if (e.target.closest('[data-remind]')) { markUser(); showView('chat'); notify(); }
+      if (e.target.closest('[data-reset]')) { markUser(); reset(); }
+    });
+
+    /* ---------- Chat ---------- */
+    const chatBox = $('[data-chat]');
+    const tickIcon = { clock: 'i-clock', sent: 'i-check', read: 'i-check2' };
+    function renderChat() {
+      chatBox.innerHTML = state.msgs.map((m) => {
+        if (m.t === 'day') return `<div class="day">${m.text}</div>`;
+        if (m.t === 'sys') return `<div class="sys">${esc(m.text)}</div>`;
+        if (m.t === 'typing') return `<div class="msg in new"><div class="bubble typing-b"><i></i><i></i><i></i></div></div>`;
+        const st = m.t === 'out' ? `<span class="st" ${m.stNew ? '' : 'style="animation:none"'}><svg class="i"><use href="#${tickIcon[m.st]}"/></svg></span>` : '';
+        const html = `<div class="msg ${m.t}${m.fresh ? ' new' : ''}"><div class="bubble">
+          ${m.t === 'in' ? `<span class="who">${esc(m.name)}</span>` : ''}
+          ${m.quote ? `<q><b>${esc(m.quote.name)}</b>${esc(m.quote.text)}</q>` : ''}
+          ${esc(m.text)}<span class="meta">${m.time}${st}</span></div></div>`;
+        m.fresh = false; m.stNew = false;
+        return html;
+      }).join('');
+      chatBox.scrollTop = chatBox.scrollHeight;
+      $('[data-chat-sub]').textContent = state.typing ? 'Аня печатает…' : '3 участника';
+      $('[data-chat-sub]').classList.toggle('typing', state.typing);
+    }
+    function setStatus(m, st) { m.st = st; m.stNew = true; renderChat(); }
+    function deliver(m) {
+      setTimeout(() => { if (state.online) setStatus(m, 'sent'); }, 600);
+      setTimeout(() => { if (state.online) setStatus(m, 'read'); }, 1900);
+    }
+    function sendOut(text, quote) {
+      const m = { t: 'out', text, quote, time: now(), st: 'clock', fresh: true };
+      state.msgs.push(m);
+      renderChat();
+      if (state.online) deliver(m);
+      return m;
+    }
+    async function incoming(text, wait = 1400) {
+      state.typing = true;
+      state.msgs.push({ t: 'typing' });
+      renderChat();
+      await sleep(wait);
+      state.msgs = state.msgs.filter((m) => m.t !== 'typing');
+      state.typing = false;
+      state.msgs.push({ t: 'in', name: 'Аня', text, time: now(), fresh: true });
+      renderChat();
+    }
+    const replies = ['Принято 👌', 'Хорошо, добавлю в карточку', 'Отлично, спасибо!', 'Договорились 🙂'];
+    let replyN = 0;
+    $('[data-chat-form]').addEventListener('submit', (e) => {
+      e.preventDefault();
+      markUser();
+      const input = e.target.querySelector('input');
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = '';
+      sendOut(text);
+      if (state.online && replyN < replies.length) setTimeout(() => { if (state.online) incoming(replies[replyN++]); }, 2300);
+    });
+    $('[data-chat-form] input').addEventListener('focus', markUser);
+
+    let notifTimer;
+    function notify() {
+      const el = $('[data-notif]');
+      el.classList.add('show');
+      clearTimeout(notifTimer);
+      notifTimer = setTimeout(() => el.classList.remove('show'), 3800);
+    }
+    $('[data-notif]').addEventListener('click', () => $('[data-notif]').classList.remove('show'));
+
+    /* ---------- Phone view, sizing ---------- */
+    function showView(v) {
+      if (!mobile && v === 'board') v = 'chat';
+      phone.dataset.view = v;
+      $$('[data-tab]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tab === v)));
+    }
+    $$('[data-tab]').forEach((b) => b.addEventListener('click', () => { markUser(); showView(b.dataset.tab); renderBoards(); }));
+    function fit() {
+      const wasMobile = mobile;
+      mobile = innerWidth < 720;
+      stage.classList.toggle('mobile', mobile);
+      if (mobile) {
+        scale = 1;
+        stage.style.transform = '';
+        stageWrap.style.height = '';
+      } else {
+        scale = Math.min(1, stageWrap.clientWidth / 1000);
+        stage.style.transform = `scale(${scale})`;
+        stageWrap.style.height = 680 * scale + 'px';
+      }
+      if (wasMobile !== mobile) showView(mobile ? 'board' : 'chat');
+    }
+    function scrollPhoneTo(col) {
+      if (!mobile) return;
+      const root = $('[data-board="phone"]');
+      const el = root.querySelector(`[data-col="${col}"]`);
+      if (el) root.scrollTo({ left: el.offsetLeft - 12, behavior: reduce ? 'auto' : 'smooth' });
+    }
+
+    function reset() {
+      state.cards = clone(CARDS);
+      state.msgs = clone(MSGS);
+      state.typing = false;
+      state.pending = 0;
+      state.online = true;
+      renderNet();
+      renderBoards();
+      renderChat();
+      scrollPhoneTo('plan');
+    }
+
+    /* ---------- Autoplay: a short story on loop, paused while the visitor plays with it ---------- */
+    const story = [
+      async () => { showView('board'); scrollPhoneTo('plan'); await sleep(600); moveCard('c2', 'work', 0); scrollPhoneTo('work'); return 2400; },
+      async () => { showView('chat'); await incoming('Плитку привезут в среду, до 12:00'); return 2000; },
+      async () => { showView('board'); scrollPhoneTo('work'); await sleep(500); toggleItem('c4', 1); return 2200; },
+      async () => { showView('chat'); sendOut('Отлично, встречу их', { name: 'Аня', text: 'в среду, до 12:00' }); return 3000; },
+      async () => { notify(); return 3600; },
+      async () => { setOnline(false); return 1800; },
+      async () => { showView('board'); scrollPhoneTo('work'); await sleep(500); moveCard('c4', 'done', 0); scrollPhoneTo('done'); return 2000; },
+      async () => { showView('chat'); sendOut('Плитку в ванной сняли 💪'); return 2200; },
+      async () => { setOnline(true); return 3200; },
+      async () => { showView('board'); scrollPhoneTo('plan'); await sleep(500); toggleDone('c3'); return 2000; },
+      async () => { moveCard('c3', 'done', 0); scrollPhoneTo('done'); return 3500; },
+      async () => { reset(); return 2500; },
+    ];
+    let visible = true;
+    new IntersectionObserver(([en]) => { visible = en.isIntersecting; }, { threshold: .25 }).observe(stageWrap);
+    async function autoplay() {
+      let i = 0;
+      await sleep(1500);
+      for (;;) {
+        if (!visible || document.hidden || drag || Date.now() - lastUser < 9000 || document.activeElement === $('[data-chat-form] input')) {
+          await sleep(800);
+          continue;
+        }
+        await sleep(await story[i]());
+        i = (i + 1) % story.length;
+      }
+    }
+
+    /* ---------- Reveal on scroll ---------- */
+    if (!reduce && 'IntersectionObserver' in window) {
+      const io = new IntersectionObserver((ens) => ens.forEach((en) => {
+        if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
+      }), { rootMargin: '0px 0px -8% 0px' });
+      $$('.reveal').forEach((el) => io.observe(el));
+    } else $$('.reveal').forEach((el) => el.classList.add('in'));
+
+    fit();
+    addEventListener('resize', fit);
+    renderNet();
+    renderBoards();
+    renderChat();
+    if (!reduce) autoplay();
+  })();
+  </script>
+</body>
+</html>
