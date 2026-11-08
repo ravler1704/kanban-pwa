@@ -49,10 +49,10 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
-        globIgnores: ['screenshots/**'],
+        globIgnores: ['screenshots/**', 'promo/**'],
         importScripts: ['push-sw.js'],
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\//],
+        navigateFallbackDenylist: [/^\/api\//, /^\/downloads\//, /^\/\.well-known\//],
         // Board pictures are kept once seen, so the board looks the same offline.
         runtimeCaching: [{
           urlPattern: ({ url }) => url.pathname.startsWith('/backgrounds/') || url.pathname.startsWith('/api/backgrounds/'),

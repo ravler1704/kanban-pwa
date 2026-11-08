@@ -9,7 +9,7 @@
 - Страница [«Установить приложение»](https://178-83-123-195.sslip.io/install.html): Android (APK, скоро Google
   Play), iPhone и iPad, Windows, macOS и Linux; своё устройство определяется и показывается первым, в Chrome и Edge
   есть кнопка «Установить на это устройство». Ссылка на неё — на экране входа.
-- Приложение для Android: [APK](https://github.com/ravler1704/kanban-pwa/releases/latest/download/offline-kanban.apk)
+- Приложение для Android: [APK](https://178-83-123-195.sslip.io/downloads/offline-kanban.apk)
   (Android 7.0+) открывает доску на весь экран, без адресной строки; уведомления о напоминаниях приходят как от
   обычного приложения. Готова сборка для Google Play.
 - В README вместо адреса — кнопки «Открыть демо», «Скачать APK», Google Play, iPhone и iPad, компьютер.

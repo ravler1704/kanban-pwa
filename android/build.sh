@@ -13,4 +13,5 @@ bubblewrap build --skipPwaValidation
 mv app-release-signed.apk offline-kanban.apk
 mv app-release-bundle.aab offline-kanban.aab
 rm -f app-release-unsigned-aligned.apk
-echo "Built android/offline-kanban.apk and android/offline-kanban.aab"
+cp offline-kanban.apk ../client/public/downloads/
+echo "Built android/offline-kanban.apk (copied to client/public/downloads/) and android/offline-kanban.aab"

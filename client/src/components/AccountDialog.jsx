@@ -244,7 +244,7 @@ function InstallTab() {
           <div className="install-buttons">
             {canPrompt && <button type="button" className="btn btn-primary" onClick={promptInstall}>Установить</button>}
             {platform === 'android' && PLAY_URL && <a className="btn" href={PLAY_URL} target="_blank" rel="noreferrer">Google Play</a>}
-            {platform === 'android' && <a className="btn" href={APK_URL}>Скачать APK</a>}
+            {platform === 'android' && <a className="btn" href={APK_URL} download>Скачать APK</a>}
           </div>
           <p className="muted account-hint">{INSTALL_HINTS[platform]}</p>
         </>

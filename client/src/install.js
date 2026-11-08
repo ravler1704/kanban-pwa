@@ -4,7 +4,7 @@
 export const INSTALL_PAGE = '/install.html';
 /** Google Play page of the Android app; null until it is published there. */
 export const PLAY_URL = null;
-export const APK_URL = 'https://github.com/ravler1704/kanban-pwa/releases/latest/download/offline-kanban.apk';
+export const APK_URL = '/downloads/offline-kanban.apk';
 
 const ua = navigator.userAgent;
 const isIos = /iP(hone|ad|od)/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);

@@ -5,7 +5,7 @@
 Внутри — доски, вложенные папки, карточки с подзадачами и напоминаниями, общий доступ, чаты в стиле Telegram.
 
 [![Открыть демо](https://img.shields.io/badge/%D0%9E%D1%82%D0%BA%D1%80%D1%8B%D1%82%D1%8C-%D0%B4%D0%B5%D0%BC%D0%BE-2563eb?style=for-the-badge&logo=googlechrome&logoColor=white)](https://178-83-123-195.sslip.io)
-[![Android: скачать APK](https://img.shields.io/badge/Android-%D0%A1%D0%BA%D0%B0%D1%87%D0%B0%D1%82%D1%8C%20APK-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/ravler1704/kanban-pwa/releases/latest/download/offline-kanban.apk)
+[![Android: скачать APK](https://img.shields.io/badge/Android-%D0%A1%D0%BA%D0%B0%D1%87%D0%B0%D1%82%D1%8C%20APK-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://178-83-123-195.sslip.io/downloads/offline-kanban.apk)
 [![Google Play: скоро](https://img.shields.io/badge/Google%20Play-%D1%81%D0%BA%D0%BE%D1%80%D0%BE-414141?style=for-the-badge&logo=googleplay&logoColor=white)](https://178-83-123-195.sslip.io/install.html)
 [![iPhone и iPad](https://img.shields.io/badge/iPhone%20%D0%B8%20iPad-%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%B8%D1%82%D1%8C-000000?style=for-the-badge&logo=apple&logoColor=white)](https://178-83-123-195.sslip.io/install.html)
 [![Windows, macOS, Linux](https://img.shields.io/badge/Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%B8%D1%82%D1%8C-0078D4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://178-83-123-195.sslip.io/install.html)
@@ -90,8 +90,9 @@ npm run dev
 
 ```bash
 brew install openjdk@17 && brew install --cask android-commandlinetools && npm i -g @bubblewrap/cli
-./android/build.sh    # → android/offline-kanban.apk (для сайта и GitHub) и .aab (для Google Play)
-gh release create android-1.0.1 android/offline-kanban.apk --title "Android 1.0.1"
+./android/build.sh    # → android/offline-kanban.apk и .aab (для Google Play); APK копируется в client/public/downloads/
+./deploy.sh           # APK раздаётся сайтом: /downloads/offline-kanban.apk
+gh release create android-1.0.1 android/offline-kanban.apk --title "Android 1.0.1"   # копия в релизах GitHub
 ```
 
 - Ключ подписи и пароли — `deploy/android/` (не в git). **Храните копию**: без него обновление APK не
