@@ -78,6 +78,10 @@ registerEvents(app);
 if (fs.existsSync(CLIENT_DIST)) {
   // Digital Asset Links of the Android app; plain express.static skips dot-directories.
   app.use('/.well-known', express.static(path.join(CLIENT_DIST, '.well-known')));
+  // /promo/ is also the promo images folder; without this, static redirects /promo there.
+  app.get(['/promo', '/promo/'], (_req, res) => {
+    res.sendFile(path.join(CLIENT_DIST, 'promo.html'));
+  });
   app.use(express.static(CLIENT_DIST, {
     setHeaders(res, filePath) {
       if (['sw.js', 'index.html', 'version.json'].some((name) => filePath.endsWith(name))) {
