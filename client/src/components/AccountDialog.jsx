@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { authState, deleteAccount, linkAccount, renameUser, signOut, unlinkAccount } from '../auth.js';
+import { APK_URL, INSTALL_PAGE, installStore, platform, PLAY_URL, promptInstall } from '../install.js';
 import { disablePush, enablePush, PUSH_HINTS, pushState } from '../push.js';
 import { openTickets, refreshSupport, supportStore, supportUnread } from '../support.js';
 import { syncStatus } from '../sync.js';
@@ -227,9 +228,39 @@ function AppearanceTab() {
   );
 }
 
+const INSTALL_HINTS = {
+  ios: 'В Safari нажмите «Поделиться» → «На экран «Домой»» → «Добавить».',
+  android: 'Или в меню браузера ⋮ → «Установить приложение» (или «Добавить на главный экран»).',
+  desktop: 'В Chrome, Edge или Яндекс Браузере — значок установки в адресной строке; в Safari на Mac — «Файл» → «Добавить в Dock».',
+};
+
+function InstallTab() {
+  const { installed, canPrompt } = useSyncExternalStore(installStore.subscribe, installStore.get);
+  return (
+    <div className="manage">
+      <h4 className="manage-heading">Приложение на этом устройстве</h4>
+      {installed ? <p className="muted account-hint">Приложение уже установлено и открыто.</p> : (
+        <>
+          <div className="install-buttons">
+            {canPrompt && <button type="button" className="btn btn-primary" onClick={promptInstall}>Установить</button>}
+            {platform === 'android' && PLAY_URL && <a className="btn" href={PLAY_URL} target="_blank" rel="noreferrer">Google Play</a>}
+            {platform === 'android' && <a className="btn" href={APK_URL}>Скачать APK</a>}
+          </div>
+          <p className="muted account-hint">{INSTALL_HINTS[platform]}</p>
+        </>
+      )}
+      <p className="muted account-hint">
+        <a href={INSTALL_PAGE} target="_blank" rel="noreferrer">Все способы установки</a> — Android, iPhone и iPad,
+        Windows, macOS и Linux.
+      </p>
+    </div>
+  );
+}
+
 const TABS = [
   { id: 'signin', label: 'Вход', Content: SignInTab },
   { id: 'appearance', label: 'Тема', Content: AppearanceTab },
+  { id: 'install', label: 'Приложение', Content: InstallTab },
 ];
 
 /** The server's settings, for its administrator: apart from the account's, they apply to everyone. */

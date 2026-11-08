@@ -788,6 +788,10 @@ body {
 .mail-ok { color: var(--ok); margin: 0; }
 .theme-options { display: flex; flex-wrap: wrap; gap: 0.4rem; }
 .theme-options .btn { flex: 1; }
+.install-buttons { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.install-buttons:empty { display: none; }
+.install-buttons a.btn { text-decoration: none; }
+.login-install { display: block; margin-top: 1rem; font-size: 0.85rem; text-align: center; }
 .account-link { display: flex; flex-direction: column; align-items: center; gap: 0.6rem; }
 
 .empty {

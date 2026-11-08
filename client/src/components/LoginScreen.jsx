@@ -1,10 +1,12 @@
 import { useState, useSyncExternalStore } from 'react';
 import { signInAsTestUser, signInWithEmail, signInWithGoogle } from '../auth.js';
+import { INSTALL_PAGE, installStore } from '../install.js';
 import { syncStatus } from '../sync.js';
 import { EmailCodeForm, GoogleButton, YandexButton } from './ProviderButtons.jsx';
 
 export default function LoginScreen({ clientId, yandexClientId, devLogin, emailLogin, notice }) {
   const { online } = useSyncExternalStore(syncStatus.subscribe, syncStatus.get);
+  const { installed } = useSyncExternalStore(installStore.subscribe, installStore.get);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
 
@@ -50,6 +52,9 @@ export default function LoginScreen({ clientId, yandexClientId, devLogin, emailL
           <p className="muted">Для входа нужен интернет.</p>
         )}
         {shownError && <p className="login-error">{shownError}</p>}
+        {!installed && (
+          <a className="login-install muted" href={INSTALL_PAGE}>Установить приложение — Android, iPhone, компьютер</a>
+        )}
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { registerSW } from 'virtual:pwa-register';
 import App from './App.jsx';
 import { checkAuth, completeYandexAuth } from './auth.js';
 import { publicToken } from './board.js';
+import './install.js';
 import { loadPublicLink } from './public.js';
 import { refreshPush } from './push.js';
 import AuthGate from './components/AuthGate.jsx';

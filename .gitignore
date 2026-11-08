@@ -5,3 +5,12 @@ server/data
 server/.env
 deploy/kanban.env
 .DS_Store
+
+deploy/android/
+android/app/build/
+android/build/
+android/.gradle/
+android/*.apk
+android/*.aab
+android/*.idsig
+android/local.properties

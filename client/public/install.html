@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="description" content="Установить Offline Kanban на Android, iPhone, iPad, Windows, macOS и Linux." />
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <title>Установить Offline Kanban</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f8fafc; --panel: #fff; --text: #0f172a; --muted: #64748b; --border: #e2e8f0;
+      --accent: #2563eb; --accent-text: #fff; --soft: #eff6ff;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #0f172a; --panel: #1e293b; --text: #e2e8f0; --muted: #94a3b8; --border: #334155;
+        --accent: #38bdf8; --accent-text: #0f172a; --soft: #172554; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text);
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 860px; margin: 0 auto; padding: 2rem 1rem 3rem; }
+    header { display: flex; gap: 1rem; align-items: center; margin-bottom: 1.5rem; }
+    header img { width: 72px; height: 72px; border-radius: 16px; flex: none; }
+    h1 { margin: 0; font-size: 1.7rem; }
+    header p { margin: 0.2rem 0 0; color: var(--muted); }
+    .open { margin-bottom: 1.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+    .grid { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+    section { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 1.1rem 1.2rem; }
+    section.current { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+    h2 { margin: 0 0 0.6rem; font-size: 1.15rem; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 0.5rem; }
+    h2 small { font-size: 0.75rem; font-weight: 500; color: var(--accent); white-space: nowrap; }
+    .buttons { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.7rem; }
+    .btn { display: inline-flex; justify-content: center; align-items: center; gap: 0.4rem; padding: 0.6rem 1rem;
+      border-radius: 10px; border: 1px solid var(--border); background: var(--panel); color: var(--text);
+      font: inherit; font-weight: 600; text-decoration: none; cursor: pointer; }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+    .btn[aria-disabled="true"] { opacity: 0.55; cursor: default; }
+    ol, ul { margin: 0; padding-left: 1.2rem; }
+    li + li { margin-top: 0.25rem; }
+    .muted { color: var(--muted); font-size: 0.9rem; }
+    .note { margin-top: 1.5rem; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <img src="/icon-192.png" alt="" />
+      <div>
+        <h1>Offline Kanban</h1>
+        <p>Канбан-доска, которая работает без интернета и синхронизируется между устройствами.</p>
+      </div>
+    </header>
+
+    <div class="open">
+      <a class="btn btn-primary" href="/">Открыть в браузере</a>
+      <button class="btn" id="prompt" hidden>Установить на это устройство</button>
+      <span class="muted" id="installed" hidden>Приложение установлено — найдите значок Kanban среди приложений.</span>
+    </div>
+
+    <div class="grid">
+      <section id="android">
+        <h2>Android</h2>
+        <div class="buttons">
+          <a class="btn" id="play" aria-disabled="true">Google Play — скоро</a>
+          <a class="btn" href="https://github.com/ravler1704/kanban-pwa/releases/latest/download/offline-kanban.apk">Скачать APK</a>
+        </div>
+        <p class="muted">APK: откройте скачанный файл и разрешите установку из этого источника, если телефон спросит.
+          Или без файла: Chrome → меню ⋮ → «Установить приложение».</p>
+      </section>
+
+      <section id="ios">
+        <h2>iPhone и iPad</h2>
+        <ol>
+          <li>Откройте <a href="/">сайт</a> в Safari.</li>
+          <li>Нажмите «Поделиться» (квадрат со стрелкой).</li>
+          <li>Выберите «На экран «Домой»» и нажмите «Добавить».</li>
+        </ol>
+        <p class="muted">Значок появится на экране «Домой»; уведомления о напоминаниях работают только в установленном
+          так приложении (iOS 16.4 и новее).</p>
+      </section>
+
+      <section id="desktop">
+        <h2>Windows, macOS, Linux</h2>
+        <ul>
+          <li><b>Chrome, Edge, Яндекс Браузер:</b> значок установки справа в адресной строке или меню → «Установить
+            Offline Kanban».</li>
+          <li><b>Safari на Mac</b> (macOS 14+): «Файл» → «Добавить в Dock».</li>
+          <li><b>Firefox:</b> пользуйтесь сайтом во вкладке — установку приложений Firefox не поддерживает.</li>
+        </ul>
+      </section>
+    </div>
+
+    <p class="muted note">Это одно и то же приложение на всех устройствах: данные хранятся на устройстве, работают без
+      интернета и синхронизируются через ваш аккаунт.</p>
+  </main>
+
+  <script>
+    const PLAY_URL = null;
+    const ua = navigator.userAgent;
+    const ios = /iP(hone|ad|od)/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const current = document.getElementById(ios ? 'ios' : /Android/.test(ua) ? 'android' : 'desktop');
+    current.classList.add('current');
+    current.querySelector('h2').insertAdjacentHTML('beforeend', '<small>ваше устройство</small>');
+    current.parentNode.prepend(current);
+
+    if (PLAY_URL) {
+      const play = document.getElementById('play');
+      play.href = PLAY_URL;
+      play.textContent = 'Google Play';
+      play.removeAttribute('aria-disabled');
+      play.classList.add('btn-primary');
+    }
+
+    const promptButton = document.getElementById('prompt');
+    const installed = document.getElementById('installed');
+    let deferred = null;
+    addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferred = e;
+      promptButton.hidden = false;
+    });
+    promptButton.addEventListener('click', async () => {
+      if (!deferred) return;
+      deferred.prompt();
+      const { outcome } = await deferred.userChoice;
+      deferred = null;
+      promptButton.hidden = true;
+      if (outcome === 'accepted') installed.hidden = false;
+    });
+    addEventListener('appinstalled', () => {
+      promptButton.hidden = true;
+      installed.hidden = false;
+    });
+  </script>
+</body>
+</html>

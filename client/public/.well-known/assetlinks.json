@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "io.github.ravler1704.kanban",
+      "sha256_cert_fingerprints": [
+        "D4:C7:0F:D7:3E:63:E9:93:52:2E:8A:04:B2:55:CD:45:2E:3E:23:35:33:2A:93:AF:2A:B5:83:74:EC:98:75:01"
+      ]
+    }
+  }
+]

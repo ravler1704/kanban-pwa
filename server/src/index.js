@@ -76,6 +76,8 @@ app.post('/api/sync', (req, res) => {
 registerEvents(app);
 
 if (fs.existsSync(CLIENT_DIST)) {
+  // Digital Asset Links of the Android app; plain express.static skips dot-directories.
+  app.use('/.well-known', express.static(path.join(CLIENT_DIST, '.well-known')));
   app.use(express.static(CLIENT_DIST, {
     setHeaders(res, filePath) {
       if (['sw.js', 'index.html', 'version.json'].some((name) => filePath.endsWith(name))) {
