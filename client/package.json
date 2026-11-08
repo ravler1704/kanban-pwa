@@ -10,6 +10,8 @@
   "dependencies": {
     "dexie": "^4.0.11",
     "dexie-react-hooks": "^1.1.7",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.9",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "write-excel-file": "^4.1.1"

@@ -1,9 +1,24 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { authState } from '../auth.js';
+import { download, exportFileName } from '../exportData.js';
 import { descendants, flattenFolders, folderTree, topFolderIds } from '../folders.js';
 import { personName, peopleStore } from '../people.js';
 import Modal from './Modal.jsx';
 import { useOpenSpace } from './Spaces.jsx';
+
+const FORMATS = [
+  { id: 'xlsx', label: 'Excel (.xlsx)' },
+  { id: 'pdf', label: 'PDF' },
+];
+const FORMAT_KEY = 'exportFormat';
+const savedFormat = () => {
+  try {
+    const id = localStorage.getItem(FORMAT_KEY);
+    return FORMATS.some((f) => f.id === id) ? id : 'xlsx';
+  } catch {
+    return 'xlsx';
+  }
+};
 
 function FolderCheckbox({ folder, depth, checked, indeterminate, onChange }) {
   const ref = useRef(null);
@@ -21,9 +36,10 @@ function FolderCheckbox({ folder, depth, checked, indeterminate, onChange }) {
 }
 
 /**
- * Downloads cards as an Excel workbook: the board in view (`current`: its folder ids, with the boards inside it
- * that are shown; null when several boards are in view), boards picked in the tree, or the whole space (with
- * «Входящие» when `inbox`). Built on this device from the local data, so it works offline.
+ * Downloads cards as an Excel workbook or a PDF (the format last chosen on this device): the board in view
+ * (`current`: its folder ids, with the boards inside it that are shown; null when several boards are in view),
+ * boards picked in the tree, or the whole space (with «Входящие» when `inbox`). Built on this device from the
+ * local data, so it works offline.
  */
 export default function ExportDialog({ folders, current, checkedIds, inbox, onClose }) {
   const { user } = useSyncExternalStore(authState.subscribe, authState.get);
@@ -31,6 +47,7 @@ export default function ExportDialog({ folders, current, checkedIds, inbox, onCl
   const space = useOpenSpace();
   const tree = folderTree(folders);
   const currentTop = current ? tree.byId.get(topFolderIds(current, folders)[0]) : null;
+  const [format, setFormat] = useState(savedFormat);
   const [scope, setScope] = useState(currentTop ? 'current' : 'boards');
   const [picked, setPicked] = useState(() => new Set(checkedIds?.length ? checkedIds : folders.map((f) => f.id)));
   const [archived, setArchived] = useState(false);
@@ -59,6 +76,17 @@ export default function ExportDialog({ folders, current, checkedIds, inbox, onCl
   const title = scope === 'current' ? currentTop?.name
     : scope === 'boards' && pickedTops.length === 1 ? pickedTops[0].name : spaceName;
   const empty = !ids?.length && !(scope === 'space' && inbox);
+  const insideCurrent = current ? current.length - 1 : 0;
+  const scopeLabel = scope === 'current'
+    ? `текущая доска «${currentTop?.name}»${insideCurrent > 0 ? ` и вложенные доски (${insideCurrent})` : ''}`
+    : scope === 'boards' ? `выбранные доски (${pickedIds.length})` : `всё пространство «${spaceName}»`;
+
+  const chooseFormat = (id) => {
+    setFormat(id);
+    try {
+      localStorage.setItem(FORMAT_KEY, id);
+    } catch { /* private mode: the choice lasts until the dialog closes */ }
+  };
 
   async function submit(e) {
     e.preventDefault();
@@ -68,11 +96,11 @@ export default function ExportDialog({ folders, current, checkedIds, inbox, onCl
     try {
       const names = new Map(people.map((p) => [p.id, personName(p)]));
       if (user?.id) names.set(user.id, personName(user));
-      const { buildWorkbook, download, exportFileName } = await import('../exportXlsx.js');
-      const { blob } = await buildWorkbook({
-        folders, folderIds: ids, inbox: scope === 'space' && inbox, includeArchived: archived, names,
-      });
-      download(blob, exportFileName(title));
+      const options = { folders, folderIds: ids, inbox: scope === 'space' && inbox, includeArchived: archived, names };
+      const { blob } = format === 'pdf'
+        ? await (await import('../exportPdf.js')).buildPdf({ ...options, title, scope: scopeLabel })
+        : await (await import('../exportXlsx.js')).buildWorkbook(options);
+      download(blob, exportFileName(title, format));
       onClose();
     } catch (err) {
       setError(err.message || 'Не удалось сформировать файл');
@@ -90,11 +118,21 @@ export default function ExportDialog({ folders, current, checkedIds, inbox, onCl
       </span>
     </label>
   );
-  const insideCurrent = current ? current.length - 1 : 0;
 
   return (
-    <Modal title="Выгрузить в Excel" onClose={onClose} className="export-dialog">
+    <Modal title="Выгрузить" onClose={onClose} className="export-dialog">
       <form className="editor" onSubmit={submit}>
+        <div className="field export-group">
+          <span className="field-label">Формат</span>
+          <div className="export-formats" role="radiogroup" aria-label="Формат">
+            {FORMATS.map((f) => (
+              <button key={f.id} type="button" role="radio" aria-checked={format === f.id}
+                className={`btn ${format === f.id ? 'btn-primary' : ''}`} onClick={() => chooseFormat(f.id)}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="field export-group">
           <span className="field-label">Что выгрузить</span>
           {option('current', 'Текущая доска', currentTop
@@ -125,8 +163,10 @@ export default function ExportDialog({ folders, current, checkedIds, inbox, onCl
           Включить карточки из архива
         </label>
         <p className="muted export-note">
-          Лист «Все карточки» со всеми выбранными карточками{scope === 'current' && insideCurrent === 0 ? '' : ' и по листу на каждую доску с карточками'}.
-          Файл собирается на этом устройстве и выгружается без интернета.
+          {format === 'pdf'
+            ? 'Альбомные страницы A4: каждая доска с заголовком, карточки по колонкам — таблицами.'
+            : `Лист «Все карточки» со всеми выбранными карточками${scope === 'current' && insideCurrent === 0 ? '' : ' и по листу на каждую доску с карточками'}.`}
+          {' '}Файл собирается на этом устройстве и выгружается без интернета.
         </p>
         {error && <p className="login-error">{error}</p>}
         <div className="actions">

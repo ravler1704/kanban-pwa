@@ -1500,8 +1500,10 @@ a.btn { display: inline-block; text-decoration: none; }
 .field .title-input { height: 2.9rem; resize: none; overflow: hidden; white-space: pre-wrap; }
 .actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; justify-content: flex-end; }
 
-/* «Выгрузить в Excel»: what goes into the workbook. */
+/* «Выгрузить»: the format and what goes into the file. */
 .modal.export-dialog { width: min(520px, 100%); }
+.export-formats { display: flex; gap: 0.4rem; padding: 0 0.3rem; }
+.export-formats .btn { flex: 1; }
 .export-group {
   display: flex; flex-direction: column; gap: 0.15rem;
   padding: 1.35rem 0.4rem 0.4rem; border: 1px solid var(--border); border-radius: 8px; background: var(--bg);

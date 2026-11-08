@@ -1,8 +1,12 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { fileURLToPath } from 'node:url';
 
 const apiProxy = { '/api': 'http://localhost:3001' };
+// jsPDF loads these on demand for html() and SVG, which the PDF export does not use.
+const unusedByJsPdf = Object.fromEntries(['html2canvas', 'dompurify', 'canvg']
+  .map((name) => [name, fileURLToPath(new URL('./src/emptyModule.js', import.meta.url))]));
 const BUILD_ID = Date.now().toString(36);
 
 // version.json (not precached) tells running clients which build the server has.
@@ -15,6 +19,7 @@ const buildVersion = {
 
 export default defineConfig({
   define: { __BUILD_ID__: JSON.stringify(BUILD_ID) },
+  resolve: { alias: unusedByJsPdf },
   plugins: [
     react(),
     buildVersion,
@@ -48,7 +53,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest,ttf}'],
         globIgnores: ['screenshots/**', 'promo/**'],
         importScripts: ['push-sw.js'],
         navigateFallback: '/index.html',

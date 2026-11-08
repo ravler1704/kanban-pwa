@@ -494,7 +494,7 @@ export default function App() {
     ]),
     null,
     !readOnly && { label: 'Архив…', icon: ICONS.archive, run: () => setArchiveOpen(true) },
-    { label: 'Выгрузить в Excel…', icon: ICONS.download, run: () => setExportOpen(true) },
+    { label: 'Выгрузить в Excel / PDF…', icon: ICONS.download, run: () => setExportOpen(true) },
     null,
     folderActions.removeItem,
   ].filter((item, i, list) => item !== false && (item !== null || (i > 0 && list[i - 1] && list.slice(i + 1).some(Boolean))));
