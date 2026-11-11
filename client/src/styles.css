@@ -1726,6 +1726,145 @@ a.btn { display: inline-block; text-decoration: none; }
 .cal-card-past .cal-card-time { color: var(--muted); }
 .cal-card-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
 .cal-card-meta { flex-basis: 100%; color: var(--muted); font-size: 0.75rem; }
+.gantt {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.5rem 1.25rem 1rem;
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+.gantt .cal-header { flex-wrap: wrap; }
+.gantt-scales { display: flex; gap: 0.25rem; margin-left: auto; }
+.gantt-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  overscroll-behavior: contain;
+}
+.gantt-inner { position: relative; min-height: 100%; }
+.gantt-head, .gantt-row, .gantt-group {
+  display: flex;
+  min-height: 2.15rem;
+  border-bottom: 1px solid var(--border);
+}
+.gantt-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  min-height: 2.6rem;
+  background: var(--bg);
+}
+.gantt-label {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.05rem;
+  width: var(--gantt-side);
+  flex: none;
+  padding: 0.25rem 0.7rem;
+  border-right: 1px solid var(--border);
+  background: var(--panel);
+  overflow: hidden;
+}
+.gantt-head .gantt-label, .gantt-corner {
+  z-index: 4;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.gantt-group .gantt-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--bg) 70%, var(--panel));
+}
+.gantt-group .gantt-track { background: color-mix(in srgb, var(--bg) 70%, var(--panel)); }
+.gantt-open {
+  margin: 0;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.gantt-open:hover { background: color-mix(in srgb, var(--accent) 12%, var(--panel)); }
+.gantt-num { color: var(--muted); font-size: 0.72rem; font-variant-numeric: tabular-nums; }
+.gantt-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.85rem; }
+.gantt-meta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 0.7rem; }
+.gantt-scale, .gantt-track {
+  display: flex;
+  flex: none;
+  width: calc(var(--gantt-days, 0) * var(--gantt-day));
+  position: relative;
+}
+.gantt-scale { width: auto; }
+.gantt-day, .gantt-cell {
+  flex: none;
+  width: var(--gantt-day);
+  min-height: 100%;
+}
+.gantt-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.05rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  border-left: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+}
+.gantt-day-num { font-weight: 600; color: var(--text); }
+.gantt-day-w { font-size: 0.62rem; text-transform: lowercase; }
+.gantt-weekend { background: color-mix(in srgb, var(--bg) 55%, transparent); }
+.gantt-today-col { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.gantt-cell { border-left: 1px solid color-mix(in srgb, var(--border) 40%, transparent); }
+.gantt-bar {
+  position: absolute;
+  top: 0.3rem;
+  height: calc(100% - 0.6rem);
+  display: flex;
+  align-items: center;
+  min-width: 8px;
+  padding: 0 0.45rem;
+  border: none;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--bar) 82%, black);
+  color: #0f172a;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: grab;
+  overflow: hidden;
+  touch-action: none;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.25);
+}
+.gantt-bar span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gantt-bar:hover { filter: brightness(1.08); }
+.gantt-bar:active { cursor: grabbing; }
+.gantt-done .gantt-title { text-decoration: line-through; color: var(--muted); }
+.gantt-done .gantt-bar { opacity: 0.55; }
+.gantt-past .gantt-bar { opacity: 0.7; }
+.gantt-now {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--accent);
+  pointer-events: none;
+  z-index: 2;
+}
 .cal-agenda { display: none; }
 .cal-agenda-day { display: flex; flex-direction: column; gap: 0.35rem; }
 .cal-agenda-day h3 { margin: 0.5rem 0 0.1rem; font-size: 0.85rem; color: var(--muted); }
@@ -1733,6 +1872,8 @@ a.btn { display: inline-block; text-decoration: none; }
 .cal-agenda .cal-card { padding: 0.5rem 0.65rem; font-size: 0.9rem; }
 
 @media (max-width: 820px) {
+  .gantt { padding: 0.25rem 1rem 0.75rem; }
+  .gantt-scales { margin-left: 0; width: 100%; }
   .calendar { padding: 0.25rem 1rem 0.75rem; }
   .cal-grid { display: none; }
   .cal-agenda { display: flex; flex-direction: column; gap: 0.5rem; }

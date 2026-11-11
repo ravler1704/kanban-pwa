@@ -24,6 +24,7 @@ import ExportDialog from './components/ExportDialog.jsx';
 import UndoToast from './components/UndoToast.jsx';
 import NewCardDialog from './components/NewCardDialog.jsx';
 import CalendarView from './components/CalendarView.jsx';
+import GanttView from './components/GanttView.jsx';
 import ListView from './components/ListView.jsx';
 import ChatDialog from './components/ChatDialog.jsx';
 import PeopleBar from './components/People.jsx';
@@ -156,7 +157,7 @@ export default function App() {
   };
   const inboxCards = useInboxCards();
   const searching = search.trim() !== '';
-  const [view, setView] = useState(() => (['calendar', 'list'].includes(localStorage.getItem(VIEW_KEY))
+  const [view, setView] = useState(() => (['calendar', 'list', 'gantt'].includes(localStorage.getItem(VIEW_KEY))
     ? localStorage.getItem(VIEW_KEY) : 'board'));
 
   const changeView = (next) => {
@@ -593,6 +594,9 @@ export default function App() {
                   columnsOfFolder={model.columnsOfFolder} onOpen={setOpenCardId} />
               ) : view === 'calendar' ? (
                 <CalendarView cards={visible} columns={model.columns} cardLabel={cardLabel} onOpen={setOpenCardId} />
+              ) : view === 'gantt' ? (
+                <GanttView cards={visible} folders={folders} columns={model.columns} cardLabel={cardLabel}
+                  readOnly={readOnly} onOpen={setOpenCardId} />
               ) : (
                 <main className="board" style={{
                   '--tracks': columns.map((c) => (collapsed.includes(c.id) ? 'var(--column-collapsed)' : 'var(--column-width)')).join(' '),

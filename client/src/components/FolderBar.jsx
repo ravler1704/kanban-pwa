@@ -40,6 +40,7 @@ function FilterIcon() {
 const VIEWS = [
   { id: 'board', label: 'Колонки', icon: 'M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2ZM9 4v16M15 4v16' },
   { id: 'calendar', label: 'Календарь', icon: 'M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2ZM3 10h18M8 3v4M16 3v4' },
+  { id: 'gantt', label: 'Гант', icon: 'M4 6h16M4 12h11M4 18h7M3 3v18' },
   { id: 'list', label: 'Список', icon: 'M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01' },
 ];
 
