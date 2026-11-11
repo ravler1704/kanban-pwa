@@ -108,9 +108,10 @@ export default function GanttView({ cards, folders, columns, cardLabel, readOnly
       if (!byFolder.has(card.folderId)) byFolder.set(card.folderId, []);
       byFolder.get(card.folderId).push({ card, bars });
     }
-    for (const list of byFolder.values()) {
-      list.sort((a, b) => a.bars[0].start - b.bars[0].start || (a.card.number ?? 0) - (b.card.number ?? 0));
-    }
+    const rowOrder = (a, b) => a.card.position - b.card.position
+      || (a.card.number ?? 0) - (b.card.number ?? 0)
+      || a.card.id.localeCompare(b.card.id);
+    for (const list of byFolder.values()) list.sort(rowOrder);
     const rows = [];
     for (const { folder } of flattenFolders(folders)) {
       const list = byFolder.get(folder.id);
@@ -119,10 +120,10 @@ export default function GanttView({ cards, folders, columns, cardLabel, readOnly
       for (const item of list) rows.push({ type: 'card', ...item });
       byFolder.delete(folder.id);
     }
-    const rest = [...byFolder.values()].flat();
+    const rest = [...byFolder.values()].flat().sort(rowOrder);
     if (rest.length) {
       rows.push({ type: 'group', id: '_', name: 'Другие' });
-      rows.push(...rest.map((item) => ({ type: 'card', ...item })));
+      for (const item of rest) rows.push({ type: 'card', ...item });
     }
     return rows;
   }, [cards, folders, from, to]);
