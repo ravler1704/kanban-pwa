@@ -89,6 +89,7 @@ export default function GanttView({ cards, folders, columns, cardLabel, readOnly
   const [drag, setDrag] = useState(null);
   const scroller = useRef(null);
   const todayLeft = useRef(null);
+  const dragSession = useRef(null);
 
   const dayW = scale === 'week' ? 12 : 36;
   const days = useMemo(() => rangeDays(month, scale), [month, scale]);
@@ -143,6 +144,8 @@ export default function GanttView({ cards, folders, columns, cardLabel, readOnly
     todayLeft.current?.scrollIntoView({ inline: 'center', block: 'nearest' });
   }, [month, scale]);
 
+  useEffect(() => () => dragSession.current?.end(), []);
+
   const title = scale === 'week'
     ? `${days[0].toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })} – ${
       days.at(-1).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })}`
@@ -151,32 +154,42 @@ export default function GanttView({ cards, folders, columns, cardLabel, readOnly
   const indexOf = (date) => Math.round((startOfDay(date) - days[0]) / DAY);
 
   const onBarPointer = (event, card) => {
-    if (event.button) return;
+    if (readOnly || event.button) return;
     event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
+    if (dragSession.current) return;
+    const bar = event.currentTarget;
+    const pointerId = event.pointerId;
+    bar.setPointerCapture(pointerId);
     const originX = event.clientX;
     const originY = event.clientY;
+    const detach = () => {
+      bar.removeEventListener('pointermove', move);
+      bar.removeEventListener('pointerup', up);
+      bar.removeEventListener('pointercancel', up);
+      try { bar.releasePointerCapture(pointerId); } catch { /* element may be gone */ }
+      dragSession.current = null;
+      setDrag(null);
+    };
     const move = (ev) => {
+      if (ev.pointerId !== pointerId) return;
       setDrag({ id: card.id, days: Math.round((ev.clientX - originX) / dayW) });
     };
     const up = (ev) => {
-      event.currentTarget.releasePointerCapture(ev.pointerId);
-      event.currentTarget.removeEventListener('pointermove', move);
-      event.currentTarget.removeEventListener('pointerup', up);
-      event.currentTarget.removeEventListener('pointercancel', up);
-      setDrag(null);
+      if (ev.pointerId !== pointerId) return;
       const daysMoved = Math.round((ev.clientX - originX) / dayW);
+      detach();
       if (Math.abs(ev.clientX - originX) < 6 && Math.abs(ev.clientY - originY) < 6) {
         onOpen(card.id);
         return;
       }
-      if (readOnly || !daysMoved) return;
+      if (!daysMoved) return;
       const reminders = cardReminders(card).map((r) => ({ ...r, at: shiftTime(r.at, daysMoved) }));
       updateCard(card.id, { reminders, remindAt: null });
     };
-    event.currentTarget.addEventListener('pointermove', move);
-    event.currentTarget.addEventListener('pointerup', up);
-    event.currentTarget.addEventListener('pointercancel', up);
+    dragSession.current = { end: detach };
+    bar.addEventListener('pointermove', move);
+    bar.addEventListener('pointerup', up);
+    bar.addEventListener('pointercancel', up);
   };
 
   const cardRows = groups.filter((r) => r.type === 'card').length;
