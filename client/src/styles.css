@@ -1091,15 +1091,21 @@ body {
   will-change: transform;
 }
 .card-title-row-done:has(.done-btn-on) > .done-slide { opacity: 0.6; }
-.card:hover .card-done-btn, .inbox-card:hover .card-done-btn, .card-done-btn:focus-visible, .card-done-btn.done-btn-on { opacity: 1; }
+.card-hovered .card-done-btn, .card:hover .card-done-btn,
+.inbox-card-hovered .card-done-btn, .inbox-card:hover .card-done-btn,
+.card-done-btn:focus-visible, .card-done-btn.done-btn-on { opacity: 1; }
+.card-hovered .card-title-row-done > .done-slide,
 .card:hover .card-title-row-done > .done-slide,
+.inbox-card-hovered .card-title-row-done > .done-slide,
 .inbox-card:hover .card-title-row-done > .done-slide,
 .card-title-row-done:has(.card-done-btn:focus-visible) > .done-slide,
 .card-title-row-done:has(.done-btn-on) > .done-slide { transform: translateX(var(--done-room)); }
 @media (hover: none) {
   .card-done-btn:not(.done-btn-on) { display: none; }
   .card-title-row-done:not(:has(.done-btn-on)) { padding-right: 0; }
+  .card-hovered .card-title-row-done:not(:has(.done-btn-on)) > .done-slide,
   .card:hover .card-title-row-done:not(:has(.done-btn-on)) > .done-slide,
+  .inbox-card-hovered .card-title-row-done:not(:has(.done-btn-on)) > .done-slide,
   .inbox-card:hover .card-title-row-done:not(:has(.done-btn-on)) > .done-slide { transform: none; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -2640,6 +2646,16 @@ button.cp-chip:hover { color: var(--text); }
 .cp-label { opacity: 0.8; }
 .cp-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); opacity: 0.85; }
 .ff-person { display: inline-flex; align-items: center; gap: 0.5rem; min-width: 0; }
+.ff-color { display: inline-flex; align-items: center; gap: 0.45rem; min-width: 0; }
+.ff-color-swatch {
+  flex: none; width: 1.1rem; height: 0.75rem; border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.15);
+}
+.ff-color-swatch-none {
+  background: linear-gradient(to top right, transparent calc(50% - 1px), var(--muted) 50%, transparent calc(50% + 1px)), var(--card);
+  border: 1px solid var(--border);
+  box-sizing: border-box;
+}
 .notifications-off { color: var(--muted); }
 .notifications-dialog { width: min(440px, 100%); }
 .people-access { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
@@ -2649,8 +2665,13 @@ button.cp-chip:hover { color: var(--text); }
 .btn-link-icon:hover { color: var(--danger, #ef4444); }
 .draft-column .btn.active { color: var(--accent); border-color: var(--accent); }
 .add-card-btn { flex: none; width: 2.5rem; }
-.editable-name { cursor: text; border-radius: 4px; text-decoration: underline dashed transparent; text-underline-offset: 0.2em; }
-.editable-name:hover, .editable-name:focus-visible { text-decoration-color: var(--muted); outline: none; }
+.editable-name { cursor: text; border-radius: 4px; }
+.editable-name.editable-name-hovered, .editable-name:focus-visible {
+  text-decoration: underline dashed var(--muted); text-underline-offset: 0.2em; outline: none;
+}
+@media (hover: hover) {
+  .editable-name:hover { text-decoration: underline dashed var(--muted); text-underline-offset: 0.2em; outline: none; }
+}
 .editable-name-edit { position: relative; display: inline-block; max-width: 100%; vertical-align: top; }
 .editable-name-sizer, .editable-name-input {
   margin: 0; padding: 0; border: 0; font: inherit; letter-spacing: inherit; line-height: inherit; white-space: pre;

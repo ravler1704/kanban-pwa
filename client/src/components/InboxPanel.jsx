@@ -15,7 +15,46 @@ import { FolderPickerDialog } from './FolderSelect.jsx';
 import Markdown from './Markdown.jsx';
 import Modal from './Modal.jsx';
 import { useOpenSpace } from './Spaces.jsx';
+import { usePointerHover } from '../pointerHover.js';
 import { archiveWithUndo } from './UndoToast.jsx';
+
+function InboxCardRow({ card, folders, doneMarksOf, onOpen, setMoving, archiveWithUndo }) {
+  const { hovered, onPointerEnter, onPointerLeave } = usePointerHover();
+
+  return (
+    <li className={`inbox-card${hovered ? ' inbox-card-hovered' : ''}`} draggable
+      onPointerEnter={onPointerEnter}
+      onPointerLeave={onPointerLeave}
+      onDragStart={(e) => {
+        setDraggedCard(card.id, e.currentTarget.offsetHeight);
+        layerForDragImage(e.currentTarget);
+        e.dataTransfer.setData('text/card-id', card.id);
+        e.dataTransfer.setData('text/inbox', '1');
+        e.dataTransfer.effectAllowed = 'move';
+      }}
+      onDragEnd={() => setDraggedCard(null)}>
+      <div className={`card-title-row inbox-title-row${doneMarksOf(card) ? ' card-title-row-done' : ''}`}>
+        {doneMarksOf(card) && <DoneButton card={card} className="card-done-btn" />}
+        <button type="button" className="inbox-card-title done-slide" onClick={() => onOpen(card.id)}>
+          {card.title ? <Markdown text={card.title} inline /> : <em className="muted">Без названия</em>}
+        </button>
+        {card.conflict
+          ? <span className="badge badge-conflict inbox-card-badge done-slide">Конфликт — откройте, чтобы решить</span>
+          : card.dirty === 1 && <span className="badge badge-pending inbox-card-badge done-slide">Не синхр.</span>}
+      </div>
+      <span className="inbox-card-actions">
+        <button type="button" className="btn btn-small btn-icon-only" title="На доску…" aria-label="На доску"
+          disabled={!folders.length} onClick={() => setMoving(card.id)}>
+          <MoveIcon />
+        </button>
+        <button type="button" className="btn btn-small btn-icon-only" title="Архивировать" aria-label="Архивировать"
+          onClick={() => archiveWithUndo([card.id])}>
+          <ArchiveIcon />
+        </button>
+      </span>
+    </li>
+  );
+}
 
 const svg = (children) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
@@ -204,35 +243,8 @@ export default function InboxPanel({ folders, onOpen, onClose }) {
       {cards.length ? (
         <ul className="inbox-list">
           {cards.map((card) => (
-            <li key={card.id} className="inbox-card" draggable
-              onDragStart={(e) => {
-                setDraggedCard(card.id, e.currentTarget.offsetHeight);
-                layerForDragImage(e.currentTarget);
-                e.dataTransfer.setData('text/card-id', card.id);
-                e.dataTransfer.setData('text/inbox', '1');
-                e.dataTransfer.effectAllowed = 'move';
-              }}
-              onDragEnd={() => setDraggedCard(null)}>
-              <div className={`card-title-row inbox-title-row${doneMarksOf(card) ? ' card-title-row-done' : ''}`}>
-                {doneMarksOf(card) && <DoneButton card={card} className="card-done-btn" />}
-                <button type="button" className="inbox-card-title done-slide" onClick={() => onOpen(card.id)}>
-                  {card.title ? <Markdown text={card.title} inline /> : <em className="muted">Без названия</em>}
-                </button>
-                {card.conflict
-                  ? <span className="badge badge-conflict inbox-card-badge done-slide">Конфликт — откройте, чтобы решить</span>
-                  : card.dirty === 1 && <span className="badge badge-pending inbox-card-badge done-slide">Не синхр.</span>}
-              </div>
-              <span className="inbox-card-actions">
-                <button type="button" className="btn btn-small btn-icon-only" title="На доску…" aria-label="На доску"
-                  disabled={!folders.length} onClick={() => setMoving(card.id)}>
-                  <MoveIcon />
-                </button>
-                <button type="button" className="btn btn-small btn-icon-only" title="Архивировать" aria-label="Архивировать"
-                  onClick={() => archiveWithUndo([card.id])}>
-                  <ArchiveIcon />
-                </button>
-              </span>
-            </li>
+            <InboxCardRow key={card.id} card={card} folders={folders} doneMarksOf={doneMarksOf}
+              onOpen={onOpen} setMoving={setMoving} archiveWithUndo={archiveWithUndo} />
           ))}
         </ul>
       ) : (

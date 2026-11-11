@@ -3,6 +3,7 @@ import { DoneMarks } from '../doneMarks.js';
 import { updateCard } from '../actions.js';
 import { markDone } from './UndoToast.jsx';
 import { cardColor } from '../appearance.js';
+import { usePointerHover } from '../pointerHover.js';
 import { uploadStore } from '../files.js';
 import { cardReminders, nextReminder } from '../reminders.js';
 import { splitTags, tagKey } from '../tags.js';
@@ -211,9 +212,11 @@ export default function Card({
 }) {
   const ref = useRef(null);
   const [checklistOpen, setChecklistOpen] = useState(false);
+  const { hovered, onPointerEnter, onPointerLeave } = usePointerHover();
   const classes = ['card'];
   if (card.conflict) classes.push('card-conflict');
   if (card.deleted) classes.push('card-deleted');
+  if (hovered) classes.push('card-hovered');
   const doneShown = useContext(DoneMarks)(card) && !card.conflict && (!readOnly || Boolean(card.done));
 
   return (
@@ -221,6 +224,8 @@ export default function Card({
       ref={ref}
       className={classes.join(' ')}
       data-card-id={card.id}
+      onPointerEnter={onPointerEnter}
+      onPointerLeave={onPointerLeave}
       draggable={!card.conflict && !readOnly}
       onDragStart={(e) => {
         draggedCardId = card.id;

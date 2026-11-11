@@ -6,6 +6,7 @@ import ContextMenu, { useMenuButton } from './ContextMenu.jsx';
 import FolderFilter, { FilterNav } from './FolderFilter.jsx';
 import Modal from './Modal.jsx';
 import PersonFilter from './PersonFilter.jsx';
+import ColorFilter from './ColorFilter.jsx';
 import TagFilter from './TagFilter.jsx';
 
 export function SettingsIcon() {
@@ -88,7 +89,8 @@ function ViewSwitch({ view, onView, sets }) {
  * ViewSwitch) picks the column set the board shows.
  */
 export default function FolderBar({
-  folders, folderFilter, conflictsByFolder, columnSets, columnSetId, onSelectColumnSet, tagFilter, authorFilter, holderFilter,
+  folders, folderFilter, conflictsByFolder, columnSets, columnSetId, onSelectColumnSet, tagFilter, colorFilter,
+  authorFilter, holderFilter,
   view, onView, onAddCard, title, setSwitch, children,
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -108,6 +110,7 @@ export default function FolderBar({
       node: <ColumnSetFilter columnSets={columnSets} value={columnSetId} onChange={onSelectColumnSet} />,
     },
     tagFilter && { id: 'tags', active: tagFilter.selected.length > 0, node: <TagFilter {...tagFilter} /> },
+    colorFilter && { id: 'colors', active: colorFilter.selected.length > 0, node: <ColorFilter {...colorFilter} /> },
     hasPeople(authorFilter) && {
       id: 'author', active: authorFilter.selected.length > 0,
       node: <PersonFilter label="Автор" title="Автор" {...authorFilter} />,
@@ -120,6 +123,7 @@ export default function FolderBar({
   // A filter that narrows the board: marked on the filters button.
   const filtered = filters.some((f) => f.active);
   const clearers = [folderFilter.onClear, tagFilter?.selected.length && tagFilter.onClear,
+    colorFilter?.selected.length && colorFilter.onClear,
     authorFilter?.selected.length && authorFilter.onClear, holderFilter?.selected.length && holderFilter.onClear]
     .filter(Boolean);
 

@@ -6,7 +6,7 @@ import { dbName, isCurrentBoard, isOwnBoard, publicToken, switchBoard } from './
 import { useReadOnly } from './public.js';
 import { db, DEFAULT_FOLDER_ID, INBOX_ID } from './db.js';
 import { columnModel } from './columnSets.js';
-import { folderBackground, folderDoneMarks } from './appearance.js';
+import { CARD_COLORS, folderBackground, folderDoneMarks } from './appearance.js';
 import { DoneMarks } from './doneMarks.js';
 import { useOpenSpace } from './components/Spaces.jsx';
 import { ICONS } from './menuIcons.js';
@@ -39,6 +39,8 @@ const TAG_FILTER_KEY = 'tagFilter';
 // User ids: only cards made by / held by any of them are shown.
 const AUTHOR_FILTER_KEY = `authorFilter:${dbName}`;
 const HOLDER_FILTER_KEY = `holderFilter:${dbName}`;
+const COLOR_FILTER_KEY = `colorFilter:${dbName}`;
+const COLOR_NONE = '_none';
 // Column ids collapsed into a narrow strip on this device.
 const COLLAPSED_KEY = `collapsedColumns:${dbName}`;
 const INBOX_OPEN_KEY = 'inboxOpen';
@@ -179,6 +181,7 @@ export default function App() {
   };
   const [authorFilter, changeAuthorFilter] = useStoredList(AUTHOR_FILTER_KEY);
   const [holderFilter, changeHolderFilter] = useStoredList(HOLDER_FILTER_KEY);
+  const [colorFilter, changeColorFilter] = useStoredList(COLOR_FILTER_KEY);
   const [collapsed, changeCollapsed] = useStoredList(COLLAPSED_KEY);
   const toggleCollapsed = (id) => changeCollapsed((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]));
   const toggleTag = (name) => {
@@ -354,11 +357,33 @@ export default function App() {
     onToggle: (id) => change(selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]),
     onClear: () => change([]),
   });
+  const toggleColorFilter = (id) => {
+    changeColorFilter(colorFilter.includes(id) ? colorFilter.filter((x) => x !== id) : [...colorFilter, id]);
+  };
+
+  const colorCounts = new Map();
+  for (const card of inScope) {
+    const id = card.color ?? COLOR_NONE;
+    colorCounts.set(id, (colorCounts.get(id) ?? 0) + 1);
+  }
+  const colorIds = new Set([...colorCounts.keys(), ...colorFilter]);
+  const colorOptions = [];
+  if (colorIds.has(COLOR_NONE)) {
+    colorOptions.push({
+      id: COLOR_NONE, name: 'Без цвета', value: null, count: colorCounts.get(COLOR_NONE) ?? 0,
+    });
+  }
+  for (const c of CARD_COLORS) {
+    if (colorIds.has(c.id)) {
+      colorOptions.push({ id: c.id, name: c.name, value: c.value, count: colorCounts.get(c.id) ?? 0 });
+    }
+  }
 
   const visible = inScope
     .filter((c) => !tagFilter.length || [...tagsOf(c)].some((key) => activeTags.has(key)))
     .filter((c) => !authorFilter.length || authorFilter.includes(c.authorId))
     .filter((c) => !holderFilter.length || holderFilter.includes(holderOf(c)))
+    .filter((c) => !colorFilter.length || colorFilter.includes(c.color ?? COLOR_NONE))
     .sort(byPosition);
   // A card found in the list may be in a folder that is not shown.
   // «Входящие» is a panel next to the board; on someone else's space the user has their own, not a public link.
@@ -550,6 +575,12 @@ export default function App() {
                 } : null}
                 authorFilter={publicToken ? null : personFilter(authorFilter, changeAuthorFilter, (c) => c.authorId)}
                 holderFilter={publicToken ? null : personFilter(holderFilter, changeHolderFilter, holderOf)}
+                colorFilter={colorOptions.length ? {
+                  colors: colorOptions,
+                  selected: colorFilter,
+                  onToggle: toggleColorFilter,
+                  onClear: () => changeColorFilter([]),
+                } : null}
                 view={view}
                 onView={changeView}
                 onAddCard={readOnly || view === 'board' ? null : () => setAddingCard(true)}

@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { usePointerHover } from '../pointerHover.js';
 import { useOutsidePress } from './ManageFields.jsx';
 
 /** A note under `anchor` over the page (scrolling containers would cut it off), not moving anything. */
@@ -67,6 +68,7 @@ export function NameField({ value, label, maxLength, className, note, onSave, on
 /** A name renamed in place: a click (or Enter / F2 on it) turns it into a field; `note` is shown under it meanwhile. */
 export default function EditableName({ value, label, maxLength = 200, className = '', note, onSave }) {
   const [editing, setEditing] = useState(false);
+  const { hovered, onPointerEnter, onPointerLeave } = usePointerHover();
   if (editing) {
     return (
       <NameField value={value} label={label} maxLength={maxLength} className={className} note={note} onSave={onSave}
@@ -74,8 +76,9 @@ export default function EditableName({ value, label, maxLength = 200, className 
     );
   }
   return (
-    <span role="button" tabIndex={0} className={`editable-name ${className}`} title="Нажмите, чтобы переименовать"
-      aria-label={`${value} — переименовать`}
+    <span role="button" tabIndex={0} className={`editable-name${hovered ? ' editable-name-hovered' : ''} ${className}`}
+      title="Нажмите, чтобы переименовать" aria-label={`${value} — переименовать`}
+      onPointerEnter={onPointerEnter} onPointerLeave={onPointerLeave}
       onClick={(e) => {
         e.stopPropagation();
         setEditing(true);

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { usePointerHover } from '../pointerHover.js';
 import { createPortal } from 'react-dom';
 import { deleteFolder, folderStats, moveFolder, renameFolder, reorderFolder } from '../actions.js';
 import { backgroundItems } from '../appearance.js';
@@ -189,6 +190,7 @@ export function useFolderActions(folder, { folders, model, columnsSynced, writab
  * menu renames it too): a click (Enter / F2) calls `onRename`, `onRenamed` when the field is done.
  */
 export function BoardName({ folder, renaming, onRename, onRenamed }) {
+  const { hovered, onPointerEnter, onPointerLeave } = usePointerHover();
   if (renaming) {
     return (
       <NameField value={folder.name} label="Название доски" maxLength={200} className="" note={null}
@@ -196,8 +198,9 @@ export function BoardName({ folder, renaming, onRename, onRenamed }) {
     );
   }
   return (
-    <span role="button" tabIndex={0} className="editable-name" title="Нажмите, чтобы переименовать"
-      aria-label={`${folder.name} — переименовать`}
+    <span role="button" tabIndex={0} className={`editable-name${hovered ? ' editable-name-hovered' : ''}`}
+      title="Нажмите, чтобы переименовать" aria-label={`${folder.name} — переименовать`}
+      onPointerEnter={onPointerEnter} onPointerLeave={onPointerLeave}
       onClick={(e) => {
         e.stopPropagation();
         onRename();
