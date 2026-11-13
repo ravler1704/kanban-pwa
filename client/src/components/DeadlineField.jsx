@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { describeDeadline, endOfDay } from '../deadlines.js';
-import { describeReminder } from './ReminderField.jsx';
 import Modal from './Modal.jsx';
 
 const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
@@ -14,6 +13,12 @@ function presets(now) {
     { label: 'Через неделю', date: addDays(today, 7) },
     { label: 'Через месяц', date: addDays(today, 30) },
   ];
+}
+
+function presetDate(date, now) {
+  const options = { weekday: 'short', day: 'numeric', month: 'short' };
+  if (date.getFullYear() !== now.getFullYear()) options.year = 'numeric';
+  return date.toLocaleDateString('ru-RU', options);
 }
 
 function DeadlineDialog({ value, onSave, onRemove, onClose }) {
@@ -32,7 +37,7 @@ function DeadlineDialog({ value, onSave, onRemove, onClose }) {
         {presets(now).map((p) => (
           <button key={p.label} type="button" className="rem-preset" onClick={() => { save(p.date); onClose(); }}>
             {p.label}
-            <span className="rem-preset-when">{describeDeadline(endOfDay(p.date), now)}</span>
+            <span className="rem-preset-when">{presetDate(p.date, now)}</span>
           </button>
         ))}
       </div>
@@ -44,7 +49,7 @@ function DeadlineDialog({ value, onSave, onRemove, onClose }) {
             const [y, m, d] = e.target.value.split('-').map(Number);
             pick(new Date(y, m - 1, d));
           }} />
-        <span className="muted rem-deadline-hint">{describeReminder(draft, now).replace(/, \d+:\d+$/, '')}</span>
+        <span className="muted rem-deadline-hint">{describeDeadline(endOfDay(draft), now)}</span>
       </label>
       {draft < startOfDay(now) && <p className="rem-past">Этот день уже прошёл</p>}
       <div className="actions">

@@ -1223,7 +1223,31 @@ body {
 .card-deadline { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; color: var(--warning, #d97706); }
 .card-deadline-overdue { color: var(--danger, #e5484d); }
 .deadline-value { text-align: left; }
-.rem-deadline-date { gap: 0.35rem; }
+.reminder-dialog .rem-deadline-date {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+}
+.reminder-dialog .rem-deadline-date .field-label {
+  position: static;
+  max-width: none;
+  font-size: 0.85rem;
+  line-height: 1.2;
+}
+.reminder-dialog .rem-deadline-date input[type="date"] {
+  width: 100%;
+  height: 2.5rem;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.4rem 0.7rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font: inherit;
+}
+.reminder-dialog .rem-deadline-date input[type="date"]:focus { outline: none; border-color: var(--accent); }
 .rem-deadline-hint { font-size: 0.85rem; }
 .card-uploading { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.75rem; color: var(--accent); }
 .attachment-failed .attachment-size { color: var(--danger); flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
