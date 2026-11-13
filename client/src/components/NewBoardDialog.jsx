@@ -71,7 +71,7 @@ export default function NewBoardDialog({
 
   return (
     <Modal title={title} onClose={onClose} className="new-board-dialog" closeButton>
-      <form onSubmit={submit}>
+      <form className="new-board-form" onSubmit={submit}>
         <label className="field manage-field">
           <span className="field-label">Название</span>
           <input
@@ -83,11 +83,12 @@ export default function NewBoardDialog({
             autoFocus
           />
         </label>
-        <p className="field-label" style={{ marginTop: '0.75rem' }}>Шаблон колонок</p>
-        <p className="muted" style={{ margin: '0 0 0.5rem', fontSize: '0.85rem' }}>
-          Так будет выглядеть доска — фон, цвета колонок и заголовки.
-        </p>
-        <div className="template-pick-grid" role="listbox" aria-label="Шаблоны досок">
+        <section className="new-board-section" aria-labelledby="new-board-template-label">
+          <p id="new-board-template-label" className="new-board-section-title">Шаблон колонок</p>
+          <p className="muted new-board-section-hint">
+            Так будет выглядеть доска — фон, цвета колонок и заголовки.
+          </p>
+          <div className="template-pick-grid" role="listbox" aria-label="Шаблоны досок">
           <button
             type="button"
             role="option"
@@ -112,8 +113,9 @@ export default function NewBoardDialog({
               <span className="template-pick-label">{t.title}</span>
             </button>
           ))}
-        </div>
-        {error && <p className="login-error">{error}</p>}
+          </div>
+        </section>
+        {error && <p className="login-error new-board-error">{error}</p>}
         <div className="actions">
           <button type="button" className="btn" onClick={onClose}>Отмена</button>
           <button type="submit" className="btn btn-primary" disabled={busy || !name.trim()}>
