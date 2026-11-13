@@ -3,6 +3,12 @@ description: Every commit updates CHANGELOG.md and is pushed to GitHub
 alwaysApply: true
 ---
 
+# Commit and deploy (сразу, без вопроса)
+
+После любого изменения кода по запросу пользователя (не чистые вопросы/обзор) **сразу**: запись в `CHANGELOG.md` →
+`git commit` → `./deploy.sh` → `git push origin master`. Если `deploy.sh` изменил `client/public/releases.html` —
+отдельный коммит «Regenerate releases page from CHANGELOG.» и ещё push. **Не спрашивать**, готов ли коммит или деплой.
+
 # History of changes
 
 - With every commit, add an entry to `CHANGELOG.md` in the same commit: under today's date (`## YYYY-MM-DD`,
