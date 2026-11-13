@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { authState } from './auth.js';
 import { isUnread, seenStore } from './seen.js';
@@ -282,10 +282,14 @@ export default function App() {
     [scopeFolderIds],
   );
   const openRecord = useLiveQuery(() => (openCardId ? db.cards.get(openCardId) : null), [openCardId]);
+  const liveFolderIdsKey = useMemo(
+    () => (data?.folders ? liveFolders(data.folders, { standIn: isOwnBoard }).map((f) => f.id).sort().join(',') : ''),
+    [data?.folders, isOwnBoard],
+  );
 
   // Selections of earlier builds are converted once: `hidden` projects and unchecked spaces (with their projects).
   useEffect(() => {
-    if (!data || publicToken) return;
+    if (!data?.folders || publicToken) return;
     const legacySpaces = localStorage.getItem(SPACES_OFF_KEY) !== null;
     const legacyHidden = localStorage.getItem(HIDDEN_KEY) !== null;
     const oldDefaults = !localStorage.getItem(OLD_DEFAULTS_KEY);
@@ -298,12 +302,12 @@ export default function App() {
     localStorage.setItem(OLD_DEFAULTS_KEY, '1');
     localStorage.removeItem(SPACES_OFF_KEY);
     localStorage.removeItem(HIDDEN_KEY);
-    if (extra.length) select([...new Set([...selection, ...extra])]);
-  });
+    if (extra.length) select([...new Set([...readSelection(), ...extra])]);
+  }, [data?.folders, publicToken, select]);
 
   // Saved column-set choice must match folders in view (e.g. after opening one board «Канун» while «Фильмы» was saved).
   useEffect(() => {
-    if (!data || publicToken) return;
+    if (!data?.folders || publicToken) return;
     const live = liveFolders(data.folders, { standIn: isOwnBoard });
     const shown = live.filter((f) => !selection.includes(f.id));
     if (shown.length <= 1) return;
@@ -311,15 +315,20 @@ export default function App() {
     const used = modelLocal.sets.filter((s) => shown.some((f) => modelLocal.setIdOf(f) === s.id));
     const valid = used.map((s) => s.id);
     if (valid.length > 1 && allFoldersSet && !valid.includes(allFoldersSet)) changeAllFoldersSet(valid[0]);
-  }, [data, selection, allFoldersSet, publicToken, isOwnBoard]);
+  }, [liveFolderIdsKey, data?.columnSets, data?.columns, selection, allFoldersSet, publicToken, isOwnBoard]);
 
-  // A saved filter may have every board off — then the board looks empty; show them again.
+  // Drop ids of removed boards; if every live board is off, show all again (once, without remounting).
   useEffect(() => {
-    if (!data?.pulled || publicToken) return;
-    const live = liveFolders(data.folders, { standIn: isOwnBoard });
-    const shown = live.filter((f) => !selection.includes(f.id));
-    if (live.length > 0 && shown.length === 0) select([]);
-  }, [data, selection, publicToken, isOwnBoard, select]);
+    if (!data?.pulled || publicToken || !liveFolderIdsKey) return;
+    const liveIds = new Set(liveFolderIdsKey.split(','));
+    const pruned = selection.filter((id) => liveIds.has(id));
+    if (pruned.length !== selection.length) {
+      select(pruned);
+      return;
+    }
+    const shownCount = liveIds.size - pruned.length;
+    if (liveIds.size > 0 && shownCount === 0) select([]);
+  }, [data?.pulled, liveFolderIdsKey, selection, publicToken, select]);
 
   // What the user may add cards to: on someone else's board the folders opened to them
   // (the folders above are only there to show the way).
@@ -333,10 +342,13 @@ export default function App() {
     folders, model, writable, columnsSynced: (data?.columns.length ?? 0) > 0,
   });
 
-  if (!data || !folderCards) return <div className="loading">Загрузка…</div>;
+  if (!data) return <div className="loading">Загрузка…</div>;
+
+  const scopedCards = folderCards ?? [];
+  const scopedComments = folderComments ?? [];
 
   const commentStats = new Map();
-  for (const c of folderComments ?? []) {
+  for (const c of scopedComments) {
     const stats = commentStats.get(c.cardId) ?? { count: 0, unread: 0 };
     stats.count += 1;
     if (isUnread(seen, c, me)) stats.unread += 1;
@@ -345,7 +357,7 @@ export default function App() {
 
   // Cards whose column is not in the folder's set show up in its first column.
   const folderColumnIds = new Map(folders.map((f) => [f.id, model.columnsOfFolder(f.id).map((c) => c.id)]));
-  const cards = folderCards
+  const cards = scopedCards
     .filter((c) => tree.byId.has(c.folderId))
     .map((c) => {
       const columnIds = folderColumnIds.get(c.folderId);
@@ -713,7 +725,7 @@ export default function App() {
                       const f = tree.byId.get(id);
                       return f ? folderPathName(f, folders) : id;
                     },
-                    personName: (id) => personLabel(personOf(people, id), meId),
+                    personName: (id) => personLabel(personOf(people, id), me),
                   }}
                   columnProps={{
                     target: boardTarget,
