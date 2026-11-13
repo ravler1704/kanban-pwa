@@ -1,0 +1,20 @@
+# When CHANGELOG.md changes on master, refresh the matching GitHub Release (web-YYYY-MM-DD).
+name: Web release
+
+on:
+  push:
+    branches: [master]
+    paths: [CHANGELOG.md]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node scripts/publish-github-release.mjs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KANBAN_SITE_URL: https://178-83-123-195.sslip.io
