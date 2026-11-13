@@ -84,21 +84,28 @@ function ViewSwitch({ view, onView, sets }) {
 }
 
 /** Same kind of button as the view switch: the current swimlane mode, and a menu of the others. */
+function LaneIcon({ d }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={d} /></svg>
+  );
+}
+
 function SwimlaneSwitch({ mode, onChange }) {
-  const [menu, , closeMenu, buttonProps] = useMenuButton(VIEW_MENU_WIDTH);
+  const [menu, , closeMenu, buttonProps] = useMenuButton(220);
   const current = SWIMLANE_MODES.find((m) => m.id === mode) ?? SWIMLANE_MODES[0];
   const label = `Дорожки: ${current.label}`;
   return (
     <>
-      <button type="button" className="btn btn-small btn-icon-only view-toggle" title={label} aria-label={label}
+      <button type="button" className="btn btn-small view-toggle swimlane-toggle" title={label} aria-label={label}
         aria-pressed={mode !== 'none'} {...buttonProps}>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-          strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={current.icon} /></svg>
+        <LaneIcon d={current.icon} />
+        {current.mark && <LaneIcon d={current.mark} />}
       </button>
       {menu && (
         <ContextMenu x={menu.x} y={menu.y} onClose={closeMenu}
           items={SWIMLANE_MODES.map((m) => ({
-            label: m.label, icon: m.icon, active: mode === m.id, run: () => onChange(m.id),
+            label: m.label, icon: m.icon, endIcon: m.mark, active: mode === m.id, run: () => onChange(m.id),
           }))} />
       )}
     </>
