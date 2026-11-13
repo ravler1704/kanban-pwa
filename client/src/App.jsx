@@ -18,6 +18,7 @@ import CardEditor from './components/CardEditor.jsx';
 import ConflictDialog from './components/ConflictDialog.jsx';
 import ManageDialog from './components/ManageDialog.jsx';
 import ColumnsDraftDialog from './components/ColumnsDraftDialog.jsx';
+import NewBoardDialog from './components/NewBoardDialog.jsx';
 import TemplatesGallery from './components/TemplatesGallery.jsx';
 import { createBoardFromTemplate } from './templateApply.js';
 import {
@@ -158,6 +159,7 @@ export default function App() {
   const [search, setSearch] = useState('');
   const [editingColumns, setEditingColumns] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [newBoardOpen, setNewBoardOpen] = useState(false);
   const [templateApplying, setTemplateApplying] = useState(false);
   const templateFromUrlDone = useRef(false);
   const templateApplyKick = useRef(null);
@@ -344,6 +346,12 @@ export default function App() {
     if (!folderId || !liveIds.length) return;
     select(liveIds.filter((id) => id !== folderId));
   }, [select]);
+
+  const revealNewBoard = useCallback(async (folderId) => {
+    const all = await db.folders.toArray();
+    const liveIds = liveFolders(all, { standIn: isOwnBoard }).map((f) => f.id);
+    focusFolderInView(folderId, liveIds.includes(folderId) ? liveIds : [...liveIds, folderId]);
+  }, [focusFolderInView, isOwnBoard]);
 
   // Promo / ?template=: create a board in the user's space (id kept in sessionStorage for login / reload).
   useEffect(() => {
@@ -617,6 +625,11 @@ export default function App() {
   const viewFolder = !readOnly && !searching && columnsFolder && usable.includes(columnsFolder) ? columnsFolder : null;
   const boardMenuItems = [
     !readOnly && { label: 'Новая карточка…', icon: ICONS.add, shortcut: 'KeyN', run: () => setAddingCard(true) },
+    isOwnBoard && !readOnly && {
+      label: 'Новая доска…',
+      icon: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z',
+      run: () => setNewBoardOpen(true),
+    },
     null,
     view === 'board' && !searching && {
       label: allCollapsed ? 'Развернуть все колонки' : 'Свернуть все колонки',
@@ -683,7 +696,10 @@ export default function App() {
             ) : (
               <div className="empty">
                 <p>Пока нет ни одной доски.</p>
-                <button className="btn btn-primary" onClick={() => setManaging(true)}>Создать доску</button>
+                <button type="button" className="btn btn-primary" onClick={() => setNewBoardOpen(true)}>Создать доску</button>
+                <button type="button" className="btn" style={{ marginTop: '0.5rem' }} onClick={() => setTemplatesOpen(true)}>
+                  Витрина шаблонов
+                </button>
               </div>
             )
           ) : (
@@ -898,6 +914,18 @@ export default function App() {
       )}
       <UndoToast />
 
+      {newBoardOpen && (
+        <NewBoardDialog
+          parentId={null}
+          defaultColumnSetId={model.newFolderSetId}
+          onClose={() => setNewBoardOpen(false)}
+          onCreated={(folderId) => {
+            setNewBoardOpen(false);
+            revealNewBoard(folderId);
+          }}
+        />
+      )}
+
       {managing && (
         <ManageDialog
           model={model}
@@ -906,6 +934,9 @@ export default function App() {
           foldersSynced={data.pulled || data.folders.some((f) => !f.deleted)}
           writable={writable}
           onClose={() => setManaging(false)}
+          onBoardCreated={(folderId) => {
+            revealNewBoard(folderId);
+          }}
         />
       )}
     </div>

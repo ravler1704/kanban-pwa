@@ -3,6 +3,7 @@ import { authState } from '../auth.js';
 import { applyBoardTemplate, createBoardFromTemplate } from '../templateApply.js';
 import { deleteTemplate, listTemplates, noteTemplateUse } from '../templatesApi.js';
 import Modal from './Modal.jsx';
+import TemplatePreview from './TemplatePreview.jsx';
 import { SearchField } from './FolderFilter.jsx';
 
 function Author({ author }) {
@@ -17,12 +18,11 @@ function Author({ author }) {
 }
 
 function TemplateCard({ item, canDelete, canCreateBoard, onApply, onDelete }) {
-  const cols = item.payload.columns.map((c) => c.name).join(' · ');
   return (
     <article className="template-card">
+      <TemplatePreview columns={item.payload.columns} background={item.payload.background} />
       <h3 className="template-card-title">{item.title}</h3>
       {item.description && <p className="template-card-desc">{item.description}</p>}
-      <p className="template-card-cols muted">{item.payload.setName}: {cols}</p>
       <div className="template-card-meta">
         <Author author={item.author} />
         <span className="muted">использований: {item.usesCount}</span>

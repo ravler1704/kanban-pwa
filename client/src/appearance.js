@@ -59,6 +59,11 @@ function backgroundValue(id) {
   return [...BOARD_BACKGROUNDS, ...BOARD_PICTURES].find((b) => b.id === id)?.value ?? null;
 }
 
+/** CSS `background` value for board preview (template id or null → panel default). */
+export function boardBackgroundCSSValue(id) {
+  return id ? backgroundValue(id) : null;
+}
+
 /** The board's background: the folder's own or the nearest ancestor's ('none' stops it). */
 export function folderBackground(folder, folders) {
   const path = folderPath(folder, folders);

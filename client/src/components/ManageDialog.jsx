@@ -12,7 +12,9 @@ const TAB_KEY = 'manageDialogTab';
  * The folders of the board (`folders`, live) and who has access to them; `writable` are the ids a member may change (null: all),
  * members arrange those they have access to. A board's columns are edited from its menu here or from the board.
  */
-export default function ManageDialog({ model, columnsSynced, folders, foldersSynced, writable, onClose }) {
+export default function ManageDialog({
+  model, columnsSynced, folders, foldersSynced, writable, onClose, onBoardCreated,
+}) {
   const { user } = useSyncExternalStore(authState.subscribe, authState.get);
   const tabs = [
     ...(isOwnBoard && user ? [{ id: 'space', label: 'Пространство' }] : []),
@@ -44,7 +46,7 @@ export default function ManageDialog({ model, columnsSynced, folders, foldersSyn
         {tab === 'sharing' && <div className="manage"><SharingSection /></div>}
         {tab === 'folders' && (
           <StructureEditor model={model} folders={folders} synced={foldersSynced} columnsSynced={columnsSynced}
-            writable={writable} />
+            writable={writable} onBoardCreated={onBoardCreated} />
         )}
       </div>
       <div className="actions">

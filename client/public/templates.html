@@ -39,6 +39,14 @@
     .card p { margin: 0; color: var(--muted); font-size: 0.92rem; line-height: 1.45; flex: 1; }
     .cols { margin: 0; font-size: 0.82rem; color: var(--muted); }
     .meta { font-size: 0.8rem; color: var(--muted); }
+    .tpl-preview { border-radius: 10px; overflow: hidden; border: 1px solid var(--border); margin-bottom: 8px; }
+    .tpl-preview-board { display: flex; gap: 5px; padding: 8px; min-height: 5.5rem; background: var(--panel); }
+    .tpl-preview-col { flex: 1; min-width: 0; padding: 4px 3px; border-radius: 6px; border: 1px solid var(--border);
+      background: #273449; display: flex; flex-direction: column; gap: 3px; }
+    .tpl-preview-col[style*="--c"] { background: color-mix(in srgb, var(--c) 24%, #273449); border-color: color-mix(in srgb, var(--c) 45%, var(--border)); }
+    .tpl-preview-head { font-size: 0.65rem; font-weight: 600; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      border-top: 2px solid var(--border); padding-top: 2px; }
+    .tpl-ph { height: 0.85rem; border-radius: 3px; background: #334155; border: 1px solid #3b4a63; }
     footer { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border);
       color: var(--muted); font-size: 0.88rem; display: flex; flex-wrap: wrap; gap: 12px 20px; }
     footer a { color: var(--muted); text-decoration: none; }
@@ -71,6 +79,22 @@
   (async () => {
     const grid = document.getElementById('grid');
     const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    const COL = { blue: '#579dff', green: '#4bce97', orange: '#fea362', purple: '#9f8fef', red: '#f87168', teal: '#6cc3e0', gray: '#8590a2' };
+    const BG = {
+      ocean: 'linear-gradient(135deg, #0c66e4, #09326c)', forest: 'linear-gradient(135deg, #16a34a, #0f3d2e)',
+      sunset: 'linear-gradient(135deg, #f97316, #be185d)', dusk: 'linear-gradient(135deg, #7c3aed, #312e81)',
+      aurora: 'linear-gradient(135deg, #0891b2, #16a34a)', night: 'linear-gradient(135deg, #1e293b, #020617)',
+      blue: '#1d4ed8', green: '#15803d', orange: '#c2410c', red: '#b91c1c', purple: '#6d28d9', teal: '#0f766e', gray: '#475569',
+    };
+    function tplPreview(payload) {
+      const bg = payload.background && BG[payload.background] ? ` style="background:${BG[payload.background]}"` : '';
+      const cols = payload.columns.map((c, i) => {
+        const style = c.color && COL[c.color] ? ` style="--c:${COL[c.color]}"` : '';
+        const ph = i < 3 ? '<div class="tpl-ph"></div>' + (i === 0 ? '<div class="tpl-ph"></div>' : '') : '';
+        return `<div class="tpl-preview-col"${style}><div class="tpl-preview-head">${esc(c.name)}</div>${ph}</div>`;
+      }).join('');
+      return `<div class="tpl-preview"><div class="tpl-preview-board"${bg}>${cols}</div></div>`;
+    }
     try {
       const res = await fetch('/api/templates?limit=50');
       if (!res.ok) throw new Error();
@@ -80,14 +104,14 @@
         return;
       }
       grid.innerHTML = templates.map((t) => {
-        const cols = t.payload.columns.map((c) => esc(c.name)).join(' · ');
+        const tid = esc(t.id);
         return `<article class="card">
+          ${tplPreview(t.payload)}
           <h2>${esc(t.title)}</h2>
           <p>${esc(t.description)}</p>
-          <p class="cols">${esc(t.payload.setName)}: ${cols}</p>
           <p class="meta">${esc(t.author?.name)} · использований: ${t.usesCount ?? 0}</p>
           <a class="btn" href="/?template=${encodeURIComponent(t.id)}"
-            onclick="try{sessionStorage.setItem('pendingBoardTemplate',${JSON.stringify(t.id)})}catch(e){}">Создать доску</a>
+            onclick="try{sessionStorage.setItem('pendingBoardTemplate','${tid}')}catch(e){}">Создать доску</a>
         </article>`;
       }).join('');
     } catch {

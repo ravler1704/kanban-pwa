@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react';
-import { createFolder, renameFolder } from '../actions.js';
+import { renameFolder } from '../actions.js';
 import { isOwnBoard } from '../board.js';
 import { childrenOf, flattenFolders, folderPath, folderTree } from '../folders.js';
 import { ICONS } from '../menuIcons.js';
 import ContextMenu, { useHoverShortcuts, useMenuButton } from './ContextMenu.jsx';
 import EditableName from './EditableName.jsx';
 import { useFolderActions } from './FolderMenu.jsx';
-import { AddButton, Chevron, plural } from './ManageFields.jsx';
+import NewBoardDialog from './NewBoardDialog.jsx';
+import { Chevron, plural } from './ManageFields.jsx';
 import { FolderMembers, useCanShare } from './SharingSection.jsx';
 
 const SEARCH_FROM = 7;
@@ -93,8 +94,9 @@ function FolderIcon() {
  * `writable` (a set of ids, or null for all) are the folders a member may touch.
  */
 export default function StructureEditor({
-  model, folders, synced, columnsSynced, writable,
+  model, folders, synced, columnsSynced, writable, onBoardCreated,
 }) {
+  const [newBoardOpen, setNewBoardOpen] = useState(false);
   const canShare = useCanShare();
   const tree = folderTree(folders);
   const [currentId, setCurrentId] = useState(null);
@@ -153,10 +155,28 @@ export default function StructureEditor({
             <p className="muted">{current ? 'У этой доски нет вложенных досок.' : 'Пока нет ни одной доски.'}</p>
           )}
           {canAddHere && (
-            <AddButton key={current?.id ?? 'top'} label={current ? `Новая доска в «${current.name}»` : 'Новая доска верхнего уровня'}
-              onAdd={async (name) => {
-                await createFolder(name, current ? { parentId: current.id } : { columnSetId: model.newFolderSetId });
-              }} />
+            <>
+              <button
+                type="button"
+                key={current?.id ?? 'top'}
+                className="btn field-add tree-add"
+                onClick={() => setNewBoardOpen(true)}
+              >
+                + {current ? `Новая доска в «${current.name}»` : 'Новая доска верхнего уровня'}
+              </button>
+              {newBoardOpen && (
+                <NewBoardDialog
+                  parentId={current?.id ?? null}
+                  defaultColumnSetId={model.newFolderSetId}
+                  title={current ? `Новая доска в «${current.name}»` : 'Новая доска'}
+                  onClose={() => setNewBoardOpen(false)}
+                  onCreated={(folderId) => {
+                    setNewBoardOpen(false);
+                    onBoardCreated?.(folderId);
+                  }}
+                />
+              )}
+            </>
           )}
         </>
       )}
