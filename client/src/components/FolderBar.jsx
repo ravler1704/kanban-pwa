@@ -83,8 +83,6 @@ function ViewSwitch({ view, onView, sets }) {
   );
 }
 
-const LANES_ICON = 'M4 7h16M4 12h16M4 17h16';
-
 /** Same kind of button as the view switch: the current swimlane mode, and a menu of the others. */
 function SwimlaneSwitch({ mode, onChange }) {
   const [menu, , closeMenu, buttonProps] = useMenuButton(VIEW_MENU_WIDTH);
@@ -95,12 +93,12 @@ function SwimlaneSwitch({ mode, onChange }) {
       <button type="button" className="btn btn-small btn-icon-only view-toggle" title={label} aria-label={label}
         aria-pressed={mode !== 'none'} {...buttonProps}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-          strokeLinecap="round" aria-hidden="true"><path d={LANES_ICON} /></svg>
+          strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={current.icon} /></svg>
       </button>
       {menu && (
         <ContextMenu x={menu.x} y={menu.y} onClose={closeMenu}
           items={SWIMLANE_MODES.map((m) => ({
-            label: m.label, active: mode === m.id, run: () => onChange(m.id),
+            label: m.label, icon: m.icon, active: mode === m.id, run: () => onChange(m.id),
           }))} />
       )}
     </>

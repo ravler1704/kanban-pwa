@@ -4,10 +4,10 @@ import { CARD_COLORS } from './appearance.js';
 export const SWIMLANE_KEY = 'swimlaneMode';
 
 export const SWIMLANE_MODES = [
-  { id: 'none', label: 'Без дорожек' },
-  { id: 'holder', label: 'По исполнителю' },
-  { id: 'folder', label: 'По доске' },
-  { id: 'color', label: 'По цвету' },
+  { id: 'none', label: 'Без дорожек', icon: 'M4 4h16v16H4zM9.3 4v16M14.7 4v16' },
+  { id: 'holder', label: 'По исполнителю', icon: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z' },
+  { id: 'folder', label: 'По доске', icon: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z' },
+  { id: 'color', label: 'По цвету', icon: 'M12 3a9 9 0 0 0 0 18c1.4 0 2.2-1 2.2-2.1 0-.7-.5-1.2-1.1-1.2h-1.6a2.2 2.2 0 0 1 0-4.4H14a2.6 2.6 0 0 0 2.6-2.6A6.7 6.7 0 0 0 12 3z' },
 ];
 
 /** Saved mode, or null if the user never chose one in the board menu. */
