@@ -37,7 +37,7 @@ import ListView from './components/ListView.jsx';
 import MetricsView from './components/MetricsView.jsx';
 import SwimlaneBoard from './components/SwimlaneBoard.jsx';
 import { personLabel, personOf } from './components/CardPeople.jsx';
-import { SWIMLANE_MODES, savedSwimlaneMode, setSwimlaneMode } from './swimlanes.js';
+import { SWIMLANE_ICON, SWIMLANE_MODES, savedSwimlaneMode, setSwimlaneMode } from './swimlanes.js';
 import ChatDialog from './components/ChatDialog.jsx';
 import PeopleBar from './components/People.jsx';
 import InboxPanel, { useInboxCards } from './components/InboxPanel.jsx';
@@ -648,6 +648,7 @@ export default function App() {
     },
     view === 'board' && !searching && {
       label: `Дорожки: ${SWIMLANE_MODES.find((m) => m.id === swimlane)?.label ?? 'Без дорожек'}`,
+      icon: SWIMLANE_ICON,
       submenu: SWIMLANE_MODES.map((m) => ({
         label: m.label, active: swimlane === m.id, run: () => changeSwimlane(m.id),
       })),

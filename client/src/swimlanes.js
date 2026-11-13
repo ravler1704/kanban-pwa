@@ -3,6 +3,9 @@ import { CARD_COLORS } from './appearance.js';
 
 export const SWIMLANE_KEY = 'swimlaneMode';
 
+/** Two lane blocks, shown on the board menu item that opens the mode list. */
+export const SWIMLANE_ICON = 'M4 4.5h16v5.2H4zM4 14.3h16v5.2H4z';
+
 export const SWIMLANE_MODES = [
   { id: 'none', label: 'Без дорожек' },
   { id: 'holder', label: 'По исполнителю' },
