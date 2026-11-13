@@ -185,6 +185,7 @@ export default function App() {
   const changeSwimlane = (id) => {
     setSwimlaneMode(id);
     setSwimlane(id);
+    setBoardMenu(null);
   };
 
   const changeView = (next) => {
@@ -280,17 +281,27 @@ export default function App() {
   const model = columnModel(data?.columnSets ?? [], data?.columns ?? [], folders);
 
   // A card is shown if its folder is checked; folders are independent of those above and below them.
-  // A public link shows everything it opens.
-  const unchecked = publicToken ? [] : selection;
+  // A public link shows everything it opens. If every live folder is off, show all (no blank frame before the effect).
+  const unchecked = useMemo(() => {
+    if (publicToken) return [];
+    const liveIds = new Set(folders.map((f) => f.id));
+    const pruned = selection.filter((id) => liveIds.has(id));
+    if (folders.length > 0 && pruned.length >= folders.length) return [];
+    return pruned;
+  }, [folders, selection, publicToken]);
   const shownFolders = folders.filter((f) => !unchecked.includes(f.id));
   const scopeFolderIds = shownFolders.map((f) => f.id).join(',');
   const folderCards = useLiveQuery(
-    () => db.cards.where('folderId').anyOf(scopeFolderIds ? scopeFolderIds.split(',') : []).toArray(),
+    () => (scopeFolderIds
+      ? db.cards.where('folderId').anyOf(scopeFolderIds.split(',')).toArray()
+      : []),
     [scopeFolderIds],
   );
   const folderComments = useLiveQuery(
-    () => db.comments.where('folderId').anyOf(scopeFolderIds ? scopeFolderIds.split(',') : [])
-      .filter((c) => c.cardId && !c.deleted).toArray(),
+    () => (scopeFolderIds
+      ? db.comments.where('folderId').anyOf(scopeFolderIds.split(','))
+        .filter((c) => c.cardId && !c.deleted).toArray()
+      : []),
     [scopeFolderIds],
   );
   const openRecord = useLiveQuery(() => (openCardId ? db.cards.get(openCardId) : null), [openCardId]);

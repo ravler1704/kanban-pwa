@@ -25,7 +25,7 @@ export default function SwimlaneBoard({
           <div className="swimlane-cols board" style={{ '--tracks': tracks }}>
             {columns.map((col, colIndex) => (
               <Column
-                key={col.id}
+                key={`${lane.id}:${col.id}`}
                 {...columnProps}
                 column={col}
                 prevColumn={columns[colIndex - 1]}
@@ -42,9 +42,8 @@ export default function SwimlaneBoard({
           </div>
         </section>
       ))}
-      {lanes.length === 0 && <p className="empty">Нет карточек для дорожек.</p>}
+      {columns.length === 0 && <p className="empty">Нет колонок для отображения дорожек.</p>}
+      {columns.length > 0 && lanes.length === 0 && <p className="empty">Нет карточек для дорожек.</p>}
     </main>
   );
 }
-
-// motion is invalid — use div
