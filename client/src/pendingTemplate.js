@@ -22,3 +22,14 @@ export function consumePendingTemplate() {
   if (id) sessionStorage.removeItem(KEY);
   return id;
 }
+
+/** One in-flight apply (React StrictMode runs effects twice). */
+let applyPromise = null;
+
+export function runTemplateApplyOnce(work) {
+  if (applyPromise) return applyPromise;
+  applyPromise = Promise.resolve().then(work).finally(() => {
+    applyPromise = null;
+  });
+  return applyPromise;
+}

@@ -22,6 +22,7 @@ import TemplatesGallery from './components/TemplatesGallery.jsx';
 import { createBoardFromTemplate } from './templateApply.js';
 import {
   captureTemplateFromUrl, clearPendingTemplate, PENDING_TEMPLATE_KEY, peekPendingTemplate,
+  runTemplateApplyOnce,
 } from './pendingTemplate.js';
 import { getTemplate, noteTemplateUse } from './templatesApi.js';
 import { BoardMenuButton, BoardName, useFolderActions } from './components/FolderMenu.jsx';
@@ -159,6 +160,7 @@ export default function App() {
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [templateApplying, setTemplateApplying] = useState(false);
   const templateFromUrlDone = useRef(false);
+  const templateApplyKick = useRef(null);
   const authStatus = useSyncExternalStore(authState.subscribe, () => authState.get().status);
   // The board's menu, from a right click on the board itself (not a column or a card) or its «⋯» in the bar:
   // { x, y }. `menuFolderId` is the board it is about (null: several in view); it stays for the dialogs.
@@ -345,13 +347,14 @@ export default function App() {
 
   // Promo / ?template=: create a board in the user's space (id kept in sessionStorage for login / reload).
   useEffect(() => {
-    if (templateFromUrlDone.current || !data || publicToken || readOnly) return;
+    if (!data || publicToken || readOnly) return;
     if (authStatus !== 'signedIn' && authStatus !== 'disabled') return;
 
     captureTemplateFromUrl();
     const params = new URLSearchParams(location.search);
     const templateId = params.get('template') || peekPendingTemplate();
-    if (!templateId) return;
+    if (!templateId || templateFromUrlDone.current) return;
+    if (templateApplyKick.current === templateId) return;
 
     if (!isOwnBoard) {
       sessionStorage.setItem(PENDING_TEMPLATE_KEY, templateId);
@@ -359,33 +362,29 @@ export default function App() {
       return;
     }
 
-    templateFromUrlDone.current = true;
     if (params.has('template')) {
       params.delete('template');
       history.replaceState(history.state, '', `${location.pathname}${params.size ? `?${params}` : ''}`);
     }
 
-    let cancel = false;
+    templateApplyKick.current = templateId;
     setTemplateApplying(true);
-    (async () => {
-      try {
-        const t = await getTemplate(templateId);
-        if (cancel) return;
-        const { folderId } = await createBoardFromTemplate(t.payload, { boardName: t.title });
-        noteTemplateUse(templateId).catch(() => {});
-        clearPendingTemplate();
-        const liveIds = liveFolderIdsKey ? liveFolderIdsKey.split(',').filter(Boolean) : [];
-        const withNew = liveIds.includes(folderId) ? liveIds : [...liveIds, folderId];
-        focusFolderInView(folderId, withNew);
-      } catch (e) {
-        templateFromUrlDone.current = false;
-        alert(e.message ?? 'Не удалось создать доску из шаблона');
-      } finally {
-        if (!cancel) setTemplateApplying(false);
-      }
-    })();
-    return () => { cancel = true; };
-  }, [data, publicToken, readOnly, isOwnBoard, authStatus, liveFolderIdsKey, focusFolderInView]);
+    runTemplateApplyOnce(async () => {
+      const t = await getTemplate(templateId);
+      const { folderId } = await createBoardFromTemplate(t.payload, { boardName: t.title });
+      await noteTemplateUse(templateId).catch(() => {});
+      templateFromUrlDone.current = true;
+      clearPendingTemplate();
+      const all = await db.folders.toArray();
+      const liveIds = liveFolders(all, { standIn: isOwnBoard }).map((f) => f.id);
+      focusFolderInView(folderId, liveIds.includes(folderId) ? liveIds : [...liveIds, folderId]);
+    }).catch((e) => {
+      templateApplyKick.current = null;
+      alert(e.message ?? 'Не удалось создать доску из шаблона');
+    }).finally(() => {
+      setTemplateApplying(false);
+    });
+  }, [data, publicToken, readOnly, isOwnBoard, authStatus, focusFolderInView]);
 
   // What the user may add cards to: on someone else's board the folders opened to them
   // (the folders above are only there to show the way).
