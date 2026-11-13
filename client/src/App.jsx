@@ -281,13 +281,11 @@ export default function App() {
   const model = columnModel(data?.columnSets ?? [], data?.columns ?? [], folders);
 
   // A card is shown if its folder is checked; folders are independent of those above and below them.
-  // A public link shows everything it opens. If every live folder is off, show all (no blank frame before the effect).
+  // A public link shows everything it opens.
   const unchecked = useMemo(() => {
     if (publicToken) return [];
     const liveIds = new Set(folders.map((f) => f.id));
-    const pruned = selection.filter((id) => liveIds.has(id));
-    if (folders.length > 0 && pruned.length >= folders.length) return [];
-    return pruned;
+    return selection.filter((id) => liveIds.has(id));
   }, [folders, selection, publicToken]);
   const shownFolders = folders.filter((f) => !unchecked.includes(f.id));
   const scopeFolderIds = shownFolders.map((f) => f.id).join(',');
@@ -340,17 +338,12 @@ export default function App() {
     if (valid.length > 1 && allFoldersSet && !valid.includes(allFoldersSet)) changeAllFoldersSet(valid[0]);
   }, [liveFolderIdsKey, data?.columnSets, data?.columns, selection, allFoldersSet, publicToken, isOwnBoard]);
 
-  // Drop ids of removed boards; if every live board is off, show all again (once, without remounting).
+  // Drop ids of removed boards from the saved filter.
   useEffect(() => {
     if (!data?.pulled || publicToken || !liveFolderIdsKey) return;
     const liveIds = new Set(liveFolderIdsKey.split(','));
     const pruned = selection.filter((id) => liveIds.has(id));
-    if (pruned.length !== selection.length) {
-      select(pruned);
-      return;
-    }
-    const shownCount = liveIds.size - pruned.length;
-    if (liveIds.size > 0 && shownCount === 0) select([]);
+    if (pruned.length !== selection.length) select(pruned);
   }, [data?.pulled, liveFolderIdsKey, selection, publicToken, select]);
 
   const focusFolderInView = useCallback((folderId, liveIds) => {
