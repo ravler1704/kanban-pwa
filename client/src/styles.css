@@ -855,7 +855,7 @@ body {
   padding: 0;
   overflow-x: auto;
 }
-.board-swimlanes .swimlane-cols.board { height: 100%; }
+.board-swimlanes .swimlane-cols.board { height: 100%; padding: 0; }
 .board-swimlanes .column-swimlane { min-height: 0; height: 100%; }
 .column-head-align { visibility: hidden; pointer-events: none; }
 .column-swimlane .cards { max-height: min(42vh, 22rem); }
