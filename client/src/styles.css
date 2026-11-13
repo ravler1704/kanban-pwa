@@ -828,6 +828,8 @@ body {
   gap: 0.2rem;
   align-self: stretch;
   justify-content: flex-start;
+  min-height: 0;
+  overflow: auto;
   position: sticky;
   left: 0;
   z-index: 2;
@@ -849,11 +851,12 @@ body {
 .swimlane-name { word-break: break-word; }
 .swimlane-cols {
   flex: none;
-  min-height: 5.5rem;
+  min-height: 0;
   padding: 0;
   overflow-x: auto;
 }
-.column-swimlane { min-height: 5rem; }
+.board-swimlanes .swimlane-cols.board { height: 100%; }
+.board-swimlanes .column-swimlane { min-height: 0; height: 100%; }
 .column-head-align { visibility: hidden; pointer-events: none; }
 .column-swimlane .cards { max-height: min(42vh, 22rem); }
 
