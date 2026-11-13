@@ -322,9 +322,9 @@ export default function Column({
           <div className="column-moves">{menu}</div>
         </div>
       ) : swimlane ? (
-        <div className="column-head column-head-align" aria-hidden="true">
+        <div className="column-head column-head-align">
           <h2>{column.name}</h2>
-          <div className="column-moves"><span className="btn btn-small btn-icon-only" /></div>
+          <div className="column-moves" aria-hidden="true"><span className="btn btn-small btn-icon-only" /></div>
         </div>
       ) : null}
       <div className="cards" ref={list}>
