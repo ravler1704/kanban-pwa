@@ -810,43 +810,18 @@ body {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  gap: 0.85rem;
   padding: 0.5rem 1.25rem 1rem;
   padding-bottom: max(1rem, env(safe-area-inset-bottom));
-  overflow: auto;
-  overscroll-behavior: contain;
-}
-.swimlane-matrix {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
-  min-width: min-content;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 .swimlane-row {
   display: grid;
-  grid-template-columns: var(--swimlane-label, 9.5rem) minmax(0, max-content);
+  grid-template-columns: minmax(7.5rem, 10rem) minmax(0, 1fr);
   gap: 0.65rem;
   align-items: stretch;
 }
-.swimlane-row-head {
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  padding-bottom: 0.15rem;
-  background: linear-gradient(to bottom, var(--bg) 72%, transparent);
-}
-.swimlane-row-head .column-swimlane .cards,
-.swimlane-row-head .column-swimlane .add-card,
-.swimlane-row-head .column-swimlane .add-card-open,
-.swimlane-row-head .column-swimlane .quick-add,
-.swimlane-row-head .column-swimlane .card-gap {
-  display: none;
-}
-.swimlane-row-head .column-swimlane {
-  min-height: 0;
-  gap: 0;
-  padding-bottom: 0.35rem;
-}
-.swimlane-label-spacer { min-height: 0; }
 .swimlane-label {
   display: flex;
   flex-direction: column;
@@ -854,7 +829,6 @@ body {
   align-self: start;
   position: sticky;
   left: 0;
-  z-index: 2;
   padding: 0.65rem 0.5rem;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -863,7 +837,6 @@ body {
   font-weight: 600;
   line-height: 1.25;
   max-height: 100%;
-  box-shadow: 4px 0 8px -4px var(--bg);
 }
 .swimlane-swatch {
   width: 100%;
@@ -875,23 +848,12 @@ body {
 .swimlane-name { word-break: break-word; }
 .swimlane-cols {
   flex: none;
-  min-height: 0;
+  min-height: 5.5rem;
   padding: 0;
-  overflow: visible;
+  overflow-x: auto;
 }
-.swimlane-cols.board {
-  width: max-content;
-  min-width: 100%;
-  gap: 1rem;
-}
-.column-swimlane {
-  min-height: 3.5rem;
-  align-self: stretch;
-}
-.column-swimlane .cards {
-  flex: 1 1 auto;
-  max-height: min(42vh, 22rem);
-}
+.column-swimlane { min-height: 5rem; }
+.column-swimlane .cards { max-height:  min(42vh, 22rem); }
 
 .board {
   flex: 1;
