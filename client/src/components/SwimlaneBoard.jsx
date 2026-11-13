@@ -13,35 +13,47 @@ export default function SwimlaneBoard({
 
   const swimlanePatch = { mode, cardById };
 
+  const colGrid = (laneId, laneCards, showHead) => columns.map((col, colIndex) => (
+    <Column
+      key={`${laneId}:${col.id}`}
+      {...columnProps}
+      column={col}
+      prevColumn={columns[colIndex - 1]}
+      nextColumn={columns[colIndex + 1]}
+      showHead={showHead}
+      collapsed={collapsedList.includes(col.id)}
+      onToggleCollapsed={() => columnProps.onToggleCollapsed(col.id)}
+      onCollapseOthers={() => columnProps.onCollapseOthers(col)}
+      onNewCard={() => columnProps.onNewCard(col)}
+      swimlane={{ laneId, ...swimlanePatch }}
+      cards={laneCards.filter((c) => c.columnId === col.id && cardLaneId(c, mode) === laneId)}
+    />
+  ));
+
   return (
     <main className="board-swimlanes">
-      {lanes.map((lane, index) => (
-        <section key={lane.id} className="swimlane-row">
-          <section className="swimlane-label" title={lane.label}>
-            {lane.color && <span className="swimlane-swatch" style={{ background: lane.color }} aria-hidden="true" />}
-            <span className="swimlane-name">{lane.label}</span>
-            <span className="count">{lane.count}</span>
+      <div className="swimlane-matrix">
+        {lanes.length > 0 && columns.length > 0 && (
+          <section className="swimlane-row swimlane-row-head">
+            <div className="swimlane-label-spacer" />
+            <div className="swimlane-cols board" style={{ '--tracks': tracks }}>
+              {colGrid('_head', [], true)}
+            </div>
           </section>
-          <div className="swimlane-cols board" style={{ '--tracks': tracks }}>
-            {columns.map((col, colIndex) => (
-              <Column
-                key={`${lane.id}:${col.id}`}
-                {...columnProps}
-                column={col}
-                prevColumn={columns[colIndex - 1]}
-                nextColumn={columns[colIndex + 1]}
-                showHead={index === 0}
-                collapsed={collapsedList.includes(col.id)}
-                onToggleCollapsed={() => columnProps.onToggleCollapsed(col.id)}
-                onCollapseOthers={() => columnProps.onCollapseOthers(col)}
-                onNewCard={() => columnProps.onNewCard(col)}
-                swimlane={{ laneId: lane.id, ...swimlanePatch }}
-                cards={cards.filter((c) => c.columnId === col.id && cardLaneId(c, mode) === lane.id)}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
+        )}
+        {lanes.map((lane) => (
+          <section key={lane.id} className="swimlane-row">
+            <section className="swimlane-label" title={lane.label}>
+              {lane.color && <span className="swimlane-swatch" style={{ background: lane.color }} aria-hidden="true" />}
+              <span className="swimlane-name">{lane.label}</span>
+              <span className="count">{lane.count}</span>
+            </section>
+            <div className="swimlane-cols board" style={{ '--tracks': tracks }}>
+              {colGrid(lane.id, cards, false)}
+            </div>
+          </section>
+        ))}
+      </div>
       {columns.length === 0 && <p className="empty">Нет колонок для отображения дорожек.</p>}
       {columns.length > 0 && lanes.length === 0 && <p className="empty">Нет карточек для дорожек.</p>}
     </main>
