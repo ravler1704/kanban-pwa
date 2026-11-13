@@ -7,6 +7,9 @@ import { db } from '../db.js';
 import { folderColumnSetId, inheritingFolders } from '../folders.js';
 import ChangeSetDialog from './ChangeSetDialog.jsx';
 import Modal from './Modal.jsx';
+import PublishTemplateDialog from './PublishTemplateDialog.jsx';
+import { authState } from '../auth.js';
+import { useOpenSpace } from './Spaces.jsx';
 
 const svg = (d) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25"
@@ -40,6 +43,9 @@ export default function ColumnsDraftDialog({ model, setId, folder, folders, onCl
   const [switching, setSwitching] = useState(undefined);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const space = useOpenSpace();
+  const signedIn = authState.get().status === 'signedIn';
 
   const counts = useLiveQuery(async () => {
     const ids = new Set(original.map((c) => c.id));
@@ -251,6 +257,13 @@ export default function ColumnsDraftDialog({ model, setId, folder, folders, onCl
         </div>
       )}
       <div className="actions">
+        {signedIn && valid && (
+          <button type="button" className="btn btn-labeled" onClick={() => setPublishing(true)}
+            title="Опубликовать настройки колонок в общей витрине">
+            Опубликовать шаблон…
+          </button>
+        )}
+        <span className="spacer" />
         <button type="button" className="btn" onClick={onClose}>Отмена</button>
         <button type="button" className="btn btn-primary" disabled={!valid || !(changed || renamed)}
           title={!valid ? 'У каждой колонки должно быть название' : undefined}
@@ -260,6 +273,14 @@ export default function ColumnsDraftDialog({ model, setId, folder, folders, onCl
       {switching !== undefined && (
         <ChangeSetDialog model={model} folder={folder} folders={folders} setId={switching}
           onClose={() => setSwitching(undefined)} />
+      )}
+      {publishing && (
+        <PublishTemplateDialog setName={title.trim() || set?.name || 'Набор колонок'} rows={rows}
+          originalColumns={original} folder={folder} folders={folders} space={space}
+          onClose={(ok) => {
+            setPublishing(false);
+            if (ok) alert('Шаблон опубликован. Он появился в витрине шаблонов.');
+          }} />
       )}
     </Modal>
   );

@@ -74,6 +74,29 @@ const liveColumns = async (setId) => (await db.columns.toArray())
   .filter((c) => alive(c) && setOfColumn(c) === setId)
   .sort((a, b) => a.position - b.position);
 
+/** New set from a published template payload (see templateApply.js). */
+export async function createColumnSetFromTemplate(name, payload) {
+  let id;
+  const cols = payload?.columns ?? [];
+  if (!cols.length) throw new Error('В шаблоне нет колонок');
+  await db.transaction('rw', db.columnSets, db.columns, async () => {
+    const set = await insert('columnSet', { name, position: maxPosition(await db.columnSets.toArray()) + 1 });
+    id = set.id;
+    for (const [i, c] of cols.entries()) {
+      await insert('column', {
+        setId: id,
+        name: c.name,
+        position: i + 1,
+        addToTop: !!c.addToTop,
+        wipLimit: c.wipLimit ?? null,
+        color: c.color ?? null,
+      });
+    }
+  });
+  requestSync();
+  return id;
+}
+
 /** New set with a copy of the columns of `copyFromSetId`. Returns the new set id. */
 export async function createColumnSet(name, copyFromSetId) {
   let id;

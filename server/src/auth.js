@@ -133,6 +133,25 @@ export function requireAuth(req, res, next) {
  * Like requireAuth, but a request made through a public link (`X-Public` header, or `?public=`
  * for EventSource) gets the link's project like a member, without signing in (`req.user` is null).
  */
+/** Sets `req.user` when a session cookie is present; does not reject guests (for public catalog APIs). */
+export function attachUserIfSession(req, res, next) {
+  req.access = null;
+  if (!authEnabled) {
+    req.user = '';
+    req.owner = '';
+    return next();
+  }
+  const session = currentSession(req);
+  if (session) {
+    req.user = session.user_id;
+    req.owner = session.user_id;
+  } else {
+    req.user = null;
+    req.owner = null;
+  }
+  next();
+}
+
 export function requireAuthOrPublic(req, res, next) {
   const token = req.get('x-public') || req.query.public;
   if (!token) return requireAuth(req, res, next);

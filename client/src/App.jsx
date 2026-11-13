@@ -18,6 +18,7 @@ import CardEditor from './components/CardEditor.jsx';
 import ConflictDialog from './components/ConflictDialog.jsx';
 import ManageDialog from './components/ManageDialog.jsx';
 import ColumnsDraftDialog from './components/ColumnsDraftDialog.jsx';
+import TemplatesGallery from './components/TemplatesGallery.jsx';
 import { BoardMenuButton, BoardName, useFolderActions } from './components/FolderMenu.jsx';
 import ArchiveDialog from './components/ArchiveDialog.jsx';
 import ExportDialog from './components/ExportDialog.jsx';
@@ -150,6 +151,7 @@ export default function App() {
   const [chat, setChat] = useState(null);
   const [search, setSearch] = useState('');
   const [editingColumns, setEditingColumns] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
   // The board's menu, from a right click on the board itself (not a column or a card) or its «⋯» in the bar:
   // { x, y }. `menuFolderId` is the board it is about (null: several in view); it stays for the dialogs.
   const [boardMenu, setBoardMenu] = useState(null);
@@ -311,6 +313,14 @@ export default function App() {
     if (valid.length > 1 && allFoldersSet && !valid.includes(allFoldersSet)) changeAllFoldersSet(valid[0]);
   }, [data, selection, allFoldersSet, publicToken, isOwnBoard]);
 
+  // A saved filter may have every board off — then the board looks empty; show them again.
+  useEffect(() => {
+    if (!data?.pulled || publicToken) return;
+    const live = liveFolders(data.folders, { standIn: isOwnBoard });
+    const shown = live.filter((f) => !selection.includes(f.id));
+    if (live.length > 0 && shown.length === 0) select([]);
+  }, [data, selection, publicToken, isOwnBoard, select]);
+
   // What the user may add cards to: on someone else's board the folders opened to them
   // (the folders above are only there to show the way).
   const mine = !isOwnBoard && !publicToken ? folderIdsOf(people.find((p) => p.id === me)) : [];
@@ -438,11 +448,13 @@ export default function App() {
   // board is in view, or only one set is needed, that board's set wins — not a stale «Фильмы», etc.
   const usedSets = model.sets.filter((s) => activeFolders.some((f) => model.setIdOf(f) === s.id));
   const validSetIds = usedSets.map((s) => s.id);
-  const boardSetId = (shownFolders.length === 1 ? model.setIdOf(shownFolders[0])
+  const boardSetIdRaw = (shownFolders.length === 1 ? model.setIdOf(shownFolders[0])
     : usedSets.length === 1 ? usedSets[0].id
       : validSetIds.includes(allFoldersSet) ? allFoldersSet
         : usedSets[0]?.id ?? (activeFolders[0] ? model.setIdOf(activeFolders[0]) : null) ?? model.sets[0]?.id);
-  const columns = model.columnsOf(boardSetId);
+  const boardSetId = validSetIds.includes(boardSetIdRaw) ? boardSetIdRaw : (usedSets[0]?.id ?? model.sets[0]?.id);
+  let columns = boardSetId ? model.columnsOf(boardSetId) : [];
+  if (!columns.length && model.sets[0]) columns = model.columnsOf(model.sets[0].id);
   const boardFolders = shownUsable.filter((f) => model.setIdOf(f) === boardSetId);
   const boardTarget = target && boardFolders.some((f) => f.id === target) ? target : targetIn(boardFolders);
   const boardCards = visible.filter((c) => model.setIdOf(tree.byId.get(c.folderId)) === boardSetId);
@@ -514,7 +526,13 @@ export default function App() {
       const ids = subtree(id);
       saveChecked(on ? [...new Set([...checkedIds, ...ids])] : checkedIds.filter((x) => !ids.includes(x)));
     },
-    onSetAll: (on) => saveChecked(on ? folders.map((f) => f.id) : []),
+    onSetAll: (on) => {
+      if (on) saveChecked(folders.map((f) => f.id));
+      else {
+        const first = flattenFolders(folders)[0]?.folder;
+        saveChecked(first ? [first.id] : []);
+      }
+    },
     onClear: allChecked || (folders.length === 1 && everyBoardShown) ? null : () => saveChecked(folders.map((f) => f.id)),
     summary: allChecked ? 'Все доски' : checkedIds.length ? filterSummary() : 'Не выбраны',
   };
@@ -554,6 +572,11 @@ export default function App() {
       },
       ...folderActions.items,
     ] : [
+      !publicToken && {
+        label: 'Витрина шаблонов…',
+        icon: 'M4 5h6v6H4V5zm10 0h6v6h-6V5zM4 15h6v6H4v-6zm10 0h6v6h-6v-6z',
+        run: () => setTemplatesOpen(true),
+      },
       columnEdit && { label: 'Набор колонок…', icon: ICONS.settings, shortcut: 'KeyK', run: () => setEditingColumns(true) },
     ]),
     null,
@@ -779,6 +802,11 @@ export default function App() {
       {editingColumns && (
         <ColumnsDraftDialog key={boardSetId} model={model} setId={boardSetId} folder={columnsFolder} folders={folders}
           onClose={() => setEditingColumns(false)} />
+      )}
+
+      {templatesOpen && (
+        <TemplatesGallery folder={columnsFolder} readOnly={readOnly}
+          onClose={() => setTemplatesOpen(false)} />
       )}
 
       {folderActions.dialogs}

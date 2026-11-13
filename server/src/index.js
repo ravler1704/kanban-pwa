@@ -1,7 +1,7 @@
 import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
-import { authEnabled, registerAuthRoutes, requireAuth, requireAuthOrPublic } from './auth.js';
+import { attachUserIfSession, authEnabled, registerAuthRoutes, requireAuth, requireAuthOrPublic } from './auth.js';
 import { notifyComments, registerChatReadRoutes, registerChatRoutes } from './chat.js';
 import { EPOCH, userProfile } from './db.js';
 import { broadcast, registerEvents } from './events.js';
@@ -9,6 +9,7 @@ import { registerFileRoutes, removeFiles, startFileCleanup } from './files.js';
 import { migrateFolders } from './migrateFolders.js';
 import { registerPushRoutes, startReminders } from './push.js';
 import { registerSupportRoutes } from './support.js';
+import { registerTemplateRoutes } from './templates.js';
 import { push, pull, ValidationError } from './sync.js';
 
 migrateFolders();
@@ -28,6 +29,7 @@ app.get('/api/health', (_req, res) => {
 
 registerAuthRoutes(app);
 app.use(['/api/sync', '/api/events', '/api/cards', '/api/files', '/api/backgrounds', '/api/chat-images'], requireAuthOrPublic);
+app.use('/api/templates', attachUserIfSession);
 registerFileRoutes(app);
 startFileCleanup();
 app.use('/api/push', requireAuth);
@@ -36,6 +38,7 @@ app.use(['/api/people', '/api/dm', '/api/support', '/api/chat-reads'], requireAu
 registerChatRoutes(app);
 registerChatReadRoutes(app);
 registerSupportRoutes(app);
+registerTemplateRoutes(app);
 startReminders();
 
 // The epoch identifies the board, not just the database: a device that holds another
