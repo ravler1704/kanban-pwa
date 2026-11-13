@@ -741,6 +741,7 @@ export default function App() {
                 onAddCard={readOnly || view === 'board' ? null : () => setAddingCard(true)}
                 title={!searching && checkedIds.length > 0 && !(publicToken && folders.length === 1) && (
                 <div className="board-head">
+                    <div className="board-title-block">
                     <h2 className="board-title" title={titleRenamable ? undefined : folderFilter.summary}>
                       {titleRenamable ? (
                         <>
@@ -757,6 +758,10 @@ export default function App() {
                         </>
                       ) : folderFilter.summary}
                     </h2>
+                    {setTabs && (
+                      <p className="board-set-name">{setTabs.find((s) => s.id === boardSetId)?.name}</p>
+                    )}
+                    </div>
                 </div>
                 )}
                 setSwitch={!searching && setTabs ? { sets: setTabs, value: boardSetId, onChange: changeAllFoldersSet } : null}

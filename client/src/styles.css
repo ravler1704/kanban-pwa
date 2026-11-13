@@ -213,6 +213,17 @@ body {
 }
 .projectbar-row:empty { display: none; }
 .board-head { display: flex; flex: 1; align-items: center; gap: 0.5rem; min-width: 0; }
+.board-title-block { display: flex; flex-direction: column; min-width: 0; flex: 1; gap: 0.05rem; }
+.board-set-name {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 450;
+  line-height: 1.2;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .projectbar .board-menu-btn, .projectbar .board-menu-btn:hover:not(:disabled) {
   flex: none; border-color: transparent; background: transparent; color: var(--muted);
 }
@@ -876,7 +887,7 @@ body {
 
 /* A board's background, a little darkened so light text over it reads in both themes. */
 .app-main.has-bg { background: linear-gradient(rgb(0 0 0 / 0.18), rgb(0 0 0 / 0.18)), var(--board-bg); }
-.has-bg .board-title, .has-bg .empty { color: #f8fafc; text-shadow: 0 1px 2px rgb(0 0 0 / 0.35); }
+.has-bg .board-title, .has-bg .board-set-name, .has-bg .empty { color: #f8fafc; text-shadow: 0 1px 2px rgb(0 0 0 / 0.35); }
 
 /* «Входящие» sits beside the board, so its cards can be dragged into the columns. */
 .app-body { flex: 1; min-height: 0; display: flex; }
