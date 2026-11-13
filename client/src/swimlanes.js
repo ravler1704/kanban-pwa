@@ -5,9 +5,9 @@ export const SWIMLANE_KEY = 'swimlaneMode';
 
 export const SWIMLANE_MODES = [
   { id: 'none', label: 'Без дорожек', icon: 'M4 4.5h16v5.2H4zM4 14.3h16v5.2H4zM5 3.5l14 17' },
-  { id: 'holder', label: 'По исполнителю', icon: 'M12 3a4 4 0 0 0 0 8zM12 15H9a4 4 0 0 0-4 4V21H12zM12 4.5h8v5.2H12zM12 14.3h8v5.2H12z' },
+  { id: 'holder', label: 'По исполнителю', icon: 'M4 4.5h16v5.2H4zM4 14.3h16v5.2H4z' },
   { id: 'folder', label: 'По доске', icon: 'M4 4.5h16v5.2H4zM4 14.3h16v5.2H4z' },
-  { id: 'color', label: 'По цвету', icon: 'M3.5 12a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0zM9.75 12a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0zM16 12a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0z' },
+  { id: 'color', label: 'По цвету', icon: 'M4 4.5h16v5.2H4zM4 14.3h16v5.2H4z' },
 ];
 
 /** Saved mode, or null if the user never chose one in the board menu. */
