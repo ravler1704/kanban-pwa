@@ -1,6 +1,7 @@
 import { Fragment, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { publicToken } from '../board.js';
+import { SWIMLANE_MODES } from '../swimlanes.js';
 import ColumnSetFilter from './ColumnSetFilter.jsx';
 import ContextMenu, { useMenuButton } from './ContextMenu.jsx';
 import FolderFilter, { FilterNav } from './FolderFilter.jsx';
@@ -82,17 +83,42 @@ function ViewSwitch({ view, onView, sets }) {
   );
 }
 
+const LANES_ICON = 'M4 7h16M4 12h16M4 17h16';
+
+/** Same kind of button as the view switch: the current swimlane mode, and a menu of the others. */
+function SwimlaneSwitch({ mode, onChange }) {
+  const [menu, , closeMenu, buttonProps] = useMenuButton(VIEW_MENU_WIDTH);
+  const current = SWIMLANE_MODES.find((m) => m.id === mode) ?? SWIMLANE_MODES[0];
+  const label = `Дорожки: ${current.label}`;
+  return (
+    <>
+      <button type="button" className="btn btn-small btn-icon-only view-toggle" title={label} aria-label={label}
+        aria-pressed={mode !== 'none'} {...buttonProps}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+          strokeLinecap="round" aria-hidden="true"><path d={LANES_ICON} /></svg>
+      </button>
+      {menu && (
+        <ContextMenu x={menu.x} y={menu.y} onClose={closeMenu}
+          items={SWIMLANE_MODES.map((m) => ({
+            label: m.label, active: mode === m.id, run: () => onChange(m.id),
+          }))} />
+      )}
+    </>
+  );
+}
+
 /**
  * `folderFilter` is { selected, indeterminate, onToggle, onSetFolder, onSetAll, onClear, summary } over the ids of
  * `folders` (all live folders). `conflictsByFolder` is { [folderId]: number of cards
  * with a conflict }. Without `onAddCard` (read only, or the board, where each column has one) its button is not shown.
  * `title` goes beside the filters button; `children` go on the right of the same row. `setSwitch` ({ sets, value, onChange }, see
- * ViewSwitch) picks the column set the board shows.
+ * ViewSwitch) picks the column set the board shows. `lanes` ({ mode, onChange }), when set, is the swimlane button
+ * next to the view button.
  */
 export default function FolderBar({
   folders, folderFilter, conflictsByFolder, columnSets, columnSetId, onSelectColumnSet, tagFilter, colorFilter,
   authorFilter, holderFilter,
-  view, onView, onAddCard, title, setSwitch, children,
+  view, onView, onAddCard, title, setSwitch, lanes, children,
 }) {
   const [filtersOpen, setFiltersOpen] = useState(false);
   // A filter opened inside the filters dialog: its screen replaces the list of filters.
@@ -153,6 +179,7 @@ export default function FolderBar({
     <nav className="projectbar">
       <div className="projectbar-row projectbar-head">
         <ViewSwitch view={view} onView={onView} sets={setSwitch} />
+        {lanes && <SwimlaneSwitch mode={lanes.mode} onChange={lanes.onChange} />}
         <button type="button" className="btn btn-small btn-icon-only filters-toggle" aria-haspopup="dialog"
           onClick={() => setFiltersOpen(true)}
           title={filtered ? 'Фильтры (включены)' : 'Фильтры'} aria-label="Фильтры">

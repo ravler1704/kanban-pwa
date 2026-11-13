@@ -224,6 +224,7 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.projectbar .view-toggle[aria-pressed="true"] { color: var(--accent); }
 .projectbar .board-menu-btn, .projectbar .board-menu-btn:hover:not(:disabled) {
   flex: none; border-color: transparent; background: transparent; color: var(--muted);
 }
