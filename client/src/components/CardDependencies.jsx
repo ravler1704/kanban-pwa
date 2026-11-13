@@ -17,8 +17,9 @@ function matchCard(card, query) {
  * Cards this task waits on. Saves via `updateCard` like the checklist.
  */
 export default function CardDependencies({ card, cards, readOnly, onOpen }) {
-  const [open, setOpen] = useState(() => dependsOnOf(card).length > 0);
+  const [open, setOpen] = useState(true);
   const [query, setQuery] = useState('');
+  const [focused, setFocused] = useState(false);
   const cardById = useMemo(() => new Map(cards.map((c) => [c.id, c])), [cards]);
   const ids = dependsOnOf(card);
   const pending = pendingDependencies(card, cardById);
@@ -48,8 +49,13 @@ export default function CardDependencies({ card, cards, readOnly, onOpen }) {
           </button>
         )}
       </div>
-      {open && (
+      {(open || ids.length === 0) && (
         <>
+          {ids.length === 0 && (
+            <p className="muted dependency-empty">
+              Укажите карточки, которые нужно сделать раньше. Пока они не выполнены, эту нельзя начать, завершить или отметить сделанной.
+            </p>
+          )}
           {ids.length > 0 ? (
             <ul className="dependency-list">
               {ids.map((id) => {
@@ -72,9 +78,7 @@ export default function CardDependencies({ card, cards, readOnly, onOpen }) {
                 );
               })}
             </ul>
-          ) : (
-            <p className="muted dependency-empty">Пока нет — задача не ждёт другие карточки.</p>
-          )}
+          ) : null}
           {pending.length > 0 && (
             <p className="notice dependency-hint">
               Пока не выполнены зависимости, задачу нельзя перенести из первой колонки, в последнюю или отметить выполненной.
@@ -82,13 +86,17 @@ export default function CardDependencies({ card, cards, readOnly, onOpen }) {
           )}
           {!readOnly && (
             <div className="dependency-add">
-              <input type="search" className="dependency-search" placeholder="Найти карточку…"
-                aria-label="Найти карточку для зависимости" value={query} onChange={(e) => setQuery(e.target.value)} />
-              {query.trim() && choices.length > 0 && (
+              <input type="search" className="dependency-search" placeholder="Найти карточку, которую нужно сделать раньше"
+                aria-label="Найти карточку, которую нужно сделать раньше" value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onFocus={() => setFocused(true)}
+                onBlur={() => setFocused(false)} />
+              {(focused || query.trim()) && choices.length > 0 && (
                 <ul className="dependency-pick">
                   {choices.map((c) => (
                     <li key={c.id}>
-                      <button type="button" className="dependency-pick-btn" onClick={() => add(c.id)}>
+                      <button type="button" className="dependency-pick-btn" onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => add(c.id)}>
                         {c.number != null && <span className="dependency-num">#{c.number} </span>}
                         {dependencyTitle(c)}
                       </button>
@@ -96,8 +104,10 @@ export default function CardDependencies({ card, cards, readOnly, onOpen }) {
                   ))}
                 </ul>
               )}
-              {query.trim() && choices.length === 0 && (
-                <p className="muted dependency-no-match">Ничего не найдено</p>
+              {(focused || query.trim()) && choices.length === 0 && (
+                <p className="muted dependency-no-match">
+                  {query.trim() ? 'Ничего не найдено' : 'Нет карточек, которые можно добавить'}
+                </p>
               )}
             </div>
           )}
