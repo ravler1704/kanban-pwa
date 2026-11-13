@@ -142,7 +142,7 @@ function FolderFilterDialog({ folders, filter, onClose }) {
     if (!differ.length) return null;
     return value ? `кроме ${names(differ)}` : `только ${names(differ)}`;
   };
-  const allOn = filter.selected.length === folders.length;
+  const allOn = filter.allOn ?? filter.selected.length === folders.length;
   const open = (id) => {
     setQuery('');
     setCurrentId(id);

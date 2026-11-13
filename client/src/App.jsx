@@ -598,20 +598,22 @@ export default function App() {
     .map((f) => f.name);
   const excludedSuffix = excludedNames.length ? ` · кроме ${excludedNames.join(', ')}` : '';
   const filterSummary = () => titleBoards.map((f) => f.name).join(', ') + excludedSuffix;
+  const liveFolderIdSet = useMemo(() => new Set(folders.map((f) => f.id)), [folders]);
+  const setUnchecked = (off) => select(off.filter((id) => liveFolderIdSet.has(id)));
+  const toggleFolderShown = (id, on) => {
+    const ids = subtree(id);
+    const off = unchecked.filter((x) => liveFolderIdSet.has(x));
+    setUnchecked(on ? off.filter((x) => !ids.includes(x)) : [...new Set([...off, ...ids])]);
+  };
   const folderFilter = {
     selected: checkedIds,
+    allOn: everyBoardShown,
     indeterminate: partial,
     onToggle: toggleSubtree,
-    onSetFolder: (id, on) => {
-      const ids = subtree(id);
-      saveChecked(on ? [...new Set([...checkedIds, ...ids])] : checkedIds.filter((x) => !ids.includes(x)));
-    },
+    onSetFolder: toggleFolderShown,
     onSetAll: (on) => {
-      if (on) saveChecked(folders.map((f) => f.id));
-      else {
-        const first = flattenFolders(folders)[0]?.folder;
-        saveChecked(first ? [first.id] : []);
-      }
+      if (on) setUnchecked([]);
+      else setUnchecked(folders.map((f) => f.id));
     },
     onClear: allChecked || (folders.length === 1 && everyBoardShown) ? null : () => saveChecked(folders.map((f) => f.id)),
     summary: allChecked ? 'Все доски' : checkedIds.length ? filterSummary() : 'Не выбраны',
