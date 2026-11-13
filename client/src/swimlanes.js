@@ -4,7 +4,7 @@ import { CARD_COLORS } from './appearance.js';
 export const SWIMLANE_KEY = 'swimlaneMode';
 
 export const SWIMLANE_MODES = [
-  { id: 'none', label: 'Без дорожек', icon: 'M3 8h18a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z' },
+  { id: 'none', label: 'Без дорожек', icon: 'M12 2 22 7v10l-10 5L2 17V7z' },
   { id: 'holder', label: 'По исполнителю', icon: 'M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0' },
   { id: 'folder', label: 'По доске', icon: 'M12 2 2 7l10 5 10-5-10-5zM2 12l10 5 10-5M2 17l10 5 10-5' },
   { id: 'color', label: 'По цвету', icon: 'M3.5 12a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0zM9.75 12a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0zM16 12a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0z' },
