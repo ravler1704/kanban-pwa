@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { authState } from '../auth.js';
-import { applyBoardTemplate } from '../templateApply.js';
+import { applyBoardTemplate, createBoardFromTemplate } from '../templateApply.js';
 import { deleteTemplate, listTemplates, noteTemplateUse } from '../templatesApi.js';
 import Modal from './Modal.jsx';
 import { SearchField } from './FolderFilter.jsx';
@@ -16,7 +16,7 @@ function Author({ author }) {
   );
 }
 
-function TemplateCard({ item, canDelete, onApply, onDelete }) {
+function TemplateCard({ item, canDelete, canCreateBoard, onApply, onDelete }) {
   const cols = item.payload.columns.map((c) => c.name).join(' · ');
   return (
     <article className="template-card">
@@ -28,7 +28,9 @@ function TemplateCard({ item, canDelete, onApply, onDelete }) {
         <span className="muted">использований: {item.usesCount}</span>
       </div>
       <div className="template-card-actions">
-        <button type="button" className="btn btn-primary btn-small" onClick={() => onApply(item)}>Применить</button>
+        <button type="button" className="btn btn-primary btn-small" onClick={() => onApply(item)}>
+          {canCreateBoard ? 'Создать доску' : 'Применить'}
+        </button>
         {canDelete && (
           <button type="button" className="btn btn-small" onClick={() => onDelete(item)}>Удалить</button>
         )}
@@ -64,13 +66,18 @@ export default function TemplatesGallery({ folder, readOnly, onClose }) {
   async function apply(item) {
     if (readOnly) return;
     setBusy(item.id);
-  try {
-      await applyBoardTemplate(item.payload, {
-        folderId: folder?.id ?? null,
-        applyBoardOptions: Boolean(folder),
-      });
+    try {
+      let folderId = folder?.id ?? null;
+      if (folder) {
+        await applyBoardTemplate(item.payload, {
+          folderId,
+          applyBoardOptions: true,
+        });
+      } else {
+        ({ folderId } = await createBoardFromTemplate(item.payload, { boardName: item.title }));
+      }
       noteTemplateUse(item.id).catch(() => {});
-      onClose(true);
+      onClose({ folderId });
     } catch (e) {
       alert(e.message);
     } finally {
@@ -92,7 +99,9 @@ export default function TemplatesGallery({ folder, readOnly, onClose }) {
     <Modal title="Витрина шаблонов" onClose={() => onClose(false)} className="templates-gallery" closeButton>
       <p className="muted template-lead">
         Готовые наборы колонок от других пользователей. У каждого шаблона указан автор.
-        {folder ? ` Новый набор можно сразу назначить доске «${folder.name}».` : ' Будет создан новый набор колонок.'}
+        {folder
+          ? ` Новый набор можно сразу назначить доске «${folder.name}».`
+          : ' По кнопке «Создать доску» в вашем пространстве появится новая доска с колонками из шаблона.'}
       </p>
       <div className="template-tabs" role="tablist">
         <button type="button" role="tab" className={tab === 'all' ? 'template-tab-on' : ''}
@@ -110,6 +119,7 @@ export default function TemplatesGallery({ folder, readOnly, onClose }) {
       <div className="template-grid">
         {items.map((item) => (
           <TemplateCard key={item.id} item={item}
+            canCreateBoard={!folder}
             canDelete={me && item.author.id === me}
             onApply={apply}
             onDelete={remove} />

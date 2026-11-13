@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { authEnabled, requireAuth } from './auth.js';
+import { BUILTIN_AUTHOR, seedBuiltinTemplates } from './builtinTemplates.js';
 import { db, userProfile } from './db.js';
 
 // Public board templates: column sets and board options, with author attribution.
@@ -24,6 +25,8 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_board_templates_updated ON board_templates(updated_at DESC);
   CREATE INDEX IF NOT EXISTS idx_board_templates_author ON board_templates(author_user_id);
 `);
+
+seedBuiltinTemplates(db);
 
 const column = (c) => c && typeof c === 'object'
   && typeof c.name === 'string' && c.name.length > 0 && c.name.length <= 100
@@ -85,7 +88,7 @@ function listTemplates({ q, authorId, limit }) {
     sql += ' WHERE author_user_id = ?';
     args.push(authorId);
   }
-  sql += ' ORDER BY updated_at DESC LIMIT ?';
+  sql += ` ORDER BY CASE WHEN author_user_id = '${BUILTIN_AUTHOR}' THEN 0 ELSE 1 END, updated_at DESC LIMIT ?`;
   args.push(limit);
   let rows = db.prepare(sql).all(...args);
   if (needle) {
@@ -175,6 +178,7 @@ export function registerTemplateRoutes(app) {
   app.delete('/api/templates/:id', requireAuth, (req, res) => {
     const row = db.prepare('SELECT author_user_id FROM board_templates WHERE id = ?').get(req.params.id);
     if (!row) return res.status(404).json({ error: 'not found' });
+    if (row.author_user_id === BUILTIN_AUTHOR) return res.status(403).json({ error: 'builtin' });
     if (row.author_user_id !== req.user) return res.status(403).json({ error: 'not author' });
     db.prepare('DELETE FROM board_templates WHERE id = ?').run(req.params.id);
     res.json({ ok: true });

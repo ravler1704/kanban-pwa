@@ -282,6 +282,7 @@
     .kicker { color: var(--accent); font-weight: 600; font-size: 0.85rem; letter-spacing: 0.08em; text-transform: uppercase; }
     h2 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); line-height: 1.15; letter-spacing: -0.02em; margin: 8px 0 12px; }
     .sub { color: var(--muted); max-width: 640px; margin: 0 0 34px; font-size: 1.05rem; }
+    .muted { color: var(--muted); }
     .center { text-align: center; } .center .sub { margin-left: auto; margin-right: auto; }
 
     .platforms { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 12px; margin-top: 56px; }
@@ -292,6 +293,14 @@
     .platforms-note { text-align: center; color: var(--muted); font-size: 0.9rem; margin-top: 12px; }
 
     .features { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
+    .tpl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-top: 24px; }
+    .tpl-card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 1.15rem 1.2rem;
+      display: flex; flex-direction: column; gap: 8px; height: 100%; }
+    .tpl-card h3 { margin: 0; font-size: 1.05rem; }
+    .tpl-card p { margin: 0; color: var(--muted); font-size: 0.92rem; line-height: 1.45; flex: 1; }
+    .tpl-cols { margin: 0; font-size: 0.82rem; color: var(--muted); opacity: 0.95; }
+    .tpl-meta { font-size: 0.8rem; color: var(--muted); }
+    .tpl-card .btn { margin-top: 4px; width: 100%; }
     .feature { position: relative; padding: 22px 22px 20px; border-radius: 18px; border: 1px solid var(--border); background: linear-gradient(180deg, rgba(30, 41, 59, 0.85), rgba(30, 41, 59, 0.45));
       transition: transform .2s, border-color .2s, box-shadow .2s; overflow: hidden; }
     .feature:hover { transform: translateY(-4px); border-color: color-mix(in srgb, var(--c, var(--accent)) 60%, var(--border)); box-shadow: 0 20px 40px -24px var(--c, var(--accent)); }
@@ -412,6 +421,7 @@
       <a class="brand" href="#"><img src="/icon.svg" alt="" width="30" height="30" />Offline Kanban</a>
       <nav aria-label="Разделы">
         <a href="#features">Возможности</a>
+        <a href="#templates">Шаблоны</a>
         <a href="#steps">Как начать</a>
         <a href="#faq">Вопросы</a>
         <a href="/releases.html">Что нового</a>
@@ -580,6 +590,19 @@
       </div>
     </section>
 
+    <section class="block" id="templates">
+      <div class="wrap">
+        <div class="kicker">Шаблоны досок</div>
+        <h2>Готовые колонки — одним кликом в вашем пространстве</h2>
+        <p class="sub">Выберите шаблон, войдите в аккаунт (если ещё не вошли) — и в «Моём пространстве» появится новая доска с колонками и фоном.
+          Свои шаблоны можно <a href="/">опубликовать в приложении</a>.</p>
+        <div class="tpl-grid" id="promoTemplates" aria-live="polite">
+          <p class="muted">Загрузка шаблонов…</p>
+        </div>
+        <p style="margin-top:1.25rem"><a href="/templates.html">Вся витрина</a> · <a href="/">Открыть приложение</a></p>
+      </div>
+    </section>
+
     <section class="block">
       <div class="wrap">
         <div class="kicker">Настоящие скриншоты</div>
@@ -652,12 +675,43 @@
       <span class="grow"></span>
       <a href="/">Открыть приложение</a>
       <a href="/install.html">Установка</a>
+      <a href="/templates.html">Шаблоны</a>
       <a href="/releases.html">Что нового</a>
       <a href="https://github.com/ravler1704/kanban-pwa/releases">Релизы на GitHub</a>
       <a href="https://github.com/ravler1704/kanban-pwa"><svg class="i"><use href="#i-github"/></svg>GitHub</a>
     </div>
   </footer>
 
+  <script>
+  (async function loadPromoTemplates() {
+    const grid = document.getElementById('promoTemplates');
+    if (!grid) return;
+  const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    try {
+      const res = await fetch('/api/templates?limit=24');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const { templates } = await res.json();
+      if (!templates?.length) {
+        grid.innerHTML = '<p class="muted">Шаблоны скоро появятся — а пока можно собрать колонки вручную в приложении.</p>';
+        return;
+      }
+      grid.innerHTML = templates.map((t) => {
+        const cols = t.payload.columns.map((c) => esc(c.name)).join(' · ');
+        const author = esc(t.author?.name || 'Автор');
+        return `<article class="tpl-card reveal">
+          <h3>${esc(t.title)}</h3>
+          <p>${esc(t.description)}</p>
+          <p class="tpl-cols">${esc(t.payload.setName)}: ${cols}</p>
+          <p class="tpl-meta">${author}</p>
+          <a class="btn btn-primary btn-small" href="/?template=${encodeURIComponent(t.id)}">Создать доску</a>
+        </article>`;
+      }).join('');
+      grid.querySelectorAll('.reveal').forEach((el) => el.classList.add('in'));
+    } catch {
+      grid.innerHTML = '<p class="muted">Не удалось загрузить шаблоны. Откройте <a href="/">приложение</a> — витрина есть и в меню доски.</p>';
+    }
+  })();
+  </script>
   <script>
   (() => {
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;

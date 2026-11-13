@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { authState } from './auth.js';
 import { isUnread, seenStore } from './seen.js';
@@ -19,6 +19,8 @@ import ConflictDialog from './components/ConflictDialog.jsx';
 import ManageDialog from './components/ManageDialog.jsx';
 import ColumnsDraftDialog from './components/ColumnsDraftDialog.jsx';
 import TemplatesGallery from './components/TemplatesGallery.jsx';
+import { createBoardFromTemplate } from './templateApply.js';
+import { getTemplate, noteTemplateUse } from './templatesApi.js';
 import { BoardMenuButton, BoardName, useFolderActions } from './components/FolderMenu.jsx';
 import ArchiveDialog from './components/ArchiveDialog.jsx';
 import ExportDialog from './components/ExportDialog.jsx';
@@ -152,6 +154,8 @@ export default function App() {
   const [search, setSearch] = useState('');
   const [editingColumns, setEditingColumns] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const templateFromUrlDone = useRef(false);
+  const authStatus = useSyncExternalStore(authState.subscribe, () => authState.get().status);
   // The board's menu, from a right click on the board itself (not a column or a card) or its «⋯» in the bar:
   // { x, y }. `menuFolderId` is the board it is about (null: several in view); it stays for the dialogs.
   const [boardMenu, setBoardMenu] = useState(null);
@@ -329,6 +333,38 @@ export default function App() {
     const shownCount = liveIds.size - pruned.length;
     if (liveIds.size > 0 && shownCount === 0) select([]);
   }, [data?.pulled, liveFolderIdsKey, selection, publicToken, select]);
+
+  const focusFolderInView = useCallback((folderId, liveIds) => {
+    if (!folderId || !liveIds.length) return;
+    select(liveIds.filter((id) => id !== folderId));
+  }, [select]);
+
+  // Promo / ?template=: create a board in the user's space after data is ready.
+  useEffect(() => {
+    if (templateFromUrlDone.current || !data?.pulled || publicToken || readOnly || !isOwnBoard) return;
+    if (authStatus === 'signedOut') return;
+    const params = new URLSearchParams(location.search);
+    const templateId = params.get('template');
+    if (!templateId) return;
+    templateFromUrlDone.current = true;
+    params.delete('template');
+    history.replaceState(history.state, '', `${location.pathname}${params.size ? `?${params}` : ''}`);
+    let cancel = false;
+    (async () => {
+      try {
+        const t = await getTemplate(templateId);
+        if (cancel) return;
+        const { folderId } = await createBoardFromTemplate(t.payload, { boardName: t.title });
+        noteTemplateUse(templateId).catch(() => {});
+        const liveIds = liveFolderIdsKey ? liveFolderIdsKey.split(',').filter(Boolean) : [];
+        const withNew = liveIds.includes(folderId) ? liveIds : [...liveIds, folderId];
+        focusFolderInView(folderId, withNew);
+      } catch (e) {
+        alert(e.message ?? 'Не удалось создать доску из шаблона');
+      }
+    })();
+    return () => { cancel = true; };
+  }, [data?.pulled, publicToken, readOnly, isOwnBoard, authStatus, liveFolderIdsKey, focusFolderInView]);
 
   // What the user may add cards to: on someone else's board the folders opened to them
   // (the folders above are only there to show the way).
@@ -817,8 +853,15 @@ export default function App() {
       )}
 
       {templatesOpen && (
-        <TemplatesGallery folder={columnsFolder} readOnly={readOnly}
-          onClose={() => setTemplatesOpen(false)} />
+        <TemplatesGallery folder={null} readOnly={readOnly}
+          onClose={(result) => {
+            setTemplatesOpen(false);
+            if (result?.folderId) {
+              const liveIds = liveFolderIdsKey ? liveFolderIdsKey.split(',').filter(Boolean) : [];
+              const withNew = liveIds.includes(result.folderId) ? liveIds : [...liveIds, result.folderId];
+              focusFolderInView(result.folderId, withNew);
+            }
+          }} />
       )}
 
       {folderActions.dialogs}
