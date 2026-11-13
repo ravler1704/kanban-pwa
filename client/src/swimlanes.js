@@ -27,7 +27,8 @@ export function cardLaneId(card, mode) {
   return null;
 }
 
-export function laneLabel(id, mode, { folderName, personName }) {
+export function laneLabel(id, mode, ctx = {}) {
+  const { folderName, personName } = ctx;
   if (mode === 'holder') return id === '_none' ? 'Без исполнителя' : (personName?.(id) ?? id);
   if (mode === 'folder') return folderName?.(id) ?? id;
   if (mode === 'color') {

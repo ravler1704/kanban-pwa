@@ -806,7 +806,7 @@ export default function App() {
                   columns={columns}
                   collapsed={collapsed}
                   cardById={(id) => boardCards.find((c) => c.id === id)}
-                  lanesCtx={{
+                  lanes={{
                     folderName: (id) => {
                       const f = tree.byId.get(id);
                       return f ? folderPathName(f, folders) : id;
