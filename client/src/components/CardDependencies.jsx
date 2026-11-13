@@ -17,7 +17,7 @@ function matchCard(card, query) {
  * Cards this task waits on. Saves via `updateCard` like the checklist.
  */
 export default function CardDependencies({ card, cards, readOnly, onOpen }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [focused, setFocused] = useState(false);
   const cardById = useMemo(() => new Map(cards.map((c) => [c.id, c])), [cards]);
@@ -43,13 +43,14 @@ export default function CardDependencies({ card, cards, readOnly, onOpen }) {
     <section className="dependencies" aria-label="Зависимости">
       <div className="attachments-head">
         <h3 className="attachments-title">Зависимости</h3>
-        {!readOnly && ids.length > 0 && (
-          <button type="button" className="btn btn-small" onClick={() => setOpen((v) => !v)}>
-            {open ? 'Свернуть' : 'Развернуть'}
+        {(!readOnly || ids.length > 0) && (
+          <button type="button" className="btn btn-small" onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}>
+            {open ? 'Свернуть' : ids.length ? 'Показать' : 'Добавить'}
           </button>
         )}
       </div>
-      {(open || ids.length === 0) && (
+      {open && (
         <>
           {ids.length === 0 && (
             <p className="muted dependency-empty">
