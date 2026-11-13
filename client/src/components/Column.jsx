@@ -308,7 +308,7 @@ export default function Column({
       draggable={columnDrag.draggable && !typing}
       onMouseDown={(e) => setTyping(!!e.target.closest('input, textarea'))}
     >
-      {showHead && (
+      {showHead ? (
         <div className="column-head">
           <h2>
             {edit
@@ -321,7 +321,12 @@ export default function Column({
           </h2>
           <div className="column-moves">{menu}</div>
         </div>
-      )}
+      ) : swimlane ? (
+        <div className="column-head column-head-align" aria-hidden="true">
+          <h2>{column.name}</h2>
+          <div className="column-moves"><span className="btn btn-small btn-icon-only" /></div>
+        </div>
+      ) : null}
       <div className="cards" ref={list}>
         {cards.flatMap((card, i) => [
           showIndicator && i === index && slot,

@@ -818,7 +818,7 @@ body {
 }
 .swimlane-row {
   display: grid;
-  grid-template-columns: minmax(7.5rem, 10rem) minmax(0, 1fr);
+  grid-template-columns: 9.5rem minmax(0, 1fr);
   gap: 0.65rem;
   align-items: stretch;
 }
@@ -826,9 +826,11 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
-  align-self: start;
+  align-self: stretch;
+  justify-content: flex-start;
   position: sticky;
   left: 0;
+  z-index: 2;
   padding: 0.65rem 0.5rem;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -836,7 +838,6 @@ body {
   font-size: 0.85rem;
   font-weight: 600;
   line-height: 1.25;
-  max-height: 100%;
 }
 .swimlane-swatch {
   width: 100%;
@@ -853,7 +854,8 @@ body {
   overflow-x: auto;
 }
 .column-swimlane { min-height: 5rem; }
-.column-swimlane .cards { max-height:  min(42vh, 22rem); }
+.column-head-align { visibility: hidden; pointer-events: none; }
+.column-swimlane .cards { max-height: min(42vh, 22rem); }
 
 .board {
   flex: 1;
