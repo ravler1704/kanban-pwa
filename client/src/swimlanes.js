@@ -3,13 +3,11 @@ import { CARD_COLORS } from './appearance.js';
 
 export const SWIMLANE_KEY = 'swimlaneMode';
 
-const LANE_BLOCKS = 'M4 4.5h16v5.2H4zM4 14.3h16v5.2H4z';
-
 export const SWIMLANE_MODES = [
-  { id: 'none', label: 'Без дорожек', icon: `${LANE_BLOCKS}M5 3.5l14 17` },
-  { id: 'holder', label: 'По исполнителю', icon: LANE_BLOCKS, mark: 'M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0' },
-  { id: 'folder', label: 'По доске', icon: LANE_BLOCKS, mark: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z' },
-  { id: 'color', label: 'По цвету', icon: LANE_BLOCKS, mark: 'M3.5 12a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0zM9.75 12a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0zM16 12a2.25 2.25 0 1 0 4.5 0 2.25 2.25 0 0 0-4.5 0z' },
+  { id: 'none', label: 'Без дорожек' },
+  { id: 'holder', label: 'По исполнителю' },
+  { id: 'folder', label: 'По доске' },
+  { id: 'color', label: 'По цвету' },
 ];
 
 /** Saved mode, or null if the user never chose one in the board menu. */

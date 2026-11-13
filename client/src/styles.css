@@ -1486,8 +1486,7 @@ body {
 .context-menu-active { color: var(--accent); font-weight: 600; }
 .context-menu-icon { display: inline-flex; flex: none; width: 16px; color: var(--muted); }
 .context-menu-danger .context-menu-icon, .context-menu-active .context-menu-icon { color: inherit; }
-.context-menu-label { flex: 1; display: flex; align-items: center; gap: 0.35rem; white-space: nowrap; }
-.context-menu-label svg { flex: none; }
+.context-menu-label { flex: 1; white-space: nowrap; }
 .context-menu-key { margin-left: 1.25rem; color: var(--muted); font: inherit; font-size: 0.78rem; letter-spacing: 0.02em; }
 @media (pointer: coarse) { .context-menu-key { display: none; } }
 .context-menu-hint { margin-left: 1.25rem; color: var(--muted); font-size: 0.85rem; font-variant-numeric: tabular-nums; }

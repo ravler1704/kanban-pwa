@@ -648,9 +648,8 @@ export default function App() {
     },
     view === 'board' && !searching && {
       label: `Дорожки: ${SWIMLANE_MODES.find((m) => m.id === swimlane)?.label ?? 'Без дорожек'}`,
-      icon: SWIMLANE_MODES.find((m) => m.id === swimlane)?.icon,
       submenu: SWIMLANE_MODES.map((m) => ({
-        label: m.label, icon: m.icon, endIcon: m.mark, active: swimlane === m.id, run: () => changeSwimlane(m.id),
+        label: m.label, active: swimlane === m.id, run: () => changeSwimlane(m.id),
       })),
     },
     null,
