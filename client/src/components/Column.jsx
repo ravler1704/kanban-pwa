@@ -285,6 +285,22 @@ export default function Column({
     );
   }
 
+  // The full column header, on the plain board: an editable name, the card count and the column's menu.
+  const head = showHead ? (
+    <div className="column-head">
+      <h2>
+        {edit
+          ? <EditableName value={column.name} label="Название колонки" maxLength={100}
+            note={edit.boards.length > 1
+              ? `Набор «${edit.setName}» используют доски: ${edit.boards.map((b) => `«${b}»`).join(', ')}. Изменение применится ко всем.`
+              : null}
+            onSave={(name) => renameColumn(column.id, name)} />
+          : column.name} {countLabel}
+      </h2>
+      <div className="column-moves">{menu}</div>
+    </div>
+  ) : null;
+
   return (
     <section
       ref={section}
@@ -294,7 +310,7 @@ export default function Column({
       onClick={(e) => {
         // Clicks from menus portaled out of the column bubble here too.
         if (!e.currentTarget.contains(e.target)) return;
-        if (e.target.closest('.card, a, button, input, textarea, form, [role="button"]')) return;
+        if (e.target.closest('.card, a, button, input, textarea, form, [role="button"], .swimlane-mark')) return;
         handleClicks(e);
       }}
       onDragOver={readOnly ? undefined : handleDragOver}
@@ -308,25 +324,12 @@ export default function Column({
       draggable={columnDrag.draggable && !typing}
       onMouseDown={(e) => setTyping(!!e.target.closest('input, textarea'))}
     >
-      {showHead ? (
-        <div className="column-head">
-          <h2>
-            {edit
-              ? <EditableName value={column.name} label="Название колонки" maxLength={100}
-                note={edit.boards.length > 1
-                  ? `Набор «${edit.setName}» используют доски: ${edit.boards.map((b) => `«${b}»`).join(', ')}. Изменение применится ко всем.`
-                  : null}
-                onSave={(name) => renameColumn(column.id, name)} />
-              : column.name} {countLabel}
-          </h2>
-          <div className="column-moves">{menu}</div>
+      {swimlane ? (
+        <div className="swimlane-mark" title={`${column.name}, карточек: ${count}`}>
+          <span className="swimlane-mark-name">{column.name}</span> {countLabel}
+          {menu}
         </div>
-      ) : swimlane ? (
-        <div className="column-head column-head-align">
-          <h2>{column.name}</h2>
-          <div className="column-moves" aria-hidden="true"><span className="btn btn-small btn-icon-only" /></div>
-        </div>
-      ) : null}
+      ) : head}
       <div className="cards" ref={list}>
         {cards.flatMap((card, i) => [
           showIndicator && i === index && slot,
