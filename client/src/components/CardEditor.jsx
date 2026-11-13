@@ -8,6 +8,7 @@ import { ButtonIcon } from './ArchiveDialog.jsx';
 import { archiveWithUndo } from './UndoToast.jsx';
 import Attachments from './Attachments.jsx';
 import { DoneButton } from './Card.jsx';
+import CardDependencies from './CardDependencies.jsx';
 import CardExtraFields from './CardExtraFields.jsx';
 import Checklist from './Checklist.jsx';
 import CardPeople from './CardPeople.jsx';
@@ -21,7 +22,6 @@ import { cardReminders } from '../reminders.js';
 import { describeDeadline } from '../deadlines.js';
 import { reminderText } from './ReminderField.jsx';
 import TitleField from './TitleField.jsx';
-import CardDependencies from './CardDependencies.jsx';
 import { moveBlockedMessage } from '../dependencies.js';
 
 /** Comments sent right away, apart from the card's «Сохранить», among the notes of what was done with it. */
@@ -181,6 +181,8 @@ function CardForm({ card, columnsOfFolder, folders, inbox, cardsForDeps, onOpenC
           dueAt={dueAt}
           onDueAt={setDueAt}
           card={card}
+          cards={cardsForDeps ?? []}
+          onOpenCard={onOpenCard}
         />
         {inbox ? (
           <FolderSelect folders={folders} value={folderId === INBOX_ID ? '' : folderId} topLabel="Входящие"
@@ -193,7 +195,6 @@ function CardForm({ card, columnsOfFolder, folders, inbox, cardsForDeps, onOpenC
         )}
         <CardPeople folderId={folderId} authorId={authorId} assigneeId={assigneeId}
           onAuthor={setAuthorId} onAssignee={setAssigneeId} />
-        <CardDependencies card={card} cards={cardsForDeps ?? []} onOpen={onOpenCard} />
         {folderId !== INBOX_ID && <ColorField value={color} onChange={setColor} />}
         <div className="actions">
           <button type="button" className="btn btn-labeled" onClick={remove}>
