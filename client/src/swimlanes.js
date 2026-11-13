@@ -10,9 +10,14 @@ export const SWIMLANE_MODES = [
   { id: 'color', label: 'По цвету' },
 ];
 
-export function swimlaneMode() {
+/** Saved mode, or null if the user never chose one in the board menu. */
+export function savedSwimlaneMode() {
   const id = localStorage.getItem(SWIMLANE_KEY);
-  return SWIMLANE_MODES.some((m) => m.id === id) ? id : 'none';
+  return SWIMLANE_MODES.some((m) => m.id === id) ? id : null;
+}
+
+export function swimlaneMode() {
+  return savedSwimlaneMode() ?? 'none';
 }
 
 export function setSwimlaneMode(id) {

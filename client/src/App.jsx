@@ -37,7 +37,7 @@ import ListView from './components/ListView.jsx';
 import MetricsView from './components/MetricsView.jsx';
 import SwimlaneBoard from './components/SwimlaneBoard.jsx';
 import { personLabel, personOf } from './components/CardPeople.jsx';
-import { SWIMLANE_MODES, setSwimlaneMode, swimlaneMode } from './swimlanes.js';
+import { SWIMLANE_MODES, savedSwimlaneMode, setSwimlaneMode } from './swimlanes.js';
 import ChatDialog from './components/ChatDialog.jsx';
 import PeopleBar from './components/People.jsx';
 import InboxPanel, { useInboxCards } from './components/InboxPanel.jsx';
@@ -181,10 +181,10 @@ export default function App() {
   const searching = search.trim() !== '';
   const [view, setView] = useState(() => (['calendar', 'list', 'gantt', 'metrics'].includes(localStorage.getItem(VIEW_KEY))
     ? localStorage.getItem(VIEW_KEY) : 'board'));
-  const [swimlane, setSwimlane] = useState(swimlaneMode);
+  const [swimlaneSaved, setSwimlaneSaved] = useState(savedSwimlaneMode);
   const changeSwimlane = (id) => {
     setSwimlaneMode(id);
-    setSwimlane(id);
+    setSwimlaneSaved(id);
     setBoardMenu(null);
   };
 
@@ -576,6 +576,7 @@ export default function App() {
   const saveChecked = (ids) => select(folders.filter((f) => !ids.includes(f.id)).map((f) => f.id));
   const everyBoardShown = checkedIds.length === folders.length;
   const allChecked = everyBoardShown && folders.length > 1;
+  const swimlane = swimlaneSaved ?? (allChecked ? 'folder' : 'none');
   // A folder is checked or unchecked together with everything inside it; then folders inside can be
   // unchecked one by one.
   const subtree = (id) => [id, ...descendants(folders, id).map((f) => f.id)];
@@ -598,7 +599,7 @@ export default function App() {
     .map((f) => f.name);
   const excludedSuffix = excludedNames.length ? ` · кроме ${excludedNames.join(', ')}` : '';
   const filterSummary = () => titleBoards.map((f) => f.name).join(', ') + excludedSuffix;
-  const liveFolderIdSet = useMemo(() => new Set(folders.map((f) => f.id)), [folders]);
+  const liveFolderIdSet = new Set(folders.map((f) => f.id));
   const setUnchecked = (off) => select(off.filter((id) => liveFolderIdSet.has(id)));
   const toggleFolderShown = (id, on) => {
     const ids = subtree(id);
