@@ -1316,6 +1316,10 @@ body {
   background: var(--panel); color: var(--text); font: inherit; font-size: 0.85rem; cursor: pointer;
 }
 .template-tab-on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--panel)); }
+.template-pending-banner {
+  margin: 0; padding: 0.35rem 0.75rem; text-align: center; font-size: 0.88rem;
+  background: rgba(56, 189, 248, 0.12); border-bottom: 1px solid var(--border);
+}
 .template-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
   gap: 0.65rem; margin: 0.75rem 0; max-height: min(55vh, 28rem); overflow: auto;

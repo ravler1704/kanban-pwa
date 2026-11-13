@@ -11,7 +11,10 @@ import AuthGate from './components/AuthGate.jsx';
 import { startSync } from './sync.js';
 import { startTheme } from './theme.js';
 import { startUpdateChecks } from './update.js';
+import { captureTemplateFromUrl } from './pendingTemplate.js';
 import './styles.css';
+
+captureTemplateFromUrl();
 
 // The browser checks for a new service worker only on navigation, and an installed app
 // resumed from the background does not navigate, so check explicitly.

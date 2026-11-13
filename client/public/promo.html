@@ -703,7 +703,8 @@
           <p>${esc(t.description)}</p>
           <p class="tpl-cols">${esc(t.payload.setName)}: ${cols}</p>
           <p class="tpl-meta">${author}</p>
-          <a class="btn btn-primary btn-small" href="/?template=${encodeURIComponent(t.id)}">Создать доску</a>
+          <a class="btn btn-primary btn-small" href="/?template=${encodeURIComponent(t.id)}"
+            onclick="try{sessionStorage.setItem('pendingBoardTemplate',${JSON.stringify(t.id)})}catch(e){}">Создать доску</a>
         </article>`;
       }).join('');
       grid.querySelectorAll('.reveal').forEach((el) => el.classList.add('in'));

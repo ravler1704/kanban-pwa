@@ -86,7 +86,8 @@
           <p>${esc(t.description)}</p>
           <p class="cols">${esc(t.payload.setName)}: ${cols}</p>
           <p class="meta">${esc(t.author?.name)} · использований: ${t.usesCount ?? 0}</p>
-          <a class="btn" href="/?template=${encodeURIComponent(t.id)}">Создать доску</a>
+          <a class="btn" href="/?template=${encodeURIComponent(t.id)}"
+            onclick="try{sessionStorage.setItem('pendingBoardTemplate',${JSON.stringify(t.id)})}catch(e){}">Создать доску</a>
         </article>`;
       }).join('');
     } catch {

@@ -20,6 +20,9 @@ import ManageDialog from './components/ManageDialog.jsx';
 import ColumnsDraftDialog from './components/ColumnsDraftDialog.jsx';
 import TemplatesGallery from './components/TemplatesGallery.jsx';
 import { createBoardFromTemplate } from './templateApply.js';
+import {
+  captureTemplateFromUrl, clearPendingTemplate, PENDING_TEMPLATE_KEY, peekPendingTemplate,
+} from './pendingTemplate.js';
 import { getTemplate, noteTemplateUse } from './templatesApi.js';
 import { BoardMenuButton, BoardName, useFolderActions } from './components/FolderMenu.jsx';
 import ArchiveDialog from './components/ArchiveDialog.jsx';
@@ -154,6 +157,7 @@ export default function App() {
   const [search, setSearch] = useState('');
   const [editingColumns, setEditingColumns] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [templateApplying, setTemplateApplying] = useState(false);
   const templateFromUrlDone = useRef(false);
   const authStatus = useSyncExternalStore(authState.subscribe, () => authState.get().status);
   // The board's menu, from a right click on the board itself (not a column or a card) or its «⋯» in the bar:
@@ -339,32 +343,49 @@ export default function App() {
     select(liveIds.filter((id) => id !== folderId));
   }, [select]);
 
-  // Promo / ?template=: create a board in the user's space after data is ready.
+  // Promo / ?template=: create a board in the user's space (id kept in sessionStorage for login / reload).
   useEffect(() => {
-    if (templateFromUrlDone.current || !data?.pulled || publicToken || readOnly || !isOwnBoard) return;
-    if (authStatus === 'signedOut') return;
+    if (templateFromUrlDone.current || !data || publicToken || readOnly) return;
+    if (authStatus !== 'signedIn' && authStatus !== 'disabled') return;
+
+    captureTemplateFromUrl();
     const params = new URLSearchParams(location.search);
-    const templateId = params.get('template');
+    const templateId = params.get('template') || peekPendingTemplate();
     if (!templateId) return;
+
+    if (!isOwnBoard) {
+      sessionStorage.setItem(PENDING_TEMPLATE_KEY, templateId);
+      switchBoard(null);
+      return;
+    }
+
     templateFromUrlDone.current = true;
-    params.delete('template');
-    history.replaceState(history.state, '', `${location.pathname}${params.size ? `?${params}` : ''}`);
+    if (params.has('template')) {
+      params.delete('template');
+      history.replaceState(history.state, '', `${location.pathname}${params.size ? `?${params}` : ''}`);
+    }
+
     let cancel = false;
+    setTemplateApplying(true);
     (async () => {
       try {
         const t = await getTemplate(templateId);
         if (cancel) return;
         const { folderId } = await createBoardFromTemplate(t.payload, { boardName: t.title });
         noteTemplateUse(templateId).catch(() => {});
+        clearPendingTemplate();
         const liveIds = liveFolderIdsKey ? liveFolderIdsKey.split(',').filter(Boolean) : [];
         const withNew = liveIds.includes(folderId) ? liveIds : [...liveIds, folderId];
         focusFolderInView(folderId, withNew);
       } catch (e) {
+        templateFromUrlDone.current = false;
         alert(e.message ?? 'Не удалось создать доску из шаблона');
+      } finally {
+        if (!cancel) setTemplateApplying(false);
       }
     })();
     return () => { cancel = true; };
-  }, [data?.pulled, publicToken, readOnly, isOwnBoard, authStatus, liveFolderIdsKey, focusFolderInView]);
+  }, [data, publicToken, readOnly, isOwnBoard, authStatus, liveFolderIdsKey, focusFolderInView]);
 
   // What the user may add cards to: on someone else's board the folders opened to them
   // (the folders above are only there to show the way).
@@ -641,6 +662,9 @@ export default function App() {
         search={search} onSearch={setSearch}
         onSettings={readOnly ? null : () => setManaging(true)}
         inbox={inboxOn ? { count: inboxCards?.length ?? 0, open: inboxOpen, onToggle: toggleInbox } : null} />
+      {templateApplying && (
+        <p className="template-pending-banner muted" role="status">Создаём доску из шаблона…</p>
+      )}
 
       <div className="app-body">
         {inboxOn && inboxOpen && <InboxPanel folders={usable} onOpen={setOpenCardId} onClose={toggleInbox} />}
