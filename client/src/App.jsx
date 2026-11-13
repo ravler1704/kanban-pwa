@@ -288,6 +288,18 @@ export default function App() {
     if (extra.length) select([...new Set([...selection, ...extra])]);
   });
 
+  // Saved column-set choice must match folders in view (e.g. after opening one board «Канун» while «Фильмы» was saved).
+  useEffect(() => {
+    if (!data || publicToken) return;
+    const live = liveFolders(data.folders, { standIn: isOwnBoard });
+    const shown = live.filter((f) => !selection.includes(f.id));
+    if (shown.length <= 1) return;
+    const modelLocal = columnModel(data.columnSets, data.columns, live);
+    const used = modelLocal.sets.filter((s) => shown.some((f) => modelLocal.setIdOf(f) === s.id));
+    const valid = used.map((s) => s.id);
+    if (valid.length > 1 && allFoldersSet && !valid.includes(allFoldersSet)) changeAllFoldersSet(valid[0]);
+  }, [data, selection, allFoldersSet, publicToken, isOwnBoard]);
+
   // What the user may add cards to: on someone else's board the folders opened to them
   // (the folders above are only there to show the way).
   const mine = !isOwnBoard && !publicToken ? folderIdsOf(people.find((p) => p.id === me)) : [];
@@ -411,9 +423,14 @@ export default function App() {
   const activeFolders = groups.length ? groups : shownFolders;
 
   // A board shows one column set: the folder's, or with several in view, the chosen one
-  // (only folders using it are on the board).
+  // (only folders using it are on the board). The choice is saved on the device; if only one
+  // board is in view, or only one set is needed, that board's set wins — not a stale «Фильмы», etc.
   const usedSets = model.sets.filter((s) => activeFolders.some((f) => model.setIdOf(f) === s.id));
-  const boardSetId = (usedSets.find((s) => s.id === allFoldersSet) ?? usedSets[0] ?? model.sets[0]).id;
+  const validSetIds = usedSets.map((s) => s.id);
+  const boardSetId = (shownFolders.length === 1 ? model.setIdOf(shownFolders[0])
+    : usedSets.length === 1 ? usedSets[0].id
+      : validSetIds.includes(allFoldersSet) ? allFoldersSet
+        : usedSets[0]?.id ?? (activeFolders[0] ? model.setIdOf(activeFolders[0]) : null) ?? model.sets[0]?.id);
   const columns = model.columnsOf(boardSetId);
   const boardFolders = shownUsable.filter((f) => model.setIdOf(f) === boardSetId);
   const boardTarget = target && boardFolders.some((f) => f.id === target) ? target : targetIn(boardFolders);
