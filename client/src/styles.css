@@ -224,14 +224,6 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.projectbar .view-toggle[aria-pressed="true"] { color: var(--accent); }
-.projectbar-row > .swimlane-toggle {
-  align-self: stretch;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
-  padding: 0 0.45rem;
-}
 .projectbar .board-menu-btn, .projectbar .board-menu-btn:hover:not(:disabled) {
   flex: none; border-color: transparent; background: transparent; color: var(--muted);
 }

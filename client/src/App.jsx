@@ -37,7 +37,7 @@ import ListView from './components/ListView.jsx';
 import MetricsView from './components/MetricsView.jsx';
 import SwimlaneBoard from './components/SwimlaneBoard.jsx';
 import { personLabel, personOf } from './components/CardPeople.jsx';
-import { savedSwimlaneMode, setSwimlaneMode } from './swimlanes.js';
+import { SWIMLANE_MODES, savedSwimlaneMode, setSwimlaneMode } from './swimlanes.js';
 import ChatDialog from './components/ChatDialog.jsx';
 import PeopleBar from './components/People.jsx';
 import InboxPanel, { useInboxCards } from './components/InboxPanel.jsx';
@@ -646,6 +646,13 @@ export default function App() {
         return allCollapsed ? elsewhere : [...elsewhere, ...columns.map((c) => c.id)];
       }),
     },
+    view === 'board' && !searching && {
+      label: `Дорожки: ${SWIMLANE_MODES.find((m) => m.id === swimlane)?.label ?? 'Без дорожек'}`,
+      icon: SWIMLANE_MODES.find((m) => m.id === swimlane)?.icon,
+      submenu: SWIMLANE_MODES.map((m) => ({
+        label: m.label, icon: m.icon, endIcon: m.mark, active: swimlane === m.id, run: () => changeSwimlane(m.id),
+      })),
+    },
     null,
     ...(folderActions.removeItem ? [
       titleRenamable && titleBoards.includes(menuFolder) && {
@@ -758,7 +765,6 @@ export default function App() {
                 </div>
                 )}
                 setSwitch={!searching && setTabs ? { sets: setTabs, value: boardSetId, onChange: changeAllFoldersSet } : null}
-                lanes={view === 'board' && !searching ? { mode: swimlane, onChange: changeSwimlane } : null}
               >
                 {!publicToken && <PeopleBar folders={shownFolders} allFolders={folders} onChat={setChat} />}
                 {(view === 'board' || !readOnly) && (
