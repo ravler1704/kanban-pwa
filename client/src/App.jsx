@@ -26,11 +26,17 @@ import NewCardDialog from './components/NewCardDialog.jsx';
 import CalendarView from './components/CalendarView.jsx';
 import GanttView from './components/GanttView.jsx';
 import ListView from './components/ListView.jsx';
+import MetricsView from './components/MetricsView.jsx';
+import SwimlaneBoard from './components/SwimlaneBoard.jsx';
+import { personLabel, personOf } from './components/CardPeople.jsx';
+import { SWIMLANE_MODES, setSwimlaneMode, swimlaneMode } from './swimlanes.js';
 import ChatDialog from './components/ChatDialog.jsx';
 import PeopleBar from './components/People.jsx';
 import InboxPanel, { useInboxCards } from './components/InboxPanel.jsx';
 import { tagKey, tagNames, tagsOf } from './tags.js';
-import { descendants, flattenFolders, folderPath, folderTree, isInside, liveFolders, topFolderIds } from './folders.js';
+import {
+  descendants, flattenFolders, folderPath, folderPathName, folderTree, isInside, liveFolders, topFolderIds,
+} from './folders.js';
 import { folderIdsOf, peopleStore } from './people.js';
 
 const VIEW_KEY = 'view';
@@ -159,8 +165,13 @@ export default function App() {
   };
   const inboxCards = useInboxCards();
   const searching = search.trim() !== '';
-  const [view, setView] = useState(() => (['calendar', 'list', 'gantt'].includes(localStorage.getItem(VIEW_KEY))
+  const [view, setView] = useState(() => (['calendar', 'list', 'gantt', 'metrics'].includes(localStorage.getItem(VIEW_KEY))
     ? localStorage.getItem(VIEW_KEY) : 'board'));
+  const [swimlane, setSwimlane] = useState(swimlaneMode);
+  const changeSwimlane = (id) => {
+    setSwimlaneMode(id);
+    setSwimlane(id);
+  };
 
   const changeView = (next) => {
     setView(next);
@@ -435,6 +446,8 @@ export default function App() {
   const boardFolders = shownUsable.filter((f) => model.setIdOf(f) === boardSetId);
   const boardTarget = target && boardFolders.some((f) => f.id === target) ? target : targetIn(boardFolders);
   const boardCards = visible.filter((c) => model.setIdOf(tree.byId.get(c.folderId)) === boardSetId);
+  const depCardById = new Map(boardCards.map((c) => [c.id, c]));
+  const cardsForDeps = inScope.filter((c) => !c.purged);
   // The board whose columns «Изменить колонки» can give a set of its own: the one at the top of those shown.
   const boardTops = topFolderIds(boardFolders.map((f) => f.id), folders);
   const columnsFolder = boardTops.length === 1 ? tree.byId.get(boardTops[0]) : null;
@@ -469,7 +482,8 @@ export default function App() {
   // The last choice is kept (see readSelection).
   const checkedIds = shownFolders.map((f) => f.id);
   const saveChecked = (ids) => select(folders.filter((f) => !ids.includes(f.id)).map((f) => f.id));
-  const allChecked = checkedIds.length === folders.length;
+  const everyBoardShown = checkedIds.length === folders.length;
+  const allChecked = everyBoardShown && folders.length > 1;
   // A folder is checked or unchecked together with everything inside it; then folders inside can be
   // unchecked one by one.
   const subtree = (id) => [id, ...descendants(folders, id).map((f) => f.id)];
@@ -501,12 +515,12 @@ export default function App() {
       saveChecked(on ? [...new Set([...checkedIds, ...ids])] : checkedIds.filter((x) => !ids.includes(x)));
     },
     onSetAll: (on) => saveChecked(on ? folders.map((f) => f.id) : []),
-    onClear: allChecked ? null : () => saveChecked(folders.map((f) => f.id)),
+    onClear: allChecked || (folders.length === 1 && everyBoardShown) ? null : () => saveChecked(folders.map((f) => f.id)),
     summary: allChecked ? 'Все доски' : checkedIds.length ? filterSummary() : 'Не выбраны',
   };
   const openGroup = (card) => saveChecked([card.folderId]);
   // The title names the shown boards (maybe without some inside them): each name there renames its board.
-  const titleRenamable = !readOnly && !allChecked && titleBoards.some((f) => usable.includes(f));
+  const titleRenamable = !readOnly && (!allChecked || folders.length === 1) && titleBoards.some((f) => usable.includes(f));
 
   const allCollapsed = columns.every((c) => collapsed.includes(c.id));
   const openBoardMenu = (pos, folderId) => {
@@ -525,6 +539,13 @@ export default function App() {
         const elsewhere = list.filter((id) => !columns.some((c) => c.id === id));
         return allCollapsed ? elsewhere : [...elsewhere, ...columns.map((c) => c.id)];
       }),
+    },
+    view === 'board' && !searching && {
+      label: `Дорожки: ${SWIMLANE_MODES.find((m) => m.id === swimlane)?.label ?? 'Без дорожек'}`,
+      icon: 'M4 6h16M4 12h11M4 18h7M3 3v18',
+      submenu: SWIMLANE_MODES.map((m) => ({
+        label: m.label, active: swimlane === m.id, run: () => changeSwimlane(m.id),
+      })),
     },
     null,
     ...(folderActions.removeItem ? [
@@ -633,7 +654,7 @@ export default function App() {
                 <ListView cards={visible} query={search} folders={folders} targets={usable} readOnly={readOnly}
                   columnsOfFolder={model.columnsOfFolder}
                   onOpen={setOpenCardId} />
-              ) : shownFolders.length === 0 && view !== 'list' ? (
+              ) : shownFolders.length === 0 && view !== 'list' && view !== 'metrics' ? (
                 <div className="empty">
                   <p>Не отмечена ни одна доска — отметьте нужные в фильтре «Доски».</p>
                 </div>
@@ -641,10 +662,57 @@ export default function App() {
                 <ListView cards={visible} folders={folders} targets={usable} readOnly={readOnly}
                   columnsOfFolder={model.columnsOfFolder} onOpen={setOpenCardId} />
               ) : view === 'calendar' ? (
-                <CalendarView cards={visible} columns={model.columns} cardLabel={cardLabel} onOpen={setOpenCardId} />
+                <CalendarView cards={visible} columns={model.columns} cardLabel={cardLabel} onOpen={setOpenCardId}
+                  onAddCard={readOnly ? null : (day) => setAddingCard({
+                    calendarDay: new Date(day.getFullYear(), day.getMonth(), day.getDate()).getTime(),
+                  })} />
               ) : view === 'gantt' ? (
                 <GanttView cards={visible} folders={folders} columns={model.columns} cardLabel={cardLabel}
                   readOnly={readOnly} onOpen={setOpenCardId} />
+              ) : view === 'metrics' ? (
+                <MetricsView
+                  cards={visible}
+                  columnsOfFolder={model.columnsOfFolder}
+                  folderName={(id) => {
+                    const f = tree.byId.get(id);
+                    return f ? folderPathName(f, folders) : id;
+                  }}
+                />
+              ) : swimlane !== 'none' ? (
+                <SwimlaneBoard
+                  mode={swimlane}
+                  cards={boardCards}
+                  columns={columns}
+                  collapsed={collapsed}
+                  cardById={(id) => boardCards.find((c) => c.id === id)}
+                  lanesCtx={{
+                    folderName: (id) => {
+                      const f = tree.byId.get(id);
+                      return f ? folderPathName(f, folders) : id;
+                    },
+                    personName: (id) => personLabel(personOf(people, id), meId),
+                  }}
+                  columnProps={{
+                    target: boardTarget,
+                    single: boardTops.length <= 1,
+                    cardLabel: swimlane === 'folder' ? null : cardLabel,
+                    activeTags,
+                    onTag: toggleTag,
+                    readOnly,
+                    onOpen: setOpenCardId,
+                    onOpenGroup: openGroup,
+                    edit: columnEdit,
+                    onToggleCollapsed: toggleCollapsed,
+                    onCollapseOthers: (col) => changeCollapsed((list) => {
+                      const elsewhere = list.filter((id) => !columns.some((c) => c.id === id));
+                      const others = columns.filter((c) => c.id !== col.id).map((c) => c.id);
+                      const alone = !list.includes(col.id) && others.every((id) => list.includes(id));
+                      return alone ? elsewhere : [...elsewhere, ...others];
+                    }),
+                    onNewCard: (col) => setAddingCard(col),
+                    cardById: depCardById,
+                  }}
+                />
               ) : (
                 <main className="board" style={{
                   '--tracks': columns.map((c) => (collapsed.includes(c.id) ? 'var(--column-collapsed)' : 'var(--column-width)')).join(' '),
@@ -664,6 +732,7 @@ export default function App() {
                       readOnly={readOnly}
                       onOpen={setOpenCardId}
                       onOpenGroup={openGroup}
+                      cardById={depCardById}
                       edit={columnEdit}
                       collapsed={collapsed.includes(col.id)}
                       onToggleCollapsed={() => toggleCollapsed(col.id)}
@@ -688,7 +757,7 @@ export default function App() {
       {openCard && (openCard.conflict
         ? <ConflictDialog card={openCard} onClose={() => setOpenCardId(null)} />
         : <CardEditor card={openCard} columnsOfFolder={model.columnsOfFolder} folders={usable} inbox={inboxOn}
-          readOnly={readOnly} onClose={() => setOpenCardId(null)} />)}
+          cardsForDeps={cardsForDeps} onOpenCard={setOpenCardId} readOnly={readOnly} onClose={() => setOpenCardId(null)} />)}
 
       {chat !== null && !publicToken && (
         <ChatDialog key={chat} folders={chatFolders} thread={chat} onClose={() => setChat(null)}
@@ -700,8 +769,11 @@ export default function App() {
 
       {addingCard && (
         <NewCardDialog folders={usable} columnsOfFolder={model.columnsOfFolder}
-          target={addingCard === true ? target ?? targetIn(usable) : boardTarget ?? target ?? targetIn(usable)}
-          column={addingCard === true ? null : addingCard} onClose={() => setAddingCard(false)} />
+          target={addingCard === true || addingCard?.calendarDay != null
+            ? target ?? targetIn(usable) : boardTarget ?? target ?? targetIn(usable)}
+          column={addingCard !== true && !addingCard?.calendarDay ? addingCard : null}
+          calendarDay={addingCard?.calendarDay ?? null}
+          onClose={() => setAddingCard(false)} />
       )}
 
       {editingColumns && (

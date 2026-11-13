@@ -41,6 +41,7 @@ function tableColumns(archived) {
     { key: 'title', header: 'Название', width: 52, style: { fontStyle: 'bold' } },
     { key: 'done', header: 'Готово', width: 13, style: { halign: 'center', fontStyle: 'bold', textColor: DONE, fontSize: 10 } },
     { key: 'holder', header: 'Исполнитель', width: 28 },
+    { key: 'deadline', header: 'Дедлайн', width: 22 },
     { key: 'reminder', header: 'Напоминание', width: 25 },
     { key: 'tags', header: 'Метки', width: 22 },
     { key: 'checklist', header: 'Подзадачи', width: 40 },
@@ -58,6 +59,7 @@ function cells(row) {
     title: plainText(card.title) || 'Без названия',
     done: card.done ? '✓' : '',
     holder: row.holder,
+    deadline: row.dueLabel,
     reminder: row.nextReminder ? formatTime(row.nextReminder) : '',
     tags: row.tags.map((t) => `#${t}`).join(', '),
     checklist: row.checklist.length

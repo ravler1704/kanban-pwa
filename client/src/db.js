@@ -245,20 +245,21 @@ db.version(13).stores({
 
 // background (folder), color (card): ids of the presets in appearance.js.
 const FOLDER_FIELDS = ['parentId', 'columnSetId', 'name', 'position', 'deleted', 'hidden', 'background', 'doneMarks'];
-const CARD_FIELDS = ['folderId', 'columnId', 'title', 'description', 'position', 'deleted', 'remindAt', 'reminders', 'authorId', 'assigneeId',
-  'attachments', 'checklist', 'number', 'color', 'done', 'purged'];
+const CARD_FIELDS = ['folderId', 'columnId', 'title', 'description', 'position', 'deleted', 'remindAt', 'reminders', 'dueAt', 'authorId', 'assigneeId',
+  'attachments', 'checklist', 'dependsOn', 'number', 'color', 'done', 'purged'];
 
 // Push order matters: columns and sets before the folders that use them, folders before their cards.
 // Folders among themselves go parents first (see sortFolders in sync.js).
 export const TYPES = {
   columnSet: { table: 'columnSets', fields: ['name', 'position', 'deleted'] },
-  column: { table: 'columns', fields: ['setId', 'name', 'position', 'deleted', 'addToTop', 'color'] },
+  column: { table: 'columns', fields: ['setId', 'name', 'position', 'deleted', 'addToTop', 'color', 'wipLimit'] },
   // Folders nest to any depth: parentId null is a root. columnSetId null: the set of the nearest
   // ancestor that has one (see folders.js). hidden: no longer set; read once to convert an older selection.
   folder: { table: 'folders', fields: FOLDER_FIELDS },
   card: {
     table: 'cards',
     // reminders: [{ at, repeat, off }] (see reminders.js); remindAt: the single reminder of older cards.
+    // dueAt: deadline (end of the day in local time), or null.
     // authorId, assigneeId: user ids of who made the card and who has it now (null: the author).
     // attachments: [{ id, name, size, type, addedAt }], changed by the server only (files.js).
     // checklist: subtasks [{ id, text, done }], in order.

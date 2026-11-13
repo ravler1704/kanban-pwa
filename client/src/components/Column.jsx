@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createCard, moveCard, moveCardsToColumn, moveColumnTo, renameColumn } from '../actions.js';
+import { applySwimlaneMove, cardLaneId } from '../swimlanes.js';
+import { wipCount, wipStatus } from '../wip.js';
 import { columnColor } from '../appearance.js';
 import ColumnMenu from './ColumnMenu.jsx';
 import EditableName from './EditableName.jsx';
@@ -65,8 +67,8 @@ function QuickAdd({ onAdd, onClose }) {
  * `onCollapseOthers()` expands this column and collapses the rest of the board, or expands them all when it's the only one left.
  */
 export default function Column({
-  target, single, column, prevColumn, nextColumn, cards, cardLabel, activeTags, onTag, readOnly, onOpen, onOpenGroup,
-  edit, onNewCard, collapsed, onToggleCollapsed, onCollapseOthers,
+  target, single, column, prevColumn, nextColumn, cards, cardById, cardLabel, activeTags, onTag, readOnly, onOpen,
+  onOpenGroup, edit, onNewCard, collapsed, onToggleCollapsed, onCollapseOthers, showHead = true, swimlane = null,
 }) {
   const [title, setTitle] = useState('');
   // The card a new one is being typed in before, from the gap above it.
@@ -160,6 +162,14 @@ export default function Column({
     setDropBefore(target?.dataset.cardId ?? null);
   }
 
+  function confirmWipOverflow(nextCount) {
+    const { limit } = wipStatus(column, nextCount);
+    if (!limit || nextCount <= limit) return true;
+    return confirm(
+      `В колонке «${column.name}» WIP-лимит ${limit}, после переноса будет ${nextCount}. Всё равно добавить?`,
+    );
+  }
+
   function handleDrop(e) {
     e.preventDefault();
     if (draggedColumnId) {
@@ -177,8 +187,22 @@ export default function Column({
     if (fromInbox && !target) return;
 
     const others = cards.filter((c) => c.id !== id);
+    const incoming = !cards.some((c) => c.id === id);
+    const nextCount = wipCount(others) + (incoming ? 1 : 0);
+    if (!confirmWipOverflow(nextCount)) {
+      setDropBefore(undefined);
+      return;
+    }
     const position = beforeId ? positionBefore(others, beforeId) : positionAtEnd(others);
-    moveCard(id, column.id, position, fromInbox ? target : null);
+    const card = swimlane?.cardById(id);
+    let folderId = fromInbox ? target : null;
+    if (swimlane?.mode === 'folder' && card && cardLaneId(card, swimlane.mode) !== swimlane.laneId) {
+      folderId = swimlane.laneId;
+    }
+    moveCard(id, column.id, position, folderId);
+    if (swimlane && card && swimlane.mode !== 'folder' && cardLaneId(card, swimlane.mode) !== swimlane.laneId) {
+      applySwimlaneMove(card, swimlane.laneId, swimlane.mode);
+    }
   }
 
   // Dropping right before or after the dragged card itself wouldn't move it.
@@ -202,6 +226,7 @@ export default function Column({
     e.preventDefault();
     const value = title.trim();
     if (!value || !target) return;
+    if (!confirmWipOverflow(wipCount(cards) + 1)) return;
     createCard({ folderId: target }, column.id, value);
     setTitle('');
   }
@@ -209,15 +234,23 @@ export default function Column({
   const quickAdd = Boolean(target) && single;
   const gaps = !readOnly && quickAdd && !dragOver;
   function addBefore(beforeId, value) {
+    if (!confirmWipOverflow(wipCount(cards) + 1)) return;
     const position = positionBefore(cards, beforeId);
     if (Number.isFinite(position)) createCard({ folderId: target }, column.id, value, '', [], { position });
   }
 
-  const count = cards.filter((c) => !c.deleted).length;
+  const count = wipCount(cards);
+  const wip = wipStatus(column, count);
   const color = columnColor(column);
+  const countLabel = wip.limit != null
+    ? <span className={wip.over ? 'count-wip-over' : wip.at ? 'count-wip-at' : ''} title={`WIP: ${count} из ${wip.limit}`}>
+      {count}<span className="count-wip-sep"> / </span>{wip.limit}
+    </span>
+    : <span className="count">{count}</span>;
+
   const columnClasses = [
     dragOver && 'column-dragover', columnDrop && `column-drop-${columnDrop}`, dragging && 'column-dragging',
-    color && 'column-colored',
+    color && 'column-colored', wip.over && 'column-wip-over',
   ].filter(Boolean).join(' ');
   const columnStyle = color ? { '--column-color': color } : undefined;
   const menu = (
@@ -245,7 +278,7 @@ export default function Column({
         <button type="button" className="column-expand" onClick={handleClicks} {...columnDrag}
           title={`Развернуть колонку «${column.name}»`} aria-label={`Развернуть колонку «${column.name}»`} aria-expanded="false">
           <span className="column-expand-title">
-            <span className="column-expand-name">{column.name}</span> <span className="count">{count}</span>
+            <span className="column-expand-name">{column.name}</span> {countLabel}
           </span>
         </button>
       </section>
@@ -255,7 +288,7 @@ export default function Column({
   return (
     <section
       ref={section}
-      className={`column ${columnClasses}`}
+      className={`column${swimlane ? ' column-swimlane' : ''} ${columnClasses}`}
       style={columnStyle}
       onMouseDownCapture={noteBlur}
       onClick={(e) => {
@@ -275,18 +308,20 @@ export default function Column({
       draggable={columnDrag.draggable && !typing}
       onMouseDown={(e) => setTyping(!!e.target.closest('input, textarea'))}
     >
-      <div className="column-head">
-        <h2>
-          {edit
-            ? <EditableName value={column.name} label="Название колонки" maxLength={100}
-              note={edit.boards.length > 1
-                ? `Набор «${edit.setName}» используют доски: ${edit.boards.map((b) => `«${b}»`).join(', ')}. Изменение применится ко всем.`
-                : null}
-              onSave={(name) => renameColumn(column.id, name)} />
-            : column.name} <span className="count">{count}</span>
-        </h2>
-        <div className="column-moves">{menu}</div>
-      </div>
+      {showHead && (
+        <div className="column-head">
+          <h2>
+            {edit
+              ? <EditableName value={column.name} label="Название колонки" maxLength={100}
+                note={edit.boards.length > 1
+                  ? `Набор «${edit.setName}» используют доски: ${edit.boards.map((b) => `«${b}»`).join(', ')}. Изменение применится ко всем.`
+                  : null}
+                onSave={(name) => renameColumn(column.id, name)} />
+              : column.name} {countLabel}
+          </h2>
+          <div className="column-moves">{menu}</div>
+        </div>
+      )}
       <div className="cards" ref={list}>
         {cards.flatMap((card, i) => [
           showIndicator && i === index && slot,
@@ -301,6 +336,7 @@ export default function Column({
           <Card
             key={card.id}
             card={card}
+            cardById={cardById}
             label={cardLabel?.(card)}
             activeTags={activeTags}
             onTag={onTag}

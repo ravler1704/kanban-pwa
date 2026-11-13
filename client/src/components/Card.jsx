@@ -5,8 +5,10 @@ import { markDone } from './UndoToast.jsx';
 import { cardColor } from '../appearance.js';
 import { usePointerHover } from '../pointerHover.js';
 import { uploadStore } from '../files.js';
+import { describeDeadline, isDeadlineOverdue } from '../deadlines.js';
 import { cardReminders, nextReminder } from '../reminders.js';
 import { splitTags, tagKey } from '../tags.js';
+import { isWaitingOnDependencies, pendingDependencies, blockersMessage } from '../dependencies.js';
 import CardMenu from './CardMenu.jsx';
 import Markdown from './Markdown.jsx';
 
@@ -21,6 +23,26 @@ function formatReminder(ts) {
     day: 'numeric', month: 'short', ...(d.getFullYear() !== now.getFullYear() && { year: 'numeric' }),
   });
   return `${date} ${time}`;
+}
+
+function FlagIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 22V4a1 1 0 0 1 .4-.8 1 1 0 0 1 1-.2l5.4 2.2a1 1 0 0 0 .4.1h9.4a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H10L4 8.8V22" />
+    </svg>
+  );
+}
+
+export function DeadlineBadge({ card }) {
+  if (!card.dueAt) return null;
+  const overdue = isDeadlineOverdue(card.dueAt, Date.now(), card.done);
+  return (
+    <span className={`card-deadline${overdue ? ' card-deadline-overdue' : ''}`} title="Дедлайн">
+      <FlagIcon />
+      {describeDeadline(card.dueAt)}
+    </span>
+  );
 }
 
 export function ReminderBadge({ card }) {
@@ -80,6 +102,28 @@ export function ChecklistBadge({ card, open = false, onToggle }) {
 }
 
 /** Trello's «mark complete» circle: green with a tick when the card is done; it pops when ticked here. */
+export function DependencyBadge({ card, cardById }) {
+  if (!cardById || !isWaitingOnDependencies(card, cardById)) return null;
+  const n = pendingDependencies(card, cardById).length;
+  const title = blockersMessage(card, cardById);
+  return (
+    <span className="card-depends" title={title ? `Ждёт: ${title}` : 'Ждёт другие задачи'}>
+      <LinkIcon />
+      {n > 1 ? n : 'Ждёт'}
+    </span>
+  );
+}
+
+function LinkIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M10 13a5 5 0 0 0 7.07 0l2.12-2.12a5 5 0 0 0-7.07-7.07L11 4" />
+      <path d="M14 11a5 5 0 0 0-7.07 0L4.8 13.12a5 5 0 0 0 7.07 7.07L13 20" />
+    </svg>
+  );
+}
+
 export function DoneButton({ card, readOnly, className = '' }) {
   const [popping, setPopping] = useState(false);
   useEffect(() => {
@@ -208,7 +252,7 @@ export function setDraggedCard(id, height = draggedCardHeight) {
 }
 
 export default function Card({
-  card, label, activeTags, onTag, readOnly, onOpen, onOpenLabel, prevColumn, nextColumn,
+  card, cardById, label, activeTags, onTag, readOnly, onOpen, onOpenLabel, prevColumn, nextColumn,
 }) {
   const ref = useRef(null);
   const [checklistOpen, setChecklistOpen] = useState(false);
@@ -262,7 +306,9 @@ export default function Card({
       <div className="card-footer">
         <div className="card-badges">
           {card.number && <span className="card-number" title="Номер карточки">#{card.number}</span>}
+          <DeadlineBadge card={card} />
           <ReminderBadge card={card} />
+          <DependencyBadge card={card} cardById={cardById} />
           <ChecklistBadge card={card} open={checklistOpen} onToggle={() => setChecklistOpen(!checklistOpen)} />
           <UploadBadge cardId={card.id} />
           {card.attachments?.length > 0 && (

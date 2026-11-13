@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { createCard } from '../actions.js';
+import { makeReminder } from '../reminders.js';
 import CardExtraFields from './CardExtraFields.jsx';
 import CardPeople, { useBoardPeople } from './CardPeople.jsx';
 import FolderSelect from './FolderSelect.jsx';
@@ -10,7 +11,18 @@ import TitleField from './TitleField.jsx';
  * `folders` are the folders a card can be added to and `target` the one preselected (an id; else the
  * first folder); `column`, when set, is the column preselected.
  */
-export default function NewCardDialog({ folders, columnsOfFolder, target, column: initialColumn, onClose }) {
+function reminderOnDay(dayMs) {
+  const d = new Date(dayMs);
+  d.setHours(9, 0, 0, 0);
+  return [makeReminder(d.getTime())];
+}
+
+/**
+ * `calendarDay`: start of the day (ms) — the form opens with a reminder at 9:00 that day.
+ */
+export default function NewCardDialog({
+  folders, columnsOfFolder, target, column: initialColumn, calendarDay = null, onClose,
+}) {
   const [folderId, setFolderId] = useState(() => (folders.some((f) => f.id === target) ? target : folders[0]?.id) ?? '');
   // The folder's column set decides the choice. New cards land in «Входящие» (the default
   // backlog column) or the first column; a picked column is kept by name across sets.
@@ -24,7 +36,8 @@ export default function NewCardDialog({ folders, columnsOfFolder, target, column
   const setColumnId = (id) => setPicked(columns.find((c) => c.id === id));
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [reminders, setReminders] = useState([]);
+  const [reminders, setReminders] = useState(() => (calendarDay != null ? reminderOnDay(calendarDay) : []));
+  const [dueAt, setDueAt] = useState(null);
   const { meId } = useBoardPeople();
   const [authorId, setAuthorId] = useState(null);
   const [assigneeId, setAssigneeId] = useState(null);
@@ -33,7 +46,7 @@ export default function NewCardDialog({ folders, columnsOfFolder, target, column
     e.preventDefault();
     if (!title.trim() || !folderId || !columnId) return;
     await createCard({ folderId }, columnId, title.trim(), description, reminders, {
-      authorId: authorId ?? meId, assigneeId,
+      authorId: authorId ?? meId, assigneeId, dueAt,
     });
     onClose();
   }
@@ -47,6 +60,8 @@ export default function NewCardDialog({ folders, columnsOfFolder, target, column
           onDescription={setDescription}
           reminders={reminders}
           onReminders={setReminders}
+          dueAt={dueAt}
+          onDueAt={setDueAt}
           descriptionRows={4}
         />
         <FolderSelect folders={folders} value={folderId} onChange={setFolderId} />

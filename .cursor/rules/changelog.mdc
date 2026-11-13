@@ -11,3 +11,13 @@ alwaysApply: true
   (`![…](docs/screenshots/<name>.png)`); update the screenshots in `README.md` when they no longer match.
 - After committing (and deploying), push: `git push origin master`. The repository is public: never commit
   secrets — `deploy/kanban.env` stays out of git.
+
+# Releases (CHANGELOG → сайт → GitHub)
+
+- **Сайт:** `npm run build` (и `deploy.sh`) генерируют `/releases.html` из `CHANGELOG.md` и копируют
+  скриншоты в `/changelog/` (`scripts/build-releases-page.mjs`).
+- **GitHub Releases:** после пуша с обновлённым `CHANGELOG.md` workflow `.github/workflows/web-release.yml`
+  создаёт или обновляет релиз с тегом `web-YYYY-MM-DD` (верхняя дата в CHANGELOG). Локально то же:
+  `npm run release:github` (нужны `gh` и вход).
+- На [промо](client/public/promo.html) и [установке](client/public/install.html) ссылка «Что нового» ведёт на
+  `/releases.html`, не только на GitHub.

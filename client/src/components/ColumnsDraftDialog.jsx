@@ -19,7 +19,7 @@ const TO_TOP = 'M5 4h14M12 20V9m-5 5 5-5 5 5';
 const TO_BOTTOM = 'M5 20h14M12 4v11m-5-5 5 5 5-5';
 
 let lastKey = 0;
-const rowOf = (c) => ({ key: c.id, id: c.id, name: c.name, addToTop: !!c.addToTop });
+const rowOf = (c) => ({ key: c.id, id: c.id, name: c.name, addToTop: !!c.addToTop, wipLimit: c.wipLimit ?? null });
 const quoted = (folders) => folders.map((f) => `«${f.name}»`).join(', ');
 
 /**
@@ -60,7 +60,7 @@ export default function ColumnsDraftDialog({ model, setId, folder, folders, onCl
   const valid = rows.length > 0 && rows.every((r) => r.name.trim());
   const changed = removed.length > 0 || rows.length !== original.length
     || rows.some((r, i) => r.id !== original[i]?.id || r.name.trim() !== original[i].name
-      || r.addToTop !== Boolean(original[i].addToTop));
+      || r.addToTop !== Boolean(original[i].addToTop) || (r.wipLimit ?? null) !== (original[i]?.wipLimit ?? null));
   const renamed = title.trim() !== '' && title.trim() !== set?.name;
   const parent = folder?.parentId ? folders.find((f) => f.id === folder.parentId) : null;
   const unused = model.sets.filter((s) => s.id !== setId && model.foldersOf(s.id).length === 0);
@@ -77,7 +77,7 @@ export default function ColumnsDraftDialog({ model, setId, folder, folders, onCl
     const name = newName.trim();
     if (!name) return;
     lastKey += 1;
-    setRows((list) => [...list, { key: `new-${lastKey}`, id: null, name: name.slice(0, 100), addToTop: false }]);
+    setRows((list) => [...list, { key: `new-${lastKey}`, id: null, name: name.slice(0, 100), addToTop: false, wipLimit: null }]);
     setNewName('');
   }
 
@@ -108,7 +108,11 @@ export default function ColumnsDraftDialog({ model, setId, folder, folders, onCl
   }
 
   async function apply() {
-    const clean = rows.map((r) => ({ ...r, name: r.name.trim().slice(0, 100) }));
+    const clean = rows.map((r) => ({
+      ...r,
+      name: r.name.trim().slice(0, 100),
+      wipLimit: r.wipLimit > 0 ? Math.min(999, Math.floor(r.wipLimit)) : null,
+    }));
     const chosen = Object.fromEntries(removed.map((c) => [c.id, targetOf(c)]));
     setSaving(true);
     setError(null);
@@ -203,7 +207,7 @@ export default function ColumnsDraftDialog({ model, setId, folder, folders, onCl
       </label>
       <p className="muted columns-draft-hint">
         {users.length > 1 ? `Набор используют доски: ${quoted(users)}. ` : ''}
-        Стрелка у колонки — куда ставить новые карточки: в начало или в конец.
+        Стрелка у колонки — куда ставить новые карточки: в начало или в конец. WIP — лимит активных карточек.
         Изменения применятся, когда вы нажмёте «Сохранить».
       </p>
       <ol className="draft-columns">
@@ -211,6 +215,10 @@ export default function ColumnsDraftDialog({ model, setId, folder, folders, onCl
           <li key={r.key} className="draft-column">
             <input className="manage-input" value={r.name} maxLength={100} aria-label={`Название колонки ${i + 1}`}
               onChange={(e) => patch(r.key, { name: e.target.value })} />
+            <input className="manage-input draft-wip" type="number" min={1} max={999} step={1}
+              value={r.wipLimit ?? ''} placeholder="WIP" title="WIP-лимит (пусто — без лимита)"
+              aria-label={`WIP-лимит колонки ${i + 1}`}
+              onChange={(e) => patch(r.key, { wipLimit: e.target.value === '' ? null : Number(e.target.value) })} />
             <button type="button" className={`btn btn-small btn-icon-only ${r.addToTop ? 'active' : ''}`}
               title={r.addToTop ? 'Новые карточки — в начало колонки' : 'Новые карточки — в конец колонки'}
               aria-label={r.addToTop ? 'Новые карточки в начало' : 'Новые карточки в конец'} aria-pressed={r.addToTop}

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import {
-  countColumnCards, deleteColumn, insertColumn, moveColumn, setColumnAddToTop,
+  countColumnCards, deleteColumn, insertColumn, moveColumn, setColumnAddToTop, setColumnWipLimit,
 } from '../actions.js';
+import WipLimitDialog from './WipLimitDialog.jsx';
 import { columnColorItems } from '../appearance.js';
 import { ICONS } from '../menuIcons.js';
 import ContextMenu, { useHoverShortcuts, useMenuButton } from './ContextMenu.jsx';
@@ -140,6 +141,10 @@ export default function ColumnMenu({
       run: () => setColumnAddToTop(column.id, false),
     },
     { label: 'Цвет', icon: ICONS.palette, submenu: columnColorItems(column) },
+    {
+      label: column.wipLimit ? `WIP-лимит: ${column.wipLimit}` : 'WIP-лимит…', icon: ICONS.settings,
+      run: () => setDialog({ kind: 'wip' }),
+    },
     null,
     {
       label: 'Добавить колонку слева…', icon: ICONS.addLeft, shortcut: 'Shift+KeyN',
@@ -188,6 +193,10 @@ export default function ColumnMenu({
       )}
       {dialog?.kind === 'delete' && (
         <DeleteColumnDialog column={column} count={dialog.count} columns={columns} edit={edit} onClose={closeDialog} />
+      )}
+      {dialog?.kind === 'wip' && edit && (
+        <WipLimitDialog column={column} edit={edit} onSave={(limit) => setColumnWipLimit(column.id, limit)}
+          onClose={closeDialog} />
       )}
     </>
   );

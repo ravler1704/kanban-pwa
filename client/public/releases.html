@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>Что нового — Offline Kanban</title>
+  <meta name="description" content="История обновлений канбан-доски Offline Kanban: новые возможности и исправления." />
+  <link rel="canonical" href="https://178-83-123-195.sslip.io/releases.html" />
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <style>
+    :root {
+      --bg: #0f172a; --panel: #1e293b; --border: #334155;
+      --text: #e2e8f0; --muted: #94a3b8; --accent: #38bdf8; color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text);
+      font: 16px/1.55 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+    a { color: var(--accent); }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 0 20px 64px; }
+    .top { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(12px);
+      background: rgba(15, 23, 42, 0.85); border-bottom: 1px solid var(--border); }
+    .top .wrap { display: flex; align-items: center; gap: 16px; min-height: 56px; padding-top: 8px; padding-bottom: 8px; }
+    .brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-weight: 700; }
+    .brand img { width: 28px; height: 28px; border-radius: 8px; }
+    .top nav { margin-left: auto; display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.9rem; }
+    .top nav a { color: var(--muted); text-decoration: none; }
+    .top nav a:hover { color: var(--text); }
+    h1 { font-size: clamp(1.75rem, 4vw, 2.25rem); margin: 32px 0 8px; letter-spacing: -0.02em; }
+    .lead { color: var(--muted); margin: 0 0 28px; }
+    .rel-card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+      padding: 1.1rem 1.25rem; margin-bottom: 1rem; }
+    .rel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+      margin-bottom: 0.75rem; padding-bottom: 0.6rem; border-bottom: 1px solid var(--border); }
+    .rel-head time { font-size: 1.05rem; font-weight: 700; }
+    .rel-gh { font-size: 0.85rem; color: var(--muted); text-decoration: none; }
+    .rel-gh:hover { color: var(--accent); }
+    .rel-body p { margin: 0.45rem 0; }
+    .rel-body ul { margin: 0.4rem 0 0.6rem; padding-left: 1.25rem; }
+    .rel-body li { margin: 0.35rem 0; }
+    .rel-h3 { margin: 0.9rem 0 0.35rem; font-size: 1rem; }
+    .rel-figure { margin: 0.75rem 0 0; }
+    .rel-figure img { max-width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--border); }
+    footer { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border);
+      color: var(--muted); font-size: 0.88rem; display: flex; flex-wrap: wrap; gap: 12px 20px; }
+    footer a { color: var(--muted); text-decoration: none; }
+    footer a:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <a class="brand" href="/promo.html"><img src="/icon.svg" alt="" width="28" height="28" />Offline Kanban</a>
+      <nav aria-label="Навигация">
+        <a href="/promo.html">О приложении</a>
+        <a href="/install.html">Установка</a>
+        <a href="/">Открыть</a>
+      </nav>
+    </div>
+  </header>
+  <main class="wrap">
+    <h1>Что нового</h1>
+    <p class="lead">Те же записи, что в <a href="https://github.com/ravler1704/kanban-pwa/blob/master/CHANGELOG.md">CHANGELOG</a>
+      и в <a href="https://github.com/ravler1704/kanban-pwa/releases">релизах GitHub</a>. Страница обновляется при каждой сборке.</p>
+    
+  <article class="rel-card" id="2026-11-13">
+    <header class="rel-head">
+      <time datetime="2026-11-13">13 ноября 2026 г.</time>
+      <a class="rel-gh" href="https://github.com/ravler1704/kanban-pwa/releases/tag/web-2026-11-13" rel="noopener">GitHub</a>
+    </header>
+    <div class="rel-body"><h3 class="rel-h3">Зависимости задач</h3><ul><li>В карточке можно указать, какие другие карточки должны быть выполнены раньше.</li></ul><p>  Пока они не готовы, задачу нельзя перенести из первой колонки, в последнюю или отметить выполненной;</p><p>  на доске у такой карточки значок «Ждёт».</p><h3 class="rel-h3">Календарь</h3><ul><li>На ячейке дня (и в списке дней на телефоне) кнопка «+»: открывается новая карточка с напоминанием</li></ul><p>  на этот день в 9:00.</p><ul><li>В списке на телефоне текущий день выделен: подпись «Сегодня», цветной кружок с числом, фон блока;</li></ul><p>  при открытии месяца список прокручивается к сегодняшнему дню.</p><h3 class="rel-h3">Фильтр досок</h3><ul><li>Если в пространстве одна доска, в заголовке и фильтре показывается её название, а не «Все доски»; переключатель</li></ul><p>  «Показывать все доски» скрыт — остаётся включение и выключение самой доски.</p><h3 class="rel-h3">Релизы и «Что нового»</h3><ul><li>История обновлений дублируется на отдельной странице <a href="/releases.html">/releases.html</a> (из CHANGELOG при каждой</li></ul><p>  сборке) и в <a href="https://github.com/ravler1704/kanban-pwa/releases">GitHub Releases</a> (тег `web-YYYY-MM-DD`).</p><ul><li>Ссылки «Что нового» на промо-странице и на странице установки.</li></ul><h3 class="rel-h3">Фильтры доски</h3><ul><li>Исправлено пустое отображение доски, если в фильтрах был выбран другой набор колонок (например «Фильмы»),</li></ul><p>  а в виду осталась одна доска с своим набором (например «Канун»): теперь подставляется набор этой доски.</p></div>
+  </article>
+
+  <article class="rel-card" id="2026-11-11">
+    <header class="rel-head">
+      <time datetime="2026-11-11">11 ноября 2026 г.</time>
+      <a class="rel-gh" href="https://github.com/ravler1704/kanban-pwa/releases/tag/web-2026-11-11" rel="noopener">GitHub</a>
+    </header>
+    <div class="rel-body"><h3 class="rel-h3">Фильтр по цвету карточки</h3><ul><li>В окне «Фильтры» появился пункт «Цвет»: можно оставить карточки с выбранными полосками сверху</li></ul><p>  (и «Без цвета», если нужно). Отмечайте несколько цветов сразу — показываются карточки с любым из них.</p><p>  Выбор запоминается на устройстве и действует во всех видах доски.</p><h3 class="rel-h3">Яндекс.Браузер</h3><ul><li>Снова плавно сдвигается название карточки, когда при наведении появляется кружок «выполнено».</li><li>Пунктирное подчёркивание у переименовываемого названия доски (и других таких полей) видно только</li></ul><p>  при наведении или при фокусе с клавиатуры, а не постоянно.</p><h3 class="rel-h3">Диаграмма Ганта</h3><ul><li>В переключателе вида доски появился «Гант»: карточки с напоминаниями — полоски на шкале времени. Можно смотреть</li></ul><p>  дни или недели, листать даты и вернуться к сегодня. Полоски сгруппированы по доскам, цвет — как у карточки или</p><p>  колонки. Перетащите полоску, чтобы перенести напоминания на другой день; нажмите — откроется карточка.</p><ul><li>Исправлено перетаскивание полоски: после отпускания мыши она больше не «убегает» за курсором.</li><li>Строки на диаграмме больше не меняются местами при переносе напоминания: порядок карточек</li></ul><p>  как на доске, а не по дате напоминания.</p><figure class="rel-figure"><img src="/changelog/gantt.png" alt="Диаграмма Ганта" loading="lazy" decoding="async" /></figure></div>
+  </article>
+
+  <article class="rel-card" id="2026-11-08">
+    <header class="rel-head">
+      <time datetime="2026-11-08">8 ноября 2026 г.</time>
+      <a class="rel-gh" href="https://github.com/ravler1704/kanban-pwa/releases/tag/web-2026-11-08" rel="noopener">GitHub</a>
+    </header>
+    <div class="rel-body"><h3 class="rel-h3">Выгрузка в PDF</h3><ul><li>Пункт меню доски теперь называется «Выгрузить в Excel / PDF…»: в окне выгрузки появился выбор формата —</li></ul><p>  «Excel (.xlsx)» или «PDF». Выбранный формат запоминается на устройстве. Что выгружать — как раньше: текущая</p><p>  доска, несколько досок или всё пространство, по желанию с карточками из архива.</p><ul><li>PDF — альбомные страницы A4 для чтения и печати: заголовок «Kanban — доска или пространство», дата выгрузки и</li></ul><p>  что выбрано; затем каждая доска с полным путём, её колонки с числом карточек и таблицы карточек: номер,</p><p>  название, выполнена (✓), исполнитель, ближайшее напоминание, метки, подзадачи («1/3» и список с ☑/☐), описание</p><p>  (без разметки), число вложений и комментариев, отметка архива. Длинный текст переносится, таблица продолжается</p><p>  на следующей странице с повтором шапки, внизу — «Стр. N из M». Русский текст в PDF можно выделять и искать.</p><ul><li>PDF, как и Excel, собирается прямо на устройстве и работает без интернета. Файл называется</li></ul><p>  «Kanban — доска или пространство — дата.pdf».</p><ul><li>На <a href="https://178-83-123-195.sslip.io/promo">промо-странице</a> и в README — «Выгрузка в Excel и PDF».</li></ul><figure class="rel-figure"><img src="/changelog/export-dialog.png" alt="Окно выгрузки с выбором формата" loading="lazy" decoding="async" /></figure><figure class="rel-figure"><img src="/changelog/export-pdf.png" alt="Страница выгрузки в PDF" loading="lazy" decoding="async" /></figure><h3 class="rel-h3">Выгрузка в Excel</h3><ul><li>В меню доски («⋯» справа или правый клик по пустому месту доски) — «Выгрузить в Excel…». Можно выгрузить</li></ul><p>  текущую доску (вместе с вложенными досками на экране), несколько досок — отметить их в дереве (отметка доски</p><p>  отмечает и всё внутри неё), или всё пространство вместе с «Входящими». По желанию — с карточками из архива.</p><ul><li>В файле — лист «Все карточки»: номер, доска (полный путь), колонка, название, описание, метки, выполнена,</li></ul><p>  исполнитель, автор, ближайшее напоминание (настоящей датой Excel) и все напоминания, подзадачи («1/3» и список),</p><p>  вложения, число комментариев, дата изменения; при нескольких досках — ещё по листу на каждую доску.</p><p>  Заголовок закреплён, есть автофильтр. Файл называется «Kanban — доска или пространство — дата.xlsx».</p><ul><li>Файл собирается прямо на устройстве, поэтому выгрузка работает и без интернета.</li><li>Выгрузка добавлена в возможности на <a href="https://178-83-123-195.sslip.io/promo">промо-странице</a> и в README.</li></ul><figure class="rel-figure"><img src="/changelog/export-excel.png" alt="Выгрузка в Excel" loading="lazy" decoding="async" /></figure><h3 class="rel-h3">Страница установки в стиле промо-страницы</h3><ul><li><a href="https://178-83-123-195.sslip.io/install.html">«Установить приложение»</a> теперь выглядит как часть</li></ul><p>  промо-страницы: та же шапка с разделами и кнопкой «Открыть», крупный заголовок, карточки Android, iPhone и iPad,</p><p>  Windows/macOS/Linux рядом (ваше устройство — первым, с отметкой), шаги для iPhone пронумерованы, внизу — кнопки</p><p>  «Открыть в браузере» и «Что умеет приложение» и общий подвал. Инструкции и ссылка на APK не изменились.</p><figure class="rel-figure"><img src="/changelog/install-new.png" alt="Страница установки" loading="lazy" decoding="async" /></figure><figure class="rel-figure"><img src="/changelog/install-new-phone.png" alt="Страница установки на телефоне" loading="lazy" decoding="async" /></figure><h3 class="rel-h3">Промо-страница: установка на Mac</h3><ul><li>В ответах на частые вопросы — как установить приложение на Mac через Safari («Файл» → «Добавить в Dock»);</li></ul><p>  страница подключает манифест приложения.</p><h3 class="rel-h3">Промо-страница по короткому адресу</h3><ul><li><a href="https://178-83-123-195.sslip.io/promo">/promo</a> открывает промо-страницу без входа в аккаунт (раньше там</li></ul><p>  показывалось приложение с экраном входа).</p><h3 class="rel-h3">Промо-страница</h3><ul><li>Новая страница <a href="https://178-83-123-195.sslip.io/promo.html">«Offline Kanban»</a> — знакомство с приложением: живая</li></ul><p>  демо-доска на компьютере и iPhone (карточки можно перетаскивать и отмечать, подзадачи — ставить галочками,</p><p>  в чате — писать сообщения с галочками «доставлено»/«прочитано», можно «выключить интернет» и посмотреть, как</p><p>  изменения ждут сети и потом синхронизируются, приходит напоминание). Ничего из демо не сохраняется.</p><ul><li>На странице — возможности, платформы, настоящие скриншоты, «три шага», частые вопросы и кнопки «Открыть в</li></ul><p>  браузере», «Установить», «Скачать APK». Ссылки на неё — в README и на странице установки.</p><figure class="rel-figure"><img src="/changelog/promo.png" alt="Промо-страница" loading="lazy" decoding="async" /></figure><figure class="rel-figure"><img src="/changelog/promo-phone.png" alt="Промо-страница на телефоне" loading="lazy" decoding="async" /></figure><h3 class="rel-h3">Установка на любые устройства</h3><ul><li>Страница <a href="https://178-83-123-195.sslip.io/install.html">«Установить приложение»</a>: Android (APK, скоро Google</li></ul><p>  Play), iPhone и iPad, Windows, macOS и Linux; своё устройство определяется и показывается первым, в Chrome и Edge</p><p>  есть кнопка «Установить на это устройство». Ссылка на неё — на экране входа.</p><ul><li>Приложение для Android: <a href="https://178-83-123-195.sslip.io/downloads/offline-kanban.apk">APK</a></li></ul><p>  (Android 7.0+) открывает доску на весь экран, без адресной строки; уведомления о напоминаниях приходят как от</p><p>  обычного приложения. Готова сборка для Google Play.</p><ul><li>В README вместо адреса — кнопки «Открыть демо», «Скачать APK», Google Play, iPhone и iPad, компьютер.</li><li>В окне «Аккаунт» новая вкладка «Приложение»: установка на это устройство и подсказка для вашей платформы.</li><li>Иконки для Android и iOS (в том числе адаптивная), скриншоты и описание в манифесте — браузеры показывают</li></ul><p>  расширенное окно установки.</p><figure class="rel-figure"><img src="/changelog/install.png" alt="Страница установки" loading="lazy" decoding="async" /></figure><ul><li>Проект опубликован на GitHub: описание и скриншоты в README, эта история изменений.</li><li>В README добавлена ссылка на демо: https://178-83-123-195.sslip.io.</li></ul></div>
+  </article>
+
+  <article class="rel-card" id="2026-11-07">
+    <header class="rel-head">
+      <time datetime="2026-11-07">7 ноября 2026 г.</time>
+      <a class="rel-gh" href="https://github.com/ravler1704/kanban-pwa/releases/tag/web-2026-11-07" rel="noopener">GitHub</a>
+    </header>
+    <div class="rel-body"><h3 class="rel-h3">Чаты как в Telegram</h3><ul><li>Галочки: часы — сообщение ещё не на сервере, одна галочка — доставлено, две — просмотрено. В чатах папок и</li></ul><p>  карточек «просмотрено» — когда чат после сообщения открыл кто-то из участников (серверные отметки прочтения).</p><ul><li>Ответ на сообщение и цитата выделенного текста: кнопка «Цитировать» над выделением, полоса «Ответ»/«Цитата»</li></ul><p>  над полем ввода, нажатие на цитату прокручивает к исходному сообщению.</p><ul><li>Изменение и удаление сообщений через меню по правому клику (на телефоне — по нажатию), полоса</li></ul><p>  «Редактирование» с возвратом черновика, ↑ в пустом поле — изменить последнее своё сообщение, окно</p><p>  подтверждения удаления.</p><ul><li>Изображения в сообщениях: по умолчанию сжимаются (до 1920 px), по желанию — оригинал; просмотр на весь экран.</li><li>Чат с техподдержкой: пользователь пишет администраторам, у администраторов — обращения со статусом</li></ul><p>  «Открыто»/«Решено».</p><h3 class="rel-h3">Администрирование</h3><ul><li>Мониторинг для администраторов: пользователи, пространства, доски, карточки, активность, место на диске;</li></ul><p>  таблица пользователей с поиском и подробностями по пространствам, увеличение аватарки.</p><ul><li>Вход через Яндекс всегда предлагает выбрать аккаунт.</li></ul><h3 class="rel-h3">Доска и карточки</h3><ul><li>Архив: карточки архивируются (с отменой во всплывающей подсказке), из архива — восстановить или удалить</li></ul><p>  навсегда вместе с комментариями, историей и файлами; «Архивировать все карточки» в меню колонки.</p><ul><li>Быстрое добавление карточки между карточками.</li><li>Отметка «выполнено» как в Trello с анимацией; переключатель отметок в настройках доски и пространства.</li><li>«Входящие»: своё меню и настройки, изменяемая ширина панели, выполненные карточки уходят в архив.</li><li>Меню доски по кнопке «⋯», переименование доски по нажатию на название.</li><li>Удаление пространства или доски подтверждается вводом слова «удалить».</li></ul></div>
+  </article>
+
+  <article class="rel-card" id="2026-11-06">
+    <header class="rel-head">
+      <time datetime="2026-11-06">6 ноября 2026 г.</time>
+      <a class="rel-gh" href="https://github.com/ravler1704/kanban-pwa/releases/tag/web-2026-11-06" rel="noopener">GitHub</a>
+    </header>
+    <div class="rel-body"><ul><li>Несколько пространств у пользователя; доступ к доскам — в настройках пространства.</li><li>«Входящие» — панель слева для быстрых дел и разбора по доскам; личные «Входящие» у участников.</li><li>Цвета карточек и колонок, фон доски (готовые картинки или свой файл).</li><li>Подзадачи (чек-лист) в карточке с прогрессом на доске.</li><li>Меню «⋯» у карточек и колонок, правый клик и клавиатурные сокращения при наведении.</li><li>Колонки сворачиваются в узкую полосу и перетаскиваются; кнопка новой карточки в каждой колонке.</li><li>Переименование досок и колонок на месте.</li><li>Чаты в стиле Telegram, на телефоне — во весь экран; удаление личного чата у себя или у обоих.</li><li>Настройки сервера (входы, разрешённые адреса, администраторы, контакт для push) — в приложении, отдельно</li></ul><p>  от настроек аккаунта.</p><ul><li>Своё имя пользователя в окне «Аккаунт».</li></ul></div>
+  </article>
+
+  <article class="rel-card" id="2026-11-05">
+    <header class="rel-head">
+      <time datetime="2026-11-05">5 ноября 2026 г.</time>
+      <a class="rel-gh" href="https://github.com/ravler1704/kanban-pwa/releases/tag/web-2026-11-05" rel="noopener">GitHub</a>
+    </header>
+    <div class="rel-body"><ul><li>Папки переименованы в доски, аккаунт — в пространство.</li><li>Поиск карточек в шапке по всем доскам.</li><li>Вид «Список» — редактируемая таблица (название, доска, колонка, исполнитель, автор).</li><li>Изменение колонок доски на месте; вкладки наборов колонок над доской.</li><li>При перетаскивании — пустое место высотой с карточку.</li></ul></div>
+  </article>
+
+  <article class="rel-card" id="2026-11-03">
+    <header class="rel-head">
+      <time datetime="2026-11-03">3 ноября 2026 г.</time>
+      <a class="rel-gh" href="https://github.com/ravler1704/kanban-pwa/releases/tag/web-2026-11-03" rel="noopener">GitHub</a>
+    </header>
+    <div class="rel-body"><ul><li>Вид «Список» и поиск по всем папкам.</li><li>Сколько угодно напоминаний у карточки, с повторами как в iOS.</li><li>Автор и исполнитель карточки, фильтры по ним.</li><li>Все фильтры — в одном окне с экранами.</li><li>Убран автофокус в полях.</li></ul></div>
+  </article>
+
+  <article class="rel-card" id="2026-11-02">
+    <header class="rel-head">
+      <time datetime="2026-11-02">2 ноября 2026 г.</time>
+      <a class="rel-gh" href="https://github.com/ravler1704/kanban-pwa/releases/tag/web-2026-11-02" rel="noopener">GitHub</a>
+    </header>
+    <div class="rel-body"><ul><li>Папки любой вложенности вместо пространств, проектов и разделов.</li><li>Фильтр «Папки» в стиле настроек iOS: экраны по уровням, переключатели.</li></ul></div>
+  </article>
+
+  <article class="rel-card" id="2026-11-01">
+    <header class="rel-head">
+      <time datetime="2026-11-01">1 ноября 2026 г.</time>
+      <a class="rel-gh" href="https://github.com/ravler1704/kanban-pwa/releases/tag/web-2026-11-01" rel="noopener">GitHub</a>
+    </header>
+    <div class="rel-body"><ul><li>Markdown в описаниях и комментариях, ссылки-слова, кликабельные ссылки.</li><li>История действий в чате карточки (с изменениями описания).</li><li>Перенос всех карточек колонки в соседнюю.</li></ul></div>
+  </article>
+
+  <article class="rel-card" id="2026-10-30">
+    <header class="rel-head">
+      <time datetime="2026-10-30">30 октября 2026 г.</time>
+      <a class="rel-gh" href="https://github.com/ravler1704/kanban-pwa/releases/tag/web-2026-10-30" rel="noopener">GitHub</a>
+    </header>
+    <div class="rel-body"><ul><li>Комментарии к карточкам, чаты проектов, личные сообщения, аватары участников.</li><li>Записи в чате о том, кто что изменил; номера карточек.</li><li>Пространства над проектами.</li></ul></div>
+  </article>
+
+  <article class="rel-card" id="2026-10-29">
+    <header class="rel-head">
+      <time datetime="2026-10-29">29 октября 2026 г.</time>
+      <a class="rel-gh" href="https://github.com/ravler1704/kanban-pwa/releases/tag/web-2026-10-29" rel="noopener">GitHub</a>
+    </header>
+    <div class="rel-body"><ul><li>Вход по 4-значному коду на почту; настройка почты администратором в приложении.</li><li>Общий доступ: приглашение по почте, доступ к отдельным проектам, публичные ссылки без входа.</li><li>Наборы колонок для проектов; календарь карточек с напоминаниями.</li><li>Хэштеги и фильтр по ним.</li><li>Файлы в карточках: загрузка, миниатюры, видео.</li><li>Светлая и тёмная тема.</li><li>Удаление аккаунта.</li></ul></div>
+  </article>
+
+  <article class="rel-card" id="2026-10-28">
+    <header class="rel-head">
+      <time datetime="2026-10-28">28 октября 2026 г.</time>
+      <a class="rel-gh" href="https://github.com/ravler1704/kanban-pwa/releases/tag/web-2026-10-28" rel="noopener">GitHub</a>
+    </header>
+    <div class="rel-body"><ul><li>Первая версия: канбан-доска, работающая без интернета, с синхронизацией между устройствами.</li><li>Вход через Google и Яндекс ID, привязка нескольких аккаунтов к одной доске.</li><li>Напоминания о карточках через Web Push.</li></ul></div>
+  </article>
+    <footer>
+      <a href="/promo.html">Промо</a>
+      <a href="https://github.com/ravler1704/kanban-pwa/releases">GitHub Releases</a>
+      <a href="https://github.com/ravler1704/kanban-pwa">Исходный код</a>
+    </footer>
+  </main>
+</body>
+</html>

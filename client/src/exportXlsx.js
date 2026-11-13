@@ -43,6 +43,7 @@ function sheetColumns({ board, archived }) {
     { header: 'Выполнена', width: 12, value: (r) => (r.card.done ? 'Да' : '') },
     { header: 'Исполнитель', width: 22, value: (r) => r.holder },
     { header: 'Автор', width: 22, value: (r) => r.author },
+    { header: 'Дедлайн', width: 16, value: (r) => (r.dueAt ? excelDate(r.dueAt) : null), type: Date, format: 'dd.mm.yyyy' },
     { header: 'Ближайшее напоминание', width: 20, value: (r) => excelDate(r.nextReminder), type: Date, format: DATE_FORMAT },
     { header: 'Напоминания', width: 32, value: (r) => r.reminders.join('\n'), ...wrap },
     { header: 'Подзадачи', width: 11, value: (r) => progress(r.checklist) },

@@ -2,6 +2,7 @@ import { db, INBOX_ID } from './db.js';
 import { columnModel } from './columnSets.js';
 import { flattenFolders, folderPathName } from './folders.js';
 import { MD_LINK_RE, safeHref } from './links.js';
+import { describeDeadline } from './deadlines.js';
 import { cardReminders, nextReminder, REPEAT_LABELS } from './reminders.js';
 import { tagNames } from './tags.js';
 
@@ -99,6 +100,8 @@ export async function cardRows({ folders, folderIds, inbox = false, includeArchi
         holder: nameOf(card.assigneeId || card.authorId),
         author: nameOf(card.authorId),
         nextReminder: next ? next.time : null,
+        dueAt: card.dueAt ?? null,
+        dueLabel: card.dueAt != null ? describeDeadline(card.dueAt, new Date(now)) : '',
         reminders: cardReminders(card).map((r) => [formatTime(r.at), r.repeat && REPEAT_LABELS[r.repeat]].filter(Boolean).join(', ')),
         checklist: card.checklist ?? [],
         attachments: (card.attachments ?? []).map((a) => a.name),

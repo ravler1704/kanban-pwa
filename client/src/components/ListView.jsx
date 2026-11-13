@@ -6,7 +6,7 @@ import { db } from '../db.js';
 import { flattenFolders, folderPathName, folderTree } from '../folders.js';
 import { withoutLinks } from '../links.js';
 import { folderIdsOf } from '../people.js';
-import { ReminderBadge } from './Card.jsx';
+import { DeadlineBadge, ReminderBadge } from './Card.jsx';
 import { personLabel, personOf, useBoardPeople } from './CardPeople.jsx';
 import { plural } from './ManageFields.jsx';
 
@@ -108,6 +108,7 @@ export default function ListView({ cards, query = '', folders, targets = folders
               <th>Колонка</th>
               <th>На ком</th>
               <th>Автор</th>
+              <th>Дедлайн</th>
               <th>Напоминание</th>
               <th className="lt-open" aria-label="Открыть" />
             </tr>
@@ -148,6 +149,7 @@ export default function ListView({ cards, query = '', folders, targets = folders
                         onChange={(id) => updateCard(card.id, { authorId: id, ...(card.assigneeId === id && { assigneeId: null }) })} />
                     )}
                   </td>
+                  <td className="lt-deadline" data-label="Дедлайн"><DeadlineBadge card={card} /></td>
                   <td className="lt-reminder" data-label="Напоминание"><ReminderBadge card={card} /></td>
                   <td className="lt-open">
                     <button type="button" className="btn btn-small btn-icon-only" title="Открыть карточку"
@@ -157,7 +159,7 @@ export default function ListView({ cards, query = '', folders, targets = folders
               );
             })}
             {list.length === 0 && (all || !needle) && (
-              <tr><td className="list-empty" colSpan={8}>{needle ? 'Ничего не найдено' : 'Карточек нет'}</td></tr>
+              <tr><td className="list-empty" colSpan={9}>{needle ? 'Ничего не найдено' : 'Карточек нет'}</td></tr>
             )}
           </tbody>
         </table>

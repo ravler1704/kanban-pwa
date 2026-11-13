@@ -3,6 +3,7 @@ import { updateCard } from '../actions.js';
 import { cardColor, columnColor } from '../appearance.js';
 import { flattenFolders } from '../folders.js';
 import { withoutLinks } from '../links.js';
+import { endOfDay } from '../deadlines.js';
 import { cardReminders, timesBetween } from '../reminders.js';
 
 const SCALE_KEY = 'ganttScale';
@@ -60,11 +61,17 @@ function barsOf(card, from, to) {
     if (reminder.repeat) repeats.push(...timesBetween(reminder, from, to));
     else if (reminder.at >= from && reminder.at < to) oneOff.push(reminder.at);
   }
-  const bars = repeats.map((at) => ({ at, start: startOfDay(new Date(at)), days: 1 }));
+  const bars = repeats.map((at) => ({ at, start: startOfDay(new Date(at)), days: 1, kind: 'reminder' }));
   if (oneOff.length) {
     const first = startOfDay(new Date(Math.min(...oneOff)));
     const last = startOfDay(new Date(Math.max(...oneOff)));
-    bars.push({ at: Math.min(...oneOff), start: first, days: Math.round((last - first) / DAY) + 1 });
+    bars.push({ at: Math.min(...oneOff), start: first, days: Math.round((last - first) / DAY) + 1, kind: 'reminder' });
+  }
+  if (card.dueAt) {
+    const day = startOfDay(new Date(card.dueAt));
+    if (day.getTime() >= from && day.getTime() < to) {
+      bars.push({ at: card.dueAt, start: day, days: 1, kind: 'due' });
+    }
   }
   return bars.sort((a, b) => a.start - b.start);
 }
@@ -154,7 +161,7 @@ export default function GanttView({ cards, folders, columns, cardLabel, readOnly
 
   const indexOf = (date) => Math.round((startOfDay(date) - days[0]) / DAY);
 
-  const onBarPointer = (event, card) => {
+  const onBarPointer = (event, card, barData) => {
     if (readOnly || event.button) return;
     event.preventDefault();
     if (dragSession.current) return;
@@ -184,8 +191,12 @@ export default function GanttView({ cards, folders, columns, cardLabel, readOnly
         return;
       }
       if (!daysMoved) return;
-      const reminders = cardReminders(card).map((r) => ({ ...r, at: shiftTime(r.at, daysMoved) }));
-      updateCard(card.id, { reminders, remindAt: null });
+      if (barData.kind === 'due') {
+        updateCard(card.id, { dueAt: endOfDay(addDays(new Date(card.dueAt), daysMoved)) });
+      } else {
+        const reminders = cardReminders(card).map((r) => ({ ...r, at: shiftTime(r.at, daysMoved) }));
+        updateCard(card.id, { reminders, remindAt: null });
+      }
     };
     dragSession.current = { end: detach };
     bar.addEventListener('pointermove', move);
@@ -218,7 +229,7 @@ export default function GanttView({ cards, folders, columns, cardLabel, readOnly
       </div>
 
       {cardRows === 0 ? (
-        <p className="list-empty">Нет карточек с напоминаниями на эти даты. Добавьте напоминание — карточка появится на диаграмме.</p>
+        <p className="list-empty">Нет карточек с напоминаниями или дедлайнами на эти даты.</p>
       ) : (
         <div className="gantt-scroll" ref={scroller}>
           <div className="gantt-inner" style={{ '--gantt-side': `${SIDE}px`, '--gantt-day': `${dayW}px`, '--gantt-days': days.length, width: innerWidth }}>
@@ -296,10 +307,11 @@ function GanttRow({ item, days, dayW, todayIndex, column, cardLabel, drag, index
           const i = indexOf(start);
           if (i + bar.days <= 0 || i >= days.length) return null;
           return (
-            <button key={`${bar.at}-${bar.days}`} type="button" className="gantt-bar"
+            <button key={`${bar.at}-${bar.days}-${bar.kind}`} type="button"
+              className={`gantt-bar${bar.kind === 'due' ? ' gantt-bar-due' : ''}`}
               style={{ left: i * dayW, width: bar.days * dayW, '--bar': color }}
-              title={`${title} · ${formatBar(start, bar.days)}`}
-              onPointerDown={(e) => onBarPointer(e, card)}>
+              title={`${title} · ${bar.kind === 'due' ? 'Дедлайн · ' : ''}${formatBar(start, bar.days)}`}
+              onPointerDown={(e) => onBarPointer(e, card, bar)}>
               <span>{title}</span>
             </button>
           );

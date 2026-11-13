@@ -5,6 +5,7 @@ import { columnModel, matchColumn } from './columnSets.js';
 import { descendants, folderColumnSetId, folderTree, inheritingFolders, liveFolders } from './folders.js';
 import { authState } from './auth.js';
 import { requestSync } from './sync.js';
+import { finishBlockedMessage, moveBlockedMessage } from './dependencies.js';
 
 const alive = (r) => !r.deleted;
 const maxPosition = (records) => records.filter(alive).reduce((max, r) => Math.max(max, r.position), 0);
@@ -19,6 +20,7 @@ async function insert(type, fields) {
   if (type === 'card') {
     record.done ??= false;
     record.purged = false;
+    record.dependsOn ??= [];
   }
   record.dirty = isDirty(type, record);
   await tableOf(type).add(record);
@@ -145,7 +147,7 @@ export async function countInheritingCards(folderId) {
 // ---- columns ----
 
 export async function createColumn(setId, name) {
-  await insert('column', { setId, name, position: maxPosition(await liveColumns(setId)) + 1, addToTop: false });
+  await insert('column', { setId, name, position: maxPosition(await liveColumns(setId)) + 1, addToTop: false, wipLimit: null });
   requestSync();
 }
 
@@ -158,7 +160,7 @@ export async function insertColumn(setId, name, index) {
       const position = i < at ? i + 1 : i + 2;
       if (c.position !== position) await update('column', c.id, { position });
     }
-    await insert('column', { setId, name, position: at + 1, addToTop: false });
+    await insert('column', { setId, name, position: at + 1, addToTop: false, wipLimit: null });
   });
   requestSync();
 }
@@ -176,6 +178,12 @@ export async function setColumnColor(id, color) {
 
 export async function setColumnAddToTop(id, addToTop) {
   await update('column', id, { addToTop });
+  requestSync();
+}
+
+/** `limit`: positive integer, or null to remove the WIP limit. */
+export async function setColumnWipLimit(id, limit) {
+  await update('column', id, { wipLimit: limit });
   requestSync();
 }
 
@@ -221,9 +229,13 @@ export async function editColumnSet(setId, rows, moves) {
     for (const [i, r] of rows.entries()) {
       if (r.id) {
         ids.set(r.key, r.id);
-        await update('column', r.id, { name: r.name, addToTop: !!r.addToTop, position: i + 1 });
+        await update('column', r.id, {
+          name: r.name, addToTop: !!r.addToTop, position: i + 1, wipLimit: r.wipLimit ?? null,
+        });
       } else {
-        const c = await insert('column', { setId, name: r.name, position: i + 1, addToTop: !!r.addToTop });
+        const c = await insert('column', {
+          setId, name: r.name, position: i + 1, addToTop: !!r.addToTop, wipLimit: r.wipLimit ?? null,
+        });
         ids.set(r.key, c.id);
       }
     }
@@ -253,7 +265,9 @@ export async function forkColumnSet(folderId, name, fromSetId, rows, moves) {
     setId = set.id;
     const ids = new Map();
     for (const [i, r] of rows.entries()) {
-      const c = await insert('column', { setId, name: r.name, position: i + 1, addToTop: !!r.addToTop });
+      const c = await insert('column', {
+        setId, name: r.name, position: i + 1, addToTop: !!r.addToTop, wipLimit: r.wipLimit ?? null,
+      });
       ids.set(r.key, c.id);
       if (r.id) mapping[r.id] = c.id;
     }
@@ -457,6 +471,14 @@ async function columnMatcher() {
 // Card order is one per column across all folders, so filtered views show the same
 // relative order as the combined one.
 /** Where a card added to the column goes: first or last, as the column is set up. */
+async function dependencyMaps(card) {
+  const folders = await liveFolderList();
+  const model = columnModel(await db.columnSets.toArray(), await db.columns.toArray(), folders);
+  const columns = card.folderId === INBOX_ID ? [] : model.columnsOfFolder(card.folderId);
+  const cardById = new Map((await db.cards.toArray()).filter((c) => !c.purged).map((c) => [c.id, c]));
+  return { columns, cardById };
+}
+
 async function arrivalPosition(columnId, cardId = null) {
   const cards = (await db.cards.filter((c) => c.columnId === columnId && c.id !== cardId).toArray()).filter(alive);
   const column = await db.columns.get(columnId) ?? DEFAULT_COLUMNS.find((c) => c.id === columnId);
@@ -466,7 +488,7 @@ async function arrivalPosition(columnId, cardId = null) {
 
 export async function createCard(
   { folderId }, columnId, title, description = '', reminders = [],
-  { authorId = null, assigneeId = null, checklist = [], color = null, position = null } = {},
+  { authorId = null, assigneeId = null, checklist = [], color = null, position = null, dueAt = null } = {},
 ) {
   await insert('card', {
     color,
@@ -476,10 +498,12 @@ export async function createCard(
     description,
     remindAt: null,
     reminders,
+    dueAt,
     authorId: authorId ?? authState.get().user?.id ?? null,
     assigneeId,
     attachments: [],
     checklist,
+    dependsOn: [],
     position: position ?? await arrivalPosition(columnId),
   });
   requestSync();
@@ -507,7 +531,18 @@ export async function createInboxCard(title) {
 }
 
 /** Marks the card complete (as Trello's) or not. */
-export function setCardDone(id, done) {
+export async function setCardDone(id, done) {
+  if (done) {
+    const card = await db.cards.get(id);
+    if (card) {
+      const { columns, cardById } = await dependencyMaps(card);
+      const msg = finishBlockedMessage(card, columns, cardById);
+      if (msg) {
+        alert(msg);
+        return;
+      }
+    }
+  }
   return updateCard(id, { done });
 }
 
@@ -548,7 +583,19 @@ export async function purgeCards(ids) {
 }
 
 /** With `folderId` the card goes to that folder too (from «Входящие»). */
-export function moveCard(id, columnId, position, folderId = null) {
+export async function moveCard(id, columnId, position, folderId = null) {
+  const card = await db.cards.get(id);
+  if (card) {
+    const nextFolder = folderId ?? card.folderId;
+    const fromColumn = card.columnId;
+    const { columns, cardById } = await dependencyMaps({ ...card, folderId: nextFolder });
+    const checkCard = folderId ? { ...card, folderId: nextFolder } : card;
+    const msg = moveBlockedMessage(checkCard, fromColumn, columnId, columns, cardById);
+    if (msg) {
+      alert(msg);
+      return;
+    }
+  }
   return updateCard(id, folderId ? { folderId, columnId, position } : { columnId, position });
 }
 
@@ -574,7 +621,9 @@ export async function duplicateCard(id) {
   const card = await db.cards.get(id);
   if (!card) return;
   await createCard({ folderId: card.folderId }, card.columnId, card.title, card.description ?? '',
-    card.reminders ?? [], { assigneeId: card.assigneeId ?? null, checklist: card.checklist ?? [], color: card.color ?? null });
+    card.reminders ?? [], {
+      assigneeId: card.assigneeId ?? null, checklist: card.checklist ?? [], color: card.color ?? null, dueAt: card.dueAt ?? null,
+    });
 }
 
 /** Moves the cards (`ids`, in their order) to another column, keeping that order. */
@@ -582,7 +631,21 @@ export async function moveCardsToColumn(ids, columnId) {
   await db.transaction('rw', db.cards, db.columns, async () => {
     const column = await db.columns.get(columnId) ?? DEFAULT_COLUMNS.find((c) => c.id === columnId);
     const order = column?.addToTop ? [...ids].reverse() : ids;
-    for (const id of order) await update('card', id, { columnId, position: await arrivalPosition(columnId, id) });
+    const folders = await liveFolderList();
+    const model = columnModel(await db.columnSets.toArray(), await db.columns.toArray(), folders);
+    const cardById = new Map((await db.cards.toArray()).filter((c) => !c.purged).map((c) => [c.id, c]));
+    for (const id of order) {
+      const card = await db.cards.get(id);
+      if (card) {
+        const columns = model.columnsOfFolder(card.folderId);
+        const msg = moveBlockedMessage(card, card.columnId, columnId, columns, cardById);
+        if (msg) {
+          alert(msg);
+          return;
+        }
+      }
+      await update('card', id, { columnId, position: await arrivalPosition(columnId, id) });
+    }
   });
   requestSync();
 }
@@ -612,7 +675,7 @@ export async function moveCardTo(id, folderId, columnId = null) {
     ? (await db.cards.where('folderId').equals(INBOX_ID).toArray()).filter((c) => alive(c) && c.id !== id)
       .reduce((max, c) => Math.max(max, c.position), 0) + 1
     : await arrivalPosition(columnId, id);
-  return updateCard(id, { folderId, columnId, position });
+  return moveCard(id, columnId, position, folderId);
 }
 
 // ---- comments and folder chats ----

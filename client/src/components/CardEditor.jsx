@@ -1,4 +1,4 @@
-import { useContext, useState } from 'react';
+import { useContext, useMemo, useState } from 'react';
 import { DoneMarks } from '../doneMarks.js';
 import { moveCardTo, moveCardToColumn, moveCardToFolder, updateCard } from '../actions.js';
 import { CARD_COLORS } from '../appearance.js';
@@ -18,8 +18,11 @@ import FolderSelect from './FolderSelect.jsx';
 import { matchColumn } from '../columnSets.js';
 import { folderPathName } from '../folders.js';
 import { cardReminders } from '../reminders.js';
+import { describeDeadline } from '../deadlines.js';
 import { reminderText } from './ReminderField.jsx';
 import TitleField from './TitleField.jsx';
+import CardDependencies from './CardDependencies.jsx';
+import { moveBlockedMessage } from '../dependencies.js';
 
 /** Comments sent right away, apart from the card's «Сохранить», among the notes of what was done with it. */
 function CardComments({ card }) {
@@ -44,7 +47,7 @@ function ColorField({ value, onChange }) {
 }
 
 /** The card without editing: a view-only public link. */
-function CardView({ card, columnsOfFolder, folders, onClose }) {
+function CardView({ card, columnsOfFolder, folders, cardsForDeps, onOpenCard, onClose }) {
   const column = columnsOfFolder(card.folderId).find((c) => c.id === card.columnId);
   const folder = folders.find((f) => f.id === card.folderId);
   const doneMarks = useContext(DoneMarks)(card);
@@ -57,12 +60,14 @@ function CardView({ card, columnsOfFolder, folders, onClose }) {
         </h3>
         <p className="muted">
           {[column?.name, folder && folderPathName(folder, folders)].filter(Boolean).join(' · ')}
+          {card.dueAt != null && ` · дедлайн: ${describeDeadline(card.dueAt)}`}
           {cardReminders(card).length > 0
             && ` · напоминания: ${cardReminders(card).map((r) => reminderText(r)).join('; ')}`}
         </p>
         {card.description && <div className="card-view-desc"><Markdown text={card.description} /></div>}
         <CardPeople folderId={card.folderId} authorId={card.authorId} assigneeId={card.assigneeId} />
         <Checklist card={card} readOnly />
+        <CardDependencies card={card} cards={cardsForDeps ?? []} readOnly onOpen={onOpenCard} />
         <Attachments card={card} readOnly />
         <CardComments card={card} />
         <div className="actions">
@@ -82,7 +87,7 @@ export default function CardEditor({ readOnly, ...props }) {
   return readOnly ? <CardView {...props} /> : <CardForm {...props} />;
 }
 
-function CardForm({ card, columnsOfFolder, folders, inbox, onClose }) {
+function CardForm({ card, columnsOfFolder, folders, inbox, cardsForDeps, onOpenCard, onClose }) {
   // Snapshot of the card when the editor opened, used to detect concurrent remote edits.
   const [base] = useState(() => ({ title: card.title, description: card.description }));
   const [title, setTitle] = useState(card.title);
@@ -90,10 +95,12 @@ function CardForm({ card, columnsOfFolder, folders, inbox, onClose }) {
   const [folderId, setFolderId] = useState(card.folderId);
   const [columnId, setColumnId] = useState(card.columnId);
   const [reminders, setReminders] = useState(() => cardReminders(card));
+  const [dueAt, setDueAt] = useState(card.dueAt ?? null);
   const [authorId, setAuthorId] = useState(card.authorId ?? null);
   const [assigneeId, setAssigneeId] = useState(card.assigneeId ?? null);
   const [color, setColor] = useState(card.color ?? null);
   const doneMarks = useContext(DoneMarks)(card);
+  const cardById = useMemo(() => new Map((cardsForDeps ?? []).map((c) => [c.id, c])), [cardsForDeps]);
 
   // Another folder may use another column set: the status then is one of its columns.
   const columns = columnsOfFolder(folderId);
@@ -119,9 +126,19 @@ function CardForm({ card, columnsOfFolder, folders, inbox, onClose }) {
       patch.reminders = reminders;
       patch.remindAt = null;
     }
+    if (dueAt !== (card.dueAt ?? null)) patch.dueAt = dueAt;
     if (authorId !== (card.authorId ?? null)) patch.authorId = authorId;
     if (assigneeId !== (card.assigneeId ?? null)) patch.assigneeId = assigneeId;
     if (color !== (card.color ?? null)) patch.color = color;
+    if (columnId !== card.columnId) {
+      const moveMsg = moveBlockedMessage(
+        { ...card, folderId }, card.columnId, columnId, columnsOfFolder(folderId), cardById,
+      );
+      if (moveMsg) {
+        alert(moveMsg);
+        return;
+      }
+    }
     if (Object.keys(patch).length) await updateCard(card.id, patch, base);
     if (folderId !== card.folderId && (folderId === INBOX_ID || card.folderId === INBOX_ID)) {
       await moveCardTo(card.id, folderId, columnId);
@@ -161,6 +178,8 @@ function CardForm({ card, columnsOfFolder, folders, inbox, onClose }) {
           onDescription={setDescription}
           reminders={reminders}
           onReminders={setReminders}
+          dueAt={dueAt}
+          onDueAt={setDueAt}
           card={card}
         />
         {inbox ? (
@@ -174,6 +193,7 @@ function CardForm({ card, columnsOfFolder, folders, inbox, onClose }) {
         )}
         <CardPeople folderId={folderId} authorId={authorId} assigneeId={assigneeId}
           onAuthor={setAuthorId} onAssignee={setAssigneeId} />
+        <CardDependencies card={card} cards={cardsForDeps ?? []} onOpen={onOpenCard} />
         {folderId !== INBOX_ID && <ColorField value={color} onChange={setColor} />}
         <div className="actions">
           <button type="button" className="btn btn-labeled" onClick={remove}>

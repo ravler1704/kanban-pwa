@@ -177,10 +177,10 @@ function FolderFilterDialog({ folders, filter, onClose }) {
             <SwitchRow strong label={`Показывать «${current.name}»`} on={on(current.id)}
               meta={childrenOf(folders, current.id).length ? insideOf(current.id) ?? 'вместе со всем, что внутри' : null}
               onChange={(v) => filter.onSetFolder(current.id, v)} />
-          ) : (
+          ) : folders.length > 1 ? (
             <SwitchRow strong label="Показывать все доски" on={allOn} meta={allOn ? null : `Сейчас: ${filter.summary}`}
               onChange={(v) => filter.onSetAll(v)} />
-          )}
+          ) : null}
         </ul>
       )}
       <ul className="fp-list ff-list">

@@ -24,6 +24,7 @@ const attachments = (v) => Array.isArray(v) && v.length <= 1000 && v.every(attac
 const optionalImages = (v) => v === null || validImages(v);
 const checkItem = (v) => v !== null && typeof v === 'object' && ref(v.id) && string(500)(v.text) && boolean(v.done);
 const checklist = (v) => Array.isArray(v) && v.length <= 200 && v.every(checkItem);
+const dependsOnList = (v) => Array.isArray(v) && v.length <= 20 && v.every(ref);
 
 /**
  * textFields — merged field-by-field; concurrent edits of the same field become a
@@ -48,8 +49,12 @@ export const SCHEMAS = {
   column: {
     // addToTop: cards added or moved here (other than by dragging) go first instead of last.
     // color: an id of the client's palette (as card covers), or null.
-    fields: { setId: ref, name: string(100), position: number, deleted: boolean, addToTop: boolean, color: optionalKey },
-    defaults: { setId: DEFAULT_SET_ID, name: '', position: 0, deleted: false, addToTop: false, color: null },
+    // wipLimit: max active cards in the column, or null for no limit.
+    fields: {
+      setId: ref, name: string(100), position: number, deleted: boolean, addToTop: boolean, color: optionalKey,
+      wipLimit: (v) => v === null || (Number.isInteger(v) && v > 0 && v <= 999),
+    },
+    defaults: { setId: DEFAULT_SET_ID, name: '', position: 0, deleted: false, addToTop: false, color: null, wipLimit: null },
     textFields: [],
     deleteConflicts: false,
   },
@@ -86,12 +91,15 @@ export const SCHEMAS = {
       // A single reminder of cards saved before `reminders` (see reminders.js).
       remindAt: optionalTime,
       reminders: isReminderList,
+      dueAt: optionalTime,
       // User ids: who made the card and who has it now (null: the author).
       authorId: optionalUser,
       assigneeId: optionalUser,
       attachments,
       // Subtasks: [{ id, text, done }], in order.
       checklist,
+      // Card ids that must be done before this one can start (leave first column) or finish.
+      dependsOn: dependsOnList,
       number: (v) => v === null || (Number.isInteger(v) && v > 0),
       // Cover colour (an id of the client's palette), or null.
       color: optionalKey,
@@ -102,7 +110,7 @@ export const SCHEMAS = {
     },
     defaults: {
       columnId: 'todo', title: '', description: '', position: 0, deleted: false, remindAt: null,
-      reminders: [], authorId: null, assigneeId: null, attachments: [], checklist: [], number: null, color: null,
+      reminders: [], dueAt: null, authorId: null, assigneeId: null, attachments: [], checklist: [], dependsOn: [], number: null, color: null,
       done: false, purged: false,
     },
     textFields: ['title', 'description'],
