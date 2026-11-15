@@ -1,14 +1,14 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
-  <meta name="description" content="Установить Offline Kanban на Android, iPhone, iPad, Windows, macOS и Linux." />
+  <meta name="description" content="Install Offline Kanban on Android, iPhone, iPad, Windows, macOS and Linux." />
   <link rel="icon" href="/icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <title>Установить Offline Kanban</title>
+  <title>Install Offline Kanban</title>
   <style>
     :root {
       --bg: #0f172a; --panel: #1e293b; --card: #273449; --border: #334155;
@@ -23,60 +23,38 @@
     svg.i { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
     .wrap { max-width: 1160px; margin: 0 auto; padding: 0 20px; }
     [hidden] { display: none !important; }
-
-    /* ---------- Top bar ---------- */
     .top { position: sticky; top: 0; z-index: 50; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
       background: rgba(15, 23, 42, 0.72); border-bottom: 1px solid rgba(51, 65, 85, 0.6); }
-    .top .wrap { display: flex; align-items: center; gap: 24px; height: 60px; }
+    .top .wrap { display: flex; align-items: center; gap: 16px; min-height: 60px; flex-wrap: wrap; padding-top: 8px; padding-bottom: 8px; }
     .brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-weight: 700; font-size: 1.05rem; }
     .brand img { width: 30px; height: 30px; border-radius: 8px; }
-    .top nav { display: flex; gap: 20px; margin-left: auto; }
+    .top nav { display: flex; gap: 16px; margin-left: auto; flex-wrap: wrap; align-items: center; }
     .top nav a { color: var(--muted); text-decoration: none; font-size: 0.93rem; }
     .top nav a:hover, .top nav a[aria-current] { color: var(--text); }
-
-    /* ---------- Buttons ---------- */
     .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 20px; border-radius: 12px;
       border: 1px solid var(--border); background: rgba(30, 41, 59, 0.8); color: var(--text); font: inherit; font-weight: 600;
       text-decoration: none; cursor: pointer; transition: transform .15s, background .15s, border-color .15s, box-shadow .15s; white-space: nowrap; }
     .btn:hover { transform: translateY(-1px); border-color: #475569; background: var(--panel); }
-    .btn-primary { background: var(--accent); border-color: var(--accent); color: #0f172a;
-      box-shadow: 0 8px 30px -8px rgba(56, 189, 248, 0.7); }
-    .btn-primary:hover { background: #7dd3fc; border-color: #7dd3fc; box-shadow: 0 10px 34px -6px rgba(56, 189, 248, 0.8); }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: #0f172a; box-shadow: 0 8px 30px -8px rgba(56, 189, 248, 0.7); }
+    .btn-primary:hover { background: #7dd3fc; border-color: #7dd3fc; }
     .btn-small { padding: 8px 14px; border-radius: 10px; font-size: 0.9rem; }
     .btn .soon { font-size: 0.72rem; font-weight: 600; color: var(--muted); border: 1px solid var(--border); border-radius: 6px; padding: 1px 6px; }
     .btn[aria-disabled="true"] { opacity: 0.6; cursor: default; transform: none; }
-    .btn[aria-disabled="true"]:hover { border-color: var(--border); background: rgba(30, 41, 59, 0.8); }
-
-    /* ---------- Hero ---------- */
     .hero { position: relative; padding: 56px 0 8px; text-align: center; }
     .hero::before { content: ""; position: absolute; inset: -60px 0 auto; height: 700px; pointer-events: none; z-index: -1;
       background: radial-gradient(600px 380px at 20% 30%, rgba(56, 189, 248, 0.16), transparent 70%),
         radial-gradient(520px 360px at 80% 20%, rgba(167, 139, 250, 0.16), transparent 70%),
         radial-gradient(600px 400px at 60% 80%, rgba(52, 211, 153, 0.10), transparent 70%); }
     .hero-icon { width: 72px; height: 72px; border-radius: 18px; box-shadow: 0 20px 50px -20px rgba(56, 189, 248, 0.6); }
-    .pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; font-size: 0.85rem;
-      color: var(--muted); border: 1px solid var(--border); background: rgba(30, 41, 59, 0.6); }
-    .pill b { color: var(--ok); font-weight: 600; }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.2); }
     h1 { font-size: clamp(2.1rem, 5.4vw, 3.6rem); line-height: 1.08; letter-spacing: -0.025em; margin: 18px auto 18px; max-width: 900px; }
     .grad { background: linear-gradient(90deg, var(--accent), var(--violet) 55%, var(--ok)); -webkit-background-clip: text; background-clip: text; color: transparent; }
     .lead { font-size: clamp(1.05rem, 2vw, 1.25rem); color: var(--muted); max-width: 680px; margin: 0 auto 30px; }
     .ctas { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
     .installed { display: inline-flex; align-items: center; gap: 8px; margin-top: 16px; color: var(--ok); font-size: 0.95rem; }
-
-    /* ---------- Sections ---------- */
     section.block { padding: 64px 0 0; }
-    .kicker { color: var(--accent); font-weight: 600; font-size: 0.85rem; letter-spacing: 0.08em; text-transform: uppercase; }
-    h2 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); line-height: 1.15; letter-spacing: -0.02em; margin: 8px 0 12px; }
-    .sub { color: var(--muted); max-width: 640px; margin: 0 0 34px; font-size: 1.05rem; }
-    .center { text-align: center; } .center .sub { margin-left: auto; margin-right: auto; }
-
-    /* Platform cards */
     .platforms { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; align-items: stretch; }
     .platform { position: relative; display: flex; flex-direction: column; padding: 24px 22px 22px; border-radius: 18px; border: 1px solid var(--border);
-      background: linear-gradient(180deg, rgba(30, 41, 59, 0.85), rgba(30, 41, 59, 0.45)); scroll-margin-top: 80px;
-      transition: transform .2s, border-color .2s, box-shadow .2s; }
-    .platform:hover { transform: translateY(-4px); border-color: color-mix(in srgb, var(--c, var(--accent)) 60%, var(--border)); box-shadow: 0 20px 40px -24px var(--c, var(--accent)); }
+      background: linear-gradient(180deg, rgba(30, 41, 59, 0.85), rgba(30, 41, 59, 0.45)); scroll-margin-top: 80px; }
     .platform.current { border-color: color-mix(in srgb, var(--c, var(--accent)) 70%, var(--border));
       box-shadow: 0 0 0 1px color-mix(in srgb, var(--c, var(--accent)) 50%, transparent), 0 24px 50px -28px var(--c, var(--accent)); }
     .platform .ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; font-size: 21px; color: var(--c, var(--accent));
@@ -94,43 +72,24 @@
     .platform ol li { position: relative; padding-left: 36px; min-height: 26px; }
     .platform ol li::before { counter-increment: step; content: counter(step); position: absolute; left: 0; top: -1px; display: grid; place-items: center;
       width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--violet)); color: #0f172a; font-weight: 800; font-size: 0.8rem; }
+    [dir="rtl"] .platform ul { padding-left: 0; padding-right: 1.1rem; }
+    [dir="rtl"] .platform ol li { padding-left: 0; padding-right: 36px; }
+    [dir="rtl"] .platform ol li::before { left: auto; right: 0; }
     .platform .note { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--border); font-size: 0.88rem; }
-
     .final { margin: 64px 0 0; padding: 40px 24px; border-radius: 26px; text-align: center; border: 1px solid var(--border);
       background: radial-gradient(500px 240px at 15% 0%, rgba(56, 189, 248, 0.22), transparent 70%), radial-gradient(500px 260px at 85% 100%, rgba(167, 139, 250, 0.22), transparent 70%), var(--panel); }
-    .final .sub { margin: 0 auto 24px; }
-    .final .ctas { margin-bottom: 0; }
-
+    .final .sub { margin: 0 auto 24px; color: var(--muted); max-width: 640px; font-size: 1.05rem; }
     footer { margin-top: 70px; padding: 28px 0 40px; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.9rem; }
     footer .wrap { display: flex; flex-wrap: wrap; gap: 14px 26px; align-items: center; }
     footer a { color: var(--muted); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
     footer a:hover { color: var(--text); }
     footer .grow { flex: 1; }
-
-    /* Reveal on scroll */
     .reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
     .reveal.in { opacity: 1; transform: none; }
-
-    /* ---------- Responsive ---------- */
-    @media (max-width: 960px) {
-      .platforms { grid-template-columns: 1fr; max-width: 640px; margin: 0 auto; }
-    }
-    @media (max-width: 860px) {
-      .top nav { display: none; }
-      .top .btn { margin-left: auto; }
-    }
-    @media (max-width: 719px) {
-      .hero { padding-top: 40px; }
-      .ctas .btn { flex: 1 1 100%; }
-      section.block { padding-top: 48px; }
-      .final { padding: 32px 18px; }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      html { scroll-behavior: auto; }
-      *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
-      .reveal { opacity: 1; transform: none; }
-    }
+    @media (max-width: 960px) { .platforms { grid-template-columns: 1fr; max-width: 640px; margin: 0 auto; } }
+    @media (max-width: 860px) { .top nav { gap: 10px; } }
+    @media (max-width: 719px) { .hero { padding-top: 40px; } .ctas .btn { flex: 1 1 100%; } section.block { padding-top: 48px; } .final { padding: 32px 18px; } }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } .reveal { opacity: 1; transform: none; } }
   </style>
 </head>
 <body>
@@ -149,14 +108,14 @@
   <header class="top">
     <div class="wrap">
       <a class="brand" href="/promo.html"><img src="/icon.svg" alt="" width="30" height="30" />Offline Kanban</a>
-      <nav aria-label="Разделы">
-        <a href="/promo.html#features">Возможности</a>
-        <a href="/install.html" aria-current="page">Установка</a>
-        <a href="/promo.html#faq">Вопросы</a>
-        <a href="/releases.html">Что нового</a>
+      <nav aria-label="Sections">
+        <a href="/promo.html#features" data-i18n="nav_features">Features</a>
+        <a href="/install.html" aria-current="page" data-i18n="nav_install">Install</a>
+        <a href="/promo.html#faq" data-i18n="nav_faq">FAQ</a>
+        <a href="/releases.html" data-i18n="nav_whats_new">What's new</a>
         <a href="https://github.com/ravler1704/kanban-pwa">GitHub</a>
       </nav>
-      <a class="btn btn-primary btn-small" href="/">Открыть</a>
+      <a class="btn btn-primary btn-small" href="/" data-i18n="nav_open">Open</a>
     </div>
   </header>
 
@@ -164,13 +123,13 @@
     <section class="hero">
       <div class="wrap">
         <img class="hero-icon" src="/icon-192.png" alt="" width="72" height="72" />
-        <h1>Установите <span class="grad">Offline Kanban</span></h1>
-        <p class="lead">Канбан-доска, которая работает без интернета и синхронизируется между устройствами.</p>
+        <h1 data-i18n-html="hero_title">Install <span class="grad">Offline Kanban</span></h1>
+        <p class="lead" data-i18n="hero_lead">A Kanban board that works offline and syncs across your devices.</p>
         <div class="ctas">
-          <a class="btn btn-primary" href="/"><svg class="i"><use href="#i-open"/></svg>Открыть в браузере</a>
-          <button class="btn" id="prompt" type="button" hidden><svg class="i"><use href="#i-download"/></svg>Установить на это устройство</button>
+          <a class="btn btn-primary" href="/"><svg class="i"><use href="#i-open"/></svg><span data-i18n="cta_open_browser">Open in browser</span></a>
+          <button class="btn" id="prompt" type="button" hidden><svg class="i"><use href="#i-download"/></svg><span data-i18n="cta_install_device">Install on this device</span></button>
         </div>
-        <span class="installed" id="installed" hidden><svg class="i"><use href="#i-check"/></svg>Приложение установлено — найдите значок Kanban среди приложений.</span>
+        <span class="installed" id="installed" hidden><svg class="i"><use href="#i-check"/></svg><span data-i18n="installed_msg">App installed — find the Kanban icon among your apps.</span></span>
       </div>
     </section>
 
@@ -181,43 +140,40 @@
             <div class="ic"><svg class="i"><use href="#i-android"/></svg></div>
             <h3>Android</h3>
             <div class="buttons">
-              <a class="btn" id="play" aria-disabled="true" title="Скоро в Google Play"><svg class="i"><use href="#i-play"/></svg>Google Play <span class="soon">скоро</span></a>
-              <a class="btn" href="/downloads/offline-kanban.apk" download><svg class="i"><use href="#i-download"/></svg>Скачать APK</a>
+              <a class="btn" id="play" aria-disabled="true" title="Coming soon to Google Play"><svg class="i"><use href="#i-play"/></svg>Google Play <span class="soon" data-i18n="soon">soon</span></a>
+              <a class="btn" href="/downloads/offline-kanban.apk" download><svg class="i"><use href="#i-download"/></svg><span data-i18n="download_apk">Download APK</span></a>
             </div>
-            <p class="note">APK: откройте скачанный файл и разрешите установку из этого источника, если телефон спросит.
-              Или без файла: Chrome → меню ⋮ → «Установить приложение».</p>
+            <p class="note" data-i18n="android_note">APK: open the downloaded file and allow installation from this source if asked. Or without a file: Chrome → menu ⋮ → “Install app”.</p>
           </article>
 
           <article class="platform" id="ios" style="--c:#38bdf8">
             <div class="ic"><svg class="i"><use href="#i-phone"/></svg></div>
-            <h3>iPhone и iPad</h3>
+            <h3 data-i18n="ios_title">iPhone and iPad</h3>
             <ol>
-              <li>Откройте <a href="/">сайт</a> в Safari.</li>
-              <li>Нажмите «Поделиться» (квадрат со стрелкой).</li>
-              <li>Выберите «На экран «Домой»» и нажмите «Добавить».</li>
+              <li data-i18n-html="ios_step1">Open the <a href="/">site</a> in Safari.</li>
+              <li data-i18n="ios_step2">Tap Share (square with an arrow).</li>
+              <li data-i18n="ios_step3">Choose “Add to Home Screen” and tap “Add”.</li>
             </ol>
-            <p class="note">Значок появится на экране «Домой»; уведомления о напоминаниях работают только в установленном
-              так приложении (iOS 16.4 и новее).</p>
+            <p class="note" data-i18n="ios_note">The icon will appear on your Home Screen; reminder notifications work only in the app installed this way (iOS 16.4+).</p>
           </article>
 
           <article class="platform" id="desktop" style="--c:#a78bfa">
             <div class="ic"><svg class="i"><use href="#i-monitor"/></svg></div>
-            <h3>Windows, macOS, Linux</h3>
+            <h3 data-i18n="desktop_title">Windows, macOS, Linux</h3>
             <ul>
-              <li><b>Chrome, Edge, Яндекс Браузер:</b> значок установки справа в адресной строке или меню → «Установить
-                Offline Kanban».</li>
-              <li><b>Safari на Mac</b> (macOS 14+): «Файл» → «Добавить в Dock».</li>
-              <li><b>Firefox:</b> пользуйтесь сайтом во вкладке — установку приложений Firefox не поддерживает.</li>
+              <li data-i18n-html="desktop_chrome"><b>Chrome, Edge, Yandex Browser:</b> install icon on the right of the address bar or menu → “Install Offline Kanban”.</li>
+              <li data-i18n-html="desktop_safari"><b>Safari on Mac</b> (macOS 14+): “File” → “Add to Dock”.</li>
+              <li data-i18n-html="desktop_firefox"><b>Firefox:</b> use the site in a tab — Firefox does not support app installation.</li>
             </ul>
           </article>
         </div>
 
         <div class="final reveal">
-          <h2>Одно приложение на всех устройствах</h2>
-          <p class="sub">Данные хранятся на устройстве, работают без интернета и синхронизируются через ваш аккаунт.</p>
+          <h2 data-i18n="final_title">One app on all your devices</h2>
+          <p class="sub" data-i18n="final_sub">Data is stored on the device, works offline, and syncs through your account.</p>
           <div class="ctas">
-            <a class="btn btn-primary" href="/"><svg class="i"><use href="#i-open"/></svg>Открыть в браузере</a>
-            <a class="btn" href="/promo.html"><svg class="i"><use href="#i-sparkle"/></svg>Что умеет приложение</a>
+            <a class="btn btn-primary" href="/"><svg class="i"><use href="#i-open"/></svg><span data-i18n="cta_open_browser">Open in browser</span></a>
+            <a class="btn" href="/promo.html"><svg class="i"><use href="#i-sparkle"/></svg><span data-i18n="cta_what">What the app can do</span></a>
           </div>
         </div>
       </div>
@@ -228,22 +184,287 @@
     <div class="wrap">
       <a class="brand" href="/promo.html"><img src="/icon.svg" alt="" width="24" height="24" style="width:24px;height:24px" />Offline Kanban</a>
       <span class="grow"></span>
-      <a href="/">Открыть приложение</a>
-      <a href="/promo.html">О приложении</a>
-      <a href="/releases.html">Что нового</a>
-      <a href="https://github.com/ravler1704/kanban-pwa/releases">GitHub</a>
+      <a href="/" data-i18n="foot_open">Open app</a>
+      <a href="/promo.html" data-i18n="foot_about">About</a>
+      <a href="/releases.html" data-i18n="nav_whats_new">What's new</a>
+      <a href="https://github.com/ravler1704/kanban-pwa/releases" data-i18n="foot_releases">Releases</a>
       <a href="https://github.com/ravler1704/kanban-pwa"><svg class="i"><use href="#i-github"/></svg>GitHub</a>
     </div>
   </footer>
 
+  <script>
+    window.SITE_I18N = {
+      en: {
+        page_title: "Install Offline Kanban",
+        meta_description: "Install Offline Kanban on Android, iPhone, iPad, Windows, macOS and Linux.",
+        nav_features: "Features", nav_install: "Install", nav_faq: "FAQ", nav_whats_new: "What's new", nav_open: "Open",
+        hero_title: 'Install <span class="grad">Offline Kanban</span>',
+        hero_lead: "A Kanban board that works offline and syncs across your devices.",
+        cta_open_browser: "Open in browser", cta_install_device: "Install on this device",
+        installed_msg: "App installed — find the Kanban icon among your apps.",
+        soon: "soon", download_apk: "Download APK",
+        android_note: "APK: open the downloaded file and allow installation from this source if asked. Or without a file: Chrome → menu ⋮ → “Install app”.",
+        ios_title: "iPhone and iPad",
+        ios_step1: 'Open the <a href="/">site</a> in Safari.',
+        ios_step2: "Tap Share (square with an arrow).",
+        ios_step3: "Choose “Add to Home Screen” and tap “Add”.",
+        ios_note: "The icon will appear on your Home Screen; reminder notifications work only in the app installed this way (iOS 16.4+).",
+        desktop_title: "Windows, macOS, Linux",
+        desktop_chrome: "<b>Chrome, Edge, Yandex Browser:</b> install icon on the right of the address bar or menu → “Install Offline Kanban”.",
+        desktop_safari: "<b>Safari on Mac</b> (macOS 14+): “File” → “Add to Dock”.",
+        desktop_firefox: "<b>Firefox:</b> use the site in a tab — Firefox does not support app installation.",
+        final_title: "One app on all your devices",
+        final_sub: "Data is stored on the device, works offline, and syncs through your account.",
+        cta_what: "What the app can do",
+        foot_open: "Open app", foot_about: "About", foot_releases: "Releases",
+        your_device: "your device"
+      },
+      ru: {
+        page_title: "Установить Offline Kanban",
+        meta_description: "Установить Offline Kanban на Android, iPhone, iPad, Windows, macOS и Linux.",
+        nav_features: "Возможности", nav_install: "Установка", nav_faq: "Вопросы", nav_whats_new: "Что нового", nav_open: "Открыть",
+        hero_title: 'Установите <span class="grad">Offline Kanban</span>',
+        hero_lead: "Канбан-доска, которая работает без интернета и синхронизируется между устройствами.",
+        cta_open_browser: "Открыть в браузере", cta_install_device: "Установить на это устройство",
+        installed_msg: "Приложение установлено — найдите значок Kanban среди приложений.",
+        soon: "скоро", download_apk: "Скачать APK",
+        android_note: "APK: откройте скачанный файл и разрешите установку из этого источника, если телефон спросит. Или без файла: Chrome → меню ⋮ → «Установить приложение».",
+        ios_title: "iPhone и iPad",
+        ios_step1: 'Откройте <a href="/">сайт</a> в Safari.',
+        ios_step2: "Нажмите «Поделиться» (квадрат со стрелкой).",
+        ios_step3: "Выберите «На экран «Домой»» и нажмите «Добавить».",
+        ios_note: "Значок появится на экране «Домой»; уведомления о напоминаниях работают только в установленном так приложении (iOS 16.4 и новее).",
+        desktop_title: "Windows, macOS, Linux",
+        desktop_chrome: "<b>Chrome, Edge, Яндекс Браузер:</b> значок установки справа в адресной строке или меню → «Установить Offline Kanban».",
+        desktop_safari: "<b>Safari на Mac</b> (macOS 14+): «Файл» → «Добавить в Dock».",
+        desktop_firefox: "<b>Firefox:</b> пользуйтесь сайтом во вкладке — установку приложений Firefox не поддерживает.",
+        final_title: "Одно приложение на всех устройствах",
+        final_sub: "Данные хранятся на устройстве, работают без интернета и синхронизируются через ваш аккаунт.",
+        cta_what: "Что умеет приложение",
+        foot_open: "Открыть приложение", foot_about: "О приложении", foot_releases: "Релизы",
+        your_device: "ваше устройство"
+      },
+      es: {
+        page_title: "Instalar Offline Kanban",
+        meta_description: "Instala Offline Kanban en Android, iPhone, iPad, Windows, macOS y Linux.",
+        nav_features: "Funciones", nav_install: "Instalar", nav_faq: "Preguntas", nav_whats_new: "Novedades", nav_open: "Abrir",
+        hero_title: 'Instala <span class="grad">Offline Kanban</span>',
+        hero_lead: "Un tablero Kanban que funciona sin conexión y se sincroniza entre tus dispositivos.",
+        cta_open_browser: "Abrir en el navegador", cta_install_device: "Instalar en este dispositivo",
+        installed_msg: "Aplicación instalada: busca el icono de Kanban entre tus apps.",
+        soon: "pronto", download_apk: "Descargar APK",
+        android_note: "APK: abre el archivo descargado y permite la instalación desde este origen si se solicita. O sin archivo: Chrome → menú ⋮ → “Instalar aplicación”.",
+        ios_title: "iPhone y iPad",
+        ios_step1: 'Abre el <a href="/">sitio</a> en Safari.',
+        ios_step2: "Toca Compartir (cuadrado con una flecha).",
+        ios_step3: "Elige “Añadir a pantalla de inicio” y toca “Añadir”.",
+        ios_note: "El icono aparecerá en tu pantalla de inicio; las notificaciones de recordatorios funcionan solo en la app instalada así (iOS 16.4+).",
+        desktop_title: "Windows, macOS, Linux",
+        desktop_chrome: "<b>Chrome, Edge, Yandex Browser:</b> icono de instalación a la derecha de la barra de direcciones o menú → “Instalar Offline Kanban”.",
+        desktop_safari: "<b>Safari en Mac</b> (macOS 14+): “Archivo” → “Añadir al Dock”.",
+        desktop_firefox: "<b>Firefox:</b> usa el sitio en una pestaña — Firefox no admite la instalación de aplicaciones.",
+        final_title: "Una app en todos tus dispositivos",
+        final_sub: "Los datos se guardan en el dispositivo, funcionan sin conexión y se sincronizan con tu cuenta.",
+        cta_what: "Qué puede hacer la app",
+        foot_open: "Abrir app", foot_about: "Acerca de", foot_releases: "Versiones",
+        your_device: "tu dispositivo"
+      },
+      zh: {
+        page_title: "安装 Offline Kanban",
+        meta_description: "在 Android、iPhone、iPad、Windows、macOS 和 Linux 上安装 Offline Kanban。",
+        nav_features: "功能", nav_install: "安装", nav_faq: "常见问题", nav_whats_new: "更新内容", nav_open: "打开",
+        hero_title: '安装 <span class="grad">Offline Kanban</span>',
+        hero_lead: "一款可离线使用并在设备间同步的看板。",
+        cta_open_browser: "在浏览器中打开", cta_install_device: "在此设备上安装",
+        installed_msg: "应用已安装 — 在应用列表中找到 Kanban 图标。",
+        soon: "即将推出", download_apk: "下载 APK",
+        android_note: "APK：打开下载的文件，如有提示请允许从此来源安装。或不下载文件：Chrome → 菜单 ⋮ →“安装应用”。",
+        ios_title: "iPhone 和 iPad",
+        ios_step1: '在 Safari 中打开<a href="/">网站</a>。',
+        ios_step2: "点击“分享”（带箭头的方框）。",
+        ios_step3: "选择“添加到主屏幕”，然后点击“添加”。",
+        ios_note: "图标将出现在主屏幕上；提醒通知仅在以此方式安装的应用中可用（iOS 16.4+）。",
+        desktop_title: "Windows、macOS、Linux",
+        desktop_chrome: "<b>Chrome、Edge、Yandex 浏览器：</b>地址栏右侧的安装图标或菜单 →“安装 Offline Kanban”。",
+        desktop_safari: "<b>Mac 上的 Safari</b>（macOS 14+）：“文件”→“添加到程序坞”。",
+        desktop_firefox: "<b>Firefox：</b>请在标签页中使用网站 — Firefox 不支持安装应用。",
+        final_title: "在所有设备上使用同一款应用",
+        final_sub: "数据保存在设备上，可离线使用，并通过你的账户同步。",
+        cta_what: "了解应用功能",
+        foot_open: "打开应用", foot_about: "关于", foot_releases: "发布版本",
+        your_device: "你的设备"
+      },
+      hi: {
+        page_title: "Offline Kanban इंस्टॉल करें",
+        meta_description: "Android, iPhone, iPad, Windows, macOS और Linux पर Offline Kanban इंस्टॉल करें।",
+        nav_features: "विशेषताएँ", nav_install: "इंस्टॉल", nav_faq: "प्रश्न", nav_whats_new: "नया क्या है", nav_open: "खोलें",
+        hero_title: '<span class="grad">Offline Kanban</span> इंस्टॉल करें',
+        hero_lead: "एक कानबन बोर्ड जो ऑफ़लाइन काम करता है और आपके डिवाइसों में सिंक होता है।",
+        cta_open_browser: "ब्राउज़र में खोलें", cta_install_device: "इस डिवाइस पर इंस्टॉल करें",
+        installed_msg: "ऐप इंस्टॉल हो गया — अपने ऐप्स में Kanban आइकन खोजें।",
+        soon: "जल्द", download_apk: "APK डाउनलोड करें",
+        android_note: "APK: डाउनलोड की गई फ़ाइल खोलें और पूछने पर इस स्रोत से इंस्टॉलेशन की अनुमति दें। या बिना फ़ाइल: Chrome → मेनू ⋮ → “ऐप इंस्टॉल करें”。",
+        ios_title: "iPhone और iPad",
+        ios_step1: 'Safari में <a href="/">साइट</a> खोलें।',
+        ios_step2: "Share (तीर वाला वर्ग) पर टैप करें।",
+        ios_step3: "“Add to Home Screen” चुनें और “Add” पर टैप करें।",
+        ios_note: "आइकन होम स्क्रीन पर दिखेगा; रिमाइंडर नोटिफ़िकेशन केवल इस तरह इंस्टॉल किए गए ऐप में काम करते हैं (iOS 16.4+)।",
+        desktop_title: "Windows, macOS, Linux",
+        desktop_chrome: "<b>Chrome, Edge, Yandex Browser:</b> एड्रेस बार के दाईं ओर इंस्टॉल आइकन या मेनू → “Offline Kanban इंस्टॉल करें”。",
+        desktop_safari: "<b>Mac पर Safari</b> (macOS 14+): “File” → “Add to Dock”。",
+        desktop_firefox: "<b>Firefox:</b> साइट को टैब में उपयोग करें — Firefox ऐप इंस्टॉलेशन का समर्थन नहीं करता।",
+        final_title: "सभी डिवाइसों पर एक ऐप",
+        final_sub: "डेटा डिवाइस पर रहता है, ऑफ़लाइन काम करता है और आपके खाते से सिंक होता है।",
+        cta_what: "ऐप क्या कर सकता है",
+        foot_open: "ऐप खोलें", foot_about: "परिचय", foot_releases: "रिलीज़",
+        your_device: "आपका डिवाइस"
+      },
+      ar: {
+        page_title: "تثبيت Offline Kanban",
+        meta_description: "ثبّت Offline Kanban على Android وiPhone وiPad وWindows وmacOS وLinux.",
+        nav_features: "المزايا", nav_install: "التثبيت", nav_faq: "الأسئلة", nav_whats_new: "الجديد", nav_open: "فتح",
+        hero_title: 'ثبّت <span class="grad">Offline Kanban</span>',
+        hero_lead: "لوحة كانبان تعمل دون اتصال وتُزامن بين أجهزتك.",
+        cta_open_browser: "فتح في المتصفح", cta_install_device: "التثبيت على هذا الجهاز",
+        installed_msg: "تم تثبيت التطبيق — ابحث عن أيقونة Kanban بين تطبيقاتك.",
+        soon: "قريبًا", download_apk: "تنزيل APK",
+        android_note: "APK: افتح الملف الذي نزّلته واسمح بالتثبيت من هذا المصدر إذا طُلب منك ذلك. أو بدون ملف: Chrome → القائمة ⋮ → «تثبيت التطبيق».",
+        ios_title: "iPhone وiPad",
+        ios_step1: 'افتح <a href="/">الموقع</a> في Safari.',
+        ios_step2: "اضغط على «مشاركة» (مربع بسهم).",
+        ios_step3: "اختر «إضافة إلى الشاشة الرئيسية» ثم اضغط «إضافة».",
+        ios_note: "ستظهر الأيقونة على الشاشة الرئيسية؛ تعمل إشعارات التذكير فقط في التطبيق المثبّت بهذه الطريقة (iOS 16.4+).",
+        desktop_title: "Windows وmacOS وLinux",
+        desktop_chrome: "<b>Chrome وEdge وYandex Browser:</b> أيقونة التثبيت يمين شريط العنوان أو القائمة → «تثبيت Offline Kanban».",
+        desktop_safari: "<b>Safari على Mac</b> (macOS 14+): «ملف» → «إضافة إلى Dock».",
+        desktop_firefox: "<b>Firefox:</b> استخدم الموقع في علامة تبويب — لا يدعم Firefox تثبيت التطبيقات.",
+        final_title: "تطبيق واحد على كل أجهزتك",
+        final_sub: "تُخزَّن البيانات على الجهاز، وتعمل دون اتصال، وتُزامن عبر حسابك.",
+        cta_what: "ما الذي يقدمه التطبيق",
+        foot_open: "فتح التطبيق", foot_about: "حول", foot_releases: "الإصدارات",
+        your_device: "جهازك"
+      },
+      pt: {
+        page_title: "Instalar Offline Kanban",
+        meta_description: "Instale o Offline Kanban no Android, iPhone, iPad, Windows, macOS e Linux.",
+        nav_features: "Recursos", nav_install: "Instalar", nav_faq: "Perguntas", nav_whats_new: "Novidades", nav_open: "Abrir",
+        hero_title: 'Instale o <span class="grad">Offline Kanban</span>',
+        hero_lead: "Um quadro Kanban que funciona offline e sincroniza entre seus dispositivos.",
+        cta_open_browser: "Abrir no navegador", cta_install_device: "Instalar neste dispositivo",
+        installed_msg: "App instalado — encontre o ícone do Kanban entre seus apps.",
+        soon: "em breve", download_apk: "Baixar APK",
+        android_note: "APK: abra o arquivo baixado e permita a instalação desta origem se solicitado. Ou sem arquivo: Chrome → menu ⋮ → “Instalar app”.",
+        ios_title: "iPhone e iPad",
+        ios_step1: 'Abra o <a href="/">site</a> no Safari.',
+        ios_step2: "Toque em Compartilhar (quadrado com seta).",
+        ios_step3: "Escolha “Adicionar à Tela de Início” e toque em “Adicionar”.",
+        ios_note: "O ícone aparecerá na Tela de Início; notificações de lembrete funcionam apenas no app instalado assim (iOS 16.4+).",
+        desktop_title: "Windows, macOS, Linux",
+        desktop_chrome: "<b>Chrome, Edge, Yandex Browser:</b> ícone de instalação à direita da barra de endereços ou menu → “Instalar Offline Kanban”.",
+        desktop_safari: "<b>Safari no Mac</b> (macOS 14+): “Arquivo” → “Adicionar ao Dock”.",
+        desktop_firefox: "<b>Firefox:</b> use o site em uma aba — o Firefox não suporta instalação de apps.",
+        final_title: "Um app em todos os seus dispositivos",
+        final_sub: "Os dados ficam no dispositivo, funcionam offline e sincronizam pela sua conta.",
+        cta_what: "O que o app pode fazer",
+        foot_open: "Abrir app", foot_about: "Sobre", foot_releases: "Versões",
+        your_device: "seu dispositivo"
+      },
+      fr: {
+        page_title: "Installer Offline Kanban",
+        meta_description: "Installez Offline Kanban sur Android, iPhone, iPad, Windows, macOS et Linux.",
+        nav_features: "Fonctionnalités", nav_install: "Installer", nav_faq: "FAQ", nav_whats_new: "Nouveautés", nav_open: "Ouvrir",
+        hero_title: 'Installez <span class="grad">Offline Kanban</span>',
+        hero_lead: "Un tableau Kanban qui fonctionne hors ligne et se synchronise entre vos appareils.",
+        cta_open_browser: "Ouvrir dans le navigateur", cta_install_device: "Installer sur cet appareil",
+        installed_msg: "Application installée — trouvez l’icône Kanban parmi vos apps.",
+        soon: "bientôt", download_apk: "Télécharger l’APK",
+        android_note: "APK : ouvrez le fichier téléchargé et autorisez l’installation depuis cette source si demandé. Ou sans fichier : Chrome → menu ⋮ → « Installer l’application ». ",
+        ios_title: "iPhone et iPad",
+        ios_step1: 'Ouvrez le <a href="/">site</a> dans Safari.',
+        ios_step2: "Touchez Partager (carré avec une flèche).",
+        ios_step3: "Choisissez « Sur l’écran d’accueil » puis touchez « Ajouter ». ",
+        ios_note: "L’icône apparaîtra sur l’écran d’accueil ; les notifications de rappel fonctionnent uniquement dans l’app installée ainsi (iOS 16.4+).",
+        desktop_title: "Windows, macOS, Linux",
+        desktop_chrome: "<b>Chrome, Edge, Yandex Browser :</b> icône d’installation à droite de la barre d’adresse ou menu → « Installer Offline Kanban ». ",
+        desktop_safari: "<b>Safari sur Mac</b> (macOS 14+) : « Fichier » → « Ajouter au Dock ». ",
+        desktop_firefox: "<b>Firefox :</b> utilisez le site dans un onglet — Firefox ne prend pas en charge l’installation d’applications.",
+        final_title: "Une seule app sur tous vos appareils",
+        final_sub: "Les données sont stockées sur l’appareil, fonctionnent hors ligne et se synchronisent via votre compte.",
+        cta_what: "Ce que l’app peut faire",
+        foot_open: "Ouvrir l’app", foot_about: "À propos", foot_releases: "Versions",
+        your_device: "votre appareil"
+      },
+      de: {
+        page_title: "Offline Kanban installieren",
+        meta_description: "Installieren Sie Offline Kanban auf Android, iPhone, iPad, Windows, macOS und Linux.",
+        nav_features: "Funktionen", nav_install: "Installieren", nav_faq: "FAQ", nav_whats_new: "Neuigkeiten", nav_open: "Öffnen",
+        hero_title: '<span class="grad">Offline Kanban</span> installieren',
+        hero_lead: "Ein Kanban-Board, das offline funktioniert und über Ihre Geräte hinweg synchronisiert.",
+        cta_open_browser: "Im Browser öffnen", cta_install_device: "Auf diesem Gerät installieren",
+        installed_msg: "App installiert — finden Sie das Kanban-Symbol in Ihren Apps.",
+        soon: "bald", download_apk: "APK herunterladen",
+        android_note: "APK: Öffnen Sie die heruntergeladene Datei und erlauben Sie die Installation aus dieser Quelle, falls gefragt. Oder ohne Datei: Chrome → Menü ⋮ → „App installieren“. ",
+        ios_title: "iPhone und iPad",
+        ios_step1: 'Öffnen Sie die <a href="/">Website</a> in Safari.',
+        ios_step2: "Tippen Sie auf „Teilen“ (Quadrat mit Pfeil).",
+        ios_step3: "Wählen Sie „Zum Home-Bildschirm“ und tippen Sie auf „Hinzufügen“. ",
+        ios_note: "Das Symbol erscheint auf dem Home-Bildschirm; Erinnerungsbenachrichtigungen funktionieren nur in der so installierten App (iOS 16.4+).",
+        desktop_title: "Windows, macOS, Linux",
+        desktop_chrome: "<b>Chrome, Edge, Yandex Browser:</b> Installationssymbol rechts in der Adressleiste oder Menü → „Offline Kanban installieren“. ",
+        desktop_safari: "<b>Safari auf dem Mac</b> (macOS 14+): „Ablage“ → „Zum Dock hinzufügen“. ",
+        desktop_firefox: "<b>Firefox:</b> Nutzen Sie die Website in einem Tab — Firefox unterstützt keine App-Installation.",
+        final_title: "Eine App auf all Ihren Geräten",
+        final_sub: "Daten werden auf dem Gerät gespeichert, funktionieren offline und synchronisieren sich über Ihr Konto.",
+        cta_what: "Was die App kann",
+        foot_open: "App öffnen", foot_about: "Über", foot_releases: "Versionen",
+        your_device: "Ihr Gerät"
+      },
+      ja: {
+        page_title: "Offline Kanban をインストール",
+        meta_description: "Android、iPhone、iPad、Windows、macOS、Linux に Offline Kanban をインストールします。",
+        nav_features: "機能", nav_install: "インストール", nav_faq: "FAQ", nav_whats_new: "新着情報", nav_open: "開く",
+        hero_title: '<span class="grad">Offline Kanban</span> をインストール',
+        hero_lead: "オフラインで動作し、デバイス間で同期するカンバンボード。",
+        cta_open_browser: "ブラウザで開く", cta_install_device: "このデバイスにインストール",
+        installed_msg: "アプリをインストールしました — アプリ一覧から Kanban アイコンを見つけてください。",
+        soon: "近日公開", download_apk: "APK をダウンロード",
+        android_note: "APK：ダウンロードしたファイルを開き、求められた場合はこの提供元からのインストールを許可してください。ファイルなしの場合：Chrome → メニュー ⋮ →「アプリをインストール」。",
+        ios_title: "iPhone と iPad",
+        ios_step1: 'Safari で<a href="/">サイト</a>を開きます。',
+        ios_step2: "「共有」（矢印付きの四角）をタップします。",
+        ios_step3: "「ホーム画面に追加」を選び、「追加」をタップします。",
+        ios_note: "アイコンがホーム画面に表示されます。リマインダー通知はこの方法でインストールしたアプリでのみ機能します（iOS 16.4+）。",
+        desktop_title: "Windows、macOS、Linux",
+        desktop_chrome: "<b>Chrome、Edge、Yandex Browser：</b>アドレスバー右側のインストールアイコン、またはメニュー →「Offline Kanban をインストール」。",
+        desktop_safari: "<b>Mac の Safari</b>（macOS 14+）：「ファイル」→「Dock に追加」。",
+        desktop_firefox: "<b>Firefox：</b>タブでサイトをご利用ください — Firefox はアプリのインストールに対応していません。",
+        final_title: "すべてのデバイスでひとつのアプリ",
+        final_sub: "データはデバイスに保存され、オフラインで動作し、アカウントを通じて同期します。",
+        cta_what: "アプリでできること",
+        foot_open: "アプリを開く", foot_about: "概要", foot_releases: "リリース",
+        your_device: "このデバイス"
+      }
+    };
+  </script>
+  <script src="/site-i18n.js"></script>
   <script>
     const PLAY_URL = null;
     const ua = navigator.userAgent;
     const ios = /iP(hone|ad|od)/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     const current = document.getElementById(ios ? 'ios' : /Android/.test(ua) ? 'android' : 'desktop');
     current.classList.add('current');
-    current.querySelector('h3').insertAdjacentHTML('beforeend', '<small>ваше устройство</small>');
+    function setDeviceBadge() {
+      const lang = window.__siteLang || 'en';
+      const dict = (window.SITE_I18N && (window.SITE_I18N[lang] || window.SITE_I18N.en)) || {};
+      const label = dict.your_device || 'your device';
+      const h3 = current.querySelector('h3');
+      let badge = h3.querySelector('small');
+      if (!badge) { badge = document.createElement('small'); h3.appendChild(badge); }
+      badge.textContent = label;
+    }
     current.parentNode.prepend(current);
+    setDeviceBadge();
+    document.addEventListener('site-lang-change', setDeviceBadge);
 
     if (PLAY_URL) {
       const play = document.getElementById('play');
@@ -257,23 +478,15 @@
     const promptButton = document.getElementById('prompt');
     const installed = document.getElementById('installed');
     let deferred = null;
-    addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferred = e;
-      promptButton.hidden = false;
-    });
+    addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e; promptButton.hidden = false; });
     promptButton.addEventListener('click', async () => {
       if (!deferred) return;
       deferred.prompt();
       const { outcome } = await deferred.userChoice;
-      deferred = null;
-      promptButton.hidden = true;
+      deferred = null; promptButton.hidden = true;
       if (outcome === 'accepted') installed.hidden = false;
     });
-    addEventListener('appinstalled', () => {
-      promptButton.hidden = true;
-      installed.hidden = false;
-    });
+    addEventListener('appinstalled', () => { promptButton.hidden = true; installed.hidden = false; });
 
     const reveal = document.querySelectorAll('.reveal');
     if (!matchMedia('(prefers-reduced-motion: reduce)').matches && 'IntersectionObserver' in window) {

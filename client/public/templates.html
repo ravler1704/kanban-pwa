@@ -1,54 +1,42 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
-  <title>Шаблоны досок — Offline Kanban</title>
-  <meta name="description" content="Готовые наборы колонок для канбан-доски: классический канбан, Scrum, контент, поддержка, найм. Создайте доску в своём пространстве одним кликом." />
+  <title>Board templates — Offline Kanban</title>
+  <meta name="description" content="Ready-made column sets for your Kanban board: classic Kanban, Scrum, content, support, hiring. Create a board in your space in one click." />
   <link rel="canonical" href="https://178-83-123-195.sslip.io/templates.html" />
   <link rel="icon" href="/icon.svg" type="image/svg+xml" />
   <style>
-    :root {
-      --bg: #0f172a; --panel: #1e293b; --border: #334155;
-      --text: #e2e8f0; --muted: #94a3b8; --accent: #38bdf8; color-scheme: dark;
-    }
+    :root { --bg: #0f172a; --panel: #1e293b; --border: #334155; --text: #e2e8f0; --muted: #94a3b8; --accent: #38bdf8; color-scheme: dark; }
     * { box-sizing: border-box; }
-    body { margin: 0; background: var(--bg); color: var(--text);
-      font: 16px/1.55 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.55 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
     a { color: var(--accent); }
     .wrap { max-width: 960px; margin: 0 auto; padding: 0 20px 64px; }
-    .top { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(12px);
-      background: rgba(15, 23, 42, 0.85); border-bottom: 1px solid var(--border); }
-    .top .wrap { display: flex; align-items: center; gap: 16px; min-height: 56px; padding-top: 8px; padding-bottom: 8px; }
+    .top { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(12px); background: rgba(15, 23, 42, 0.85); border-bottom: 1px solid var(--border); }
+    .top .wrap { display: flex; align-items: center; gap: 16px; min-height: 56px; padding-top: 8px; padding-bottom: 8px; flex-wrap: wrap; }
     .brand { display: flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-weight: 700; }
     .brand img { width: 28px; height: 28px; border-radius: 8px; }
-    .top nav { margin-left: auto; display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.9rem; }
+    .top nav { margin-left: auto; display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.9rem; align-items: center; }
     .top nav a { color: var(--muted); text-decoration: none; }
     .top nav a:hover { color: var(--text); }
     h1 { font-size: clamp(1.75rem, 4vw, 2.25rem); margin: 32px 0 8px; letter-spacing: -0.02em; }
     .lead { color: var(--muted); margin: 0 0 28px; max-width: 640px; }
-    .btn { display: inline-flex; align-items: center; justify-content: center; padding: 10px 18px; border-radius: 12px;
-      border: 1px solid var(--accent); background: var(--accent); color: #0f172a; font: inherit; font-weight: 600;
-      text-decoration: none; cursor: pointer; width: 100%; margin-top: auto; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; padding: 10px 18px; border-radius: 12px; border: 1px solid var(--accent); background: var(--accent); color: #0f172a; font: inherit; font-weight: 600; text-decoration: none; cursor: pointer; width: 100%; margin-top: auto; }
     .btn:hover { background: #7dd3fc; border-color: #7dd3fc; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 1.15rem 1.2rem;
-      display: flex; flex-direction: column; gap: 8px; min-height: 220px; }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 1.15rem 1.2rem; display: flex; flex-direction: column; gap: 8px; min-height: 220px; }
     .card h2 { margin: 0; font-size: 1.05rem; }
     .card p { margin: 0; color: var(--muted); font-size: 0.92rem; line-height: 1.45; flex: 1; }
-    .cols { margin: 0; font-size: 0.82rem; color: var(--muted); }
     .meta { font-size: 0.8rem; color: var(--muted); }
     .tpl-preview { border-radius: 10px; overflow: hidden; border: 1px solid var(--border); margin-bottom: 8px; }
     .tpl-preview-board { display: flex; gap: 5px; padding: 8px; min-height: 5.5rem; background: var(--panel); }
-    .tpl-preview-col { flex: 1; min-width: 0; padding: 4px 3px; border-radius: 6px; border: 1px solid var(--border);
-      background: #273449; display: flex; flex-direction: column; gap: 3px; }
+    .tpl-preview-col { flex: 1; min-width: 0; padding: 4px 3px; border-radius: 6px; border: 1px solid var(--border); background: #273449; display: flex; flex-direction: column; gap: 3px; }
     .tpl-preview-col[style*="--c"] { background: color-mix(in srgb, var(--c) 24%, #273449); border-color: color-mix(in srgb, var(--c) 45%, var(--border)); }
-    .tpl-preview-head { font-size: 0.65rem; font-weight: 600; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-      border-top: 2px solid var(--border); padding-top: 2px; }
+    .tpl-preview-head { font-size: 0.65rem; font-weight: 600; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-top: 2px solid var(--border); padding-top: 2px; }
     .tpl-ph { height: 0.85rem; border-radius: 3px; background: #334155; border: 1px solid #3b4a63; }
-    footer { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border);
-      color: var(--muted); font-size: 0.88rem; display: flex; flex-wrap: wrap; gap: 12px 20px; }
+    footer { margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.88rem; display: flex; flex-wrap: wrap; gap: 12px 20px; }
     footer a { color: var(--muted); text-decoration: none; }
     footer a:hover { color: var(--text); }
   </style>
@@ -57,66 +45,82 @@
   <header class="top">
     <div class="wrap">
       <a class="brand" href="/promo.html"><img src="/icon.svg" alt="" width="28" height="28" />Offline Kanban</a>
-      <nav aria-label="Навигация">
-        <a href="/promo.html">О приложении</a>
-        <a href="/install.html">Установка</a>
-        <a href="/releases.html">Что нового</a>
-        <a href="/">Открыть</a>
+      <nav aria-label="Navigation">
+        <a href="/promo.html" data-i18n="nav_about">About</a>
+        <a href="/install.html" data-i18n="nav_install">Install</a>
+        <a href="/releases.html" data-i18n="nav_whats_new">What's new</a>
+        <a href="/" data-i18n="nav_open">Open</a>
       </nav>
     </div>
   </header>
   <main class="wrap">
-    <h1>Витрина шаблонов</h1>
-    <p class="lead">Нажмите «Создать доску» — откроется приложение, и в вашем пространстве появится новая доска с колонками и оформлением из шаблона. Нужен вход в аккаунт.</p>
-    <div class="grid" id="grid" aria-live="polite"><p class="lead">Загрузка…</p></div>
+    <h1 data-i18n="h1">Board templates</h1>
+    <p class="lead" data-i18n="lead">Click “Create board” — the app will open and a new board with columns and styling from the template will appear in your space. Sign-in required.</p>
+    <div class="grid" id="grid" aria-live="polite"><p class="lead" data-i18n="loading">Loading…</p></div>
     <footer>
-      <a href="/promo.html">Промо</a>
-      <a href="/">Приложение</a>
+      <a href="/promo.html" data-i18n="nav_about">About</a>
+      <a href="/" data-i18n="nav_app">App</a>
       <a href="https://github.com/ravler1704/kanban-pwa">GitHub</a>
     </footer>
   </main>
+  <script>
+    window.SITE_I18N = {
+      en: {
+        page_title: "Board templates — Offline Kanban",
+        meta_description: "Ready-made column sets for your Kanban board: classic Kanban, Scrum, content, support, hiring. Create a board in your space in one click.",
+        nav_about: "About", nav_install: "Install", nav_whats_new: "What's new", nav_open: "Open", nav_app: "App",
+        h1: "Board templates",
+        lead: "Click “Create board” — the app will open and a new board with columns and styling from the template will appear in your space. Sign-in required.",
+        loading: "Loading…", empty: "No templates yet.", error: "Failed to load templates. Try again later or open templates from the board menu in the app.",
+        create_board: "Create board", uses: "uses", author_fallback: "Author"
+      },
+      ru: {
+        page_title: "Шаблоны досок — Offline Kanban",
+        meta_description: "Готовые наборы колонок для канбан-доски: классический канбан, Scrum, контент, поддержка, найм. Создайте доску в своём пространстве одним кликом.",
+        nav_about: "О приложении", nav_install: "Установка", nav_whats_new: "Что нового", nav_open: "Открыть", nav_app: "Приложение",
+        h1: "Витрина шаблонов",
+        lead: "Нажмите «Создать доску» — откроется приложение, и в вашем пространстве появится новая доска с колонками и оформлением из шаблона. Нужен вход в аккаунт.",
+        loading: "Загрузка…", empty: "Пока нет шаблонов.", error: "Не удалось загрузить витрину. Попробуйте позже или откройте шаблоны в меню доски в приложении.",
+        create_board: "Создать доску", uses: "использований", author_fallback: "Автор"
+      },
+      es: { page_title: "Plantillas de tablero — Offline Kanban", meta_description: "Conjuntos de columnas listos para tu tablero Kanban. Crea un tablero en tu espacio con un clic.", nav_about: "Acerca de", nav_install: "Instalar", nav_whats_new: "Novedades", nav_open: "Abrir", nav_app: "App", h1: "Plantillas de tablero", lead: "Haz clic en “Crear tablero” — se abrirá la app y aparecerá un nuevo tablero con columnas y estilo de la plantilla en tu espacio. Se requiere iniciar sesión.", loading: "Cargando…", empty: "Aún no hay plantillas.", error: "No se pudieron cargar las plantillas. Inténtalo más tarde o ábrelas desde el menú del tablero en la app.", create_board: "Crear tablero", uses: "usos", author_fallback: "Autor" },
+      zh: { page_title: "看板模板 — Offline Kanban", meta_description: "为你的看板准备的现成列集。一键在你的空间中创建看板。", nav_about: "关于", nav_install: "安装", nav_whats_new: "更新内容", nav_open: "打开", nav_app: "应用", h1: "看板模板", lead: "点击“创建看板”——应用将打开，并在你的空间中创建一个带有模板列和样式的新看板。需要登录。", loading: "加载中…", empty: "暂无模板。", error: "无法加载模板。请稍后重试，或在应用的看板菜单中打开模板。", create_board: "创建看板", uses: "次使用", author_fallback: "作者" },
+      hi: { page_title: "बोर्ड टेम्पलेट — Offline Kanban", meta_description: "आपके कानबन बोर्ड के लिए तैयार कॉलम सेट। एक क्लिक में अपने स्पेस में बोर्ड बनाएँ।", nav_about: "परिचय", nav_install: "इंस्टॉल", nav_whats_new: "नया क्या है", nav_open: "खोलें", nav_app: "ऐप", h1: "बोर्ड टेम्पलेट", lead: "“बोर्ड बनाएँ” पर क्लिक करें — ऐप खुलेगा और आपके स्पेस में टेम्पलेट के कॉलम और स्टाइल के साथ नया बोर्ड बनेगा। साइन-इन आवश्यक है।", loading: "लोड हो रहा है…", empty: "अभी कोई टेम्पलेट नहीं।", error: "टेम्पलेट लोड नहीं हो सके। बाद में प्रयास करें या ऐप में बोर्ड मेनू से टेम्पलेट खोलें।", create_board: "बोर्ड बनाएँ", uses: "उपयोग", author_fallback: "लेखक" },
+      ar: { page_title: "قوالب اللوحات — Offline Kanban", meta_description: "مجموعات أعمدة جاهزة للوحة كانبان. أنشئ لوحة في مساحتك بنقرة واحدة.", nav_about: "حول", nav_install: "التثبيت", nav_whats_new: "الجديد", nav_open: "فتح", nav_app: "التطبيق", h1: "قوالب اللوحات", lead: "انقر «إنشاء لوحة» — سيفتح التطبيق وستظهر لوحة جديدة بالأعمدة والتنسيق من القالب في مساحتك. يلزم تسجيل الدخول.", loading: "جارٍ التحميل…", empty: "لا توجد قوالب بعد.", error: "تعذر تحميل القوالب. حاول لاحقًا أو افتحها من قائمة اللوحة في التطبيق.", create_board: "إنشاء لوحة", uses: "استخدامات", author_fallback: "المؤلف" },
+      pt: { page_title: "Modelos de quadro — Offline Kanban", meta_description: "Conjuntos de colunas prontos para seu quadro Kanban. Crie um quadro no seu espaço com um clique.", nav_about: "Sobre", nav_install: "Instalar", nav_whats_new: "Novidades", nav_open: "Abrir", nav_app: "App", h1: "Modelos de quadro", lead: "Clique em “Criar quadro” — o app abrirá e um novo quadro com colunas e estilo do modelo aparecerá no seu espaço. Login necessário.", loading: "Carregando…", empty: "Ainda não há modelos.", error: "Falha ao carregar modelos. Tente mais tarde ou abra pelo menu do quadro no app.", create_board: "Criar quadro", uses: "usos", author_fallback: "Autor" },
+      fr: { page_title: "Modèles de tableau — Offline Kanban", meta_description: "Ensembles de colonnes prêts pour votre tableau Kanban. Créez un tableau dans votre espace en un clic.", nav_about: "À propos", nav_install: "Installer", nav_whats_new: "Nouveautés", nav_open: "Ouvrir", nav_app: "App", h1: "Modèles de tableau", lead: "Cliquez sur « Créer un tableau » — l’application s’ouvrira et un nouveau tableau avec les colonnes et le style du modèle apparaîtra dans votre espace. Connexion requise.", loading: "Chargement…", empty: "Aucun modèle pour le moment.", error: "Impossible de charger les modèles. Réessayez plus tard ou ouvrez-les depuis le menu du tableau dans l’app.", create_board: "Créer un tableau", uses: "utilisations", author_fallback: "Auteur" },
+      de: { page_title: "Board-Vorlagen — Offline Kanban", meta_description: "Fertige Spaltensets für Ihr Kanban-Board. Erstellen Sie mit einem Klick ein Board in Ihrem Bereich.", nav_about: "Über", nav_install: "Installieren", nav_whats_new: "Neuigkeiten", nav_open: "Öffnen", nav_app: "App", h1: "Board-Vorlagen", lead: "Klicken Sie auf „Board erstellen“ — die App öffnet sich und ein neues Board mit Spalten und Stil der Vorlage erscheint in Ihrem Bereich. Anmeldung erforderlich.", loading: "Laden…", empty: "Noch keine Vorlagen.", error: "Vorlagen konnten nicht geladen werden. Versuchen Sie es später oder öffnen Sie sie im Board-Menü der App.", create_board: "Board erstellen", uses: "Nutzungen", author_fallback: "Autor" },
+      ja: { page_title: "ボードテンプレート — Offline Kanban", meta_description: "カンバンボード用の既製列セット。ワンクリックでスペースにボードを作成できます。", nav_about: "概要", nav_install: "インストール", nav_whats_new: "新着情報", nav_open: "開く", nav_app: "アプリ", h1: "ボードテンプレート", lead: "「ボードを作成」をクリックするとアプリが開き、テンプレートの列とスタイルを持つ新しいボードがスペースに作成されます。サインインが必要です。", loading: "読み込み中…", empty: "テンプレートはまだありません。", error: "テンプレートを読み込めませんでした。後でもう一度試すか、アプリのボードメニューから開いてください。", create_board: "ボードを作成", uses: "回使用", author_fallback: "作成者" }
+    };
+  </script>
+  <script src="/site-i18n.js"></script>
   <script>
   (async () => {
     const grid = document.getElementById('grid');
     const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
     const COL = { blue: '#579dff', green: '#4bce97', orange: '#fea362', purple: '#9f8fef', red: '#f87168', teal: '#6cc3e0', gray: '#8590a2' };
-    const BG = {
-      ocean: 'linear-gradient(135deg, #0c66e4, #09326c)', forest: 'linear-gradient(135deg, #16a34a, #0f3d2e)',
-      sunset: 'linear-gradient(135deg, #f97316, #be185d)', dusk: 'linear-gradient(135deg, #7c3aed, #312e81)',
-      aurora: 'linear-gradient(135deg, #0891b2, #16a34a)', night: 'linear-gradient(135deg, #1e293b, #020617)',
-      blue: '#1d4ed8', green: '#15803d', orange: '#c2410c', red: '#b91c1c', purple: '#6d28d9', teal: '#0f766e', gray: '#475569',
-    };
+    const BG = { ocean: 'linear-gradient(135deg, #0c66e4, #09326c)', forest: 'linear-gradient(135deg, #16a34a, #0f3d2e)', sunset: 'linear-gradient(135deg, #f97316, #be185d)', dusk: 'linear-gradient(135deg, #7c3aed, #312e81)', aurora: 'linear-gradient(135deg, #0891b2, #16a34a)', night: 'linear-gradient(135deg, #1e293b, #020617)', blue: '#1d4ed8', green: '#15803d', orange: '#c2410c', red: '#b91c1c', purple: '#6d28d9', teal: '#0f766e', gray: '#475569' };
     function tplPreview(payload) {
       const bg = payload.background && BG[payload.background] ? ` style="background:${BG[payload.background]}"` : '';
-      const cols = payload.columns.map((c, i) => {
+      const cols = (payload.columns || []).map((c, i) => {
         const style = c.color && COL[c.color] ? ` style="--c:${COL[c.color]}"` : '';
         const ph = i < 3 ? '<div class="tpl-ph"></div>' + (i === 0 ? '<div class="tpl-ph"></div>' : '') : '';
         return `<div class="tpl-preview-col"${style}><div class="tpl-preview-head">${esc(c.name)}</div>${ph}</div>`;
       }).join('');
       return `<div class="tpl-preview"><div class="tpl-preview-board"${bg}>${cols}</div></div>`;
     }
+    function t(key) { const d = (window.SITE_I18N && window.SITE_I18N[window.__siteLang || 'en']) || {}; const en = (window.SITE_I18N && window.SITE_I18N.en) || {}; return d[key] || en[key] || key; }
     try {
       const res = await fetch('/api/templates?limit=50');
       if (!res.ok) throw new Error();
       const { templates } = await res.json();
-      if (!templates?.length) {
-        grid.innerHTML = '<p class="lead">Пока нет шаблонов.</p>';
-        return;
-      }
-      grid.innerHTML = templates.map((t) => {
-        const tid = esc(t.id);
-        return `<article class="card">
-          ${tplPreview(t.payload)}
-          <h2>${esc(t.title)}</h2>
-          <p>${esc(t.description)}</p>
-          <p class="meta">${esc(t.author?.name)} · использований: ${t.usesCount ?? 0}</p>
-          <a class="btn" href="/?template=${encodeURIComponent(t.id)}"
-            onclick="try{sessionStorage.setItem('pendingBoardTemplate','${tid}')}catch(e){}">Создать доску</a>
-        </article>`;
+      if (!templates?.length) { grid.innerHTML = `<p class="lead">${esc(t('empty'))}</p>`; return; }
+      grid.innerHTML = templates.map((tplt) => {
+        const tid = esc(tplt.id);
+        return `<article class="card">${tplPreview(tplt.payload || {})}<h2>${esc(tplt.title)}</h2><p>${esc(tplt.description)}</p><p class="meta">${esc(tplt.author?.name || t('author_fallback'))} · ${esc(t('uses'))}: ${tplt.usesCount ?? 0}</p><a class="btn" href="/?template=${encodeURIComponent(tplt.id)}" onclick="try{sessionStorage.setItem('pendingBoardTemplate','${tid}')}catch(e){}">${esc(t('create_board'))}</a></article>`;
       }).join('');
-    } catch {
-      grid.innerHTML = '<p class="lead">Не удалось загрузить витрину. Попробуйте позже или откройте шаблоны в меню доски в <a href="/">приложении</a>.</p>';
-    }
+    } catch { grid.innerHTML = `<p class="lead">${esc(t('error'))}</p>`; }
+    document.addEventListener('site-lang-change', () => { /* re-render on language change by reloading data labels would be complex; reload page section */ location.reload(); });
   })();
   </script>
 </body>

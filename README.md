@@ -1,487 +1,184 @@
 # Offline Kanban
 
-Канбан-доска для себя и для небольшой команды: устанавливается как приложение (PWA) на телефон и компьютер,
-работает без интернета и сама синхронизирует изменения между устройствами, когда связь появляется.
-Внутри — доски, вложенные папки, карточки с подзадачами и напоминаниями, общий доступ, чаты в стиле Telegram.
+A Kanban board for personal use and small teams: installable as an app (PWA) on phone and desktop, works offline, and automatically syncs changes across devices when connectivity returns. It includes boards, nested folders, cards with subtasks and reminders, sharing, and Telegram-style chats.
 
-[![Открыть демо](https://img.shields.io/badge/%D0%9E%D1%82%D0%BA%D1%80%D1%8B%D1%82%D1%8C-%D0%B4%D0%B5%D0%BC%D0%BE-2563eb?style=for-the-badge&logo=googlechrome&logoColor=white)](https://178-83-123-195.sslip.io)
-[![Android: скачать APK](https://img.shields.io/badge/Android-%D0%A1%D0%BA%D0%B0%D1%87%D0%B0%D1%82%D1%8C%20APK-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://178-83-123-195.sslip.io/downloads/offline-kanban.apk)
-[![Google Play: скоро](https://img.shields.io/badge/Google%20Play-%D1%81%D0%BA%D0%BE%D1%80%D0%BE-414141?style=for-the-badge&logo=googleplay&logoColor=white)](https://178-83-123-195.sslip.io/install.html)
-[![iPhone и iPad](https://img.shields.io/badge/iPhone%20%D0%B8%20iPad-%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%B8%D1%82%D1%8C-000000?style=for-the-badge&logo=apple&logoColor=white)](https://178-83-123-195.sslip.io/install.html)
-[![Windows, macOS, Linux](https://img.shields.io/badge/Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-%D0%A3%D1%81%D1%82%D0%B0%D0%BD%D0%BE%D0%B2%D0%B8%D1%82%D1%8C-0078D4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://178-83-123-195.sslip.io/install.html)
+[![Open demo](https://img.shields.io/badge/Open-demo-2563eb?style=for-the-badge&logo=googlechrome&logoColor=white)](https://178-83-123-195.sslip.io)
+[![Android: download APK](https://img.shields.io/badge/Android-Download%20APK-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://178-83-123-195.sslip.io/downloads/offline-kanban.apk)
+[![Google Play: coming soon](https://img.shields.io/badge/Google%20Play-Coming%20soon-414141?style=for-the-badge&logo=googleplay&logoColor=white)](https://178-83-123-195.sslip.io/install.html)
+[![iPhone and iPad](https://img.shields.io/badge/iPhone%20%26%20iPad-Install-000000?style=for-the-badge&logo=apple&logoColor=white)](https://178-83-123-195.sslip.io/install.html)
+[![Windows, macOS, Linux](https://img.shields.io/badge/Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-Install-0078D4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://178-83-123-195.sslip.io/install.html)
 
-Все способы установки — на [странице установки](https://178-83-123-195.sslip.io/install.html), знакомство с
-приложением и живая демо-доска — на [промо-странице](https://178-83-123-195.sslip.io/promo.html).
+All installation options are on the [installation page](https://178-83-123-195.sslip.io/install.html). An introduction to the app and a live demo board are on the [promo page](https://178-83-123-195.sslip.io/promo.html).
 
-![Доска](docs/screenshots/board.png)
+![Board](docs/screenshots/board.png)
 
-## Возможности
+## Features
 
-- **Без интернета.** Все данные лежат на устройстве (IndexedDB), изменения уходят на сервер при появлении сети;
-  одновременные правки одного поля превращаются в конфликт, который решает пользователь.
-- **Доски и папки любой вложенности**, несколько пространств у пользователя, наборы колонок, swimlanes на доске
-  (по исполнителю, доске или цвету карточки), WIP-лимиты у колонок, виды «Колонки»,
-  «Список» (редактируемая таблица), «Календарь», «Гант» и «Показатели» (ключевые метрики по фильтрам), поиск по всем
-  доскам, фильтры по папкам, колонкам, тегам,
-  цвету карточки, автору и исполнителю.
-- **Карточки:** описание с Markdown, подзадачи, файлы и видео, цвета, хэштеги, дедлайны, сколько угодно напоминаний с
-  повторами (Web Push), отметка «выполнено», архив с восстановлением, история изменений.
-- **Выгрузка в Excel и PDF** доски, нескольких досок или всего пространства — без интернета.
-- **«Входящие»** — панель для быстрых дел, которые потом разбираются по доскам.
-- **Совместная работа:** приглашение по почте с доступом к отдельным папкам, публичные ссылки без входа.
-- **Чаты как в Telegram:** чаты досок и карточек, личные сообщения, ответы и цитаты, изменение и удаление,
-  изображения (сжатые или оригинал), галочки «доставлено»/«просмотрено», чат с техподдержкой.
-- **Вход** через Google, Яндекс ID или по коду на почту; несколько аккаунтов привязываются к одной доске.
-- **Для администратора:** настройки сервера в приложении, мониторинг (пользователи, пространства, активность,
-  место на диске), обращения в поддержку.
-- Светлая и тёмная тема, интерфейс под телефон.
+- **Offline-first.** All data is stored on the device (IndexedDB). Changes are sent to the server when the network becomes available; concurrent edits to the same field become a conflict that the user resolves.
+- **Boards and folders of any depth**, multiple spaces per user, column sets, swimlanes on the board (by assignee, board, or card color), column WIP limits, views: Board, List (editable table), Calendar, Gantt, and Metrics (key metrics by filters), search across all boards, and filters by folders, columns, tags, card color, author, and assignee.
+- **Cards:** Markdown description, subtasks, files and video, colors, hashtags, deadlines, unlimited reminders with repeats (Web Push), “done” mark, archive with restore, and change history.
+- **Export to Excel and PDF** for a board, multiple boards, or the entire space — works offline.
+- **Inbox** — a panel for quick tasks to be sorted onto boards later.
+- **Collaboration:** email invitations with access to specific folders, public links without sign-in.
+- **Telegram-style chats:** board and card chats, direct messages, replies and quotes, edit and delete, images (compressed or original), delivered/read checkmarks, and a support chat.
+- **Sign-in** via Google, Yandex ID, or email code; multiple accounts can be linked to the same board.
+- **For administrators:** server settings in the app, monitoring (users, spaces, activity, disk usage), and support requests.
+- Light and dark theme, mobile-friendly UI.
 
-| Карточка | Чат | Телефон |
+| Card | Chat | Phone |
 | --- | --- | --- |
-| ![Карточка](docs/screenshots/card.png) | ![Чат](docs/screenshots/chat.png) | ![Телефон](docs/screenshots/phone.png) |
+| ![Card](docs/screenshots/card.png) | ![Chat](docs/screenshots/chat.png) | ![Phone](docs/screenshots/phone.png) |
 
-## Стек
+## Stack
 
-- Клиент: React 19, Vite, Dexie (IndexedDB), Workbox (офлайн и обновления), Web Push.
-- Сервер: Node.js ≥ 22.13, Express, встроенный `node:sqlite`, Server-Sent Events для живых обновлений.
-- Деплой: один скрипт `deploy.sh` (systemd + Caddy с HTTPS от Let's Encrypt).
+- Client: React 19, Vite, Dexie (IndexedDB), Workbox (offline and updates), Web Push.
+- Server: Node.js ≥ 22.13, Express, built-in `node:sqlite`, Server-Sent Events for live updates.
+- Deployment: single `deploy.sh` script (systemd + Caddy with HTTPS from Let's Encrypt).
 
-История изменений — в [CHANGELOG.md](CHANGELOG.md), на сайте — [/releases.html](https://178-83-123-195.sslip.io/releases.html)
-(генерируется при сборке), в [GitHub Releases](https://github.com/ravler1704/kanban-pwa/releases)
-(тег `web-YYYY-MM-DD`, обновляется при пуше CHANGELOG).
+Changelog: [CHANGELOG.md](CHANGELOG.md), on the site: [/releases.html](https://178-83-123-195.sslip.io/releases.html) (generated during build), in [GitHub Releases](https://github.com/ravler1704/kanban-pwa/releases) (tag `web-YYYY-MM-DD`, updated when CHANGELOG is pushed).
 
-## Запуск
+## Running
 
-Нужен Node.js ≥ 22.13 (используется встроенный `node:sqlite`).
+Requires Node.js ≥ 22.13 (uses built-in `node:sqlite`).
 
 ```bash
 npm install
-npm start          # сборка клиента + сервер на http://localhost:3001
+npm start          # build client + server on http://localhost:3001
 ```
 
-Режим разработки (Vite с hot reload на :5173, API проксируется на :3001):
+Development mode (Vite with hot reload on :5173, API proxied to :3001):
 
 ```bash
 npm run dev
 ```
 
-Переменные окружения сервера: `PORT` (по умолчанию 3001), `HOST`, `DB_PATH` (по умолчанию `server/data/kanban.db`),
-`FILES_DIR`, `DEV_LOGIN`, `ADMIN_EMAILS` (см. «Вход»). Остальное — входы, почта, кто может войти, администраторы,
-контакт для push — настраивается в приложении («Аккаунт» → «Настройки сервера», только администраторам) и хранится
-в базе. `GOOGLE_CLIENT_ID`, `YANDEX_CLIENT_ID`, `ALLOWED_EMAILS`, `VAPID_SUBJECT`, `SMTP_URL`/`MAIL_FROM` читаются
-только при первом запуске на новой базе, чтобы перенести в неё прежние настройки.
+Server environment variables: `PORT` (default 3001), `HOST`, `DB_PATH` (default `server/data/kanban.db`), `FILES_DIR`, `DEV_LOGIN`, `ADMIN_EMAILS` (see “Sign-in”). Everything else — sign-in providers, mail, who can sign in, administrators, push contact — is configured in the app (“Account” → “Server settings”, administrators only) and stored in the database. `GOOGLE_CLIENT_ID`, `YANDEX_CLIENT_ID`, `ALLOWED_EMAILS`, `VAPID_SUBJECT`, `SMTP_URL`/`MAIL_FROM` are read only on the first run with a new database to migrate previous settings into it.
 
-## Деплой
+## Deployment
 
-Продакшен: https://178-83-123-195.sslip.io (сервер `178.83.123.195`, SSH-алиас `kanban` в `~/.ssh/config`).
+Production: https://178-83-123-195.sslip.io (server `178.83.123.195`, SSH alias `kanban` in `~/.ssh/config`).
 
 ```bash
-./deploy.sh           # собрать клиент и залить текущий код на сервер
-./deploy.sh --setup   # первичная настройка сервера (Node.js 24, Caddy, swap, firewall) + деплой
+./deploy.sh           # build client and upload current code to the server
+./deploy.sh --setup   # initial server setup (Node.js 24, Caddy, swap, firewall) + deploy
 ```
 
-На сервере:
-- код — `/opt/kanban`, база — `/var/lib/kanban/kanban.db` (деплой её не трогает);
-- приложение — systemd-сервис `kanban` (`journalctl -u kanban -f` — логи), слушает только `127.0.0.1:3001`;
-- Caddy (`/etc/caddy/Caddyfile`) — HTTPS-сертификат Let's Encrypt для домена sslip.io, указывающего на IP.
+On the server:
+- code — `/opt/kanban`, database — `/var/lib/kanban/kanban.db` (deployment does not touch it);
+- app — systemd service `kanban` (`journalctl -u kanban -f` for logs), listens only on `127.0.0.1:3001`;
+- Caddy (`/etc/caddy/Caddyfile`) — Let's Encrypt HTTPS certificate for the sslip.io domain pointing to the IP.
 
-## Приложения для платформ
+## Platform apps
 
-Везде устанавливается один и тот же PWA; страница `/install.html` (`client/public/install.html`) и вкладка
-«Приложение» в окне «Аккаунт» подсказывают способ для устройства.
+The same PWA is installed everywhere; the `/install.html` page (`client/public/install.html`) and the “App” tab in the “Account” dialog suggest the method for the device.
 
-**Android** — Trusted Web Activity: обёртка `android/` открывает сайт на весь экран без адресной строки (пакет
-`io.github.ravler1704.kanban`). Окно без браузерных панелей Android даёт только после проверки
-`/.well-known/assetlinks.json` (`client/public/.well-known/`), где указан SHA-256 ключа подписи.
+**Android** — Trusted Web Activity: the `android/` wrapper opens the site fullscreen without the address bar (package `io.github.ravler1704.kanban`). Android shows a browser-bar-free window only after verifying `/.well-known/assetlinks.json` (`client/public/.well-known/`), which contains the signing key SHA-256.
 
 ```bash
 brew install openjdk@17 && brew install --cask android-commandlinetools && npm i -g @bubblewrap/cli
-./android/build.sh    # → android/offline-kanban.apk и .aab (для Google Play); APK копируется в client/public/downloads/
-./deploy.sh           # APK раздаётся сайтом: /downloads/offline-kanban.apk
-gh release create android-1.0.1 android/offline-kanban.apk --title "Android 1.0.1"   # копия в релизах GitHub
+./android/build.sh    # → android/offline-kanban.apk and .aab (for Google Play); APK is copied to client/public/downloads/
+./deploy.sh           # APK is served by the site: /downloads/offline-kanban.apk
+gh release create android-1.0.1 android/offline-kanban.apk --title "Android 1.0.1"   # copy in GitHub releases
 
-Веб-версия: после обновления `CHANGELOG.md` и `git push origin master` GitHub Actions публикует релиз
-`web-YYYY-MM-DD`; `npm run build` собирает `/releases.html`. Вручную: `npm run release:github`.
+Web version: after updating `CHANGELOG.md` and `git push origin master`, GitHub Actions publishes a `web-YYYY-MM-DD` release; `npm run build` generates `/releases.html`. Manually: `npm run release:github`.
 ```
 
-- Ключ подписи и пароли — `deploy/android/` (не в git). **Храните копию**: без него обновление APK не
-  установится поверх старого.
-- Перед новой сборкой поднимите `appVersionCode` и `appVersionName` в `android/twa-manifest.json`.
-- Google Play: аккаунт разработчика (разовый взнос $25), «Создать приложение» → загрузить `.aab`. Play подписывает
-  приложение своим ключом — его SHA-256 (Play Console → «Целостность приложения») нужно добавить вторым отпечатком в
-  `assetlinks.json`, иначе вверху будет адресная строка. Затем в `client/src/install.js` и `install.html` задать
-  `PLAY_URL`.
+- Signing key and passwords — `deploy/android/` (not in git). **Keep a backup**: without it, an APK update cannot be installed over the old one.
+- Before a new build, bump `appVersionCode` and `appVersionName` in `android/twa-manifest.json`.
+- Google Play: developer account ($25 one-time fee), “Create app” → upload `.aab`. Play signs the app with its own key — its SHA-256 (Play Console → “App integrity”) must be added as a second fingerprint in `assetlinks.json`, otherwise an address bar will appear at the top. Then set `PLAY_URL` in `client/src/install.js` and `install.html`.
 
-**iPhone и iPad** — «Поделиться» → «На экран «Домой»» в Safari (iOS 16.4+ — с уведомлениями). App Store требует
-аккаунт Apple Developer ($99 в год) и сборку в Xcode.
+**iPhone and iPad** — “Share” → “Add to Home Screen” in Safari (iOS 16.4+ — with notifications). App Store requires an Apple Developer account ($99/year) and an Xcode build.
 
-**Windows, macOS, Linux** — установка из Chrome, Edge, Яндекс Браузера и Safari (macOS 14+).
+**Windows, macOS, Linux** — install from Chrome, Edge, Yandex Browser, and Safari (macOS 14+).
 
-## Вход
+## Sign-in
 
-Вход через Google, Яндекс ID и/или по почте. У каждого пользователя своя доска (папки, колонки, карточки).
-При входе по почте на адрес при каждом входе приходит 4-значный код (действует 10 минут, 5 попыток;
-новый код — не чаще раза в минуту, не больше 10 в сутки на адрес и 20 в час с одного IP). Если адрес
-уже есть у аккаунта Google или Яндекс, вход по почте открывает его доску.
-В окне «Аккаунт» к пользователю можно привязать другие аккаунты (Google, Яндекс, почту): вход через любой
-из них открывает ту же доску. Если у привязываемого аккаунта уже была своя доска, после подтверждения
-она объединяется с текущей (папки и карточки переносятся, колонки по умолчанию остаются текущие).
-Имя пользователя (вверху экрана под названием пространства, у участников и в чатах) меняется в окне «Аккаунт»
-→ поле «Имя» (`POST /api/auth/name {name}`, таблица `user_names`); пустое поле возвращает имя из аккаунта входа.
-Уже отправленные сообщения сохраняют имя, с которым были написаны.
+Sign-in via Google, Yandex ID, and/or email. Each user has their own board (folders, columns, cards). When signing in by email, a 4-digit code is sent on every sign-in (valid for 10 minutes, 5 attempts; a new code no more than once per minute, no more than 10 per day per address and 20 per hour per IP). If the address already belongs to a Google or Yandex account, email sign-in opens that board.
 
-Пространства: у пользователя может быть несколько пространств (до 50), у каждого свои папки, колонки, карточки,
-участники, чаты и «Входящие». Вверху экрана — название открытого пространства, под ним мелко имя пользователя (в
-чужом пространстве — владельца); нажатие открывает список своих пространств, «Новое пространство…» и открытые вам
-чужие. Основное пространство — прежняя доска пользователя (id доски = id пользователя, по умолчанию «Моё
-пространство»), его нельзя удалить; остальные — `s:<uuid>` в таблице `spaces` (`boardOwner()` сводит доску к
-владельцу), создаются с корневой папкой «Общее». Переименовать или удалить пространство (со всем содержимым и
-файлами; подтверждение словом «удалить», `ConfirmDelete.jsx`) — «Настройки пространства» → «Пространство»; доступ к папкам выдаётся в каждом пространстве отдельно.
-Запросы выбирают пространство заголовком `X-Board` (или `?board=`), у каждого своя локальная база
-(`kanban-board:<id>`). API: `POST /api/spaces {name}`, `/api/spaces/rename {id, name}`, `/api/spaces/delete {id}`.
+In the “Account” dialog, other accounts (Google, Yandex, email) can be linked to the user: signing in with any of them opens the same board. If the linked account already had its own board, after confirmation it is merged with the current one (folders and cards are moved, default columns remain current).
 
-Доступ выдаётся к папкам по e-mail: в настройках доски на вкладке «Доступ» (выбрать папку → «Участники»), в
-настройках самой папки («Папки» → папка → «Доступ») или во вкладке «Доступ» настроек пространства (там же сводка: кому
-какие папки открыты). Приглашение (`{ folder }`) открывает папку и всё, что в ней, в том числе вложенные папки,
-созданные или перенесённые в неё позже; сервер раскрывает его на потомков (таблица `folder_members`, представление
-`member_access`). В настройках вложенной папки такие участники показаны с пометкой «через папку «…»». Кто войдёт
-(или привяжет аккаунт) с этим адресом, видит доску владельца в переключателе вверху экрана, но только открытые
-ему папки (папки выше открытой видны как путь, без карточек); его собственная доска остаётся. Участник меняет
-карточки и вложенные папки в открытых ему папках, а колонки и корневые папки — только владелец. Владелец
-может убрать участника из папки или отовсюду, участник — покинуть доску.
+The user name (shown at the top under the space name, next to members, and in chats) is changed in “Account” → “Name” field (`POST /api/auth/name {name}`, `user_names` table); an empty field returns the name from the sign-in account. Already sent messages keep the name they were written with.
 
-Папку можно открыть и по публичной ссылке `/p/<token>` (настройки доски → «Доступ» → папка → «Публичная ссылка»;
-в запросах поле по-прежнему называется `project`): по ней папка со всем содержимым открывается без входа,
-«Только просмотр» или «Просмотр и редактирование карточек» (карточки и вложенные папки, как у участника).
-Смена режима ссылку не меняет; выключенная ссылка перестаёт работать, а при повторном включении создаётся новая.
-Посетитель хранит папку в отдельной локальной базе и не получает напоминаний.
+Spaces: a user can have multiple spaces (up to 50), each with its own folders, columns, cards, members, chats, and Inbox. At the top is the name of the open space, below it in small text the user name (in someone else’s space — the owner’s); clicking opens the list of your spaces, “New space…”, and spaces shared with you. The primary space is the user’s original board (board id = user id, default “My space”), it cannot be deleted; others are `s:<uuid>` in the `spaces` table (`boardOwner()` resolves the board to the owner), created with a root “Shared” folder. Rename or delete a space (with all contents and files; confirmed by typing “delete”, `ConfirmDelete.jsx`) — “Space settings” → “Space”; folder access is granted separately in each space. Requests select the space via `X-Board` header (or `?board=`), each has its own local DB (`kanban-board:<id>`). API: `POST /api/spaces {name}`, `/api/spaces/rename {id, name}`, `/api/spaces/delete {id}`.
 
-Настройки сервера меняет администратор в приложении: «Аккаунт» → блок «Администрирование сервера» →
-«Настройки сервера» (вкладки «Вход», «Почта», «Пользователи», «Уведомления»); они хранятся в базе (`meta`:
-`serverSettings`, `smtp`). Администратор — тот, у кого среди привязанных входов есть адрес из списка
-администраторов или из `ADMIN_EMAILS` (эти — всегда, чтобы сервер нельзя было потерять; в приложении их не убрать).
-Сервер не даёт убрать последний способ входа и убрать из администраторов себя.
+Access is granted to folders by e-mail: in board settings on the “Access” tab (select folder → “Members”), in the folder’s own settings (“Folders” → folder → “Access”), or in the “Access” tab of space settings (which also shows a summary: who has access to which folders). An invitation (`{ folder }`) opens the folder and everything inside it, including nested folders created or moved into it later; the server expands it to descendants (`folder_members` table, `member_access` view). In a nested folder’s settings such members are shown with a “via folder …” note. Anyone who signs in (or links an account) with that address sees the owner’s board in the switcher at the top, but only folders shared with them (folders above the shared one are visible as a path, without cards); their own board remains. A member can edit cards and nested folders in folders shared with them, while columns and root folders are owner-only. The owner can remove a member from a folder or everywhere; a member can leave the board.
 
-Там же «Мониторинг» (`GET /api/admin/overview`): итоги по серверу (пользователи, активные за сутки / 7 / 30 дней
-и сейчас в приложении, пространства, доски, карточки и архив, сообщения, файлы, размер базы и свободное место) и
-таблица пользователей с сортировкой и поиском; строка раскрывается в пространства пользователя. Только количества
-и даты — названия досок и тексты карточек и сообщений администратору не видны, входа «под пользователем» нет.
-Активность — последний запрос с сессией пользователя (таблица `user_seen`, пишется не чаще раза в 5 минут),
-«сейчас в приложении» — открытые потоки событий.
+A folder can also be opened via a public link `/p/<token>` (board settings → “Access” → folder → “Public link”; in requests the field is still called `project`): it opens the folder with all contents without sign-in, in “View only” or “View and edit cards” mode (cards and nested folders, like a member). Changing the mode does not change the link; a disabled link stops working, and re-enabling creates a new one. The visitor stores the folder in a separate local DB and does not receive reminders.
 
-Изображения в чатах (папок, карточек, личных и техподдержки): скрепка, вставка из буфера или перетаскивание, до 10
-в сообщении. Как в Telegram, по умолчанию «Сжать изображение» — браузер уменьшает до 1920 px по длинной стороне и
-сохраняет JPEG; без галочки уходит оригинал (до 50 МБ) и его JPEG-копия 1280 px для показа в чате (GIF — как есть).
-Выбор запоминается на устройстве. По нажатию картинка открывается на весь экран, «Скачать» отдаёт оригинал.
-Файлы — `POST /api/chat-images` (до отправки сообщения видны только загрузившему) и `GET /api/chat-images/:id`
-(тем, кто видит сообщение: участникам папки, собеседникам, а обращений — пользователю и администраторам); у
-сообщения поле `images`. Картинки удалённых сообщений удаляет очистка файлов.
+Server settings are changed by an administrator in the app: “Account” → “Server administration” → “Server settings” (tabs “Sign-in”, “Mail”, “Users”, “Notifications”); they are stored in the database (`meta`: `serverSettings`, `smtp`). An administrator is anyone whose linked sign-ins include an address from the administrators list or from `ADMIN_EMAILS` (these are always administrators so the server cannot be locked out; they cannot be removed in the app). The server does not allow removing the last sign-in method or removing yourself from administrators.
 
-Сообщения меняют и удаляют как в Telegram: правый клик по сообщению (на телефоне — нажатие) открывает меню
-«Изменить» / «Копировать текст» / «Удалить». При изменении над полем ввода — полоса «Редактирование» с
-исходным текстом, Esc или × отменяют, набранный до этого черновик возвращается; ↑ в пустом поле берёт последнее
-своё сообщение. Удаление подтверждается окном и действует у всех участников; изменённые помечены «изменено».
+There is also “Monitoring” (`GET /api/admin/overview`): server totals (users, active in 24h / 7 / 30 days and currently in the app, spaces, boards, cards and archive, messages, files, database size and free disk space) and a user table with sorting and search; a row expands into the user’s spaces. Only counts and dates — board names and card/message texts are not visible to the administrator, and there is no “impersonate user” access. Activity is the last request with the user’s session (`user_seen` table, written no more than once every 5 minutes), “currently in the app” means open event streams.
 
-Галочки как в Telegram: часы — сообщение ещё не на сервере, одна галочка — доставлено, две — просмотрено.
-В личных сообщениях и обращениях «просмотрено» — по отметкам прочтения собеседника (`peerReadAt` / `readAt`
-в ответе ветки); в чатах папок и карточек — когда кто-то другой открыл чат после сообщения: устройство шлёт
-`POST /api/chat-reads { thread, at }` (таблица `chat_reads`), `GET /api/chat-reads` отдаёт по каждому чату,
-до какого времени его прочитал кто-то кроме спрашивающего, а событие `reads` обновляет галочки у остальных.
+Images in chats (folders, cards, direct, and support): attachment, paste from clipboard, or drag-and-drop, up to 10 per message. Like Telegram, “Compress image” is on by default — the browser scales down to 1920 px on the long side and saves JPEG; without it the original is sent (up to 50 MB) plus a 1280 px JPEG copy for display in chat (GIF as-is). The choice is remembered on the device. Clicking an image opens it fullscreen; “Download” returns the original. Files — `POST /api/chat-images` (visible only to the uploader before the message is sent) and `GET /api/chat-images/:id` (to those who can see the message: folder members, conversation participants, and for support requests — the user and administrators); messages have an `images` field. Images from deleted messages are removed by file cleanup.
 
-Ответы и цитаты: «Ответить» в меню сообщения; если выделить часть текста, над выделением появляется кнопка
-«Цитировать» (и в меню — «Ответить с цитатой»). Над полем ввода — полоса «Ответ»/«Цитата» с автором и текстом,
-Esc или × отменяют. У ответа поле `reply` — `{ id, author, text, quote }`, снимок на момент ответа (у
-комментариев — в записи, у личных и обращений — колонка `reply`); нажатие на цитату прокручивает к исходному
-сообщению и подсвечивает его.
+Messages can be edited and deleted like in Telegram: right-click a message (tap on mobile) opens “Edit” / “Copy text” / “Delete”. When editing, a bar above the input shows “Editing” with the original text, Esc or × cancels, and the draft typed before returns; ↑ in an empty field picks up your last message. Deletion is confirmed and applies for all participants; edited messages are marked “edited”.
 
-Техподдержка — чат «Техподдержка», закреплённый первым в «Чатах» у каждого пользователя (и кнопка «Написать в
-техподдержку» в «Аккаунте»). У пользователя одно обращение (`support_tickets`, сообщения в `support_messages`, только
-на сервере, как личные сообщения). Администраторы видят обращения в тех же «Чатах» (имя пользователя, «Обращение ·
-Открыто / Решено») и кнопку «Обращения» в «Администрировании сервера»; отвечает любой из них, пользователь видит
-«Техподдержка · имя». «Прочитано» у администраторов общее. Администратор отмечает обращение «Решено», новое сообщение
-пользователя открывает его снова. Уведомления: пользователю — об ответе, администраторам — о сообщениях пользователей.
-API: `GET /api/support`, `GET|POST /api/support/:user` (`me` — своё обращение), `…/:id/edit`, `…/:id/delete`,
-`…/read`, `…/status` (только администраторы).
+Checkmarks like Telegram: clock — message not yet on the server, one check — delivered, two — read. In direct messages and support requests “read” is based on the peer’s read marks (`peerReadAt` / `readAt` in the thread response); in folder and card chats — when someone else opened the chat after the message: the device sends `POST /api/chat-reads { thread, at }` (`chat_reads` table), `GET /api/chat-reads` returns, for each chat, the time up to which someone other than the requester has read it, and the `reads` event updates checkmarks for others.
 
-«Кто может войти» по желанию ограничивает вход (приглашённые адреса и администраторы входят всегда); пусто — кто
-угодно (пока Google-приложение в режиме Testing, Google и так пускает только «Test users»). Удаление адреса
-сразу закрывает его сессии. Если при запуске не настроен ни один способ входа, вход выключен и доска одна общая.
+Replies and quotes: “Reply” in the message menu; if you select part of the text, a “Quote” button appears above the selection (and “Reply with quote” in the menu). Above the input — a “Reply”/“Quote” bar with author and text, Esc or × cancels. A reply has a `reply` field — `{ id, author, text, quote }`, a snapshot at reply time (for comments — in the record, for direct/support — in the `reply` column); clicking the quote scrolls to the original message and highlights it.
 
-1. Google: в [Google Cloud Console](https://console.cloud.google.com/apis/credentials) создать OAuth client ID
-   типа «Web application»; в «Authorized JavaScript origins» добавить `https://178-83-123-195.sslip.io`
-   (и `http://localhost:3001` для локальной проверки). Client ID — во вкладку «Вход».
-2. Яндекс: на [oauth.yandex.ru](https://oauth.yandex.ru/client/new) создать приложение, платформа «Веб-сервисы»,
-   Redirect URI — `https://178-83-123-195.sslip.io/` (и `http://localhost:3001/`), доступы — адрес почты,
-   логин/имя и портрет. Нужен только ClientID (вкладка «Вход»), секрет не используется (вход по implicit flow,
-   сервер проверяет токен через `login.yandex.ru/info` и сверяет `client_id`).
-3. Почта (вкладка «Почта»): сервис (Яндекс, Mail.ru, Gmail или свой SMTP), логин и пароль приложения;
-   сервер проверяет вход в ящик перед сохранением, есть тестовое письмо. Пароль хранится в базе сервера
-   и в интерфейс не возвращается. Отправитель — сам ящик, либо поле «Отправитель».
-4. Первый запуск нового сервера: скопировать `deploy/kanban.env.example` в `deploy/kanban.env`, указать
-   `ADMIN_EMAILS` и хотя бы один способ входа (`GOOGLE_CLIENT_ID`, `YANDEX_CLIENT_ID` или `SMTP_URL`, например
-   `smtps://login%40yandex.ru:ПАРОЛЬ@smtp.yandex.ru:465`, `@` в логине — `%40`); `./deploy.sh` положит файл
-   в `/etc/kanban/env`. На новой базе сервер перенесёт эти значения в свои настройки, дальше их меняют в приложении,
-   а в файле достаточно оставить `ADMIN_EMAILS`.
+Support — a “Support” chat pinned first in “Chats” for every user (and a “Write to support” button in “Account”). Each user has one request (`support_tickets`, messages in `support_messages`, server-only, like direct messages). Administrators see requests in the same “Chats” (user name, “Request · Open / Resolved”) and a “Requests” button in “Server administration”; any of them can reply, the user sees “Support · name”. Read status is shared among administrators. An administrator marks a request “Resolved”, a new user message reopens it. Notifications: to the user — on reply, to administrators — on user messages. API: `GET /api/support`, `GET|POST /api/support/:user` (`me` — own request), `…/:id/edit`, `…/:id/delete`, `…/read`, `…/status` (administrators only).
 
-Локально те же переменные можно положить в `server/.env`. `DEV_LOGIN=1` там добавляет на экран входа
-кнопку «Войти в тестовый аккаунт» (отдельная доска без Google и Яндекса); сервер принимает её только с этого
-компьютера, на продакшен эту переменную не ставить. Без настроенной почты в этом режиме вход по почте тоже работает
-с этого компьютера: код пишется в лог сервера вместо письма.
+“Who can sign in” can optionally restrict access (invited addresses and administrators can always sign in); empty means anyone (while the Google app is in Testing mode, Google still allows only “Test users”). Removing an address immediately closes its sessions. If no sign-in method is configured on startup, sign-in is disabled and the board is shared.
 
-## Как это устроено
+1. Google: in [Google Cloud Console](https://console.cloud.google.com/apis/credentials) create an OAuth client ID of type “Web application”; in “Authorized JavaScript origins” add `https://178-83-123-195.sslip.io` (and `http://localhost:3001` for local testing). Set Client ID in the “Sign-in” tab.
+2. Yandex: at [oauth.yandex.ru](https://oauth.yandex.ru/client/new) create an app, platform “Web services”, Redirect URI — `https://178-83-123-195.sslip.io/` (and `http://localhost:3001/`), scopes — email, login/name and avatar. Only ClientID is needed (Sign-in tab), secret is not used (implicit flow sign-in; server verifies token via `login.yandex.ru/info` and checks `client_id`).
+3. Email (Mail tab): service (Yandex, Mail.ru, Gmail, or custom SMTP), login and app password; the server verifies mailbox access before saving, and can send a test email. The password is stored in the server database and not returned to the UI. Sender is the mailbox itself or the “From” field.
+4. First run of a new server: copy `deploy/kanban.env.example` to `deploy/kanban.env`, set `ADMIN_EMAILS` and at least one sign-in method (`GOOGLE_CLIENT_ID`, `YANDEX_CLIENT_ID`, or `SMTP_URL`, e.g. `smtps://login%40yandex.ru:PASSWORD@smtp.yandex.ru:465`, `@` in login as `%40`); `./deploy.sh` places the file in `/etc/kanban/env`. On a new database the server migrates these values into its settings; afterwards they are managed in the app, and only `ADMIN_EMAILS` needs to remain in the file.
 
-- **Папки**: пространств, проектов и разделов больше нет — всё это папки (`folder`) любой вложенности:
-  `{ parentId, columnSetId, name, position, deleted, hidden }`, корень — `parentId: null`. У каждой доски есть
-  корневая «Личное» (id `personal`, сервер создаёт её сам). Карточка лежит в одной папке (`folderId`),
-  комментарии и чат папки тоже (`folderId`; ветка чата — `folder:<id>`, старые `project:`/`space:` понимаются).
-  Папки настраиваются на вкладке настроек доски «Папки» одним деревом: строку раскрывают, чтобы изменить
-  название, доступ, набор колонок («Как у родителя» или свой; у корня набор всегда свой), удалить или
-  перенести; порядок — стрелками среди папок одного родителя; «+ Новая вложенная папка» и «+ Новая папка
-  верхнего уровня» — в конце своего уровня. Участники (не владелец) видят то же дерево, но без колонок и
-  корневых папок; серверные ограничения доступа остаются в силе.
-- **Набор колонок папки**: свой `columnSetId` или набор ближайшего родителя, у которого он есть
-  (`folderColumnSetId` в `folders.js`). Смена набора переносит карточки папки и вложенных папок, которые берут
-  набор у неё, по сопоставлению колонок (окно покажет сопоставление).
-- **Перенос и удаление папки** («Перенести…» — любая папка кроме себя и вложенных, или на верхний уровень):
-  папка переходит со всем содержимым простым изменением `parentId` (`moveFolder` в `actions.js`). Если у
-  папки нет своего набора и у нового родителя он другой, окно предлагает оставить прежний набор или взять
-  новый (карточки встанут в колонки с теми же названиями, остальные — в первую). Удаление папки с содержимым:
-  либо всё вместе (вложенные папки и их карточки), либо «оставить» — вложенные папки поднимаются на уровень
-  выше, карточки самой папки переходят в выбранную. Любое удаление доски (и пустой) подтверждается вводом слова
-  «удалить». В чат папки сервер записывает создание, переименование,
-  удаление, смену набора колонок и перенос папок и карточек (`folder.*`, `card.in`/`card.out`; записи старых
-  видов проект/раздел/пространство по-прежнему показываются в истории). В шапке чата папки — аватарки и число
-  участников (владелец и те, кому открыт доступ к ней или к папке выше); по нажатию список участников с кнопкой
-  «Написать». Кнопка чатов видна всегда, даже если доской никто больше не пользуется.
-- **Куда попадает новая карточка**: если отмечена ровно одна папка — в неё (и из поля внизу колонки, и в окне
-  «Новая карточка»); иначе в последнюю выбранную в окне «Новая карточка» папку из отмеченных. Когда на доске
-  несколько досок верхнего уровня (например, «Все доски»), быстрого добавления нет: внизу колонки кнопка
-  «+ Новая карточка…» открывает окно, где доска выбирается явно, а вставки между карточками нет.
-- **Вставка между карточками** (на устройствах с мышью): при наведении на промежуток между карточками колонки
-  появляется линия с «+»; по щелчку там открывается поле — Enter добавляет карточку ровно в это место (позиция —
-  середина между соседями) и оставляет поле для следующей, уход из поля добавляет набранное, Escape закрывает.
-- **Цвет карточки** (поле `color`, id из палитры в `client/src/appearance.js`): полоса сверху карточки, как обложка
-  в Trello. Задаётся в меню карточки («Цвет») и в окне карточки.
-- **Выполнена** (поле `done`), как в Trello: кружок слева от названия появляется при наведении на карточку, по
-  клику становится зелёным с галочкой (с анимацией) и остаётся видным. Отметить можно и в меню карточки (клавиша X),
-  и в окне карточки. Колонку карточка не меняет; в истории — «Карточка … выполнена».
-- **Меню доски** — как у карточек: клик по названию в заголовке переименовывает доску, а меню открывает кнопка «⋯»
-  справа, после аватаров участников, или правый клик на пустом месте доски (одно и то же меню): новая карточка, свернуть колонки,
-  «Переименовать», всё из меню доски в настройках пространства (доступ, перенос, набор колонок, фон, настройки
-  доски, порядок), «Архив…», «Выгрузить в Excel / PDF…» и «Удалить». Когда в виду несколько досок, в меню только общие пункты.
-- **Вид «Гант»** (переключатель вида в шапке): карточки с напоминаниями — полоски на шкале дней или недель, сгруппированные
-  по доскам. Цвет полоски — цвет карточки или колонки. Несколько разовых напоминаний на одной карточке становятся одной
-  полоской от первого до последнего, повторяющиеся — отметками в дни срабатывания. Перетаскивание сдвигает все
-  напоминания карточки на целое число дней; клик открывает карточку. Сегодня — вертикальная черта. Без напоминания
-  карточка на диаграмме не показывается (`GanttView.jsx`).
-- **Выгрузка в Excel и PDF** (меню доски → «Выгрузить в Excel / PDF…», `ExportDialog.jsx`): формат (последний
-  выбранный запоминается на устройстве), текущая доска (с вложенными, что на экране), отмеченные в дереве доски
-  (отметка папки отмечает всё внутри) или всё пространство вместе с «Входящими»; по желанию — с карточками из
-  архива. Файл собирается на устройстве из локальной базы, поэтому работает офлайн: данные для обоих форматов
-  готовит `exportData.js`, а библиотеки грузятся только при выгрузке.
-  - `.xlsx` (`exportXlsx.js`, `write-excel-file`): лист «Все карточки» (№, путь доски, колонка, название, описание,
-    метки, выполнена, исполнитель, автор, ближайшее напоминание датой Excel и список напоминаний, подзадачи «2/5» и
-    их список, вложения, число комментариев, дата изменения) и при нескольких досках — по листу на каждую доску с
-    карточками. Строка заголовка закреплена, с автофильтром.
-  - `.pdf` (`exportPdf.js`, `jspdf` + `jspdf-autotable`): альбомный A4 — заголовок «Kanban — доска», дата и что
-    выгружено; дальше каждая доска (полный путь, в порядке дерева), её колонки с числом карточек и таблицы карточек
-    (№, название, ✓, исполнитель, ближайшее напоминание, метки, подзадачи с ☑/☐, описание без разметки Markdown,
-    число вложений и комментариев, отметка архива). Длинный текст переносится, таблицы продолжаются на следующей
-    странице с повтором шапки, внизу — «Стр. N из M». Шрифт — Roboto (SIL OFL, `client/public/fonts/roboto/`
-    вместе с лицензией), урезанный до латиницы и кириллицы (~27 КБ на начертание) с добавленными ✓ ☐ ☑; он и
-    модуль выгрузки лежат в precache сервис-воркера.
-- **Архив** (меню доски или «Входящих» → «Архив…»): карточка, которую «Архивировать» (в её меню, окне или во
-  «Входящих»; все карточки колонки сразу — «Архивировать все карточки» в меню колонки; в данных это
-  `deleted: true`; без подтверждения — внизу слева на 7 секунд появляется «Карточка архивирована» с кнопкой
-  «Отменить», как в Trello, `UndoToast.jsx`), попадает сюда со всеми
-  комментариями, историей и файлами; её можно «Восстановить» на прежнюю доску или «Удалить навсегда» («Очистить
-  архив» — все сразу). Окончательное удаление — поле карточки `purged: true` через обычную синхронизацию
-  (работает и офлайн): сервер (`purgeCard` в `sync.js`) затирает карточку, её комментарии и все записи о ней в
-  чатах досок, оставляя пустые удалённые записи, чтобы другие устройства стёрли свои копии, и удаляет её файлы;
-  такую карточку уже ничто не вернёт. Карточки удалённых досок в архиве не показываются.
-- **Настройки доски** (контекстное меню доски или меню доски в настройках пространства → «Настройки доски…»):
-  переключатели в стиле iOS. Сейчас там «Отметка „Выполнена“ у карточек» (поле папки `doneMarks`: `true`/`false`,
-  `null` — как у родительской, у верхней доски — как у пространства). Когда выключено, кружка нет ни на доске,
-  ни в меню, ни в окне карточки.
-- **Настройки пространства** (вкладка «Пространство», только у владельца): та же отметка «Выполнена» для досок
-  без своей настройки и для «Входящих» (колонка `spaces.done_marks`, null — включено; меняется через
-  `POST /api/spaces/settings`, приходит в списке пространств, участникам — в списке открытых им пространств).
-- **Настройки «Входящих»** (меню «⋯» или правый клик по заголовку панели): у каждого свои — та же отметка
-  «Выполнена» для своих «Входящих» в этом пространстве (`meta` с ключом `inboxDoneMarks:<user>:<board>`,
-  нет ключа — как у пространства; `POST /api/inbox/settings`, приходит в списке пространств как `inboxDoneMarks`).
-- **Фон доски** (поле папки `background`: id фона, `'none'` или `null` — как у родительской): однотонные цвета,
-  градиенты, готовые картинки (`client/public/backgrounds`, id `img-…`) или своя картинка. Задаётся в настройках
-  пространства: меню доски → «Фон». На доске фон верхней из показанных досок (когда показана одна доска со
-  вложенными); в календаре и списке фона нет. Свою картинку («Загрузить картинку…») клиент уменьшает до 2560 px
-  по длинной стороне и отправляет как JPEG на `POST /api/backgrounds`; сервер хранит её рядом с вложениями и отвечает
-  `file-<id>`, это и становится фоном папки. Картинку `GET /api/backgrounds/:id` отдают тем, кто видит папку с этим
-  фоном (или её вложенные), а при очистке файлов её держат, пока на неё ссылается папка. Увиденные картинки
-  service worker кэширует, так что фон виден и офлайн. Загрузка требует связи с сервером.
-- **Меню доски**: правый клик по самой доске (не по колонке и не по карточке) — «Новая карточка…», «Свернуть /
-  Развернуть все колонки», «Набор колонок…», «Настройки пространства…».
-  «Входящие» всегда в одном оформлении: фон доски на панель не распространяется, цвета карточек в ней не показываются
-  и не выбираются (цвет сохраняется и снова виден на доске).
-- **Входящие** (кнопка в шапке; по публичной ссылке её нет): панель слева от доски, куда быстро записываются
-  дела, ещё не разложенные по доскам. Это карточки с `folderId = 'inbox'` — папки с таким id нет, поэтому они не
-  видны на досках, в фильтрах, поиске и общем доступе, а в чатах о них нет записей. На доску карточку переносят
-  перетаскиванием в колонку (панель не закрывает доску; карточка встаёт в папку, куда идут новые карточки этой
-  доски), кнопкой «На доску» или полем «Доска» в окне карточки. Обратно во «Входящие» карточку возвращают
-  перетаскиванием на панель, пунктом «Во „Входящие“» в меню карточки (клавиша I) или полем «Доска». В чате
-  доски перенос отмечается как «из „Входящие“». Карточка «Входящих», отмеченная выполненной, сразу (после
-  анимации галочки) уходит в архив — с плашкой «Отменить», которая вернёт её во «Входящие» с отметкой. Как и на доске, у карточки с неотправленными изменениями метка
-  «Не синхр.», при конфликте — «Конфликт». Ширину панели меняют, потянув за её правый край (стрелки с
-  клавиатуры, двойной щелчок — обычная ширина); она хранится в `localStorage.inboxWidth`. На телефоне панель
-  открывается на весь экран.
-  В чужом пространстве у каждого участника свои «Входящие»: карточки с `folderId = 'inbox:<id пользователя>'`
-  хранятся в базе владельца, но сервер отдаёт их только этому участнику (владельцу и остальным — как удалённые),
-  принимает изменения только от него и шлёт напоминания только ему. Перенесённая на общую доску карточка
-  становится видна всем, у кого есть доступ к доске; карточка доски, убранная во «Входящие», у других исчезает.
-- **Перенос всей колонки**: кнопки «« и »» в заголовке колонки переносят все её видимые карточки (с учётом
-  фильтров) в соседнюю колонку слева или справа, после подтверждения; порядок карточек сохраняется,
-  карточки с неразрешённым конфликтом остаются на месте.
-- **Скрытие фильтров**: кнопка с воронкой в начале строки управления прячет и показывает строку фильтров под ней
-  (папки, метки, карточки, колонки); строка управления остаётся. Состояние хранится
-  на устройстве (`filtersHidden` в localStorage). Если фильтры скрыты, а доска отфильтрована, на кнопке точка.
-- **Фильтр «Папки»**: дерево с галочками и поиском, как у тегов (сверху «Все»). Карточка показывается, если
-  отмечена её папка; вложенные папки отмечаются независимо от родителя; ничего не отмечено — доска пуста.
-  На доске название папки на карточке — путь ниже общих для всех видимых папок. Запоминается последний
-  выбор: в URL и на устройстве хранятся снятые галочки (`?folderToggles=`), поэтому новые папки появляются
-  отмеченными; ✕ отмечает все. Снятые проекты, разделы и пространства прежних версий переводятся в этот список
-  один раз (их id теперь id папок).
-- **Локальная база**: версия Dexie 12 заводит таблицу `folders` и переносит в неё пространства, проекты и разделы
-  (те же id, что у сервера), карточкам и комментариям ставит `folderId`; в версии 13 старые таблицы удаляются.
-  При отправке папки идут раньше карточек и родителями вперёд (`sortFolders` в `sync.js`).
-- **Хештеги**: `#тег` в названии или описании карточки (буквы, цифры, `_`, `-`; только цифры — не тег),
-  регистр не важен. Отдельного поля нет — теги берутся из текста. Фильтр «Теги» показывает карточки,
-  у которых есть хотя бы один из выбранных тегов; в списке есть поиск (Enter отмечает первый найденный),
-  нажатие на тег на карточке включает или снимает его.
-- **Цвет карточки**: полоска сверху, как в Trello. Фильтр «Цвет» в окне «Фильтры» оставляет карточки
-  с любым из выбранных цветов (и «Без цвета», если он отмечен); выбор запоминается на устройстве.
-- **История карточки**: в чате карточки между комментариями показаны записи о том,
-  что с ней делали, — те же, что сервер пишет в чат проекта (они берутся оттуда по id карточки, из всех
-  проектов, где она была; при переносе между проектами показывается одна запись из двух). В число
-  комментариев они не входят. Кнопка «История» в шапке чата карточки (в карточке и в окне чатов) прячет и
-  показывает их во всех карточках; выбор хранится на устройстве (`cardHistoryHidden` в localStorage).
-  У записи об изменении описания видно, что именно изменилось: пословное сравнение (`diff` в событии,
-  `server/src/textDiff.js`) — удалённое красным и зачёркнуто, добавленное зелёным, вокруг — несколько слов
-  без изменений. Длинные куски сокращаются, чтобы запись уместилась в событие; у старых записей сравнения нет.
-- **Ссылки**: адреса `http://`, `https://` и `www.` в названии и описании карточки и в комментариях
-  становятся ссылками (открываются в новой вкладке; точка, запятая или скобка в конце в ссылку не входят;
-  `#якорь` внутри ссылки — не тег). Нажатие на ссылку не открывает карточку. В редакторе под описанием —
-  строка с найденными в нём ссылками.
-- **Markdown** в описании карточки и в комментариях (в названии — только строчная разметка):
-  `**жирный**`, `*курсив*`, `~~зачёркнутый~~`, `` `код` ``, ссылка-слово `[текст](адрес)`, строки списков
-  `- …` и `1. …`, цитаты `> …`, заголовки `# …` (с пробелом после `#`, иначе это тег) и блоки кода между
-  строками ```` ``` ````. Разметка превращается в элементы React (не в HTML), ссылки — только `http(s)://`,
-  `www.` и `mailto:`. В редакторе описания есть кнопка «Просмотр» (в её подсказке — краткая справка).
-  Ссылку-слово можно сделать без разметки (в названии, описании и в поле сообщения чата): выделить слово и
-  вставить адрес — получится `[слово](адрес)`; или выделить слово, нажать правую кнопку мыши и выбрать
-  «Сделать ссылкой…». Правый клик по ссылке-слову даёт «Открыть ссылку», «Изменить адрес…» и «Убрать
-  ссылку», по голому адресу — «Показывать словом» (адрес заменяется на `[ссылка](адрес)`, слово выделено,
-  чтобы сразу его заменить). В меню есть и «Вырезать / Копировать / Вставить»; правки через меню отменяются
-  как обычный ввод. Без выделения и вне ссылок остаётся обычное меню браузера.
-  Там, где ссылки не открываются (заголовки чатов, события, календарь, уведомления), от ссылки-слова
-  остаётся только слово.
-- **Номера карточек**: у каждой карточки доски есть номер `#1`, `#2`, … в порядке создания (поле `number`,
-  его ставит сервер при первой синхронизации карточки; карточки, созданные раньше, пронумерованы разово
-  в порядке создания, устройство отправляет новые карточки в том порядке, в каком их создали). Номер виден
-  на плитке, в заголовке редактора, в чатах карточек и в записях чата проекта. Фильтр «Карточки» над доской —
-  список «#номер название» карточек в виду с поиском по номеру и названию; отмеченные показываются,
-  остальные скрываются (выбор хранится на устройстве отдельно для каждой доски).
-  Фильтр хранится на устройстве и действует на доске и в календаре.
-- **Наборы колонок**: колонки входят в наборы (`columnSet`), у папки выбран набор (`columnSetId`) или он берётся
-  у ближайшего родителя, один набор могут использовать несколько папок — правка его колонок меняет их все (в
-  настройках это показано над колонками). При смене набора у папки карточки переносятся по сопоставлению колонок;
-  при переносе карточки в папку с другим набором статус выбирается из его колонок. Если в виде несколько
-  используемых наборов, доска показывает папки выбранного набора. Колонки и папки,
-  созданные до наборов, относятся к набору `default` («Основной»). Новое пространство получает один набор —
-  `simple` «Канбан (3 колонки)»: Запланировано, В работе, Завершено; на нём и «Личное» (`seedColumns` в
-  `sync.js`). Пространства, созданные раньше, сохраняют свои наборы (там же может быть `default` «5 колонок» или
-  «Основной»). Новые корневые папки получают `simple`, пока этот набор не удалён. Окно «Набор колонок» открывается из меню
-  колонки на доске и из меню доски в настройках пространства («Набор колонок…», клавиша K; только владельцу).
-- **Место новых карточек**: у колонки есть настройка `addToTop` («В конец» / «В начало»): куда встают
-  созданные в ней карточки и перенесённые в неё кнопками ← → или из редактора карточки.
-  Перетаскивание ставит карточку туда, куда её бросили. В шаблонах «Канбан (3 колонки)» и «5 колонок» у «Завершено»
-  по умолчанию «В начало» (существующим доскам выставлено разово, если пользователь не выбирал сам).
-- **Сброс базы и смена аккаунта**: у каждой доски есть `epoch` (база сервера + владелец); если он
-  не совпадает с сохранённым на устройстве (база очищена, вошли другим аккаунтом), клиент удаляет
-  локальные данные и скачивает доску заново.
-- **Файлы в карточках**: файлы хранятся на сервере в `FILES_DIR` (по умолчанию `files/` рядом с базой),
-  по одному файлу на вложение; карточка перечисляет их в поле `attachments`, которое меняет только сервер
-  (`POST /api/cards/:id/files` — тело запроса и есть файл, пишется на диск потоком;
-  `POST /api/cards/:id/files/:fileId/delete`). `GET /api/files/:id` отдаёт файл тем, кто видит карточку
-  (владелец, участник проекта, публичная ссылка; загружать и удалять нельзя по ссылке для просмотра).
-  Картинки, видео (есть встроенный плеер), аудио, PDF и текст показываются в браузере, остальное скачивается; заголовки
-  `nosniff` и CSP `sandbox` не дают файлу выполниться как страница сайта. Размер не ограничен, загрузка
-  отклоняется, если на диске останется меньше 1 ГБ. Файлы карточек в архиве хранятся, пока карточку не удалят
-  навсегда (тогда сервер удаляет их сразу); удаление аккаунта тоже стирает их сразу.
-  Прикреплять и удалять файлы можно только онлайн и после синхронизации карточки. В редакторе блок «Файлы»
-  свёрнут в кнопку «+ Файлы» рядом с «+ Описание» и «+ Напоминание», пока у карточки нет файлов и загрузок;
-  кнопка раскрывает блок и сразу открывает выбор файлов.
-- **Удаление аккаунта** (Аккаунт → Вход, подтверждение словом «удалить»): `POST /api/auth/delete-account`
-  стирает доску, привязанные входы, сессии, push-подписки, приглашения в свои проекты и публичные ссылки,
-  а также приглашения адресов пользователя на чужие доски (если адрес не привязан к другому аккаунту);
-  устройство очищает локальные данные и показывает экран входа.
-- **Общий доступ**: приглашения хранятся в `project_members` (доска = id владельца, проект, e-mail;
-  участники прежних общих досок получили доступ ко всем их проектам). Клиент выбирает доску заголовком
-  `X-Board` (для SSE — `?board=`); участнику сервер отдаёт только его проекты, их разделы и карточки
-  и колонки их наборов, а его изменения проектов, колонок и чужих карточек отклоняет (устройство получает
-  обратно серверную версию). Карточка, перенесённая владельцем в закрытый проект, приходит участнику
-  удалённой. В `epoch` участника входит его доступ: при изменении доступа устройство скачивает доску
-  заново. У каждой доски на устройстве своя IndexedDB (`kanban` — своя, `kanban-board:<id>` — общие),
-  переключение перезагружает страницу. Если доступ закрыт совсем, локальная копия общей доски удаляется.
-- **Комментарии и чат папки**: записи `comment` синхронизируются как карточки (работают офлайн):
-  с `cardId` — комментарий к карточке, без него — сообщение общего чата папки. Автора (`authorId`,
-  `authorName`, `authorPicture`) и `editedAt` ставит сервер, `folderId` комментария всегда равен папке
-  карточки (при переносе карточки комментарии переезжают с ней). Изменять сообщение может только автор,
-  удалять — автор или владелец доски; по публичной ссылке комментарии только видны. О новых сообщениях
-  остальным участникам папки приходит push. Кроме сообщений, в чат папки сервер пишет, кто и что изменил
-  (поле `event` — JSON с видом изменения): создание, переименование, перенос между колонками и папками, удаление и восстановление карточек, описание, напоминания, файлы, создание, название, перенос и набор
-  колонок папок; простая перестановка карточек не записывается. Такие записи показываются строками,
-  название карточки в них открывает её; они не считаются непрочитанными и не присылают push; прочитанное отмечается на устройстве (`seen:<база>`
-  в localStorage), непрочитанные подсвечивают значок 💬 на карточке и счётчик кнопки «Чаты».
-  В окне чатов одним списком идут чаты папок, чаты карточек (карточки с комментариями; из такого чата
-  можно открыть саму карточку) и личные сообщения: сверху те, где последнее сообщение новее, над списком —
-  поиск по названию чата и последнему сообщению.
-- **Личные сообщения**: таблица `direct_messages` (и `dm_reads` — до какого момента прочитано), не привязаны
-  к доске и работают только онлайн. Писать можно тем, с кем есть общая папка (владелец и участники);
-  старую переписку видно и после. `GET /api/dm` — собеседники с последним сообщением и числом
-  непрочитанных, `GET/POST /api/dm/:user`, `…/:id/edit`, `…/:id/delete`, `…/read`. О новом сообщении
-  сервер сообщает открытым приложениям обоих по SSE (`{ dm }`) и шлёт push получателю.
-  Чат удаляется кнопкой с корзиной в его шапке (`POST /api/dm/:user/clear {forBoth}`): только у себя —
-  в `dm_cleared` запоминается момент, сообщения до него скрыты (новые снова открывают чат), а с галочкой
-  «Удалить и у собеседника» — переписка стирается у обоих.
-- **Участники**: `GET /api/people` — кто видит папки текущей доски (с аватаром из аккаунта); над доской
-  показываются аватары участников отмеченных папок, по нажатию — список с кнопкой «Написать»
-  и чатами папок.
+Locally the same variables can be placed in `server/.env`. `DEV_LOGIN=1` adds a “Sign in to test account” button on the sign-in screen (separate board without Google and Yandex); the server accepts it only from this machine, do not set it in production. Without configured mail in this mode, email sign-in also works from this machine: the code is written to the server log instead of being emailed.
 
-- **Офлайн-открытие**: Service Worker (Workbox через `vite-plugin-pwa`) кэширует оболочку приложения.
-- **Хранение**: все карточки лежат в IndexedDB (Dexie). Интерфейс всегда читает локальную базу.
-- **Очередь изменений**: у каждой карточки хранится последнее подтверждённое сервером состояние (`server`)
-  и флаг `dirty`. Отправляется разница между локальным и серверным состоянием.
-- **Синхронизация**: при старте, при появлении сети, при возврате на вкладку, раз в 30 секунд и по
-  событию SSE (`/api/events`), когда другое устройство что-то изменило.
-  Сначала push локальных изменений, затем pull всего, что изменилось после последнего `seq`.
-- **Конфликты** (БД — SQLite, у каждой карточки есть `version`):
-  - если клиент правил актуальную версию, изменения применяются;
-  - если версия устарела, сервер делает трёхстороннее слияние по полям: разные поля сливаются автоматически,
-    колонка/позиция — «последний пишущий выигрывает»;
-  - одно и то же текстовое поле изменено на обоих устройствах — конфликт, пользователь выбирает версию
-    или редактирует итог вручную;
-  - удаление на одном устройстве и правка на другом — отдельный конфликт (восстановить / удалить);
-  - для проектов и разделов: при одновременном переименовании побеждает последнее, удаление побеждает правку.
-- **Хранение на сервере**: одна таблица `records` (владелец + тип записи + JSON-данные + версия + `seq`);
-  сервер отдаёт и меняет только записи досок, к которым у пользователя есть доступ.
-- **Автор и «на ком»**: у карточки `authorId` (кто создал; можно сменить) и `assigneeId` (кто сейчас
-  занимается; `null` — автор). Выбор — среди тех, кто видит папку карточки. Карточкам, созданным до этого,
-  сервер один раз проставляет автора по записи «Создана карточка» в чате папки, иначе — владельца доски.
-  В фильтрах доски есть поля «Автор» и «На ком».
-- **Напоминания**: у карточки список `reminders` (до 20): время первого срабатывания, повтор (ежедневно,
-  по будням, по выходным, еженедельно, раз в 2 недели, ежемесячно, раз в 3 и 6 месяцев, ежегодно) и смещение
-  часового пояса, чтобы повтор приходил в то же время по часам (расчёт — `server/src/reminders.js`, общий
-  для сервера и клиента). Старое поле `remindAt` читается как одно напоминание без повтора.
-  Сервер раз в 15 секунд ищет наступившие напоминания
-  и отправляет Web Push на все устройства владельца доски и участников проекта карточки, где включены уведомления
-  (окно «Аккаунт»). Ключи VAPID создаются при первом запуске и хранятся в базе; контакт для push-сервисов —
-  в настройках сервера, вкладка «Уведомления». Напоминание, просроченное больше чем на 6 часов (сервер был выключен), не отправляется.
-  На iPhone push работает только в приложении, добавленном на экран «Домой» (iOS 16.4+).
+## How it works
+
+- **Folders**: spaces, projects, and sections no longer exist separately — everything is a folder (`folder`) of any depth: `{ parentId, columnSetId, name, position, deleted, hidden }`, root — `parentId: null`. Each board has a root “Personal” folder (id `personal`, created by the server). A card lives in one folder (`folderId`), comments and folder chat too (`folderId`; chat thread — `folder:<id>`, old `project:`/`space:` are understood). Folders are managed in board settings “Folders” as a single tree: expand a row to change name, access, column set (“Same as parent” or its own; root always has its own set), delete or move; order — with arrows among folders of the same parent; “+ New nested folder” and “+ New top-level folder” — at the end of their level. Members (non-owners) see the same tree but without columns and root folders; server-side access restrictions still apply.
+- **Folder column set**: its own `columnSetId` or the nearest parent’s set (`folderColumnSetId` in `folders.js`). Changing the set moves cards of the folder and nested folders that inherit it, by column mapping (a dialog shows the mapping).
+- **Move and delete folder** (“Move…” — any folder except itself and nested ones, or to top level): the folder moves with all contents by simply changing `parentId` (`moveFolder` in `actions.js`). If the folder has no own set and the new parent has a different one, a dialog offers to keep the previous set or take the new one (cards go to columns with the same names, others — to the first). Deleting a folder with contents: either everything together (nested folders and their cards), or “keep” — nested folders move up one level, the folder’s own cards move to a chosen folder. Any board deletion (including empty) is confirmed by typing “delete”. The server records folder creation, rename, delete, column set change, and moves of folders and cards in the folder chat (`folder.*`, `card.in`/`card.out`; old project/section/space event types are still shown in history). The folder chat header shows avatars and member count (owner and those with access to it or a parent folder); clicking shows the member list with a “Message” button. The chats button is always visible, even if no one else uses the board.
+- **Where a new card goes**: if exactly one folder is selected — into it (both from the field at the bottom of a column and in the “New card” dialog); otherwise into the last folder selected in the “New card” dialog among selected ones. When several top-level boards are in view (e.g. “All boards”), there is no quick add: the “+ New card…” button at the bottom of a column opens the dialog where the board is chosen explicitly, and there is no insertion between cards.
+- **Insert between cards** (on devices with a mouse): hovering over the gap between cards in a column shows a line with “+”; clicking opens a field — Enter adds a card exactly there (position — midpoint between neighbors) and keeps the field for the next one, leaving the field adds what’s typed, Escape closes it.
+- **Card color** (`color` field, id from palette in `client/src/appearance.js`): strip at the top of the card, like a Trello cover. Set in the card menu (“Color”) and in the card dialog.
+- **Done** (`done` field), like Trello: a circle to the left of the title appears on hover, clicking turns it green with a checkmark (animated) and keeps it visible. Can also be toggled in the card menu (key X) and in the card dialog. The card does not change column; history shows “Card … completed”.
+- **Board menu** — like cards: clicking the title in the header renames the board, and the menu is opened by the “⋯” button on the right (after member avatars) or by right-clicking empty board space (same menu): new card, collapse columns, “Rename”, everything from the board menu in space settings (access, move, column set, background, board settings, order), “Archive…”, “Export to Excel / PDF…”, and “Delete”. When multiple boards are in view, the menu contains only common items.
+- **Gantt view** (view switcher in header): cards with reminders appear as bars on a day or week scale, grouped by boards. Bar color — card or column color. Multiple one-time reminders on one card become one bar from first to last, recurring ones — markers on trigger days. Dragging shifts all card reminders by whole days; clicking opens the card. Today is a vertical line. Cards without reminders are not shown (`GanttView.jsx`).
+- **Export to Excel and PDF** (board menu → “Export to Excel / PDF…”, `ExportDialog.jsx`): format (last chosen is remembered on device), current board (with nested, as on screen), boards selected in the tree (selecting a folder selects everything inside) or the whole space together with Inbox; optionally — with archived cards. The file is built on-device from the local DB, so it works offline: data for both formats is prepared by `exportData.js`, libraries are loaded only on export.
+  - `.xlsx` (`exportXlsx.js`, `write-excel-file`): “All cards” sheet (No., board path, column, title, description, labels, done, assignee, author, nearest reminder as Excel date and reminder list, subtasks “2/5” and their list, attachments, comment count, modified date) and, for multiple boards, a sheet per board with cards. Header row frozen, with autofilter.
+  - `.pdf` (`exportPdf.js`, `jspdf` + `jspdf-autotable`): landscape A4 — “Kanban — board” title, date and export scope; then each board (full path, tree order), its columns with card counts and card tables (No., title, ✓, assignee, nearest reminder, labels, subtasks with ☑/☐, description without Markdown, attachment/comment counts, archive mark). Long text wraps, tables continue on the next page with repeated header, footer shows “Page N of M”. Font — Roboto (SIL OFL, `client/public/fonts/roboto/` with license), subset to Latin and Cyrillic (~27 KB per face) with added ✓ ☐ ☑; it and the export module are in the service worker precache.
+- **Archive** (board menu or Inbox → “Archive…”): a card archived (from its menu, dialog, or Inbox; all cards in a column at once — “Archive all cards” in column menu; in data this is `deleted: true`; without confirmation — bottom-left for 7 seconds shows “Card archived” with “Undo”, like Trello, `UndoToast.jsx`) goes here with all comments, history, and files; it can be “Restored” to its original board or “Deleted permanently” (“Clear archive” — all at once). Permanent deletion is the card field `purged: true` via normal sync (works offline): the server (`purgeCard` in `sync.js`) wipes the card, its comments, and all its records in board chats, leaving empty deleted records so other devices erase their copies, and deletes its files; such a card cannot be recovered. Cards of deleted boards are not shown in archive.
+- **Board settings** (board context menu or board menu in space settings → “Board settings…”): iOS-style toggles. Currently “Done mark on cards” (`doneMarks` folder field: `true`/`false`, `null` — same as parent, for top board — same as space). When off, the circle is absent on the board, in menu, and in card dialog.
+- **Space settings** (“Space” tab, owner only): same “Done” mark for boards without their own setting and for Inbox (`spaces.done_marks` column, null — enabled; changed via `POST /api/spaces/settings`, returned in spaces list, to members — in shared spaces list).
+- **Inbox settings** (“⋯” menu or right-click panel header): per-user — same “Done” mark for own Inbox in this space (`meta` key `inboxDoneMarks:<user>:<board>`, no key — same as space; `POST /api/inbox/settings`, returned in spaces list as `inboxDoneMarks`).
+- **Board background** (`background` folder field: background id, `'none'` or `null` — same as parent): solid colors, gradients, preset images (`client/public/backgrounds`, id `img-…`) or custom image. Set in space settings: board menu → “Background”. On the board, the background of the topmost shown board (when one board with nested is shown); no background in calendar and list. A custom image (“Upload image…”) is scaled client-side to 2560 px on the long side and uploaded as JPEG to `POST /api/backgrounds`; the server stores it alongside attachments and responds with `file-<id>`, which becomes the folder background. `GET /api/backgrounds/:id` serves the image to those who can see a folder with this background (or its nested folders), and during file cleanup it is kept while referenced by a folder. Seen images are cached by the service worker so backgrounds work offline. Upload requires server connectivity.
+- **Board menu**: right-click on the board itself (not on a column or card) — “New card…”, “Collapse / Expand all columns”, “Column set…”, “Space settings…”. Inbox always has the same appearance: board background does not apply to the panel, card colors are not shown or selectable there (color is preserved and visible again on the board).
+- **Inbox** (button in header; absent on public links): panel to the left of the board for quickly capturing tasks not yet sorted onto boards. These are cards with `folderId = 'inbox'` — no such folder exists, so they are not visible on boards, in filters, search, or sharing, and no board chat records are created for them. Move to board by dragging into a column (panel does not cover the board; card goes to the folder where new cards of this board go), “To board” button, or “Board” field in card dialog. Move back to Inbox by dragging onto the panel, “To Inbox” in card menu (key I), or “Board” field. Moving is recorded in board chat as “from Inbox”. An Inbox card marked done immediately (after checkmark animation) goes to archive — with “Undo” toast to return it to Inbox with the mark. Like on the board, a card with unsynced changes shows “Not synced”, on conflict — “Conflict”. Panel width is adjusted by dragging its right edge (arrow keys, double-click for default width); stored in `localStorage.inboxWidth`. On phones the panel opens fullscreen. In another’s space each member has their own Inbox: cards with `folderId = 'inbox:<user id>'` are stored in the owner’s DB but the server returns them only to that member (to owner and others — as deleted), accepts changes only from them, and sends reminders only to them. A card moved to a shared board becomes visible to everyone with access to that board; a board card moved to Inbox disappears for others.
+- **Move entire column**: “«” and “»” buttons in column header move all its visible cards (considering filters) to the adjacent left or right column, after confirmation; card order is preserved, cards with unresolved conflicts stay in place.
+- **Hide filters**: funnel button at the start of the toolbar hides/shows the filter row below it (folders, tags, cards, columns); toolbar remains. State stored on device (`filtersHidden` in localStorage). If filters are hidden but the board is filtered, the button shows a dot.
+- **“Folders” filter**: tree with checkboxes and search, like tags (top “All”). A card is shown if its folder is checked; nested folders are checked independently of parent; nothing checked — board is empty. On the board, folder name on a card is the path below folders common to all visible ones. Last selection is remembered: unchecked items are stored in URL and on device (`?folderToggles=`), so new folders appear checked; ✕ checks all. Unchecked projects, sections, and spaces from previous versions are migrated to this list once (their ids are now folder ids).
+- **Local database**: Dexie version 12 creates `folders` table and migrates spaces, projects, and sections into it (same ids as server), sets `folderId` on cards and comments; in version 13 old tables are removed. When sending, folders go before cards and parents before children (`sortFolders` in `sync.js`).
+- **Hashtags**: `#tag` in card title or description (letters, digits, `_`, `-`; digits-only is not a tag), case-insensitive. No separate field — tags are extracted from text. “Tags” filter shows cards that have at least one of the selected tags; the list has search (Enter checks first match), clicking a tag on a card toggles it.
+- **Card color**: strip at top, like Trello. “Color” filter in “Filters” dialog keeps cards with any of selected colors (and “No color” if checked); selection remembered on device.
+- **Card history**: in card chat, records of what was done to it are shown between comments — same as server writes to folder chat (taken from there by card id, from all folders where it was; when moved between folders one of two records is shown). They are not counted as comments. “History” button in card chat header (in card and in chats dialog) hides/shows them for all cards; choice stored on device (`cardHistoryHidden` in localStorage). For description changes, the exact diff is shown: word-level comparison (`diff` in event, `server/src/textDiff.js`) — deleted in red/strikethrough, added in green, with a few words of context. Long pieces are truncated to fit the event; old records have no diff.
+- **Links**: `http://`, `https://`, and `www.` addresses in card title/description and comments become links (open in new tab; trailing dot/comma/parenthesis not included; `#anchor` inside link is not a tag). Clicking a link does not open the card. In editor, below description there is a row with links found in it.
+- **Markdown** in card description and comments (in title — inline markup only): `**bold**`, `*italic*`, `~~strikethrough~~`, `` `code` ``, word-link `[text](url)`, list lines `- …` and `1. …`, quotes `> …`, headings `# …` (space after `#`, otherwise it’s a tag) and code blocks between ```` ``` ```` lines. Markup is rendered to React elements (not HTML), links only `http(s)://`, `www.` and `mailto:`. Description editor has a “Preview” button (tooltip has brief help). A word-link can be made without markup (in title, description, and chat message field): select word and paste URL — becomes `[word](url)`; or select word, right-click and choose “Make link…”. Right-click on word-link gives “Open link”, “Edit URL…”, “Remove link”, on plain URL — “Show as word” (URL becomes `[link](url)`, word selected to replace). Menu also has Cut/Copy/Paste; menu edits are undoable like normal input. Without selection and outside links, browser’s default menu remains. Where links don’t open (chat headers, events, calendar, notifications), only the word from a word-link remains.
+- **Card numbers**: each board card has a number `#1`, `#2`, … in creation order (`number` field, set by server on first card sync; cards created earlier were numbered once in creation order, device sends new cards in the order they were created). Number is shown on tile, editor header, card chats, and folder chat records. “Cards” filter above board — list of “#number title” for cards in view with search by number and title; checked ones are shown, others hidden (selection stored per board on device). Filter stored on device and applies to board and calendar.
+- **Column sets**: columns belong to sets (`columnSet`), a folder uses a selected set (`columnSetId`) or inherits nearest parent’s; one set can be used by multiple folders — editing its columns changes all of them (shown above columns in settings). When changing a folder’s set, cards are moved by column mapping; when moving a card to a folder with a different set, status is chosen from its columns. If multiple used sets are in view, the board shows folders of the selected set. Columns and folders created before sets belong to `default` (“Main”). A new space gets one set — `simple` “Kanban (3 columns)”: Planned, In progress, Done; “Personal” uses it too (`seedColumns` in `sync.js`). Spaces created earlier keep their sets (may also have `default` “5 columns” or “Main”). New root folders get `simple` until that set is deleted. “Column set” dialog opens from column menu on board and board menu in space settings (“Column set…”, key K; owner only).
+- **Where new cards are placed**: a column has `addToTop` setting (“At end” / “At start”): where cards created in it and moved into it by ← → buttons or from card editor go. Drag-and-drop places card where dropped. In “Kanban (3 columns)” and “5 columns” templates, “Done” defaults to “At start” (set once for existing boards if user hadn’t chosen).
+- **DB reset and account switch**: each board has an `epoch` (server DB + owner); if it doesn’t match the one saved on device (DB cleared, signed in as different account), client deletes local data and downloads board again.
+- **Files in cards**: files are stored on server in `FILES_DIR` (default `files/` next to DB), one file per attachment; card lists them in `attachments` field, which only the server changes (`POST /api/cards/:id/files` — request body is the file, streamed to disk; `POST /api/cards/:id/files/:fileId/delete`). `GET /api/files/:id` serves the file to those who can see the card (owner, project member, public link; upload/delete not allowed via view-only link). Images, video (built-in player), audio, PDF, and text are shown in browser, others downloaded; `nosniff` and CSP `sandbox` headers prevent file from executing as site page. No size limit, upload is rejected if less than 1 GB would remain on disk. Files of archived cards are kept until card is permanently deleted (then server deletes them immediately); account deletion also erases them immediately. Attaching and deleting files is only possible online and after card is synced. In editor, “Files” block is collapsed into “+ Files” button next to “+ Description” and “+ Reminder” while card has no files/uploads; button expands block and immediately opens file picker.
+- **Account deletion** (Account → Sign-in, confirmed by typing “delete”): `POST /api/auth/delete-account` erases board, linked sign-ins, sessions, push subscriptions, invitations to own projects and public links, and also invitations of user’s addresses to others’ boards (if address not linked to another account); device clears local data and shows sign-in screen.
+- **Sharing**: invitations stored in `project_members` (board = owner id, project, e-mail; members of former shared boards got access to all their projects). Client selects board via `X-Board` header (for SSE — `?board=`); for a member server returns only their projects, their sections and cards and columns of their sets, and rejects their changes to projects, columns, and others’ cards (device receives server version back). A card moved by owner to a closed project arrives to member as deleted. Member’s `epoch` includes their access: when access changes, device downloads board again. Each board on device has its own IndexedDB (`kanban` — own, `kanban-board:<id>` — shared), switching reloads the page. If access is fully removed, local copy of shared board is deleted.
+- **Comments and folder chat**: `comment` records sync like cards (work offline): with `cardId` — card comment, without — folder chat message. Author (`authorId`, `authorName`, `authorPicture`) and `editedAt` are set by server, comment’s `folderId` always equals card’s folder (when card moves, comments move with it). Only author can edit, author or board owner can delete; via public link comments are view-only. Other folder members get push on new messages. Besides messages, server writes to folder chat who changed what (`event` field — JSON with change type): card creation, rename, moves between columns and folders, delete and restore, description, reminders, files, folder creation, name, moves and column sets; simple card reordering is not recorded. Such records are shown as lines, card name in them opens it; they are not counted as unread and don’t trigger push; read state tracked on device (`seen:<db>` in localStorage), unread highlight 💬 icon on card and chats button counter. Chats dialog shows folder chats, card chats (cards with comments; from such chat you can open the card) and direct messages in one list: newest last message on top, with search by chat title and last message above the list.
+- **Direct messages**: `direct_messages` table (and `dm_reads` — read-up-to), not tied to a board and work only online. You can message those with whom you share a folder (owner and members); old conversations remain visible after. `GET /api/dm` — peers with last message and unread count, `GET/POST /api/dm/:user`, `…/:id/edit`, `…/:id/delete`, `…/read`. On new message server notifies both open apps via SSE (`{ dm }`) and sends push to recipient. Chat can be cleared via trash button in its header (`POST /api/dm/:user/clear {forBoth}`): for self only — moment stored in `dm_cleared`, messages before it hidden (new ones reopen chat), and with “Delete for both” — conversation erased for both.
+- **People**: `GET /api/people` — who can see folders of current board (with avatar from account); above board avatars of members of selected folders are shown, clicking shows list with “Message” button and folder chats.
+
+- **Offline opening**: Service Worker (Workbox via `vite-plugin-pwa`) caches the app shell.
+- **Storage**: all cards are in IndexedDB (Dexie). UI always reads from local DB.
+- **Change queue**: each card stores last server-confirmed state (`server`) and `dirty` flag. Difference between local and server state is sent.
+- **Sync**: on start, when network appears, on tab focus, every 30 seconds, and on SSE event (`/api/events`) when another device changed something. First push local changes, then pull everything changed after last `seq`.
+- **Conflicts** (DB — SQLite, each card has `version`):
+  - if client edited current version, changes are applied;
+  - if version is stale, server does three-way merge by fields: different fields merge automatically, column/position — last writer wins;
+  - same text field changed on both devices — conflict, user chooses version or edits result manually;
+  - delete on one device and edit on another — separate conflict (restore / delete);
+  - for projects and sections: on concurrent rename last wins, delete wins over edit.
+- **Server storage**: single `records` table (owner + record type + JSON data + version + `seq`); server returns and modifies only records of boards the user has access to.
+- **Author and assignee**: card has `authorId` (who created; can be changed) and `assigneeId` (who is currently working on it; `null` — author). Choice is among those who can see the card’s folder. For cards created before this, server once sets author from “Card created” record in folder chat, otherwise board owner. Board filters include “Author” and “Assignee”.
+- **Reminders**: card has `reminders` list (up to 20): first trigger time, repeat (daily, weekdays, weekends, weekly, every 2 weeks, monthly, every 3 and 6 months, yearly) and timezone offset so repeat fires at the same clock time (calculation — `server/src/reminders.js`, shared by server and client). Old `remindAt` field is read as one reminder without repeat. Server checks for due reminders every 15 seconds and sends Web Push to all devices of board owner and members of card’s project where notifications are enabled (“Account” dialog). VAPID keys are created on first run and stored in DB; push service contact — in server settings, Notifications tab. A reminder overdue by more than 6 hours (server was down) is not sent. On iPhone push works only in app added to Home Screen (iOS 16.4+).
