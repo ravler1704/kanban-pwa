@@ -92,7 +92,6 @@
       opt.textContent = LANG_NAMES[code] || code;
       sel.appendChild(opt);
     }
-    sel.addEventListener('change', () => apply(sel.value));
     // try to place in top nav
     const nav = document.querySelector('.top nav') || document.querySelector('.top .wrap') || document.body;
     nav.appendChild(wrap);
@@ -115,9 +114,15 @@
   window.__applySiteLang = apply;
   window.__detectSiteLang = detect;
   window.__siteLang = lang;
+  // Delegated handler so switching works even if the select is replaced or created later.
+  document.addEventListener('change', (e) => {
+    const t = e && e.target;
+    if (t && t.id === 'site-lang-select') apply(t.value);
+  });
+  function init() { injectStyles(); createSwitcher(); apply(lang); }
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => { injectStyles(); createSwitcher(); apply(lang); });
+    document.addEventListener('DOMContentLoaded', init);
   } else {
-    injectStyles(); createSwitcher(); apply(lang);
+    init();
   }
 })();
