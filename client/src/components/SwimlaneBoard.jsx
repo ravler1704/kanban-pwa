@@ -15,13 +15,13 @@ export default function SwimlaneBoard({
 
   return (
     <main className="board-swimlanes">
-      {lanes.map((lane, index) => (
+      {lanes.map((lane) => (
         <section key={lane.id} className="swimlane-row">
-          <section className="swimlane-label" title={lane.label}>
+          <header className="swimlane-label" title={lane.label}>
             {lane.color && <span className="swimlane-swatch" style={{ background: lane.color }} aria-hidden="true" />}
             <span className="swimlane-name">{lane.label}</span>
-            <span className="count">{lane.count}</span>
-          </section>
+            <span className="count">{lane.count} {lane.count === 1 ? 'карточка' : lane.count >= 2 && lane.count <= 4 ? 'карточки' : 'карточек'}</span>
+          </header>
           <div className="swimlane-cols board" style={{ '--tracks': tracks }}>
             {columns.map((col, colIndex) => (
               <Column
@@ -30,7 +30,7 @@ export default function SwimlaneBoard({
                 column={col}
                 prevColumn={columns[colIndex - 1]}
                 nextColumn={columns[colIndex + 1]}
-                showHead={index === 0}
+                showHead
                 collapsed={collapsedList.includes(col.id)}
                 onToggleCollapsed={() => columnProps.onToggleCollapsed(col.id)}
                 onCollapseOthers={() => columnProps.onCollapseOthers(col)}
