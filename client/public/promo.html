@@ -463,7 +463,7 @@
       }
     };
     // Fill other languages by falling back to English structure with translated key strings (abbreviated for brevity in code, but we include major languages)
-    (function addLang(code, o){ window.SITE_I18N[code] = Object.assign({}, window.SITE_I18N.en, o); });
+    function addLang(code, o){ window.SITE_I18N[code] = Object.assign({}, window.SITE_I18N.en, o); }
     addLang('es',{page_title:"Offline Kanban — un tablero Kanban que funciona sin internet",meta_description:"Tablero Kanban gratuito: funciona sin conexión, sincroniza entre dispositivos, chats estilo Telegram, recordatorios.",
       nav_features:"Funciones",nav_templates:"Plantillas",nav_steps:"Cómo empezar",nav_faq:"Preguntas",nav_whats_new:"Novedades",nav_open:"Abrir",pill_free:"Gratis",pill_oss:"código abierto",pill_noads:"sin anuncios",
       hero_title:'Un tablero Kanban que funciona <span class="grad">incluso sin internet</span>',hero_lead:"Tareas, proyectos y trabajo compartido — en móvil y escritorio. Escribe en el metro o en el campo, y los cambios se sincronizan cuando vuelve la conexión.",
