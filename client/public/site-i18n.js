@@ -103,7 +103,8 @@
     st.id = 'site-i18n-styles';
     st.textContent = `
       .lang-switcher { margin-left: auto; display: inline-flex; align-items: center; }
-      .lang-switcher select { background: var(--panel, #1e293b); color: var(--text, #e2e8f0); border: 1px solid var(--border, #334155); border-radius: 8px; padding: 4px 8px; font: inherit; font-size: 0.85rem; cursor: pointer; }
+      .lang-switcher select { appearance: none; -webkit-appearance: none; background: var(--panel, #1e293b) no-repeat right 1.2rem center / 14px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); color: var(--text, #e2e8f0); border: 1px solid var(--border, #334155); border-radius: 8px; padding: 4px 2.6rem 4px 0.8rem; font: inherit; font-size: 0.85rem; cursor: pointer; }
+      [dir="rtl"] .lang-switcher select { background-position: left 1.2rem center; padding: 4px 0.8rem 4px 2.6rem; }
       .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
       [dir="rtl"] .lang-switcher { margin-left: 0; margin-right: auto; }
     `;
